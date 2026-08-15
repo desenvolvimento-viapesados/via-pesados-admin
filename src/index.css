@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root,
+  .light {
+    --background: 210 20% 98%;
+    --foreground: 220 25% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 25% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 10%;
+    --primary: 26 100% 44%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 26 20% 92%;
+    --secondary-foreground: 26 30% 15%;
+    --muted: 26 15% 94%;
+    --muted-foreground: 26 10% 40%;
+    --accent: 26 25% 90%;
+    --accent-foreground: 26 30% 15%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 69% 40%;
+    --success-foreground: 0 0% 100%;
+    --border: 26 15% 86%;
+    --input: 26 15% 86%;
+    --ring: 26 100% 44%;
+    --radius: 0.75rem;
+    --shadow-card: 0 1px 3px 0 hsl(0 0% 0% / 0.04), 0 1px 2px -1px hsl(0 0% 0% / 0.04);
+    --shadow-elevated: 0 4px 6px -1px hsl(0 0% 0% / 0.07), 0 2px 4px -2px hsl(0 0% 0% / 0.07);
+  }
+
+  .dark {
+    --background: 0 0% 3%;
+    --foreground: 0 0% 92%;
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 92%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 92%;
+    --primary: 26 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 0 0% 88%;
+    --muted: 0 0% 11%;
+    --muted-foreground: 0 0% 52%;
+    --accent: 0 0% 14%;
+    --accent-foreground: 0 0% 92%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 69% 40%;
+    --success-foreground: 0 0% 100%;
+    --border: 0 0% 18%;
+    --input: 0 0% 10%;
+    --ring: 26 100% 50%;
+    --shadow-card: 0 2px 8px 0 hsl(0 0% 0% / 0.6);
+    --shadow-elevated: 0 4px 12px -1px hsl(0 0% 0% / 0.7);
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .shadow-card { box-shadow: var(--shadow-card); }
+  .shadow-elevated { box-shadow: var(--shadow-elevated); }
+}
+
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: hsl(0 0% 50% / 0.3); border-radius: 9999px; }
+*::-webkit-scrollbar-thumb:hover { background: hsl(0 0% 50% / 0.5); }
+* { scrollbar-width: thin; scrollbar-color: hsl(0 0% 50% / 0.3) transparent; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
