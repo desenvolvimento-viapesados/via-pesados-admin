@@ -4,38 +4,92 @@ import { useTheme } from '@/hooks/useTheme';
 import {
   Users, TrendingUp, DollarSign, CreditCard,
   MessageSquare, BarChart3, ChevronRight,
+  Target, Banknote, UserCheck, Handshake,
+  Contact, Megaphone, BookOpen, Scale,
+  ShieldCheck, Puzzle, Clock, Sparkles,
+  Truck, LayoutGrid,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import viaPesadosLogoLight from '@/assets/via-pesados-icon-color.png';
 import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
+import viaCrmLogoLight from '@/assets/via-crm-logo-light.png';
+import viaCrmLogoDark from '@/assets/via-crm-logo-dark.png';
 
 interface ModuleConfig {
   label: string;
   description: string;
   icon: ReactNode;
   path: string;
+  comingSoon?: boolean;
 }
 
-const MODULES: ModuleConfig[] = [
-  { label: 'Clientes',        description: 'Gestão de clientes',      icon: <Users />,        path: '/clientes'   },
-  { label: 'Funil de Vendas', description: 'Pipeline de vendas',      icon: <TrendingUp />,   path: '/funil'      },
-  { label: 'Financeiro',      description: 'Fluxo de caixa',          icon: <DollarSign />,   path: '/financeiro' },
-  { label: 'Pagamentos',      description: 'Cobranças e recebimentos', icon: <CreditCard />,   path: '/pagamentos' },
-  { label: 'Tickets',         description: 'Suporte aos clientes',     icon: <MessageSquare />,path: '/tickets'    },
-  { label: 'Relatórios',      description: 'Métricas e performance',   icon: <BarChart3 />,    path: '/relatorios' },
+const MODULE_GROUPS: { title: string; modules: ModuleConfig[] }[] = [
+  {
+    title: 'Vendas & Receita',
+    modules: [
+      { label: 'Funil de Vendas',  description: 'Pipeline e negociações',    icon: <TrendingUp />,  path: '/funil'        },
+      { label: 'Leads',            description: 'Captação e qualificação',    icon: <Contact />,     path: '/leads'        },
+      { label: 'Clientes',         description: 'Base de clientes',           icon: <Users />,       path: '/clientes'     },
+      { label: 'Metas',            description: 'Objetivos e performance',    icon: <Target />,      path: '/metas'        },
+      { label: 'Comissões',        description: 'Remuneração variável',       icon: <Banknote />,    path: '/comissoes',   comingSoon: true },
+      { label: 'Contratos',        description: 'Propostas e contratos',      icon: <Handshake />,   path: '/contratos',   comingSoon: true },
+    ],
+  },
+  {
+    title: 'Marketplace & Produto',
+    modules: [
+      { label: 'Match',            description: 'Compradores × vendedores',   icon: <Puzzle />,      path: '/match'        },
+      { label: 'Marketplace',      description: 'Gestão de anúncios',         icon: <Truck />,       path: '/marketplace'  },
+      { label: 'Marketing',        description: 'Campanhas e canais',         icon: <Megaphone />,   path: '/marketing',   comingSoon: true },
+      { label: 'Inteligência IA',  description: 'Análise e automações',       icon: <Sparkles />,    path: '/inteligencia' },
+    ],
+  },
+  {
+    title: 'Pessoas & Operações',
+    modules: [
+      { label: 'Equipe / RH',      description: 'Funcionários e RH',         icon: <UserCheck />,   path: '/equipe'       },
+      { label: 'Ponto Eletrônico', description: 'Registro de jornada',        icon: <Clock />,       path: '/ponto'        },
+      { label: 'Treinamentos',     description: 'Capacitação da equipe',      icon: <BookOpen />,    path: '/treinamentos', comingSoon: true },
+      { label: 'Acessos',          description: 'Permissões e perfis',        icon: <ShieldCheck />, path: '/acessos'      },
+    ],
+  },
+  {
+    title: 'Financeiro & Compliance',
+    modules: [
+      { label: 'Financeiro',       description: 'Fluxo de caixa',            icon: <DollarSign />,  path: '/financeiro'   },
+      { label: 'Pagamentos',       description: 'Cobranças e recebimentos',   icon: <CreditCard />,  path: '/pagamentos'   },
+      { label: 'Relatórios',       description: 'Métricas e BI',             icon: <BarChart3 />,   path: '/relatorios'   },
+      { label: 'Jurídico',         description: 'Contratos e conformidade',   icon: <Scale />,       path: '/juridico',    comingSoon: true },
+    ],
+  },
+  {
+    title: 'Suporte & Gestão',
+    modules: [
+      { label: 'Tickets',          description: 'Suporte aos clientes',       icon: <MessageSquare />, path: '/tickets'    },
+      { label: 'Dashboard',        description: 'Visão geral da operação',    icon: <LayoutGrid />,  path: '/dashboard',   comingSoon: true },
+    ],
+  },
 ];
 
-const ModuleTile = ({ label, description, icon, path, onNavigate }: ModuleConfig & { onNavigate: (path: string) => void }) => (
+const ModuleTile = ({ label, description, icon, path, comingSoon, onNavigate }: ModuleConfig & { onNavigate: (path: string) => void }) => (
   <button
-    onClick={() => onNavigate(path)}
+    onClick={() => !comingSoon && onNavigate(path)}
     className={cn(
       'group relative flex flex-col items-start gap-3 p-4 rounded-2xl w-full text-left transition-all duration-200',
       'bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.07] dark:border-white/[0.08]',
-      'hover:bg-black/[0.06] dark:hover:bg-white/[0.07] hover:border-black/[0.13] dark:hover:border-white/[0.16]',
-      'hover:shadow-lg hover:shadow-black/20',
-      'cursor-pointer',
+      comingSoon
+        ? 'opacity-50 cursor-default'
+        : cn(
+            'hover:bg-black/[0.06] dark:hover:bg-white/[0.07] hover:border-black/[0.13] dark:hover:border-white/[0.16]',
+            'hover:shadow-lg hover:shadow-black/20 cursor-pointer',
+          ),
     )}
   >
+    {comingSoon && (
+      <span className="absolute top-3 right-3 text-[9px] font-semibold bg-primary/20 text-primary px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+        breve
+      </span>
+    )}
     <div className="text-foreground/60 group-hover:text-primary transition-colors duration-200">
       <div className="[&>svg]:h-5 [&>svg]:w-5 [&>svg]:stroke-[1.5]">
         {icon}
@@ -55,11 +109,9 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
 
-      {/* ── Nav bar ──────────────────────────────────────────── */}
+      {/* ── Nav bar — só usuário, sem logo ──────────────────── */}
       <nav className="sticky top-0 z-40 w-full border-b border-black/[0.08] dark:border-white/[0.06] bg-background/80 backdrop-blur-xl">
-        <div className="w-full px-4 sm:px-8 h-20 flex items-center relative">
-
-          {/* User — extrema esquerda */}
+        <div className="w-full px-4 sm:px-8 h-16 flex items-center">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="h-7 w-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-primary text-[11px] font-semibold flex-shrink-0">
               A
@@ -69,34 +121,24 @@ export default function Home() {
               <p className="text-[11px] text-foreground/40 truncate mt-0.5">desenvolvimento@viapesados.com.br</p>
             </div>
           </div>
-
-          {/* Logo — centro absoluto */}
-          <div className="absolute left-1/2 -translate-x-1/2">
-            <img
-              src={theme === 'dark' ? viaPesadosLogoDark : viaPesadosLogoLight}
-              alt="Via Pesados"
-              className="h-20 w-auto object-contain select-none"
-            />
-          </div>
-
         </div>
       </nav>
 
       {/* ── Page ─────────────────────────────────────────────── */}
-      <main className="flex-1 mx-auto w-full max-w-5xl px-4 sm:px-8 py-10 flex flex-col gap-10">
+      <main className="flex-1 mx-auto w-full max-w-5xl px-4 sm:px-8 py-12 flex flex-col gap-10">
 
-        {/* Logo — centro */}
-        <div className="flex justify-center">
+        {/* Logo central — grande */}
+        <div className="flex justify-center pt-2">
           <img
             src={theme === 'dark' ? viaPesadosLogoDark : viaPesadosLogoLight}
             alt="Via Pesados"
-            className="h-[65px] w-auto object-contain opacity-85 select-none"
+            className="h-[110px] w-auto object-contain select-none"
           />
         </div>
 
-        {/* Painel hero */}
+        {/* Hero — Via CRM */}
         <button
-          onClick={() => {}}
+          onClick={() => navigate('/funil')}
           className={cn(
             'group w-full rounded-3xl overflow-hidden border transition-all duration-200',
             'border-black/[0.07] dark:border-white/[0.08] bg-black/[0.04] dark:bg-white/[0.04]',
@@ -105,19 +147,17 @@ export default function Home() {
           )}
         >
           <div className="flex items-center gap-4 px-5 sm:px-8 py-4 sm:py-5">
-            <div className="h-14 sm:h-16 w-auto select-none shrink-0 flex items-center">
-              <img
-                src={theme === 'dark' ? viaPesadosLogoDark : viaPesadosLogoLight}
-                alt="Via Pesados"
-                className="h-12 sm:h-14 w-auto opacity-90 group-hover:opacity-100 transition-opacity"
-              />
-            </div>
+            <img
+              src={theme === 'dark' ? viaCrmLogoDark : viaCrmLogoLight}
+              alt="Via CRM"
+              className="h-14 sm:h-16 w-auto select-none shrink-0 opacity-90 group-hover:opacity-100 transition-opacity"
+            />
             <div className="text-left min-w-0 flex-1">
               <h2 className="text-base sm:text-xl font-semibold text-foreground tracking-tight leading-tight">
-                Painel Administrativo
+                Da conversa ao fechamento.
               </h2>
               <p className="text-[12px] sm:text-[13px] text-foreground/50 mt-0.5">
-                Gerenciamento centralizado · Via Pesados
+                Funil de vendas e negociações
               </p>
             </div>
             <div className="flex items-center gap-1 text-[12px] sm:text-[13px] text-foreground/40 group-hover:text-primary transition-colors shrink-0">
@@ -126,19 +166,22 @@ export default function Home() {
           </div>
         </button>
 
-        {/* Module grid */}
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <p className="text-[11px] font-semibold tracking-widest uppercase text-foreground/30">Módulos</p>
-            <div className="flex-1 h-px bg-black/[0.06] dark:bg-white/[0.06]" />
+        {/* Module groups */}
+        {MODULE_GROUPS.map((group) => (
+          <div key={group.title}>
+            <div className="flex items-center gap-3 mb-4">
+              <p className="text-[11px] font-semibold tracking-widest uppercase text-foreground/30 whitespace-nowrap">
+                {group.title}
+              </p>
+              <div className="flex-1 h-px bg-black/[0.06] dark:bg-white/[0.06]" />
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {group.modules.map((mod) => (
+                <ModuleTile key={mod.path} {...mod} onNavigate={navigate} />
+              ))}
+            </div>
           </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-            {MODULES.map((mod) => (
-              <ModuleTile key={mod.path} {...mod} onNavigate={navigate} />
-            ))}
-          </div>
-        </div>
+        ))}
 
       </main>
 
