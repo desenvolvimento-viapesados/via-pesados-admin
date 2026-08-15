@@ -3,7 +3,7 @@ import { Layout } from '@/components/Layout';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Suspense, lazy } from 'react';
 
-const Dashboard      = lazy(() => import('@/pages/Dashboard'));
+const Home           = lazy(() => import('@/pages/Home'));
 const Clientes       = lazy(() => import('@/pages/Clientes'));
 const ClienteDetalhe = lazy(() => import('@/pages/ClienteDetalhe'));
 const FunilVendas    = lazy(() => import('@/pages/FunilVendas'));
@@ -28,7 +28,7 @@ function App() {
         <Layout>
           <Suspense fallback={<Loader />}>
             <Routes>
-              <Route path="/"                index element={<Dashboard />} />
+              <Route path="/"                index element={<Home />} />
               <Route path="/clientes"        element={<Clientes />} />
               <Route path="/clientes/:id"    element={<ClienteDetalhe />} />
               <Route path="/funil"           element={<FunilVendas />} />
