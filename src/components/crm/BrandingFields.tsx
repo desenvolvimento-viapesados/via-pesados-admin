@@ -1,0 +1,62 @@
+import { useRef } from 'react';
+import { Upload } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+export type ImgKey = 'logo' | 'brand_icon' | 'banner' | 'favicon';
+
+export const IMG_KEYS: ImgKey[] = ['logo', 'brand_icon', 'banner', 'favicon'];
+
+/** Cada peça da identidade, com o tamanho recomendado sempre à vista. */
+export const IMG_FIELDS: { key: ImgKey; label: string; hint: string; ratio: string }[] = [
+  { key: 'logo',       label: 'Logo',           hint: 'PNG com fundo transparente · 600×200px (ou 200×200 se for quadrada)', ratio: 'aspect-[3/1]' },
+  { key: 'brand_icon', label: 'Ícone de marca', hint: 'PNG transparente · 256×256px · só o símbolo, sem o texto — é o que aparece no topo de cada seção do sistema', ratio: 'aspect-square' },
+  { key: 'banner',     label: 'Banner',         hint: 'JPG ou PNG · 1920×1080px · deixe o lado esquerdo livre para o texto', ratio: 'aspect-video' },
+  { key: 'favicon',    label: 'Favicon',        hint: 'PNG transparente · 512×512px · só o símbolo, sem o nome escrito', ratio: 'aspect-square' },
+];
+
+/** Campo de imagem com prévia na proporção real de uso. */
+export function ImageField({
+  label, hint, ratio, preview, onPick, onClear,
+}: {
+  label: string;
+  hint: string;
+  ratio: string;
+  preview: string | null;
+  onPick: (f: File) => void;
+  onClear: () => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2 mb-1.5">
+        <p className="text-[11.5px] font-semibold text-foreground/70">{label}</p>
+        {preview && (
+          <button onClick={onClear} className="text-[10.5px] text-foreground/35 hover:text-red-400 transition-colors">
+            remover
+          </button>
+        )}
+      </div>
+      <button
+        onClick={() => ref.current?.click()}
+        className={cn(
+          'w-full rounded-xl border border-dashed border-black/[0.15] dark:border-white/[0.15]',
+          'bg-black/[0.02] dark:bg-white/[0.03] overflow-hidden flex items-center justify-center',
+          'hover:border-primary/50 transition-colors',
+          ratio,
+        )}
+      >
+        {preview
+          ? <img src={preview} alt="" className="h-full w-full object-contain p-1.5" />
+          : <Upload className="h-4 w-4 text-foreground/25" />}
+      </button>
+      <input
+        ref={ref}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) onPick(f); }}
+      />
+      <p className="text-[10px] text-foreground/35 mt-1 leading-snug">{hint}</p>
+    </div>
+  );
+}

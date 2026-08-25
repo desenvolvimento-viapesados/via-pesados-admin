@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Loader2, Check, FileText, CreditCard, Rocket, Globe, Upload,
@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { LOJISTA_APP_URL } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SectionHeader, StatusBadge, Panel, InitialAvatar } from '@/components/admin/ui';
+import { ImageField, IMG_FIELDS, IMG_KEYS, type ImgKey } from '@/components/crm/BrandingFields';
 
 const inputCls =
   'w-full h-10 px-3 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50 transition-colors';
@@ -294,6 +295,99 @@ function DomainDialog({
   );
 }
 
+/* ── Identidade visual do cliente ───────────────────────────── */
+function BrandingDialog({
+  client, onDone, onClose,
+}: {
+  client: Client;
+  onDone: () => void;
+  onClose: () => void;
+}) {
+  const update = useUpdateClient();
+  const [files, setFiles] = useState<Record<ImgKey, File | null>>({ logo: null, brand_icon: null, banner: null, favicon: null });
+  const [previews, setPreviews] = useState<Record<ImgKey, string | null>>({
+    logo: client.logo_url, brand_icon: null, banner: null, favicon: null,
+  });
+  const [saving, setSaving] = useState(false);
+
+  const setImage = (key: ImgKey, file: File | null) => {
+    setPreviews((prev) => ({ ...prev, [key]: file ? URL.createObjectURL(file) : null }));
+    setFiles((prev) => ({ ...prev, [key]: file }));
+  };
+
+  const submit = async () => {
+    if (!client.lojista_company_id) {
+      toast.error('Crie o sistema do cliente antes de aplicar a identidade');
+      return;
+    }
+    if (IMG_KEYS.every((k) => !files[k])) { toast.error('Envie ao menos uma imagem'); return; }
+
+    setSaving(true);
+    try {
+      const base = slugify(client.company_name);
+      const urls: Partial<Record<ImgKey, string>> = {};
+      for (const key of IMG_KEYS) {
+        const file = files[key];
+        if (file) urls[key] = await uploadLogo(file, `client-${base}-${key}`);
+      }
+
+      await updateCompanyBranding({
+        company_id: client.lojista_company_id,
+        logo_url: urls.logo,
+        brand_icon_url: urls.brand_icon,
+        banner_url: urls.banner,
+        favicon_url: urls.favicon,
+      });
+
+      if (urls.logo) await update.mutateAsync({ id: client.id, logo_url: urls.logo });
+
+      toast.success('Identidade aplicada no sistema do cliente');
+      onDone();
+      onClose();
+    } catch (e) {
+      toast.error((e as Error).message || 'Erro ao aplicar identidade');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md bg-background border-black/[0.1] dark:border-white/[0.1] rounded-2xl max-h-[88vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-[15px] font-semibold">Identidade visual</DialogTitle>
+        </DialogHeader>
+        <p className="text-[11.5px] text-foreground/40 -mt-1">
+          Aplica direto no sistema do cliente. Envie só o que tiver — o resto fica como está.
+        </p>
+
+        <div className="space-y-3 pt-1">
+          {IMG_FIELDS.map(({ key, label, hint, ratio }) => (
+            <ImageField
+              key={key}
+              label={label}
+              hint={hint}
+              ratio={ratio}
+              preview={previews[key]}
+              onPick={(f) => setImage(key, f)}
+              onClear={() => setImage(key, null)}
+            />
+          ))}
+
+          <button
+            onClick={submit}
+            disabled={saving}
+            className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            Aplicar no sistema
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* ── Etapa do checklist ─────────────────────────────────────── */
 const TASK_ICONS: Record<string, typeof FileText> = {
   contrato_gerado: FileText,
@@ -351,7 +445,7 @@ function TaskRow({
           {task.task_key === 'contrato_gerado' && 'Gerar'}
           {task.task_key === 'pagamento_configurado' && 'Configurar'}
           {task.task_key === 'sistema_criado' && 'Criar sistema'}
-          {task.task_key === 'logo_aplicada' && 'Enviar logo'}
+          {task.task_key === 'logo_aplicada' && 'Enviar imagens'}
           {task.task_key === 'dominio_conectado' && 'Conectar'}
         </button>
       )}
@@ -373,11 +467,9 @@ export default function ClienteDetalhe() {
   const update = useUpdateClient();
   const toggle = useToggleTask();
   const createActivity = useCreateActivity();
-  const logoRef = useRef<HTMLInputElement>(null);
 
   const [dialog, setDialog] = useState<string | null>(null);
   const [note, setNote] = useState('');
-  const [logoUploading, setLogoUploading] = useState(false);
   const [showCreds, setShowCreds] = useState(false);
 
   if (isLoading || !client) {
@@ -396,24 +488,6 @@ export default function ClienteDetalhe() {
     const task = tasks.find((t) => t.task_key === key);
     if (task && !task.done && member) {
       await toggle.mutateAsync({ id: task.id, done: true, userId: member.id });
-    }
-  };
-
-  const handleLogoUpload = async (file: File | null) => {
-    if (!file) return;
-    setLogoUploading(true);
-    try {
-      const url = await uploadLogo(file, `client-${slugify(client.company_name)}`);
-      await update.mutateAsync({ id: client.id, logo_url: url });
-      if (client.lojista_company_id) {
-        await updateCompanyBranding({ company_id: client.lojista_company_id, logo_url: url });
-      }
-      await markTask('logo_aplicada');
-      toast.success('Logo aplicada');
-    } catch (e) {
-      toast.error((e as Error).message || 'Erro ao enviar logo');
-    } finally {
-      setLogoUploading(false);
     }
   };
 
@@ -499,17 +573,10 @@ export default function ClienteDetalhe() {
             <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
               {tasks.map((t) => (
                 <TaskRow key={t.id} task={t} client={client} onAction={(key) => {
-                  if (key === 'logo_aplicada') logoRef.current?.click();
-                  else setDialog(key);
+                  setDialog(key);
                 }} />
               ))}
             </Panel>
-            <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleLogoUpload(e.target.files?.[0] ?? null)} />
-            {logoUploading && (
-              <p className="text-[11px] text-foreground/40 mt-2 flex items-center gap-1.5">
-                <Loader2 className="h-3 w-3 animate-spin" /> Enviando logo…
-              </p>
-            )}
 
             {allDone && client.status === 'onboarding' && (
               <button
@@ -678,6 +745,9 @@ export default function ClienteDetalhe() {
       )}
       {dialog === 'sistema_criado' && (
         <ProvisionDialog client={client} onDone={() => markTask('sistema_criado')} onClose={() => setDialog(null)} />
+      )}
+      {dialog === 'logo_aplicada' && (
+        <BrandingDialog client={client} onDone={() => markTask('logo_aplicada')} onClose={() => setDialog(null)} />
       )}
       {dialog === 'dominio_conectado' && (
         <DomainDialog client={client} onDone={() => markTask('dominio_conectado')} onClose={() => setDialog(null)} />

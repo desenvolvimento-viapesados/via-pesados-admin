@@ -33,6 +33,7 @@ export interface Demo {
   contact_name: string | null;
   slug: string;
   logo_url: string | null;
+  brand_icon_url: string | null;
   banner_url: string | null;
   favicon_url: string | null;
   primary_color: string | null;
@@ -408,6 +409,7 @@ interface ProvisionInput {
   admin_full_name?: string;
   domains?: string[];
   logo_url?: string;
+  brand_icon_url?: string;
   banner_url?: string;
   favicon_url?: string;
   /** Nome de quem recebe — a amostra abre com "Bem-vindo, <nome>". */
@@ -434,6 +436,9 @@ export const updateCompanyBranding = async (input: {
   company_id: string;
   company_name?: string;
   logo_url?: string;
+  brand_icon_url?: string;
+  banner_url?: string;
+  favicon_url?: string;
   domains?: string[];
 }): Promise<void> => {
   const { data: { session } } = await supabase.auth.getSession();

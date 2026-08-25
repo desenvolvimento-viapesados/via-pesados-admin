@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { demoUrl } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StatusBadge, EmptyState, SectionHeader, Panel } from '@/components/admin/ui';
+import { ImageField, IMG_FIELDS, IMG_KEYS, type ImgKey } from './BrandingFields';
 
 const inputCls =
   'w-full h-10 px-3 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50 transition-colors';
@@ -21,61 +22,6 @@ const copyText = (text: string, label: string) => {
   navigator.clipboard.writeText(text);
   toast.success(`${label} copiado`);
 };
-
-type ImgKey = 'logo' | 'banner' | 'favicon';
-
-const IMG_FIELDS: { key: ImgKey; label: string; hint: string; ratio: string }[] = [
-  { key: 'logo',    label: 'Logo',    hint: 'PNG com fundo transparente · 600×200px (ou 200×200 se for quadrada)', ratio: 'aspect-[3/1]' },
-  { key: 'banner',  label: 'Banner',  hint: 'JPG ou PNG · 1920×1080px · deixe o lado esquerdo livre para o texto',  ratio: 'aspect-video' },
-  { key: 'favicon', label: 'Favicon', hint: 'PNG transparente · 512×512px · só o símbolo, sem o nome escrito',       ratio: 'aspect-square' },
-];
-
-/** Campo de imagem com prévia e o tamanho recomendado sempre à vista. */
-function ImageField({
-  label, hint, ratio, preview, onPick, onClear,
-}: {
-  label: string;
-  hint: string;
-  ratio: string;
-  preview: string | null;
-  onPick: (f: File) => void;
-  onClear: () => void;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-  return (
-    <div>
-      <div className="flex items-baseline justify-between gap-2 mb-1.5">
-        <p className="text-[11.5px] font-semibold text-foreground/70">{label}</p>
-        {preview && (
-          <button onClick={onClear} className="text-[10.5px] text-foreground/35 hover:text-red-400 transition-colors">
-            remover
-          </button>
-        )}
-      </div>
-      <button
-        onClick={() => ref.current?.click()}
-        className={cn(
-          'w-full rounded-xl border border-dashed border-black/[0.15] dark:border-white/[0.15]',
-          'bg-black/[0.02] dark:bg-white/[0.03] overflow-hidden flex items-center justify-center',
-          'hover:border-primary/50 transition-colors',
-          ratio,
-        )}
-      >
-        {preview
-          ? <img src={preview} alt="" className="h-full w-full object-contain p-1.5" />
-          : <Upload className="h-4 w-4 text-foreground/25" />}
-      </button>
-      <input
-        ref={ref}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) onPick(f); }}
-      />
-      <p className="text-[10px] text-foreground/35 mt-1 leading-snug">{hint}</p>
-    </div>
-  );
-}
 
 function NewDemoDialog({
   open, onClose, defaultProspectId,
@@ -90,8 +36,8 @@ function NewDemoDialog({
   const { data: prospects = [] } = useProspects();
 
   const [form, setForm] = useState({ prospect_id: defaultProspectId ?? '', company_name: '', contact_name: '', primary_color: '#E36C0A', notes: '' });
-  const [files, setFiles] = useState<Record<ImgKey, File | null>>({ logo: null, banner: null, favicon: null });
-  const [previews, setPreviews] = useState<Record<ImgKey, string | null>>({ logo: null, banner: null, favicon: null });
+  const [files, setFiles] = useState<Record<ImgKey, File | null>>({ logo: null, brand_icon: null, banner: null, favicon: null });
+  const [previews, setPreviews] = useState<Record<ImgKey, string | null>>({ logo: null, brand_icon: null, banner: null, favicon: null });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -125,7 +71,7 @@ function NewDemoDialog({
 
   const reset = () => {
     setForm({ prospect_id: '', company_name: '', contact_name: '', primary_color: '#E36C0A', notes: '' });
-    (['logo', 'banner', 'favicon'] as ImgKey[]).forEach((k) => setImage(k, null));
+    IMG_KEYS.forEach((k) => setImage(k, null));
   };
 
   const submit = async () => {
@@ -134,7 +80,7 @@ function NewDemoDialog({
     try {
       const slug = slugify(form.company_name);
       const urls: Partial<Record<ImgKey, string>> = {};
-      for (const key of ['logo', 'banner', 'favicon'] as ImgKey[]) {
+      for (const key of IMG_KEYS) {
         const file = files[key];
         if (file) urls[key] = await uploadLogo(file, `demo-${slug}-${key}`);
       }
@@ -145,6 +91,7 @@ function NewDemoDialog({
         contact_name: form.contact_name.trim() || null,
         slug,
         logo_url: urls.logo ?? null,
+        brand_icon_url: urls.brand_icon ?? null,
         banner_url: urls.banner ?? null,
         favicon_url: urls.favicon ?? null,
         primary_color: form.primary_color,
@@ -272,6 +219,7 @@ function DemoCard({ demo }: { demo: Demo }) {
         admin_password: password,
         admin_full_name: demo.contact_name || `Demo ${demo.company_name}`,
         logo_url: demo.logo_url ?? undefined,
+        brand_icon_url: demo.brand_icon_url ?? undefined,
         banner_url: demo.banner_url ?? undefined,
         favicon_url: demo.favicon_url ?? undefined,
         contact_name: demo.contact_name ?? undefined,
