@@ -1,13 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  Plus, Loader2, CalendarDays, Video, Check, X, MonitorPlay, ExternalLink,
-} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Loader2, CalendarDays, Video, Check, X, MonitorPlay } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
-  useMeetings, useCreateMeeting, useUpdateMeeting, useProspects, useDemos,
-  type Meeting,
+  useMeetings, useCreateMeeting, useUpdateMeeting, useProspects, useDemos, type Meeting,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -25,7 +22,6 @@ const KIND_LABELS: Record<string, string> = {
   outro: 'Outro',
 };
 
-/* ── Dialog: nova reunião ───────────────────────────────────── */
 function NewMeetingDialog({
   open, onClose, defaultProspectId,
 }: {
@@ -40,13 +36,7 @@ function NewMeetingDialog({
 
   const [form, setForm] = useState({
     prospect_id: defaultProspectId ?? '',
-    demo_id: '',
-    title: '',
-    date: '',
-    time: '',
-    kind: 'demo',
-    meet_link: '',
-    notes: '',
+    demo_id: '', title: '', date: '', time: '', kind: 'demo', meet_link: '', notes: '',
   });
 
   useEffect(() => {
@@ -90,9 +80,7 @@ function NewMeetingDialog({
         <div className="space-y-2.5 pt-1">
           <select className={inputCls} value={form.prospect_id} onChange={(e) => set('prospect_id', e.target.value)}>
             <option value="">Selecionar prospect…</option>
-            {activeProspects.map((p) => (
-              <option key={p.id} value={p.id}>{p.company_name}</option>
-            ))}
+            {activeProspects.map((p) => <option key={p.id} value={p.id}>{p.company_name}</option>)}
           </select>
 
           <div className="grid grid-cols-2 gap-2.5">
@@ -101,17 +89,13 @@ function NewMeetingDialog({
           </div>
 
           <select className={inputCls} value={form.kind} onChange={(e) => set('kind', e.target.value)}>
-            {Object.entries(KIND_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
+            {Object.entries(KIND_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
 
           {(form.kind === 'demo' || availableDemos.length > 0) && (
             <select className={inputCls} value={form.demo_id} onChange={(e) => set('demo_id', e.target.value)}>
               <option value="">Vincular amostra (opcional)…</option>
-              {availableDemos.map((d) => (
-                <option key={d.id} value={d.id}>{d.company_name} ({d.status})</option>
-              ))}
+              {availableDemos.map((d) => <option key={d.id} value={d.id}>{d.company_name} ({d.status})</option>)}
             </select>
           )}
 
@@ -133,9 +117,7 @@ function NewMeetingDialog({
   );
 }
 
-/* ── Linha de reunião ───────────────────────────────────────── */
-function MeetingRow({ meeting }: { meeting: Meeting }) {
-  const navigate = useNavigate();
+function MeetingRow({ meeting, onOpenDemo }: { meeting: Meeting; onOpenDemo: () => void }) {
   const update = useUpdateMeeting();
 
   const d = new Date(meeting.scheduled_at);
@@ -152,8 +134,7 @@ function MeetingRow({ meeting }: { meeting: Meeting }) {
   };
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors group">
-      {/* Data/hora */}
+    <div className="flex items-center gap-3 px-4 py-3 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors">
       <div className="text-center shrink-0 w-14">
         <p className="text-[11px] text-foreground/40 leading-none">{dateStr}</p>
         <p className="text-[15px] font-bold text-foreground tabular-nums leading-tight mt-0.5">{timeStr}</p>
@@ -161,7 +142,6 @@ function MeetingRow({ meeting }: { meeting: Meeting }) {
 
       <div className="w-px self-stretch bg-black/[0.06] dark:bg-white/[0.06]" />
 
-      {/* Conteúdo */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-[13px] font-semibold text-foreground truncate">{meeting.title}</p>
@@ -171,17 +151,13 @@ function MeetingRow({ meeting }: { meeting: Meeting }) {
           <span>{KIND_LABELS[meeting.kind]}</span>
           {meeting.prospect && <span>· {meeting.prospect.company_name}</span>}
           {meeting.demo && (
-            <button
-              onClick={() => navigate('/amostras')}
-              className="flex items-center gap-1 text-violet-400 hover:underline"
-            >
+            <button onClick={onOpenDemo} className="flex items-center gap-1 text-violet-400 hover:underline">
               <MonitorPlay className="h-3 w-3" /> {meeting.demo.company_name}
             </button>
           )}
         </div>
       </div>
 
-      {/* Ações */}
       <div className="flex items-center gap-1.5 shrink-0">
         {meeting.meet_link && (
           <a
@@ -217,22 +193,15 @@ function MeetingRow({ meeting }: { meeting: Meeting }) {
   );
 }
 
-/* ── Página ─────────────────────────────────────────────────── */
-export default function Reunioes() {
-  const [params, setParams] = useSearchParams();
+export function ReunioesTab({
+  newOpen, onCloseNew, defaultProspectId,
+}: {
+  newOpen: boolean;
+  onCloseNew: () => void;
+  defaultProspectId?: string | null;
+}) {
+  const navigate = useNavigate();
   const { data: meetings = [], isLoading } = useMeetings();
-  const [newOpen, setNewOpen] = useState(false);
-  const [defaultProspect, setDefaultProspect] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (params.get('new') === '1') {
-      setNewOpen(true);
-      setDefaultProspect(params.get('prospect'));
-      params.delete('new');
-      params.delete('prospect');
-      setParams(params, { replace: true });
-    }
-  }, []);
 
   const groups = useMemo(() => {
     const now = new Date();
@@ -253,39 +222,23 @@ export default function Reunioes() {
     return { today, upcoming, past: past.slice(0, 20) };
   }, [meetings]);
 
-  return (
-    <div className="flex flex-col gap-8">
-      {/* Header ação */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-[22px] font-bold tracking-tight text-foreground">Reuniões</h1>
-          <p className="text-[12px] text-foreground/40 mt-0.5">Agenda comercial da equipe</p>
-        </div>
-        <button
-          onClick={() => setNewOpen(true)}
-          className="h-9 px-3.5 rounded-xl bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 transition-all flex items-center gap-1.5"
-        >
-          <Plus className="h-3.5 w-3.5" /> Reunião
-        </button>
-      </div>
+  const openDemos = () => navigate('/crm?tab=amostras');
 
+  return (
+    <div className="flex flex-col gap-7">
       {isLoading ? (
         <div className="flex items-center justify-center h-40">
           <div className="h-8 w-8 rounded-full border border-primary/30 border-t-primary animate-spin" />
         </div>
       ) : meetings.length === 0 ? (
-        <EmptyState
-          icon={<CalendarDays />}
-          title="Nenhuma reunião agendada"
-          sub="Agende a primeira apresentação para um prospect"
-        />
+        <EmptyState icon={<CalendarDays />} title="Nenhuma reunião agendada" sub="Agende a primeira apresentação para um prospect" />
       ) : (
         <>
           {groups.today.length > 0 && (
             <div>
               <SectionHeader title={`Hoje · ${groups.today.length}`} />
               <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
-                {groups.today.map((m) => <MeetingRow key={m.id} meeting={m} />)}
+                {groups.today.map((m) => <MeetingRow key={m.id} meeting={m} onOpenDemo={openDemos} />)}
               </Panel>
             </div>
           )}
@@ -294,7 +247,7 @@ export default function Reunioes() {
             <div>
               <SectionHeader title="Próximas" />
               <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
-                {groups.upcoming.map((m) => <MeetingRow key={m.id} meeting={m} />)}
+                {groups.upcoming.map((m) => <MeetingRow key={m.id} meeting={m} onOpenDemo={openDemos} />)}
               </Panel>
             </div>
           )}
@@ -303,14 +256,14 @@ export default function Reunioes() {
             <div>
               <SectionHeader title="Anteriores" />
               <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden opacity-70">
-                {groups.past.map((m) => <MeetingRow key={m.id} meeting={m} />)}
+                {groups.past.map((m) => <MeetingRow key={m.id} meeting={m} onOpenDemo={openDemos} />)}
               </Panel>
             </div>
           )}
         </>
       )}
 
-      <NewMeetingDialog open={newOpen} onClose={() => setNewOpen(false)} defaultProspectId={defaultProspect} />
+      <NewMeetingDialog open={newOpen} onClose={onCloseNew} defaultProspectId={defaultProspectId} />
     </div>
   );
 }

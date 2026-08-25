@@ -1,92 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Loader2, Building2, ChevronRight, Search } from 'lucide-react';
-import { toast } from 'sonner';
+import { Plus, Building2, ChevronRight, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  useClients, useCreateClient, useOnboardingProgress, brl, type Client,
-} from '@/hooks/useAdmin';
-import { useAuth } from '@/contexts/AuthContext';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useClients, useOnboardingProgress, brl, type Client } from '@/hooks/useAdmin';
+import { NewClientDialog } from '@/components/crm/NewClientDialog';
 import { StatusBadge, EmptyState, Panel, InitialAvatar } from '@/components/admin/ui';
 
 const inputCls =
   'w-full h-10 px-3 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50 transition-colors';
 
-/* ── Dialog: novo cliente ───────────────────────────────────── */
-function NewClientDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { member } = useAuth();
-  const navigate = useNavigate();
-  const create = useCreateClient();
-  const [form, setForm] = useState({
-    company_name: '', contact_name: '', whatsapp: '', email: '',
-    cnpj: '', city: '', state: '', plan: '', mrr: '',
-  });
-
-  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
-
-  const submit = async () => {
-    if (!form.company_name.trim()) { toast.error('Informe o nome da empresa'); return; }
-    try {
-      const client = await create.mutateAsync({
-        company_name: form.company_name.trim(),
-        contact_name: form.contact_name || null,
-        whatsapp: form.whatsapp || null,
-        email: form.email || null,
-        cnpj: form.cnpj || null,
-        city: form.city || null,
-        state: form.state || null,
-        plan: form.plan || null,
-        mrr: form.mrr ? Number(form.mrr) : 0,
-        owner_id: member?.id ?? null,
-      });
-      toast.success('Cliente criado — inicie a conexão');
-      onClose();
-      navigate(`/clientes/${client.id}`);
-    } catch {
-      toast.error('Erro ao criar cliente');
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md bg-background border-black/[0.1] dark:border-white/[0.1] rounded-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-[15px] font-semibold">Novo cliente</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-2.5 pt-1">
-          <input className={inputCls} placeholder="Nome da empresa *" value={form.company_name} onChange={(e) => set('company_name', e.target.value)} />
-          <div className="grid grid-cols-2 gap-2.5">
-            <input className={inputCls} placeholder="Contato" value={form.contact_name} onChange={(e) => set('contact_name', e.target.value)} />
-            <input className={inputCls} placeholder="WhatsApp" value={form.whatsapp} onChange={(e) => set('whatsapp', e.target.value)} />
-          </div>
-          <div className="grid grid-cols-2 gap-2.5">
-            <input className={inputCls} placeholder="E-mail" value={form.email} onChange={(e) => set('email', e.target.value)} />
-            <input className={inputCls} placeholder="CNPJ" value={form.cnpj} onChange={(e) => set('cnpj', e.target.value)} />
-          </div>
-          <div className="grid grid-cols-[1fr_70px] gap-2.5">
-            <input className={inputCls} placeholder="Cidade" value={form.city} onChange={(e) => set('city', e.target.value)} />
-            <input className={inputCls} placeholder="UF" maxLength={2} value={form.state} onChange={(e) => set('state', e.target.value.toUpperCase())} />
-          </div>
-          <div className="grid grid-cols-2 gap-2.5">
-            <input className={inputCls} placeholder="Plano" value={form.plan} onChange={(e) => set('plan', e.target.value)} />
-            <input className={inputCls} placeholder="Mensalidade (R$)" type="number" value={form.mrr} onChange={(e) => set('mrr', e.target.value)} />
-          </div>
-          <button
-            onClick={submit}
-            disabled={create.isPending}
-            className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-          >
-            {create.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            Criar cliente
-          </button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/* ── Página ─────────────────────────────────────────────────── */
 export default function Clientes() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -131,7 +53,7 @@ export default function Clientes() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[22px] font-bold tracking-tight text-foreground">Clientes</h1>
-          <p className="text-[12px] text-foreground/40 mt-0.5">Carteira e conexão de novos sistemas</p>
+          <p className="text-[12px] text-foreground/40 mt-0.5">Carteira e contas da plataforma</p>
         </div>
         <button
           onClick={() => setNewOpen(true)}
@@ -141,16 +63,10 @@ export default function Clientes() {
         </button>
       </div>
 
-      {/* Busca + filtros */}
       <div className="flex flex-col sm:flex-row gap-2.5">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground/30" />
-          <input
-            className={cn(inputCls, 'pl-9')}
-            placeholder="Buscar cliente…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <input className={cn(inputCls, 'pl-9')} placeholder="Buscar cliente…" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <div className="flex gap-1.5 overflow-x-auto">
           {FILTERS.map(({ key, label }) => (
@@ -178,7 +94,7 @@ export default function Clientes() {
         <EmptyState
           icon={<Building2 />}
           title={clients.length === 0 ? 'Nenhum cliente ainda' : 'Nenhum resultado'}
-          sub={clients.length === 0 ? 'Feche a primeira venda no funil ou crie manualmente' : undefined}
+          sub={clients.length === 0 ? 'Feche a primeira venda no CRM' : undefined}
         />
       ) : (
         <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
@@ -202,7 +118,6 @@ export default function Clientes() {
                   </p>
                 </div>
 
-                {/* Progresso onboarding */}
                 {c.status === 'onboarding' && prog && (
                   <div className="hidden sm:flex flex-col items-end gap-1 shrink-0 w-24">
                     <p className="text-[10px] text-foreground/40 tabular-nums">{prog.done}/{prog.total} etapas</p>

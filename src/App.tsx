@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { Suspense, lazy } from 'react';
@@ -8,9 +8,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import Login from '@/pages/Login';
 
 const Home           = lazy(() => import('@/pages/Home'));
-const Funil          = lazy(() => import('@/pages/Funil'));
-const Reunioes       = lazy(() => import('@/pages/Reunioes'));
-const Amostras       = lazy(() => import('@/pages/Amostras'));
+const Crm            = lazy(() => import('@/pages/Crm'));
 const Clientes       = lazy(() => import('@/pages/Clientes'));
 const ClienteDetalhe = lazy(() => import('@/pages/ClienteDetalhe'));
 const Pagamentos     = lazy(() => import('@/pages/Pagamentos'));
@@ -47,9 +45,7 @@ const Gate = () => {
       <Suspense fallback={<Loader />}>
         <Routes>
           <Route path="/"              index element={<Home />} />
-          <Route path="/funil"         element={<Funil />} />
-          <Route path="/reunioes"      element={<Reunioes />} />
-          <Route path="/amostras"      element={<Amostras />} />
+          <Route path="/crm"           element={<Crm />} />
           <Route path="/clientes"      element={<Clientes />} />
           <Route path="/clientes/:id"  element={<ClienteDetalhe />} />
           <Route path="/pagamentos"    element={<Pagamentos />} />
@@ -57,6 +53,11 @@ const Gate = () => {
           <Route path="/tickets"       element={<Tickets />} />
           <Route path="/equipe"        element={<Equipe />} />
           <Route path="/relatorios"    element={<Relatorios />} />
+
+          {/* rotas antigas — agora vivem dentro do CRM */}
+          <Route path="/funil"     element={<Navigate to="/crm?tab=funil" replace />} />
+          <Route path="/reunioes"  element={<Navigate to="/crm?tab=reunioes" replace />} />
+          <Route path="/amostras"  element={<Navigate to="/crm?tab=amostras" replace />} />
         </Routes>
       </Suspense>
     </Layout>

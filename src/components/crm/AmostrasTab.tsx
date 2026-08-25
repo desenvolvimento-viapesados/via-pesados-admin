@@ -1,15 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import {
-  Plus, Loader2, MonitorPlay, ExternalLink, Copy, Rocket, Upload,
+  Loader2, MonitorPlay, ExternalLink, Copy, Rocket, Upload,
   CheckCircle2, Eye, Trash2, KeyRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   useDemos, useCreateDemo, useUpdateDemo, useProspects,
-  provisionCompany, uploadLogo, slugify, genPassword,
-  type Demo,
+  provisionCompany, uploadLogo, slugify, genPassword, type Demo,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import { LOJISTA_APP_URL } from '@/integrations/supabase/client';
@@ -24,7 +22,6 @@ const copyText = (text: string, label: string) => {
   toast.success(`${label} copiado`);
 };
 
-/* ── Dialog: nova amostra ───────────────────────────────────── */
 function NewDemoDialog({
   open, onClose, defaultProspectId,
 }: {
@@ -43,11 +40,9 @@ function NewDemoDialog({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (defaultProspectId) {
-      setForm((f) => ({ ...f, prospect_id: defaultProspectId }));
-      const p = prospects.find((x) => x.id === defaultProspectId);
-      if (p) setForm((f) => ({ ...f, prospect_id: defaultProspectId, company_name: p.company_name }));
-    }
+    if (!defaultProspectId) return;
+    const p = prospects.find((x) => x.id === defaultProspectId);
+    setForm((f) => ({ ...f, prospect_id: defaultProspectId, company_name: f.company_name || p?.company_name || '' }));
   }, [defaultProspectId, prospects]);
 
   const handleProspect = (id: string) => {
@@ -113,7 +108,6 @@ function NewDemoDialog({
             onChange={(e) => setForm((f) => ({ ...f, company_name: e.target.value }))}
           />
 
-          {/* Logo + cor */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => fileRef.current?.click()}
@@ -121,8 +115,7 @@ function NewDemoDialog({
             >
               {logoPreview
                 ? <img src={logoPreview} alt="" className="h-full w-full object-contain p-1" />
-                : <Upload className="h-4 w-4 text-foreground/30" />
-              }
+                : <Upload className="h-4 w-4 text-foreground/30" />}
             </button>
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleLogo(e.target.files?.[0] ?? null)} />
             <div className="flex-1">
@@ -161,7 +154,6 @@ function NewDemoDialog({
   );
 }
 
-/* ── Card de amostra ────────────────────────────────────────── */
 function DemoCard({ demo }: { demo: Demo }) {
   const update = useUpdateDemo();
   const [provisioning, setProvisioning] = useState(false);
@@ -211,18 +203,12 @@ function DemoCard({ demo }: { demo: Demo }) {
 
   return (
     <div className="rounded-2xl border border-black/[0.07] dark:border-white/[0.08] bg-black/[0.03] dark:bg-white/[0.03] overflow-hidden flex flex-col">
-      {/* Brand preview */}
       <div
         className="h-28 flex items-center justify-center relative"
         style={{ background: `linear-gradient(135deg, ${demo.primary_color ?? '#E36C0A'}18, transparent 70%)` }}
       >
-        <span
-          className="absolute top-3 left-3 h-2.5 w-2.5 rounded-full"
-          style={{ background: demo.primary_color ?? '#E36C0A' }}
-        />
-        <div className="absolute top-2.5 right-2.5">
-          <StatusBadge status={demo.status} />
-        </div>
+        <span className="absolute top-3 left-3 h-2.5 w-2.5 rounded-full" style={{ background: demo.primary_color ?? '#E36C0A' }} />
+        <div className="absolute top-2.5 right-2.5"><StatusBadge status={demo.status} /></div>
         {demo.logo_url ? (
           <img src={demo.logo_url} alt="" className="max-h-16 max-w-[70%] object-contain" />
         ) : (
@@ -232,17 +218,14 @@ function DemoCard({ demo }: { demo: Demo }) {
         )}
       </div>
 
-      {/* Body */}
       <div className="p-4 flex flex-col gap-3 flex-1">
         <div>
           <p className="text-[13.5px] font-semibold text-foreground leading-tight">{demo.company_name}</p>
           <p className="text-[10.5px] text-foreground/35 mt-0.5">
-            {new Date(demo.created_at).toLocaleDateString('pt-BR')}
-            {demo.notes ? ` · ${demo.notes}` : ''}
+            {new Date(demo.created_at).toLocaleDateString('pt-BR')}{demo.notes ? ` · ${demo.notes}` : ''}
           </p>
         </div>
 
-        {/* Credenciais */}
         {hasCreds && showCreds && (
           <div className="rounded-xl bg-black/[0.04] dark:bg-white/[0.04] p-3 space-y-1.5 text-[11.5px]">
             <button onClick={() => copyText(demo.admin_email!, 'E-mail')} className="flex items-center gap-1.5 text-foreground/70 hover:text-foreground w-full">
@@ -254,7 +237,6 @@ function DemoCard({ demo }: { demo: Demo }) {
           </div>
         )}
 
-        {/* Ações */}
         <div className="mt-auto flex flex-col gap-1.5">
           {demo.status === 'rascunho' && (
             <button
@@ -317,42 +299,18 @@ function DemoCard({ demo }: { demo: Demo }) {
   );
 }
 
-/* ── Página ─────────────────────────────────────────────────── */
-export default function Amostras() {
-  const [params, setParams] = useSearchParams();
+export function AmostrasTab({
+  newOpen, onCloseNew, defaultProspectId,
+}: {
+  newOpen: boolean;
+  onCloseNew: () => void;
+  defaultProspectId?: string | null;
+}) {
   const { data: demos = [], isLoading } = useDemos();
-  const [newOpen, setNewOpen] = useState(false);
-  const [defaultProspect, setDefaultProspect] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (params.get('new') === '1') {
-      setNewOpen(true);
-      setDefaultProspect(params.get('prospect'));
-      params.delete('new');
-      params.delete('prospect');
-      setParams(params, { replace: true });
-    }
-  }, []);
-
   const active = demos.filter((d) => d.status !== 'descartada');
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-[22px] font-bold tracking-tight text-foreground">Amostras</h1>
-          <p className="text-[12px] text-foreground/40 mt-0.5">
-            Sistemas de demonstração com a marca do prospect — para apresentar na reunião
-          </p>
-        </div>
-        <button
-          onClick={() => setNewOpen(true)}
-          className="h-9 px-3.5 rounded-xl bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 transition-all flex items-center gap-1.5"
-        >
-          <Plus className="h-3.5 w-3.5" /> Amostra
-        </button>
-      </div>
-
+    <>
       {isLoading ? (
         <div className="flex items-center justify-center h-40">
           <div className="h-8 w-8 rounded-full border border-primary/30 border-t-primary animate-spin" />
@@ -369,7 +327,7 @@ export default function Amostras() {
         </div>
       )}
 
-      <NewDemoDialog open={newOpen} onClose={() => setNewOpen(false)} defaultProspectId={defaultProspect} />
-    </div>
+      <NewDemoDialog open={newOpen} onClose={onCloseNew} defaultProspectId={defaultProspectId} />
+    </>
   );
 }

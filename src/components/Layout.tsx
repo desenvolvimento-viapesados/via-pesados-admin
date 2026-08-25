@@ -7,9 +7,6 @@ import viaPesadosLogoLight from '@/assets/via-pesados-icon-color.png';
 import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
 
 const PAGE_TITLES: Record<string, string> = {
-  '/funil':      'Funil de Vendas',
-  '/reunioes':   'Reuniões',
-  '/amostras':   'Amostras',
   '/clientes':   'Clientes',
   '/pagamentos': 'Pagamentos',
   '/financeiro': 'Financeiro',
@@ -18,7 +15,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/relatorios': 'Relatórios',
 };
 
-const FULLPAGE_ROUTES = new Set(['/funil']);
+const FULLPAGE_ROUTES = new Set(['/crm']);
 
 export function Layout({ children }: { children: ReactNode }) {
   const { theme, toggleTheme } = useTheme();
