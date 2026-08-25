@@ -29,6 +29,8 @@ export interface Demo {
   id: string;
   prospect_id: string | null;
   company_name: string;
+  /** Quem vai receber a amostra — aparece na abertura do sistema. */
+  contact_name: string | null;
   slug: string;
   logo_url: string | null;
   primary_color: string | null;
@@ -404,6 +406,8 @@ interface ProvisionInput {
   admin_full_name?: string;
   domains?: string[];
   logo_url?: string;
+  /** Nome de quem recebe — a amostra abre com "Bem-vindo, <nome>". */
+  contact_name?: string;
 }
 
 export const provisionCompany = async (input: ProvisionInput): Promise<{ company_id: string }> => {

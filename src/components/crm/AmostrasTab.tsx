@@ -35,7 +35,7 @@ function NewDemoDialog({
   const { data: prospects = [] } = useProspects();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [form, setForm] = useState({ prospect_id: defaultProspectId ?? '', company_name: '', primary_color: '#E36C0A', notes: '' });
+  const [form, setForm] = useState({ prospect_id: defaultProspectId ?? '', company_name: '', contact_name: '', primary_color: '#E36C0A', notes: '' });
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -43,12 +43,22 @@ function NewDemoDialog({
   useEffect(() => {
     if (!defaultProspectId) return;
     const p = prospects.find((x) => x.id === defaultProspectId);
-    setForm((f) => ({ ...f, prospect_id: defaultProspectId, company_name: f.company_name || p?.company_name || '' }));
+    setForm((f) => ({
+      ...f,
+      prospect_id: defaultProspectId,
+      company_name: f.company_name || p?.company_name || '',
+      contact_name: f.contact_name || p?.contact_name || '',
+    }));
   }, [defaultProspectId, prospects]);
 
   const handleProspect = (id: string) => {
     const p = prospects.find((x) => x.id === id);
-    setForm((f) => ({ ...f, prospect_id: id, company_name: f.company_name || p?.company_name || '' }));
+    setForm((f) => ({
+      ...f,
+      prospect_id: id,
+      company_name: f.company_name || p?.company_name || '',
+      contact_name: f.contact_name || p?.contact_name || '',
+    }));
   };
 
   const handleLogo = (file: File | null) => {
@@ -67,6 +77,7 @@ function NewDemoDialog({
       await create.mutateAsync({
         prospect_id: form.prospect_id || null,
         company_name: form.company_name.trim(),
+        contact_name: form.contact_name.trim() || null,
         slug,
         logo_url,
         primary_color: form.primary_color,
@@ -78,7 +89,7 @@ function NewDemoDialog({
         await advance.mutateAsync({ id: prospect.id, from: prospect.stage, to: 'amostra' });
       }
       toast.success('Amostra criada — provisione para gerar o sistema');
-      setForm({ prospect_id: '', company_name: '', primary_color: '#E36C0A', notes: '' });
+      setForm({ prospect_id: '', company_name: '', contact_name: '', primary_color: '#E36C0A', notes: '' });
       handleLogo(null);
       onClose();
     } catch {
@@ -112,6 +123,18 @@ function NewDemoDialog({
             value={form.company_name}
             onChange={(e) => setForm((f) => ({ ...f, company_name: e.target.value }))}
           />
+
+          <div>
+            <input
+              className={inputCls}
+              placeholder="Quem vai receber (nome da pessoa)"
+              value={form.contact_name}
+              onChange={(e) => setForm((f) => ({ ...f, contact_name: e.target.value }))}
+            />
+            <p className="text-[10.5px] text-foreground/35 mt-1 px-1">
+              A amostra abre com “Bem-vindo, {form.contact_name.trim().split(' ')[0] || '<nome>'}”.
+            </p>
+          </div>
 
           <div className="flex items-center gap-3">
             <button
@@ -177,6 +200,7 @@ function DemoCard({ demo }: { demo: Demo }) {
         admin_password: password,
         admin_full_name: `Demo ${demo.company_name}`,
         logo_url: demo.logo_url ?? undefined,
+        contact_name: demo.contact_name ?? undefined,
       });
       await update.mutateAsync({
         id: demo.id,

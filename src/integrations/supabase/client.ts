@@ -24,4 +24,5 @@ export const LOJISTA_APP_URL = 'https://viapesados.com.br/lojista';
 // A empresa vem do caminho — o Vercel só emite certificado curinga se o domínio
 // usar os nameservers dele, o que tiraria o DNS (e o e-mail) do Cloudflare.
 export const DEMO_BASE_URL = 'https://amostra.viapesados.com.br';
-export const demoUrl = (slug: string) => `${DEMO_BASE_URL}/${slug}`;
+// abre direto no sistema — a amostra não passa por tela de login
+export const demoUrl = (slug: string) => `${DEMO_BASE_URL}/${slug}/sistema`;
