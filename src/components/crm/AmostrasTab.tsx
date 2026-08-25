@@ -10,7 +10,7 @@ import {
   provisionCompany, uploadLogo, slugify, genPassword, type Demo,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
-import { LOJISTA_APP_URL } from '@/integrations/supabase/client';
+import { LOJISTA_APP_URL, demoHost, demoUrl } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StatusBadge, EmptyState, SectionHeader, Panel } from '@/components/admin/ui';
 
@@ -168,6 +168,7 @@ function DemoCard({ demo }: { demo: Demo }) {
     setProvisioning(true);
     try {
       const slug = `demo-${demo.slug}`;
+      const host = demoHost(demo.slug);
       const email = `${slug}@viapesados.com.br`;
       const password = genPassword();
       const { company_id } = await provisionCompany({
@@ -177,6 +178,7 @@ function DemoCard({ demo }: { demo: Demo }) {
         admin_password: password,
         admin_full_name: `Demo ${demo.company_name}`,
         logo_url: demo.logo_url ?? undefined,
+        domains: [host],
       });
       await update.mutateAsync({
         id: demo.id,
@@ -184,7 +186,7 @@ function DemoCard({ demo }: { demo: Demo }) {
         lojista_company_id: company_id,
         admin_email: email,
         admin_password: password,
-        demo_url: LOJISTA_APP_URL,
+        demo_url: demoUrl(demo.slug),
       });
       toast.success('Sistema de demonstração criado!');
       setShowCreds(true);
@@ -263,7 +265,7 @@ function DemoCard({ demo }: { demo: Demo }) {
                 <KeyRound className="h-3.5 w-3.5" /> Acesso
               </button>
               <a
-                href={demo.demo_url ?? LOJISTA_APP_URL}
+                href={demo.demo_url ?? demoUrl(demo.slug)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="h-9 rounded-xl bg-violet-500/15 text-violet-400 text-[11.5px] font-semibold hover:bg-violet-500/25 transition-colors flex items-center justify-center gap-1.5"
@@ -276,7 +278,7 @@ function DemoCard({ demo }: { demo: Demo }) {
           {hasCreds && (
             <button
               onClick={() => copyText(
-                `Sistema ${demo.company_name}\n${demo.demo_url ?? LOJISTA_APP_URL}\n\nAcesso: ${demo.admin_email}\nSenha: ${demo.admin_password}`,
+                `Sistema ${demo.company_name}\n${demo.demo_url ?? demoUrl(demo.slug)}\n\nAcesso: ${demo.admin_email}\nSenha: ${demo.admin_password}`,
                 'Acesso completo',
               )}
               className="h-8 rounded-xl text-[11.5px] font-medium text-foreground/50 hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-1.5"
