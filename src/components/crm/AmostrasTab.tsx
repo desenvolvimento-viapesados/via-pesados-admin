@@ -22,6 +22,61 @@ const copyText = (text: string, label: string) => {
   toast.success(`${label} copiado`);
 };
 
+type ImgKey = 'logo' | 'banner' | 'favicon';
+
+const IMG_FIELDS: { key: ImgKey; label: string; hint: string; ratio: string }[] = [
+  { key: 'logo',    label: 'Logo',    hint: 'PNG com fundo transparente · 600×200px (ou 200×200 se for quadrada)', ratio: 'aspect-[3/1]' },
+  { key: 'banner',  label: 'Banner',  hint: 'JPG ou PNG · 1920×1080px · deixe o lado esquerdo livre para o texto',  ratio: 'aspect-video' },
+  { key: 'favicon', label: 'Favicon', hint: 'PNG transparente · 512×512px · só o símbolo, sem o nome escrito',       ratio: 'aspect-square' },
+];
+
+/** Campo de imagem com prévia e o tamanho recomendado sempre à vista. */
+function ImageField({
+  label, hint, ratio, preview, onPick, onClear,
+}: {
+  label: string;
+  hint: string;
+  ratio: string;
+  preview: string | null;
+  onPick: (f: File) => void;
+  onClear: () => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2 mb-1.5">
+        <p className="text-[11.5px] font-semibold text-foreground/70">{label}</p>
+        {preview && (
+          <button onClick={onClear} className="text-[10.5px] text-foreground/35 hover:text-red-400 transition-colors">
+            remover
+          </button>
+        )}
+      </div>
+      <button
+        onClick={() => ref.current?.click()}
+        className={cn(
+          'w-full rounded-xl border border-dashed border-black/[0.15] dark:border-white/[0.15]',
+          'bg-black/[0.02] dark:bg-white/[0.03] overflow-hidden flex items-center justify-center',
+          'hover:border-primary/50 transition-colors',
+          ratio,
+        )}
+      >
+        {preview
+          ? <img src={preview} alt="" className="h-full w-full object-contain p-1.5" />
+          : <Upload className="h-4 w-4 text-foreground/25" />}
+      </button>
+      <input
+        ref={ref}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) onPick(f); }}
+      />
+      <p className="text-[10px] text-foreground/35 mt-1 leading-snug">{hint}</p>
+    </div>
+  );
+}
+
 function NewDemoDialog({
   open, onClose, defaultProspectId,
 }: {
@@ -33,11 +88,10 @@ function NewDemoDialog({
   const create = useCreateDemo();
   const advance = useAdvanceProspect();
   const { data: prospects = [] } = useProspects();
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({ prospect_id: defaultProspectId ?? '', company_name: '', contact_name: '', primary_color: '#E36C0A', notes: '' });
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [files, setFiles] = useState<Record<ImgKey, File | null>>({ logo: null, banner: null, favicon: null });
+  const [previews, setPreviews] = useState<Record<ImgKey, string | null>>({ logo: null, banner: null, favicon: null });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -61,36 +115,49 @@ function NewDemoDialog({
     }));
   };
 
-  const handleLogo = (file: File | null) => {
-    setLogoFile(file);
-    if (logoPreview) URL.revokeObjectURL(logoPreview);
-    setLogoPreview(file ? URL.createObjectURL(file) : null);
+  const setImage = (key: ImgKey, file: File | null) => {
+    setPreviews((prev) => {
+      if (prev[key]) URL.revokeObjectURL(prev[key]!);
+      return { ...prev, [key]: file ? URL.createObjectURL(file) : null };
+    });
+    setFiles((prev) => ({ ...prev, [key]: file }));
+  };
+
+  const reset = () => {
+    setForm({ prospect_id: '', company_name: '', contact_name: '', primary_color: '#E36C0A', notes: '' });
+    (['logo', 'banner', 'favicon'] as ImgKey[]).forEach((k) => setImage(k, null));
   };
 
   const submit = async () => {
     if (!form.company_name.trim()) { toast.error('Informe o nome da empresa'); return; }
     setSaving(true);
     try {
-      let logo_url: string | null = null;
       const slug = slugify(form.company_name);
-      if (logoFile) logo_url = await uploadLogo(logoFile, `demo-${slug}`);
+      const urls: Partial<Record<ImgKey, string>> = {};
+      for (const key of ['logo', 'banner', 'favicon'] as ImgKey[]) {
+        const file = files[key];
+        if (file) urls[key] = await uploadLogo(file, `demo-${slug}-${key}`);
+      }
+
       await create.mutateAsync({
         prospect_id: form.prospect_id || null,
         company_name: form.company_name.trim(),
         contact_name: form.contact_name.trim() || null,
         slug,
-        logo_url,
+        logo_url: urls.logo ?? null,
+        banner_url: urls.banner ?? null,
+        favicon_url: urls.favicon ?? null,
         primary_color: form.primary_color,
         notes: form.notes || null,
         created_by: member?.id ?? null,
       });
+
       const prospect = prospects.find((x) => x.id === form.prospect_id);
       if (prospect) {
         await advance.mutateAsync({ id: prospect.id, from: prospect.stage, to: 'amostra' });
       }
       toast.success('Amostra criada — provisione para gerar o sistema');
-      setForm({ prospect_id: '', company_name: '', contact_name: '', primary_color: '#E36C0A', notes: '' });
-      handleLogo(null);
+      reset();
       onClose();
     } catch {
       toast.error('Erro ao criar amostra');
@@ -101,12 +168,12 @@ function NewDemoDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md bg-background border-black/[0.1] dark:border-white/[0.1] rounded-2xl">
+      <DialogContent className="max-w-md bg-background border-black/[0.1] dark:border-white/[0.1] rounded-2xl max-h-[88vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-[15px] font-semibold">Nova amostra</DialogTitle>
         </DialogHeader>
         <p className="text-[11.5px] text-foreground/40 -mt-1">
-          Um sistema de demonstração com a identidade visual do prospect, pronto para a reunião de vendas.
+          Um sistema de demonstração já com a identidade visual do prospect, pronto para a reunião.
         </p>
 
         <div className="space-y-2.5 pt-1">
@@ -136,29 +203,34 @@ function NewDemoDialog({
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="h-16 w-16 rounded-xl border border-dashed border-black/[0.15] dark:border-white/[0.15] flex items-center justify-center overflow-hidden hover:border-primary/50 transition-colors shrink-0 bg-black/[0.02] dark:bg-white/[0.03]"
-            >
-              {logoPreview
-                ? <img src={logoPreview} alt="" className="h-full w-full object-contain p-1" />
-                : <Upload className="h-4 w-4 text-foreground/30" />}
-            </button>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleLogo(e.target.files?.[0] ?? null)} />
-            <div className="flex-1">
-              <p className="text-[12px] text-foreground/60 font-medium">Logo do prospect</p>
-              <p className="text-[10.5px] text-foreground/35">Aparece no sistema de demonstração</p>
+          {/* Identidade visual */}
+          <div className="pt-2 space-y-3 border-t border-black/[0.06] dark:border-white/[0.06]">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[10.5px] font-semibold tracking-widest uppercase text-foreground/30">
+                Identidade visual
+              </p>
+              <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                <span className="text-[10.5px] text-foreground/40">Cor da marca</span>
+                <input
+                  type="color"
+                  value={form.primary_color}
+                  onChange={(e) => setForm((f) => ({ ...f, primary_color: e.target.value }))}
+                  className="h-7 w-7 rounded-md border border-black/[0.1] dark:border-white/[0.1] bg-transparent cursor-pointer"
+                />
+              </label>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer shrink-0">
-              <input
-                type="color"
-                value={form.primary_color}
-                onChange={(e) => setForm((f) => ({ ...f, primary_color: e.target.value }))}
-                className="h-9 w-9 rounded-lg border border-black/[0.1] dark:border-white/[0.1] bg-transparent cursor-pointer"
+
+            {IMG_FIELDS.map(({ key, label, hint, ratio }) => (
+              <ImageField
+                key={key}
+                label={label}
+                hint={hint}
+                ratio={ratio}
+                preview={previews[key]}
+                onPick={(f) => setImage(key, f)}
+                onClear={() => setImage(key, null)}
               />
-              <span className="text-[10.5px] text-foreground/40">Cor</span>
-            </label>
+            ))}
           </div>
 
           <textarea
@@ -200,6 +272,8 @@ function DemoCard({ demo }: { demo: Demo }) {
         admin_password: password,
         admin_full_name: demo.contact_name || `Demo ${demo.company_name}`,
         logo_url: demo.logo_url ?? undefined,
+        banner_url: demo.banner_url ?? undefined,
+        favicon_url: demo.favicon_url ?? undefined,
         contact_name: demo.contact_name ?? undefined,
       });
       await update.mutateAsync({
