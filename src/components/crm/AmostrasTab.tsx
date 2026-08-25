@@ -198,7 +198,7 @@ function DemoCard({ demo }: { demo: Demo }) {
         company_slug: slug,
         admin_email: email,
         admin_password: password,
-        admin_full_name: `Demo ${demo.company_name}`,
+        admin_full_name: demo.contact_name || `Demo ${demo.company_name}`,
         logo_url: demo.logo_url ?? undefined,
         contact_name: demo.contact_name ?? undefined,
       });
