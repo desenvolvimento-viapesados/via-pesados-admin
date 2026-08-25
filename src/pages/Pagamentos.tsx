@@ -1,136 +1,133 @@
-import { useState } from 'react';
-import { CheckCircle2, Clock, AlertCircle, RefreshCw, Plus, Send, Download } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
-import { fmt, fmtDate, cn } from '@/lib/utils';
-import { CLIENTES_MOCK } from './Clientes';
-
-const COBRANCAS = CLIENTES_MOCK.map((c, i) => ({
-  id: `cob-${c.id}`,
-  cliente: c.nome,
-  tipo: c.tipo,
-  plano: c.plano,
-  valor: c.mrr,
-  vencimento: c.vencimento,
-  status: c.inadimplente ? 'vencido' : i % 4 === 0 ? 'pago' : i % 3 === 0 ? 'pendente' : 'pago',
-  metodo: i % 2 === 0 ? 'Pix' : 'Boleto',
-  diasAtraso: c.inadimplente ? Math.floor(Math.random() * 30) + 5 : 0,
-}));
-
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  pago:     { label: 'Pago',     color: 'bg-green-500/15 text-green-600 dark:text-green-400',   icon: <CheckCircle2 className="h-3 w-3" /> },
-  pendente: { label: 'Pendente', color: 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400', icon: <Clock className="h-3 w-3" /> },
-  vencido:  { label: 'Vencido',  color: 'bg-red-500/15 text-red-500',                           icon: <AlertCircle className="h-3 w-3" /> },
-};
+import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { CreditCard, Check, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import { usePayments, useUpdatePayment, brlFull, type Payment } from '@/hooks/useAdmin';
+import { StatusBadge, EmptyState, Panel, Kpi } from '@/components/admin/ui';
 
 export default function Pagamentos() {
-  const [statusFilter, setStatusFilter] = useState('todos');
+  const navigate = useNavigate();
+  const { data: payments = [], isLoading } = usePayments();
+  const update = useUpdatePayment();
+  const [filter, setFilter] = useState<'todos' | Payment['status']>('todos');
 
-  const filtered = statusFilter === 'todos' ? COBRANCAS : COBRANCAS.filter(c => c.status === statusFilter);
+  const enriched = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return payments.map((p) => ({
+      ...p,
+      status: p.status === 'pendente' && p.due_date < today ? ('atrasado' as const) : p.status,
+    }));
+  }, [payments]);
 
-  const totalMRR = COBRANCAS.reduce((s, c) => s + c.valor, 0);
-  const totalPago = COBRANCAS.filter(c => c.status === 'pago').reduce((s, c) => s + c.valor, 0);
-  const totalPendente = COBRANCAS.filter(c => c.status === 'pendente').reduce((s, c) => s + c.valor, 0);
-  const totalVencido = COBRANCAS.filter(c => c.status === 'vencido').reduce((s, c) => s + c.valor, 0);
-  const qtdVencido = COBRANCAS.filter(c => c.status === 'vencido').length;
-  const taxaRecebimento = Math.round((totalPago / totalMRR) * 100);
+  const stats = useMemo(() => {
+    const month = new Date().toISOString().slice(0, 7);
+    const received = enriched.filter((p) => p.status === 'pago' && (p.paid_at ?? '').slice(0, 7) === month).reduce((s, p) => s + p.amount, 0);
+    const pending = enriched.filter((p) => p.status === 'pendente').reduce((s, p) => s + p.amount, 0);
+    const overdue = enriched.filter((p) => p.status === 'atrasado').reduce((s, p) => s + p.amount, 0);
+    return { received, pending, overdue };
+  }, [enriched]);
+
+  const filtered = filter === 'todos' ? enriched : enriched.filter((p) => p.status === filter);
+
+  const markPaid = async (p: Payment) => {
+    try {
+      await update.mutateAsync({ id: p.id, status: 'pago', paid_at: new Date().toISOString() });
+      toast.success('Pagamento confirmado');
+    } catch {
+      toast.error('Erro ao atualizar');
+    }
+  };
+
+  const cancel = async (p: Payment) => {
+    try {
+      await update.mutateAsync({ id: p.id, status: 'cancelado' });
+      toast.success('Cobrança cancelada');
+    } catch {
+      toast.error('Erro ao atualizar');
+    }
+  };
+
+  const FILTERS: { key: typeof filter; label: string }[] = [
+    { key: 'todos',    label: 'Todos' },
+    { key: 'pendente', label: 'Pendentes' },
+    { key: 'atrasado', label: 'Atrasados' },
+    { key: 'pago',     label: 'Pagos' },
+  ];
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl">
-
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Pagamentos</h1>
-          <p className="text-[13px] text-foreground/50 mt-0.5">Gerenciamento de cobranças e adimplência</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm"><Send className="h-4 w-4" />Cobrar inadimplentes</Button>
-          <Button size="sm" variant="outline"><Download className="h-4 w-4" />Exportar</Button>
-        </div>
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-[22px] font-bold tracking-tight text-foreground">Pagamentos</h1>
+        <p className="text-[12px] text-foreground/40 mt-0.5">Cobranças e recebimentos dos clientes</p>
       </div>
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'MRR Total',      value: fmt(totalMRR),      sub: `${COBRANCAS.length} clientes`,    color: 'text-foreground' },
-          { label: 'Recebido',       value: fmt(totalPago),     sub: `taxa ${taxaRecebimento}%`,        color: 'text-emerald-500' },
-          { label: 'A Receber',      value: fmt(totalPendente), sub: `${COBRANCAS.filter(c => c.status === 'pendente').length} cobranças`, color: 'text-yellow-500' },
-          { label: 'Inadimplente',   value: fmt(totalVencido),  sub: `${qtdVencido} cliente${qtdVencido !== 1 ? 's' : ''}`, color: 'text-red-500' },
-        ].map(({ label, value, sub, color }) => (
-          <Card key={label} className="border-black/[0.07] dark:border-white/[0.07]">
-            <CardContent className="p-5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground/40">{label}</p>
-              <p className={cn('text-xl font-bold mt-1.5', color)}>{value}</p>
-              <p className="text-[11px] text-foreground/40 mt-0.5">{sub}</p>
-            </CardContent>
-          </Card>
+      <div className="grid grid-cols-3 gap-3">
+        <Kpi label="Recebido no mês" value={brlFull(stats.received)} accent="text-emerald-500" />
+        <Kpi label="A receber" value={brlFull(stats.pending)} accent="text-amber-500" />
+        <Kpi label="Em atraso" value={brlFull(stats.overdue)} accent="text-red-400" />
+      </div>
+
+      <div className="flex gap-1.5">
+        {FILTERS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setFilter(key)}
+            className={cn(
+              'h-9 px-3 rounded-xl text-[12px] font-medium transition-colors',
+              filter === key
+                ? 'bg-primary/15 text-primary border border-primary/30'
+                : 'border border-black/[0.08] dark:border-white/[0.08] text-foreground/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.05]',
+            )}
+          >
+            {label}
+          </button>
         ))}
       </div>
 
-      {/* Taxa de recebimento */}
-      <Card className="border-black/[0.07] dark:border-white/[0.07]">
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[13px] font-medium text-foreground">Taxa de Recebimento — agosto 2026</p>
-            <p className="text-[13px] font-bold text-foreground">{taxaRecebimento}%</p>
-          </div>
-          <Progress value={taxaRecebimento} className="h-2.5" />
-          <div className="flex justify-between mt-2">
-            <span className="text-[11px] text-foreground/40">0%</span>
-            <span className="text-[11px] text-foreground/40">Meta: 95%</span>
-            <span className="text-[11px] text-foreground/40">100%</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Tabela */}
-      <Card className="border-black/[0.07] dark:border-white/[0.07]">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-[13px]">Cobranças do mês</CardTitle>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-36 h-8 text-[12px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="pago">Pago</SelectItem>
-                <SelectItem value="pendente">Pendente</SelectItem>
-                <SelectItem value="vencido">Vencido</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="flex flex-col divide-y divide-black/[0.05] dark:divide-white/[0.05]">
-            {filtered.map(c => (
-              <div key={c.id} className="flex items-center gap-4 py-3">
-                <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-[11px] font-bold shrink-0">
-                  {c.cliente.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-medium text-foreground truncate">{c.cliente}</p>
-                  <p className="text-[11px] text-foreground/40">{c.plano} · {c.metodo} · vence {c.vencimento}</p>
-                </div>
-                {c.diasAtraso > 0 && (
-                  <span className="text-[11px] font-semibold text-red-500 shrink-0">{c.diasAtraso}d atraso</span>
-                )}
-                <p className="text-[13px] font-bold text-foreground shrink-0">{fmt(c.valor)}</p>
-                <span className={cn('flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0', STATUS_CONFIG[c.status].color)}>
-                  {STATUS_CONFIG[c.status].icon}
-                  {STATUS_CONFIG[c.status].label}
-                </span>
-                {c.status !== 'pago' && (
-                  <Button size="sm" variant="outline" className="h-7 px-2 text-[11px] shrink-0">
-                    <Send className="h-3 w-3" />Cobrar
-                  </Button>
-                )}
+      {isLoading ? (
+        <div className="flex items-center justify-center h-40">
+          <div className="h-8 w-8 rounded-full border border-primary/30 border-t-primary animate-spin" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={<CreditCard />} title="Nenhuma cobrança" sub="Crie cobranças na página do cliente" />
+      ) : (
+        <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
+          {filtered.map((p) => (
+            <div key={p.id} className="px-4 py-3 flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-medium text-foreground truncate">{p.description}</p>
+                <button
+                  onClick={() => p.client && navigate(`/clientes/${p.client.id}`)}
+                  className="text-[11px] text-foreground/40 hover:text-primary truncate"
+                >
+                  {p.client?.company_name ?? '—'} · venc. {new Date(p.due_date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                </button>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <p className="text-[13.5px] font-bold text-foreground tabular-nums shrink-0">{brlFull(p.amount)}</p>
+              <StatusBadge status={p.status} />
+              {(p.status === 'pendente' || p.status === 'atrasado') && (
+                <div className="flex gap-1 shrink-0">
+                  <button
+                    onClick={() => markPaid(p)}
+                    title="Marcar pago"
+                    className="h-8 w-8 rounded-lg flex items-center justify-center text-foreground/30 hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors"
+                  >
+                    <Check className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => cancel(p)}
+                    title="Cancelar"
+                    className="h-8 w-8 rounded-lg flex items-center justify-center text-foreground/30 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </Panel>
+      )}
     </div>
   );
 }

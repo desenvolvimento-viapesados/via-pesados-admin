@@ -2,25 +2,27 @@ import { type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Sun, Moon, LogOut } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
+import { useAuth } from '@/contexts/AuthContext';
 import viaPesadosLogoLight from '@/assets/via-pesados-icon-color.png';
 import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
 
 const PAGE_TITLES: Record<string, string> = {
-  '/clientes':    'Clientes',
-  '/funil':       'Funil de Vendas',
-  '/financeiro':  'Financeiro',
-  '/pagamentos':  'Pagamentos',
-  '/tickets':     'Tickets',
-  '/relatorios':  'Relatórios',
-  '/nova-venda':  'Nova Venda',
-  '/novo-cliente':'Novo Cliente',
-  '/novo-acesso': 'Novo Acesso',
+  '/funil':      'Funil de Vendas',
+  '/reunioes':   'Reuniões',
+  '/amostras':   'Amostras',
+  '/clientes':   'Clientes',
+  '/pagamentos': 'Pagamentos',
+  '/financeiro': 'Financeiro',
+  '/tickets':    'Suporte',
+  '/equipe':     'Equipe',
+  '/relatorios': 'Relatórios',
 };
 
 const FULLPAGE_ROUTES = new Set(['/funil']);
 
 export function Layout({ children }: { children: ReactNode }) {
   const { theme, toggleTheme } = useTheme();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -68,7 +70,11 @@ export function Layout({ children }: { children: ReactNode }) {
             >
               {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
             </button>
-            <button className="h-8 w-8 rounded-lg flex items-center justify-center text-foreground/30 hover:text-red-400 hover:bg-foreground/[0.06] transition-colors">
+            <button
+              onClick={signOut}
+              title="Sair"
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-foreground/30 hover:text-red-400 hover:bg-foreground/[0.06] transition-colors"
+            >
               <LogOut className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -76,7 +82,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </header>
 
       {/* Content */}
-      <main className="flex-1 px-5 py-6 max-w-5xl mx-auto w-full">
+      <main className="flex-1 px-5 py-6 max-w-6xl mx-auto w-full">
         {children}
       </main>
     </div>
