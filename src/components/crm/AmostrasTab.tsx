@@ -10,7 +10,7 @@ import {
   provisionCompany, uploadLogo, slugify, genPassword, type Demo,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
-import { LOJISTA_APP_URL, demoHost, demoUrl } from '@/integrations/supabase/client';
+import { demoUrl } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StatusBadge, EmptyState, SectionHeader, Panel } from '@/components/admin/ui';
 
@@ -168,7 +168,6 @@ function DemoCard({ demo }: { demo: Demo }) {
     setProvisioning(true);
     try {
       const slug = `demo-${demo.slug}`;
-      const host = demoHost(demo.slug);
       const email = `${slug}@viapesados.com.br`;
       const password = genPassword();
       const { company_id } = await provisionCompany({
@@ -178,7 +177,6 @@ function DemoCard({ demo }: { demo: Demo }) {
         admin_password: password,
         admin_full_name: `Demo ${demo.company_name}`,
         logo_url: demo.logo_url ?? undefined,
-        domains: [host],
       });
       await update.mutateAsync({
         id: demo.id,
