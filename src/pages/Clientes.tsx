@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Building2, ChevronRight, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useClients, useOnboardingProgress, brl, type Client } from '@/hooks/useAdmin';
-import { NewClientDialog } from '@/components/crm/NewClientDialog';
+import { RegistrarVendaDialog } from '@/components/crm/RegistrarVendaDialog';
 import { StatusBadge, EmptyState, Panel, InitialAvatar } from '@/components/admin/ui';
 
 const inputCls =
@@ -137,7 +137,7 @@ export default function Clientes() {
         </Panel>
       )}
 
-      <NewClientDialog open={newOpen} onClose={() => setNewOpen(false)} />
+      <RegistrarVendaDialog open={newOpen} onClose={() => setNewOpen(false)} />
     </div>
   );
 }

@@ -49,6 +49,7 @@ export default function Relatorios() {
       { key: 'novo',       label: 'Novos' },
       { key: 'contato',    label: 'Em contato' },
       { key: 'reuniao',    label: 'Reunião' },
+      { key: 'amostra',    label: 'Amostra' },
       { key: 'proposta',   label: 'Proposta' },
       { key: 'fechamento', label: 'Fechamento' },
       { key: 'ganho',      label: 'Ganhos' },

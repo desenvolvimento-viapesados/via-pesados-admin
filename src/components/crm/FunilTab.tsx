@@ -6,17 +6,19 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
-  useProspects, useCreateProspect, useUpdateProspect, useWinProspect,
+  useProspects, useCreateProspect, useUpdateProspect,
   brl, type Prospect, type ProspectStage,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/admin/ui';
+import { RegistrarVendaDialog } from './RegistrarVendaDialog';
 
 const PIPELINE: { key: ProspectStage; label: string }[] = [
   { key: 'novo',       label: 'Novos' },
   { key: 'contato',    label: 'Em contato' },
   { key: 'reuniao',    label: 'Reunião' },
+  { key: 'amostra',    label: 'Amostra' },
   { key: 'proposta',   label: 'Proposta' },
   { key: 'fechamento', label: 'Fechamento' },
 ];
@@ -96,10 +98,15 @@ function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => vo
 }
 
 /* ── Detalhe do prospect ────────────────────────────────────── */
-function ProspectDialog({ prospect, onClose }: { prospect: Prospect | null; onClose: () => void }) {
+function ProspectDialog({
+  prospect, onClose, onRegisterSale,
+}: {
+  prospect: Prospect | null;
+  onClose: () => void;
+  onRegisterSale: (p: Prospect) => void;
+}) {
   const navigate = useNavigate();
   const update = useUpdateProspect();
-  const win = useWinProspect();
   const [lostMode, setLostMode] = useState(false);
   const [lostReason, setLostReason] = useState('');
   const [value, setValue] = useState('');
@@ -119,15 +126,10 @@ function ProspectDialog({ prospect, onClose }: { prospect: Prospect | null; onCl
     toast.success('Valor atualizado');
   };
 
-  const handleWin = async () => {
-    try {
-      const client = await win.mutateAsync(prospect);
-      toast.success('Venda fechada! Cliente criado.');
-      onClose();
-      navigate(`/clientes/${client.id}`);
-    } catch {
-      toast.error('Erro ao fechar venda');
-    }
+  const handleWin = () => {
+    const p = prospect;
+    onClose();
+    onRegisterSale(p);
   };
 
   const handleLose = async () => {
@@ -219,11 +221,9 @@ function ProspectDialog({ prospect, onClose }: { prospect: Prospect | null; onCl
               </button>
               <button
                 onClick={handleWin}
-                disabled={win.isPending}
-                className="h-10 rounded-xl bg-emerald-500 text-white text-[12.5px] font-semibold hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-1.5 mt-2"
+                className="h-10 rounded-xl bg-emerald-500 text-white text-[12.5px] font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-1.5 mt-2"
               >
-                {win.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trophy className="h-3.5 w-3.5" />}
-                Venda fechada
+                <Trophy className="h-3.5 w-3.5" /> Venda fechada
               </button>
             </div>
           )}
@@ -238,6 +238,7 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
   const { data: prospects = [], isLoading } = useProspects();
   const update = useUpdateProspect();
   const [selected, setSelected] = useState<Prospect | null>(null);
+  const [saleFor, setSaleFor] = useState<Prospect | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
 
   const byStage = useMemo(() => {
@@ -330,7 +331,8 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
       </div>
 
       <NewProspectDialog open={newOpen} onClose={onCloseNew} />
-      <ProspectDialog prospect={selected} onClose={() => setSelected(null)} />
+      <ProspectDialog prospect={selected} onClose={() => setSelected(null)} onRegisterSale={setSaleFor} />
+      <RegistrarVendaDialog open={!!saleFor} prospect={saleFor} onClose={() => setSaleFor(null)} />
     </>
   );
 }

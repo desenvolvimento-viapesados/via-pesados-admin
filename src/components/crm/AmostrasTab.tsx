@@ -1,18 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Loader2, MonitorPlay, ExternalLink, Copy, Rocket, Upload,
-  CheckCircle2, Eye, Trash2, KeyRound,
+  CheckCircle2, Eye, Trash2, KeyRound, Send, Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
-  useDemos, useCreateDemo, useUpdateDemo, useProspects,
+  useDemos, useCreateDemo, useUpdateDemo, useProspects, useAdvanceProspect,
   provisionCompany, uploadLogo, slugify, genPassword, type Demo,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import { LOJISTA_APP_URL } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { StatusBadge, EmptyState } from '@/components/admin/ui';
+import { StatusBadge, EmptyState, SectionHeader, Panel } from '@/components/admin/ui';
 
 const inputCls =
   'w-full h-10 px-3 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50 transition-colors';
@@ -31,6 +31,7 @@ function NewDemoDialog({
 }) {
   const { member } = useAuth();
   const create = useCreateDemo();
+  const advance = useAdvanceProspect();
   const { data: prospects = [] } = useProspects();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -72,6 +73,10 @@ function NewDemoDialog({
         notes: form.notes || null,
         created_by: member?.id ?? null,
       });
+      const prospect = prospects.find((x) => x.id === form.prospect_id);
+      if (prospect) {
+        await advance.mutateAsync({ id: prospect.id, from: prospect.stage, to: 'amostra' });
+      }
       toast.success('Amostra criada — provisione para gerar o sistema');
       setForm({ prospect_id: '', company_name: '', primary_color: '#E36C0A', notes: '' });
       handleLogo(null);
@@ -268,6 +273,18 @@ function DemoCard({ demo }: { demo: Demo }) {
             </div>
           )}
 
+          {hasCreds && (
+            <button
+              onClick={() => copyText(
+                `Sistema ${demo.company_name}\n${demo.demo_url ?? LOJISTA_APP_URL}\n\nAcesso: ${demo.admin_email}\nSenha: ${demo.admin_password}`,
+                'Acesso completo',
+              )}
+              className="h-8 rounded-xl text-[11.5px] font-medium text-foreground/50 hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Send className="h-3 w-3" /> Copiar link + acesso
+            </button>
+          )}
+
           {demo.status === 'provisionada' && (
             <button
               onClick={() => setStatus('apresentada')}
@@ -307,27 +324,73 @@ export function AmostrasTab({
   defaultProspectId?: string | null;
 }) {
   const { data: demos = [], isLoading } = useDemos();
+  const { data: prospects = [] } = useProspects();
+  const [createFor, setCreateFor] = useState<string | null>(null);
+
   const active = demos.filter((d) => d.status !== 'descartada');
 
+  /** Chegou na etapa Amostra e ainda não tem demo montada. */
+  const pending = useMemo(() => {
+    const withDemo = new Set(demos.map((d) => d.prospect_id).filter(Boolean) as string[]);
+    return prospects.filter((p) => p.stage === 'amostra' && !withDemo.has(p.id));
+  }, [prospects, demos]);
+
+  const closeDialog = () => { setCreateFor(null); onCloseNew(); };
+
   return (
-    <>
+    <div className="flex flex-col gap-7">
+      {/* Fila: quem entrou na etapa e falta montar a amostra */}
+      {pending.length > 0 && (
+        <div>
+          <SectionHeader title={`Aguardando amostra · ${pending.length}`} />
+          <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden border-violet-400/25">
+            {pending.map((p) => (
+              <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+                <span className="h-8 w-8 rounded-full bg-violet-500/15 text-violet-400 text-[12px] font-bold flex items-center justify-center shrink-0">
+                  {p.company_name.charAt(0).toUpperCase()}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold text-foreground truncate">{p.company_name}</p>
+                  <p className="text-[11px] text-foreground/40 truncate">
+                    Montar o sistema com a identidade visual deste cliente
+                  </p>
+                </div>
+                <button
+                  onClick={() => setCreateFor(p.id)}
+                  className="h-8 px-3 rounded-lg bg-violet-500/15 text-violet-400 text-[11.5px] font-semibold hover:bg-violet-500/25 transition-colors flex items-center gap-1.5 shrink-0"
+                >
+                  <Sparkles className="h-3.5 w-3.5" /> Criar amostra
+                </button>
+              </div>
+            ))}
+          </Panel>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center h-40">
           <div className="h-8 w-8 rounded-full border border-primary/30 border-t-primary animate-spin" />
         </div>
-      ) : active.length === 0 ? (
+      ) : active.length === 0 && pending.length === 0 ? (
         <EmptyState
           icon={<MonitorPlay />}
           title="Nenhuma amostra criada"
-          sub="Crie um sistema demo com a identidade do prospect antes da reunião"
+          sub="Mova um prospect para a etapa Amostra no funil — ele aparece aqui"
         />
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {active.map((d) => <DemoCard key={d.id} demo={d} />)}
+      ) : active.length > 0 ? (
+        <div>
+          {pending.length > 0 && <SectionHeader title="Amostras montadas" />}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {active.map((d) => <DemoCard key={d.id} demo={d} />)}
+          </div>
         </div>
-      )}
+      ) : null}
 
-      <NewDemoDialog open={newOpen} onClose={onCloseNew} defaultProspectId={defaultProspectId} />
-    </>
+      <NewDemoDialog
+        open={newOpen || !!createFor}
+        onClose={closeDialog}
+        defaultProspectId={createFor ?? defaultProspectId}
+      />
+    </div>
   );
 }

@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, CalendarDays, Video, Check, X, MonitorPlay } from 'lucide-react';
+import { Loader2, CalendarDays, Video, Check, X, MonitorPlay, CalendarPlus, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
-  useMeetings, useCreateMeeting, useUpdateMeeting, useProspects, useDemos, type Meeting,
+  useMeetings, useCreateMeeting, useUpdateMeeting, useProspects, useDemos,
+  useAdvanceProspect, type Meeting,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -31,6 +32,7 @@ function NewMeetingDialog({
 }) {
   const { member } = useAuth();
   const create = useCreateMeeting();
+  const advance = useAdvanceProspect();
   const { data: prospects = [] } = useProspects();
   const { data: demos = [] } = useDemos();
 
@@ -63,6 +65,9 @@ function NewMeetingDialog({
         notes: form.notes || null,
         owner_id: member?.id ?? null,
       });
+      if (prospect) {
+        await advance.mutateAsync({ id: prospect.id, from: prospect.stage, to: 'reuniao' });
+      }
       toast.success('Reunião agendada');
       setForm({ prospect_id: '', demo_id: '', title: '', date: '', time: '', kind: 'demo', meet_link: '', notes: '' });
       onClose();
@@ -117,7 +122,13 @@ function NewMeetingDialog({
   );
 }
 
-function MeetingRow({ meeting, onOpenDemo }: { meeting: Meeting; onOpenDemo: () => void }) {
+function MeetingRow({
+  meeting, onOpenDemo, demoUrl,
+}: {
+  meeting: Meeting;
+  onOpenDemo: () => void;
+  demoUrl?: string | null;
+}) {
   const update = useUpdateMeeting();
 
   const d = new Date(meeting.scheduled_at);
@@ -151,9 +162,21 @@ function MeetingRow({ meeting, onOpenDemo }: { meeting: Meeting; onOpenDemo: () 
           <span>{KIND_LABELS[meeting.kind]}</span>
           {meeting.prospect && <span>· {meeting.prospect.company_name}</span>}
           {meeting.demo && (
-            <button onClick={onOpenDemo} className="flex items-center gap-1 text-violet-400 hover:underline">
-              <MonitorPlay className="h-3 w-3" /> {meeting.demo.company_name}
-            </button>
+            demoUrl ? (
+              <a
+                href={demoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Abrir a amostra deste cliente"
+                className="flex items-center gap-1 text-violet-400 hover:underline"
+              >
+                <MonitorPlay className="h-3 w-3" /> Amostra pronta <ExternalLink className="h-2.5 w-2.5" />
+              </a>
+            ) : (
+              <button onClick={onOpenDemo} className="flex items-center gap-1 text-violet-400 hover:underline">
+                <MonitorPlay className="h-3 w-3" /> {meeting.demo.company_name}
+              </button>
+            )
           )}
         </div>
       </div>
@@ -202,6 +225,26 @@ export function ReunioesTab({
 }) {
   const navigate = useNavigate();
   const { data: meetings = [], isLoading } = useMeetings();
+  const { data: prospects = [] } = useProspects();
+  const { data: demos = [] } = useDemos();
+  const [scheduleFor, setScheduleFor] = useState<string | null>(null);
+
+  const demoUrlById = useMemo(() => {
+    const map: Record<string, string | null> = {};
+    demos.forEach((d) => { map[d.id] = d.demo_url; });
+    return map;
+  }, [demos]);
+
+  /** Chegou na etapa Reunião e ainda não tem horário marcado. */
+  const pending = useMemo(() => {
+    const withMeeting = new Set(
+      meetings
+        .filter((m) => m.status === 'agendada' || m.status === 'realizada')
+        .map((m) => m.prospect_id)
+        .filter(Boolean) as string[],
+    );
+    return prospects.filter((p) => p.stage === 'reuniao' && !withMeeting.has(p.id));
+  }, [prospects, meetings]);
 
   const groups = useMemo(() => {
     const now = new Date();
@@ -223,22 +266,61 @@ export function ReunioesTab({
   }, [meetings]);
 
   const openDemos = () => navigate('/crm?tab=amostras');
+  const rowProps = (m: Meeting) => ({
+    meeting: m,
+    onOpenDemo: openDemos,
+    demoUrl: m.demo_id ? demoUrlById[m.demo_id] : null,
+  });
+
+  const closeDialog = () => { setScheduleFor(null); onCloseNew(); };
 
   return (
     <div className="flex flex-col gap-7">
+      {/* Fila: quem entrou na etapa e falta marcar */}
+      {pending.length > 0 && (
+        <div>
+          <SectionHeader title={`Aguardando agendamento · ${pending.length}`} />
+          <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden border-primary/25">
+            {pending.map((p) => (
+              <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+                <span className="h-8 w-8 rounded-full bg-primary/15 text-primary text-[12px] font-bold flex items-center justify-center shrink-0">
+                  {p.company_name.charAt(0).toUpperCase()}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold text-foreground truncate">{p.company_name}</p>
+                  <p className="text-[11px] text-foreground/40 truncate">
+                    {p.contact_name ? `${p.contact_name} · ` : ''}entrou na etapa Reunião
+                  </p>
+                </div>
+                <button
+                  onClick={() => setScheduleFor(p.id)}
+                  className="h-8 px-3 rounded-lg bg-primary/10 text-primary text-[11.5px] font-semibold hover:bg-primary/20 transition-colors flex items-center gap-1.5 shrink-0"
+                >
+                  <CalendarPlus className="h-3.5 w-3.5" /> Agendar
+                </button>
+              </div>
+            ))}
+          </Panel>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center h-40">
           <div className="h-8 w-8 rounded-full border border-primary/30 border-t-primary animate-spin" />
         </div>
-      ) : meetings.length === 0 ? (
-        <EmptyState icon={<CalendarDays />} title="Nenhuma reunião agendada" sub="Agende a primeira apresentação para um prospect" />
+      ) : meetings.length === 0 && pending.length === 0 ? (
+        <EmptyState
+          icon={<CalendarDays />}
+          title="Nenhuma reunião agendada"
+          sub="Mova um prospect para a etapa Reunião no funil — ele aparece aqui"
+        />
       ) : (
         <>
           {groups.today.length > 0 && (
             <div>
               <SectionHeader title={`Hoje · ${groups.today.length}`} />
               <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
-                {groups.today.map((m) => <MeetingRow key={m.id} meeting={m} onOpenDemo={openDemos} />)}
+                {groups.today.map((m) => <MeetingRow key={m.id} {...rowProps(m)} />)}
               </Panel>
             </div>
           )}
@@ -247,7 +329,7 @@ export function ReunioesTab({
             <div>
               <SectionHeader title="Próximas" />
               <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
-                {groups.upcoming.map((m) => <MeetingRow key={m.id} meeting={m} onOpenDemo={openDemos} />)}
+                {groups.upcoming.map((m) => <MeetingRow key={m.id} {...rowProps(m)} />)}
               </Panel>
             </div>
           )}
@@ -256,14 +338,18 @@ export function ReunioesTab({
             <div>
               <SectionHeader title="Anteriores" />
               <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden opacity-70">
-                {groups.past.map((m) => <MeetingRow key={m.id} meeting={m} onOpenDemo={openDemos} />)}
+                {groups.past.map((m) => <MeetingRow key={m.id} {...rowProps(m)} />)}
               </Panel>
             </div>
           )}
         </>
       )}
 
-      <NewMeetingDialog open={newOpen} onClose={onCloseNew} defaultProspectId={defaultProspectId} />
+      <NewMeetingDialog
+        open={newOpen || !!scheduleFor}
+        onClose={closeDialog}
+        defaultProspectId={scheduleFor ?? defaultProspectId}
+      />
     </div>
   );
 }

@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Plus, Kanban, CalendarDays, MonitorPlay, Rocket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
-import { useProspects, useMeetings, useDemos, useClients, brl } from '@/hooks/useAdmin';
+import { useCrmCounts, brl } from '@/hooks/useAdmin';
 import { FunilTab } from '@/components/crm/FunilTab';
 import { ReunioesTab } from '@/components/crm/ReunioesTab';
 import { AmostrasTab } from '@/components/crm/AmostrasTab';
@@ -53,30 +53,7 @@ export default function Crm() {
 
   const closeNew = () => { setNewOpen(false); setDefaultProspect(null); };
 
-  const { data: prospects = [] } = useProspects();
-  const { data: meetings = [] } = useMeetings();
-  const { data: demos = [] } = useDemos();
-  const { data: clients = [] } = useClients();
-
-  const counts = useMemo(() => {
-    const activeStages = new Set(['novo', 'contato', 'reuniao', 'proposta', 'fechamento']);
-    const today = new Date();
-    const sameDay = (iso: string) => {
-      const d = new Date(iso);
-      return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
-    };
-    return {
-      funil: prospects.filter((p) => activeStages.has(p.stage)).length,
-      reunioes: meetings.filter((m) => m.status === 'agendada' && sameDay(m.scheduled_at)).length,
-      amostras: demos.filter((d) => d.status !== 'descartada' && d.status !== 'convertida').length,
-      conexao: clients.filter((c) => c.status === 'onboarding').length,
-    };
-  }, [prospects, meetings, demos, clients]);
-
-  const pipelineValue = useMemo(() => {
-    const activeStages = new Set(['novo', 'contato', 'reuniao', 'proposta', 'fechamento']);
-    return prospects.filter((p) => activeStages.has(p.stage)).reduce((s, p) => s + (p.proposal_value ?? 0), 0);
-  }, [prospects]);
+  const counts = useCrmCounts();
 
   const current = TABS.find((t) => t.key === tab)!;
 
@@ -104,7 +81,7 @@ export default function Crm() {
           <div className="ml-auto text-right z-10 hidden sm:block">
             <p className="text-[10px] text-foreground/35 tracking-wide">Pipeline ativo</p>
             <p className="text-[15px] font-bold text-foreground tabular-nums leading-tight">
-              {brl(pipelineValue)}<span className="text-[10px] font-normal text-foreground/35 ml-0.5">/mês</span>
+              {brl(counts.pipeline)}<span className="text-[10px] font-normal text-foreground/35 ml-0.5">/mês</span>
             </p>
           </div>
         </div>

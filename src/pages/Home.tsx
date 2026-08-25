@@ -1,14 +1,13 @@
-import { type ReactNode, useMemo } from 'react';
+import { type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, DollarSign, CreditCard, MessageSquare, BarChart3, ChevronRight,
-  UserCheck, LogOut, Sun, Moon, UserPlus, CalendarPlus, MonitorPlay,
-  Rocket, ExternalLink,
+  UserCheck, LogOut, Sun, Moon, ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { useProspects, useMeetings, useDemos, useClients, useTickets, brl } from '@/hooks/useAdmin';
+import { useCrmCounts, useTickets, brl } from '@/hooks/useAdmin';
 import { InitialAvatar } from '@/components/admin/ui';
 import { LOJISTA_APP_URL } from '@/integrations/supabase/client';
 import viaPesadosLogoLight from '@/assets/via-pesados-icon-color.png';
@@ -48,52 +47,14 @@ const ModuleTile = ({
   </button>
 );
 
-/* ── Ação rápida ────────────────────────────────────────────── */
-const ACCENT_CLASSES: Record<string, string> = {
-  amber:   'text-orange-600 dark:text-orange-400 border-orange-300 dark:border-orange-400/20 bg-orange-50 dark:bg-orange-400/[0.06] hover:bg-orange-100 dark:hover:bg-orange-400/[0.12] hover:border-orange-400 dark:hover:border-orange-400/40',
-  emerald: 'text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-400/20 bg-emerald-50 dark:bg-emerald-400/[0.06] hover:bg-emerald-100 dark:hover:bg-emerald-400/[0.12] hover:border-emerald-400 dark:hover:border-emerald-400/40',
-  blue:    'text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-400/20 bg-blue-50 dark:bg-blue-400/[0.06] hover:bg-blue-100 dark:hover:bg-blue-400/[0.12] hover:border-blue-400 dark:hover:border-blue-400/40',
-  violet:  'text-violet-600 dark:text-violet-400 border-violet-300 dark:border-violet-400/20 bg-violet-50 dark:bg-violet-400/[0.06] hover:bg-violet-100 dark:hover:bg-violet-400/[0.12] hover:border-violet-400 dark:hover:border-violet-400/40',
-};
-
-const QuickAction = ({
-  label, sub, icon, onClick, accent,
-}: {
-  label: string;
-  sub: string;
-  icon: ReactNode;
-  onClick: () => void;
-  accent: keyof typeof ACCENT_CLASSES;
-}) => (
-  <button
-    onClick={onClick}
-    className={cn(
-      'group relative flex flex-col items-start gap-3 p-5 rounded-2xl border transition-all duration-200 w-full text-left',
-      ACCENT_CLASSES[accent],
-      'hover:shadow-lg hover:shadow-black/20 hover:-translate-y-px',
-    )}
-  >
-    <div className="opacity-70 group-hover:opacity-100 transition-opacity [&>svg]:h-5 [&>svg]:w-5 [&>svg]:stroke-[1.5]">
-      {icon}
-    </div>
-    <div>
-      <p className="text-[13px] font-semibold leading-tight">{label}</p>
-      <p className="text-[11px] opacity-50 mt-0.5">{sub}</p>
-    </div>
-  </button>
-);
-
 /* ── Home ───────────────────────────────────────────────────── */
 export default function Home() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { member, user, signOut } = useAuth();
 
-  const { data: prospects = [] } = useProspects();
-  const { data: meetings = [] } = useMeetings();
-  const { data: demos = [] } = useDemos();
-  const { data: clients = [] } = useClients();
   const { data: tickets = [] } = useTickets();
+  const openTickets = tickets.filter((t) => t.status !== 'resolvido').length;
 
   const displayName = member?.full_name || user?.email?.split('@')[0] || 'Usuário';
   const firstName = displayName.split(' ')[0];
@@ -107,26 +68,7 @@ export default function Home() {
     return d.charAt(0).toUpperCase() + d.slice(1);
   })();
 
-  const stats = useMemo(() => {
-    const activeStages = new Set(['novo', 'contato', 'reuniao', 'proposta', 'fechamento']);
-    const active = prospects.filter((p) => activeStages.has(p.stage));
-
-    const today = new Date();
-    const sameDay = (iso: string) => {
-      const d = new Date(iso);
-      return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
-    };
-
-    return {
-      prospects: active.length,
-      pipeline: active.reduce((s, p) => s + (p.proposal_value ?? 0), 0),
-      meetingsToday: meetings.filter((m) => m.status === 'agendada' && sameDay(m.scheduled_at)).length,
-      demos: demos.filter((d) => d.status !== 'descartada' && d.status !== 'convertida').length,
-      connecting: clients.filter((c) => c.status === 'onboarding').length,
-      mrr: clients.filter((c) => c.status === 'ativo' || c.status === 'onboarding').reduce((s, c) => s + (c.mrr ?? 0), 0),
-      openTickets: tickets.filter((t) => t.status !== 'resolvido').length,
-    };
-  }, [prospects, meetings, demos, clients, tickets]);
+  const counts = useCrmCounts();
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -191,7 +133,7 @@ export default function Home() {
             <div className="text-right shrink-0">
               <p className="text-[10px] text-foreground/35 font-light tracking-wide">{formattedDate}</p>
               <p className="text-[20px] sm:text-[28px] font-bold text-foreground leading-tight tracking-tight tabular-nums">
-                {brl(stats.mrr)}
+                {brl(counts.mrr)}
                 <span className="text-[11px] sm:text-[13px] font-normal text-foreground/40 ml-1">MRR</span>
               </p>
             </div>
@@ -199,7 +141,7 @@ export default function Home() {
         </div>
 
         {/* ── Hero: Via CRM ──────────────────────────────────── */}
-        <div className="flex flex-col gap-3">
+        <div>
           <button
             onClick={() => navigate('/crm')}
             className={cn(
@@ -219,7 +161,7 @@ export default function Home() {
               <div className="text-right shrink-0 hidden sm:block">
                 <p className="text-[10px] text-foreground/35">Pipeline</p>
                 <p className="text-[17px] font-bold text-primary tabular-nums leading-tight">
-                  {brl(stats.pipeline)}<span className="text-[10px] font-normal text-foreground/35 ml-0.5">/mês</span>
+                  {brl(counts.pipeline)}<span className="text-[10px] font-normal text-foreground/35 ml-0.5">/mês</span>
                 </p>
               </div>
               <ChevronRight className="h-5 w-5 text-foreground/20 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
@@ -228,10 +170,10 @@ export default function Home() {
             {/* Resumo por etapa do CRM */}
             <div className="grid grid-cols-4 border-t border-black/[0.06] dark:border-white/[0.06] divide-x divide-black/[0.06] dark:divide-white/[0.06]">
               {[
-                { label: 'Prospects', value: stats.prospects },
-                { label: 'Reuniões hoje', value: stats.meetingsToday },
-                { label: 'Amostras', value: stats.demos },
-                { label: 'Em conexão', value: stats.connecting },
+                { label: 'Prospects', value: counts.funil },
+                { label: 'Reuniões', value: counts.reunioes },
+                { label: 'Amostras', value: counts.amostras },
+                { label: 'Em conexão', value: counts.conexao },
               ].map(({ label, value }) => (
                 <div key={label} className="px-3 py-2.5 text-center">
                   <p className="text-[17px] font-bold text-foreground tabular-nums leading-none">{value}</p>
@@ -241,37 +183,6 @@ export default function Home() {
             </div>
           </button>
 
-          {/* Ações rápidas — entram direto na aba certa do CRM */}
-          <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
-            <QuickAction
-              label="Novo Prospect"
-              sub="Empresa em negociação"
-              icon={<UserPlus />}
-              accent="amber"
-              onClick={() => navigate('/crm?tab=funil&new=1')}
-            />
-            <QuickAction
-              label="Nova Reunião"
-              sub="Agendar apresentação"
-              icon={<CalendarPlus />}
-              accent="blue"
-              onClick={() => navigate('/crm?tab=reunioes&new=1')}
-            />
-            <QuickAction
-              label="Nova Amostra"
-              sub="Demo com a marca do prospect"
-              icon={<MonitorPlay />}
-              accent="violet"
-              onClick={() => navigate('/crm?tab=amostras&new=1')}
-            />
-            <QuickAction
-              label="Nova Venda"
-              sub="Criar e conectar o sistema"
-              icon={<Rocket />}
-              accent="emerald"
-              onClick={() => navigate('/crm?tab=conexao&new=1')}
-            />
-          </div>
         </div>
 
         {/* ── Módulos ────────────────────────────────────────── */}
@@ -285,7 +196,7 @@ export default function Home() {
             <ModuleTile label="Clientes"   description="Carteira e contas"        icon={<Users />}         onClick={() => navigate('/clientes')} />
             <ModuleTile label="Pagamentos" description="Cobranças e recebimentos" icon={<CreditCard />}    onClick={() => navigate('/pagamentos')} />
             <ModuleTile label="Financeiro" description="MRR e fluxo de caixa"     icon={<DollarSign />}    onClick={() => navigate('/financeiro')} />
-            <ModuleTile label="Suporte"    description="Tickets dos clientes"     icon={<MessageSquare />} onClick={() => navigate('/tickets')} badge={stats.openTickets} />
+            <ModuleTile label="Suporte"    description="Tickets dos clientes"     icon={<MessageSquare />} onClick={() => navigate('/tickets')} badge={openTickets} />
             <ModuleTile label="Relatórios" description="Conversão e crescimento"  icon={<BarChart3 />}     onClick={() => navigate('/relatorios')} />
             <ModuleTile label="Equipe"     description="Membros e acessos"        icon={<UserCheck />}     onClick={() => navigate('/equipe')} />
           </div>

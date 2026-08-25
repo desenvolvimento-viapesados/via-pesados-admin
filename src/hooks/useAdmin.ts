@@ -1,9 +1,10 @@
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase, LOJISTA_FUNCTIONS_URL } from '@/integrations/supabase/client';
 
 /* ═══ Tipos ═══════════════════════════════════════════════════ */
 
-export type ProspectStage = 'novo' | 'contato' | 'reuniao' | 'proposta' | 'fechamento' | 'ganho' | 'perdido';
+export type ProspectStage = 'novo' | 'contato' | 'reuniao' | 'amostra' | 'proposta' | 'fechamento' | 'ganho' | 'perdido';
 
 export interface Prospect {
   id: string;
@@ -77,6 +78,10 @@ export interface Client {
   logo_url: string | null;
   admin_email: string | null;
   admin_password: string | null;
+  legal_name: string | null;
+  address: string | null;
+  legal_rep_name: string | null;
+  legal_rep_cpf: string | null;
   contract_signed_at: string | null;
   activated_at: string | null;
   canceled_at: string | null;
@@ -223,6 +228,95 @@ export const useWinProspect = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['prospects'] });
       qc.invalidateQueries({ queryKey: ['clients'] });
+    },
+  });
+};
+
+/* ═══ Esteira — o estágio do prospect governa as abas ═════════ */
+
+/** Ordem da esteira. Ações só empurram para frente, nunca para trás. */
+export const STAGE_RANK: Record<ProspectStage, number> = {
+  novo: 0, contato: 1, reuniao: 2, amostra: 3, proposta: 4, fechamento: 5, ganho: 6, perdido: 99,
+};
+
+/** Avança o prospect ao executar a ação da etapa (agendar, criar amostra...). */
+export const useAdvanceProspect = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, from, to }: { id: string; from: ProspectStage; to: ProspectStage }) => {
+      if (from === 'ganho' || from === 'perdido') return;
+      if (STAGE_RANK[from] >= STAGE_RANK[to]) return;
+      const { error } = await supabase.from('prospects').update({ stage: to }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['prospects'] }),
+  });
+};
+
+export interface SaleInput {
+  company_name: string;
+  legal_name?: string | null;
+  cnpj?: string | null;
+  address?: string | null;
+  legal_rep_name?: string | null;
+  legal_rep_cpf?: string | null;
+  contact_name?: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
+  city?: string | null;
+  state?: string | null;
+  plan?: string | null;
+  mrr?: number | null;
+  recurrence?: 'mensal' | 'anual' | 'unico';
+  owner_id?: string | null;
+}
+
+/**
+ * Registra a venda: cria o cliente, emite o contrato em rascunho,
+ * marca a etapa "Contrato gerado" e fecha o prospect como ganho.
+ */
+export const useRegisterSale = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ input, prospectId }: { input: SaleInput; prospectId?: string | null }) => {
+      const { recurrence = 'mensal', ...clientFields } = input;
+
+      const { data: client, error } = await supabase
+        .from('clients')
+        .insert({ ...clientFields, prospect_id: prospectId ?? null, mrr: input.mrr ?? 0 })
+        .select()
+        .single();
+      if (error) throw error;
+
+      const value = input.mrr ?? 0;
+      const { error: contractErr } = await supabase.from('contracts').insert({
+        client_id: client.id,
+        prospect_id: prospectId ?? null,
+        title: `Contrato de licença de uso — ${input.company_name}`,
+        value,
+        recurrence,
+        status: 'rascunho',
+      });
+      if (contractErr) throw contractErr;
+
+      // o trigger já semeou o checklist; contrato emitido = etapa cumprida
+      await supabase
+        .from('onboarding_tasks')
+        .update({ done: true, done_at: new Date().toISOString(), done_by: input.owner_id ?? null })
+        .eq('client_id', client.id)
+        .eq('task_key', 'contrato_gerado');
+
+      if (prospectId) {
+        await supabase.from('prospects').update({ stage: 'ganho' }).eq('id', prospectId);
+      }
+
+      return client as Client;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clients'] });
+      qc.invalidateQueries({ queryKey: ['prospects'] });
+      qc.invalidateQueries({ queryKey: ['contracts'] });
+      qc.invalidateQueries({ queryKey: ['onboarding-progress'] });
     },
   });
 };
@@ -630,6 +724,51 @@ export const uploadLogo = async (file: File, prefix: string): Promise<string> =>
   if (error) throw error;
   const { data } = supabase.storage.from('logos').getPublicUrl(path);
   return data.publicUrl;
+};
+
+/* ═══ Contadores da esteira ═══════════════════════════════════ */
+
+/**
+ * O que está esperando ação em cada etapa do CRM.
+ * Home e CRM leem daqui para nunca mostrarem números diferentes.
+ */
+export const useCrmCounts = () => {
+  const { data: prospects = [] } = useProspects();
+  const { data: meetings = [] } = useMeetings();
+  const { data: demos = [] } = useDemos();
+  const { data: clients = [] } = useClients();
+
+  return useMemo(() => {
+    const activeStages = new Set<ProspectStage>(['novo', 'contato', 'reuniao', 'amostra', 'proposta', 'fechamento']);
+    const active = prospects.filter((p) => activeStages.has(p.stage));
+
+    const scheduled = new Set(
+      meetings.filter((m) => m.status === 'agendada' || m.status === 'realizada')
+        .map((m) => m.prospect_id).filter(Boolean) as string[],
+    );
+    const withDemo = new Set(demos.map((d) => d.prospect_id).filter(Boolean) as string[]);
+    const converted = new Set(clients.map((c) => c.prospect_id).filter(Boolean) as string[]);
+
+    const today = new Date();
+    const sameDay = (iso: string) => {
+      const d = new Date(iso);
+      return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+    };
+
+    return {
+      funil: active.length,
+      reunioes:
+        prospects.filter((p) => p.stage === 'reuniao' && !scheduled.has(p.id)).length +
+        meetings.filter((m) => m.status === 'agendada' && sameDay(m.scheduled_at)).length,
+      amostras: prospects.filter((p) => p.stage === 'amostra' && !withDemo.has(p.id)).length,
+      conexao:
+        prospects.filter((p) => p.stage === 'fechamento' && !converted.has(p.id)).length +
+        clients.filter((c) => c.status === 'onboarding').length,
+      pipeline: active.reduce((s, p) => s + (p.proposal_value ?? 0), 0),
+      mrr: clients.filter((c) => c.status === 'ativo' || c.status === 'onboarding')
+        .reduce((s, c) => s + (c.mrr ?? 0), 0),
+    };
+  }, [prospects, meetings, demos, clients]);
 };
 
 /* ═══ Utilidades ══════════════════════════════════════════════ */

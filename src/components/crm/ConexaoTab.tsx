@@ -1,23 +1,35 @@
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Rocket, ChevronRight, CheckCircle2, Globe } from 'lucide-react';
-import { useClients, useOnboardingProgress, brl } from '@/hooks/useAdmin';
+import { Rocket, ChevronRight, CheckCircle2, Globe, FileText } from 'lucide-react';
+import { useClients, useOnboardingProgress, useProspects, brl, type Prospect } from '@/hooks/useAdmin';
 import { SectionHeader, StatusBadge, EmptyState, Panel, InitialAvatar } from '@/components/admin/ui';
-import { NewClientDialog } from './NewClientDialog';
+import { RegistrarVendaDialog } from './RegistrarVendaDialog';
 
 /**
- * Conexão — da venda fechada ao sistema no ar.
- * Lista os clientes em onboarding com o progresso do checklist.
+ * Conexão — o fim da esteira: fecha a venda, emite o contrato
+ * e acompanha o sistema do cliente até entrar no ar.
  */
 export function ConexaoTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew: () => void }) {
   const navigate = useNavigate();
   const { data: clients = [], isLoading } = useClients();
+  const { data: prospects = [] } = useProspects();
   const { data: progress = {} } = useOnboardingProgress();
+  const [saleFor, setSaleFor] = useState<Prospect | null>(null);
+
+  /** Chegaram na etapa Fechamento e ainda não viraram cliente. */
+  const closing = useMemo(() => {
+    const converted = new Set(clients.map((c) => c.prospect_id).filter(Boolean) as string[]);
+    return prospects.filter((p) => p.stage === 'fechamento' && !converted.has(p.id));
+  }, [prospects, clients]);
 
   const connecting = clients.filter((c) => c.status === 'onboarding');
   const recentlyLive = clients
     .filter((c) => c.status === 'ativo' && c.activated_at)
     .sort((a, b) => (b.activated_at ?? '').localeCompare(a.activated_at ?? ''))
     .slice(0, 5);
+
+  const closeDialog = () => { setSaleFor(null); onCloseNew(); };
+  const nothing = closing.length === 0 && connecting.length === 0 && recentlyLive.length === 0;
 
   if (isLoading) {
     return (
@@ -29,17 +41,45 @@ export function ConexaoTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseN
 
   return (
     <div className="flex flex-col gap-7">
-      {connecting.length === 0 && recentlyLive.length === 0 ? (
+      {/* Fila: prontos para fechar */}
+      {closing.length > 0 && (
+        <div>
+          <SectionHeader title={`Prontos para fechar · ${closing.length}`} />
+          <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden border-emerald-400/25">
+            {closing.map((p) => (
+              <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+                <span className="h-8 w-8 rounded-full bg-emerald-500/15 text-emerald-500 text-[12px] font-bold flex items-center justify-center shrink-0">
+                  {p.company_name.charAt(0).toUpperCase()}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold text-foreground truncate">{p.company_name}</p>
+                  <p className="text-[11px] text-foreground/40 truncate">
+                    {p.proposal_value ? `${brl(p.proposal_value)}/mês · ` : ''}em negociação final
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSaleFor(p)}
+                  className="h-8 px-3 rounded-lg bg-emerald-500/15 text-emerald-500 text-[11.5px] font-semibold hover:bg-emerald-500/25 transition-colors flex items-center gap-1.5 shrink-0"
+                >
+                  <FileText className="h-3.5 w-3.5" /> Registrar venda
+                </button>
+              </div>
+            ))}
+          </Panel>
+        </div>
+      )}
+
+      {nothing ? (
         <EmptyState
           icon={<Rocket />}
           title="Nenhuma venda em conexão"
-          sub="Feche uma venda no funil ou registre uma nova venda aqui"
+          sub="Mova um prospect para Fechamento no funil — ele aparece aqui para registrar"
         />
       ) : (
         <>
           {connecting.length > 0 && (
             <div>
-              <SectionHeader title={`Em conexão · ${connecting.length}`} />
+              <SectionHeader title={`Configurando o sistema · ${connecting.length}`} />
               <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
                 {connecting.map((c) => {
                   const prog = progress[c.id];
@@ -106,7 +146,7 @@ export function ConexaoTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseN
         </>
       )}
 
-      <NewClientDialog open={newOpen} onClose={onCloseNew} />
+      <RegistrarVendaDialog open={newOpen || !!saleFor} prospect={saleFor} onClose={closeDialog} />
     </div>
   );
 }
