@@ -454,6 +454,7 @@ export const updateCompanyBranding = async (input: {
   hero_subtitle?: string;
   hero_title?: string;
   hero_description?: string;
+  primary_color?: string;
   domains?: string[];
 }): Promise<void> => {
   const { data: { session } } = await supabase.auth.getSession();
