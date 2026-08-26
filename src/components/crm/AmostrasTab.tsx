@@ -13,7 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { demoUrl } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StatusBadge, EmptyState, SectionHeader, Panel } from '@/components/admin/ui';
-import { ImageField, IMG_FIELDS, IMG_KEYS, emptyImgs, type ImgKey } from './BrandingFields';
+import { ImageField, IMG_FIELDS, IMG_KEYS, ABOUT_IMG_FIELD, emptyImgs, type ImgKey } from './BrandingFields';
 
 const inputCls =
   'w-full h-10 px-3 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50 transition-colors';
@@ -29,9 +29,23 @@ const HERO_FIELDS: { key: 'hero_subtitle' | 'hero_title' | 'hero_description'; l
   { key: 'hero_description', label: 'Descrição', placeholder: 'Cada negociação é conduzida com transparência, agilidade e o cuidado de quem realmente entende do que está vendendo.', multiline: true },
 ];
 
+type AboutKey = 'about_title' | 'about_text' | 'address' | 'city' | 'state' | 'business_hours' | 'maps_url';
+
+const ABOUT_FIELDS: { key: AboutKey; label: string; placeholder: string; multiline?: boolean }[] = [
+  { key: 'about_title',    label: 'Título',      placeholder: 'Quem somos' },
+  { key: 'about_text',     label: 'Apresentação', placeholder: 'Onde fica a loja e como a empresa trabalha. Uma linha em branco separa parágrafos.', multiline: true },
+  { key: 'address',        label: 'Endereço',    placeholder: 'Av. das Nações, 1200 — Bairro Industrial' },
+  { key: 'city',           label: 'Cidade',      placeholder: 'Governador Valadares' },
+  { key: 'state',          label: 'UF',          placeholder: 'MG' },
+  { key: 'maps_url',       label: 'Google Maps', placeholder: 'https://maps.app.goo.gl/...' },
+  { key: 'business_hours', label: 'Atendimento', placeholder: 'Segunda a sexta, 8h às 18h', multiline: true },
+];
+
 const emptyForm = {
   prospect_id: '', company_name: '', contact_name: '', primary_color: '#E36C0A', notes: '',
   hero_subtitle: '', hero_title: '', hero_description: '',
+  about_title: '', about_text: '', address: '', city: '', state: '',
+  business_hours: '', maps_url: '',
 };
 
 /** Cria ou edita uma amostra. Editando, o que já estiver no ar é atualizado junto. */
@@ -68,6 +82,13 @@ function DemoDialog({
         hero_subtitle: demo.hero_subtitle ?? '',
         hero_title: demo.hero_title ?? '',
         hero_description: demo.hero_description ?? '',
+        about_title: demo.about_title ?? '',
+        about_text: demo.about_text ?? '',
+        address: demo.address ?? '',
+        city: demo.city ?? '',
+        state: demo.state ?? '',
+        business_hours: demo.business_hours ?? '',
+        maps_url: demo.maps_url ?? '',
       });
       setPreviews({
         site_logo: demo.site_logo_url,
@@ -75,6 +96,7 @@ function DemoDialog({
         brand_icon: demo.brand_icon_url,
         banner: demo.banner_url,
         favicon: demo.favicon_url,
+        about_photo: demo.about_photo_url,
       });
       setFiles(emptyImgs<File | null>(null));
       return;
@@ -126,6 +148,13 @@ function DemoDialog({
         hero_subtitle: form.hero_subtitle.trim() || null,
         hero_title: form.hero_title.trim() || null,
         hero_description: form.hero_description.trim() || null,
+        about_title: form.about_title.trim() || null,
+        about_text: form.about_text.trim() || null,
+        address: form.address.trim() || null,
+        city: form.city.trim() || null,
+        state: form.state.trim() || null,
+        business_hours: form.business_hours.trim() || null,
+        maps_url: form.maps_url.trim() || null,
       };
 
       if (editando && demo) {
@@ -137,6 +166,7 @@ function DemoDialog({
           ...(urls.brand_icon ? { brand_icon_url: urls.brand_icon } : {}),
           ...(urls.banner     ? { banner_url: urls.banner }         : {}),
           ...(urls.favicon    ? { favicon_url: urls.favicon }       : {}),
+          ...(urls.about_photo ? { about_photo_url: urls.about_photo } : {}),
         });
 
         // Já provisionada: o sistema no ar acompanha a edição.
@@ -154,6 +184,14 @@ function DemoDialog({
             brand_icon_url: urls.brand_icon,
             banner_url: urls.banner,
             favicon_url: urls.favicon,
+            about_photo_url: urls.about_photo,
+            about_title: campos.about_title ?? undefined,
+            about_text: campos.about_text ?? undefined,
+            address: campos.address ?? undefined,
+            city: campos.city ?? undefined,
+            state: campos.state ?? undefined,
+            business_hours: campos.business_hours ?? undefined,
+            maps_url: campos.maps_url ?? undefined,
           });
         }
         toast.success(demo.lojista_company_id ? 'Amostra atualizada e aplicada no sistema' : 'Amostra atualizada');
@@ -167,6 +205,7 @@ function DemoDialog({
           brand_icon_url: urls.brand_icon ?? null,
           banner_url: urls.banner ?? null,
           favicon_url: urls.favicon ?? null,
+          about_photo_url: urls.about_photo ?? null,
           created_by: member?.id ?? null,
         });
 
@@ -274,7 +313,7 @@ function DemoDialog({
               </label>
             </div>
 
-            {IMG_FIELDS.map(({ key, label, hint, ratio }) => (
+            {IMG_FIELDS.filter((f) => f.key !== 'about_photo').map(({ key, label, hint, ratio }) => (
               <ImageField
                 key={key}
                 label={label}
@@ -285,6 +324,46 @@ function DemoDialog({
                 onClear={() => setImage(key, null)}
               />
             ))}
+          </div>
+
+          {/* Quem somos — a loja física na página pública */}
+          <div className="pt-2 space-y-2.5 border-t border-black/[0.06] dark:border-white/[0.06]">
+            <p className="text-[10.5px] font-semibold tracking-widest uppercase text-foreground/30">
+              Quem somos
+            </p>
+
+            <ImageField
+              label={ABOUT_IMG_FIELD.label}
+              hint={ABOUT_IMG_FIELD.hint}
+              ratio={ABOUT_IMG_FIELD.ratio}
+              preview={previews.about_photo}
+              onPick={(f) => setImage('about_photo', f)}
+              onClear={() => setImage('about_photo', null)}
+            />
+
+            {ABOUT_FIELDS.map(({ key, label, placeholder, multiline }) => (
+              <div key={key}>
+                <p className="text-[11px] text-foreground/50 mb-1">{label}</p>
+                {multiline ? (
+                  <textarea
+                    className={cn(inputCls, 'h-16 py-2 resize-none')}
+                    placeholder={placeholder}
+                    value={form[key]}
+                    onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                  />
+                ) : (
+                  <input
+                    className={inputCls}
+                    placeholder={placeholder}
+                    value={form[key]}
+                    onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                  />
+                )}
+              </div>
+            ))}
+            <p className="text-[10px] text-foreground/30 leading-snug">
+              Vazio, a seção some do site — nada de moldura vazia na reunião.
+            </p>
           </div>
 
           <textarea
@@ -334,6 +413,14 @@ function DemoCard({ demo, onEdit }: { demo: Demo; onEdit: (d: Demo) => void }) {
         hero_subtitle: demo.hero_subtitle ?? undefined,
         hero_title: demo.hero_title ?? undefined,
         hero_description: demo.hero_description ?? undefined,
+        about_photo_url: demo.about_photo_url ?? undefined,
+        about_title: demo.about_title ?? undefined,
+        about_text: demo.about_text ?? undefined,
+        address: demo.address ?? undefined,
+        city: demo.city ?? undefined,
+        state: demo.state ?? undefined,
+        business_hours: demo.business_hours ?? undefined,
+        maps_url: demo.maps_url ?? undefined,
       });
 
       // O slug pode ter mudado: repetir uma amostra da mesma empresa gera

@@ -41,6 +41,15 @@ export interface Demo {
   hero_subtitle: string | null;
   hero_title: string | null;
   hero_description: string | null;
+  /** Quem somos: a loja física do cliente na página pública. */
+  about_photo_url: string | null;
+  about_title: string | null;
+  about_text: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  business_hours: string | null;
+  maps_url: string | null;
   status: 'rascunho' | 'provisionada' | 'apresentada' | 'convertida' | 'descartada';
   lojista_company_id: string | null;
   admin_email: string | null;
@@ -424,6 +433,14 @@ interface ProvisionInput {
   primary_color?: string;
   /** Nome de quem recebe — a amostra abre com "Bem-vindo, <nome>". */
   contact_name?: string;
+  about_photo_url?: string;
+  about_title?: string;
+  about_text?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  business_hours?: string;
+  maps_url?: string;
 }
 
 export const provisionCompany = async (
@@ -457,6 +474,14 @@ export const updateCompanyBranding = async (input: {
   hero_title?: string;
   hero_description?: string;
   primary_color?: string;
+  about_photo_url?: string;
+  about_title?: string;
+  about_text?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  business_hours?: string;
+  maps_url?: string;
   domains?: string[];
 }): Promise<void> => {
   const { data: { session } } = await supabase.auth.getSession();

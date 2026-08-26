@@ -2,9 +2,9 @@ import { useRef } from 'react';
 import { Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type ImgKey = 'site_logo' | 'logo' | 'brand_icon' | 'banner' | 'favicon';
+export type ImgKey = 'site_logo' | 'logo' | 'brand_icon' | 'banner' | 'favicon' | 'about_photo';
 
-export const IMG_KEYS: ImgKey[] = ['site_logo', 'logo', 'brand_icon', 'banner', 'favicon'];
+export const IMG_KEYS: ImgKey[] = ['site_logo', 'logo', 'brand_icon', 'banner', 'favicon', 'about_photo'];
 
 /** Mapa vazio com todas as chaves — evita esquecer alguma ao adicionar peças. */
 export const emptyImgs = <T,>(v: T): Record<ImgKey, T> =>
@@ -18,6 +18,14 @@ export const IMG_FIELDS: { key: ImgKey; label: string; hint: string; ratio: stri
   { key: 'banner',     label: 'Banner',         hint: 'JPG ou PNG · 2400×800px (3:1) · a faixa é larga e baixa — um 16:9 tem metade cortada. Assunto no centro, longe das bordas', ratio: 'aspect-[3/1]' },
   { key: 'favicon',    label: 'Favicon',        hint: 'PNG transparente · 512×512px · só o símbolo, sem o nome escrito', ratio: 'aspect-square' },
 ];
+
+/** A foto da loja é conteúdo, não marca — por isso fora de IMG_FIELDS. */
+export const ABOUT_IMG_FIELD = {
+  key: 'about_photo' as ImgKey,
+  label: 'Foto da loja',
+  hint: 'JPG ou PNG · 1600×1200px (4:3) · a fachada ou o pátio. Abre a página Quem Somos',
+  ratio: 'aspect-[4/3]',
+};
 
 /** Campo de imagem com prévia na proporção real de uso. */
 export function ImageField({
