@@ -416,7 +416,9 @@ interface ProvisionInput {
   contact_name?: string;
 }
 
-export const provisionCompany = async (input: ProvisionInput): Promise<{ company_id: string }> => {
+export const provisionCompany = async (
+  input: ProvisionInput,
+): Promise<{ company_id: string; company_slug: string; admin_email: string }> => {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error('Sessão expirada');
   const res = await fetch(`${LOJISTA_FUNCTIONS_URL}/admin-provision`, {
@@ -453,6 +455,22 @@ export const updateCompanyBranding = async (input: {
   });
   const data = await res.json();
   if (!res.ok || data.error) throw new Error(data.error || 'Erro ao atualizar identidade');
+};
+
+/** Tira do ar a empresa provisionada — a amostra descartada para de abrir. */
+export const deactivateCompany = async (company_id: string): Promise<void> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sessão expirada');
+  const res = await fetch(`${LOJISTA_FUNCTIONS_URL}/admin-provision`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ action: 'deactivate_company', company_id }),
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error || 'Erro ao desativar empresa');
 };
 
 /* ═══ Clientes ════════════════════════════════════════════════ */

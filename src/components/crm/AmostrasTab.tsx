@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   useDemos, useCreateDemo, useUpdateDemo, useProspects, useAdvanceProspect,
-  provisionCompany, uploadLogo, slugify, genPassword, type Demo,
+  provisionCompany, deactivateCompany, uploadLogo, slugify, genPassword, type Demo,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import { demoUrl } from '@/integrations/supabase/client';
@@ -212,7 +212,7 @@ function DemoCard({ demo }: { demo: Demo }) {
       const slug = `demo-${demo.slug}`;
       const email = `${slug}@viapesados.com.br`;
       const password = genPassword();
-      const { company_id } = await provisionCompany({
+      const provisioned = await provisionCompany({
         company_name: demo.company_name,
         company_slug: slug,
         admin_email: email,
@@ -224,13 +224,18 @@ function DemoCard({ demo }: { demo: Demo }) {
         favicon_url: demo.favicon_url ?? undefined,
         contact_name: demo.contact_name ?? undefined,
       });
+      // O slug pode ter mudado: repetir uma amostra da mesma empresa gera
+      // "demo-x-2". A URL precisa acompanhar, senão aponta para a antiga.
+      const usedSlug = provisioned.company_slug.replace(/^demo-/, '');
+
       await update.mutateAsync({
         id: demo.id,
         status: 'provisionada',
-        lojista_company_id: company_id,
-        admin_email: email,
+        slug: usedSlug,
+        lojista_company_id: provisioned.company_id,
+        admin_email: provisioned.admin_email,
         admin_password: password,
-        demo_url: demoUrl(demo.slug),
+        demo_url: demoUrl(usedSlug),
       });
       toast.success('Sistema de demonstração criado!');
       setShowCreds(true);
@@ -243,10 +248,15 @@ function DemoCard({ demo }: { demo: Demo }) {
 
   const setStatus = async (status: Demo['status']) => {
     try {
+      // Descartar precisa tirar a empresa do ar: senão o link continua
+      // funcionando e o slug segue ocupado.
+      if (status === 'descartada' && demo.lojista_company_id) {
+        await deactivateCompany(demo.lojista_company_id);
+      }
       await update.mutateAsync({ id: demo.id, status });
-      toast.success('Status atualizado');
-    } catch {
-      toast.error('Erro ao atualizar');
+      toast.success(status === 'descartada' ? 'Amostra descartada e tirada do ar' : 'Status atualizado');
+    } catch (e) {
+      toast.error((e as Error).message || 'Erro ao atualizar');
     }
   };
 
