@@ -2,13 +2,18 @@ import { useRef } from 'react';
 import { Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type ImgKey = 'logo' | 'brand_icon' | 'banner' | 'favicon';
+export type ImgKey = 'site_logo' | 'logo' | 'brand_icon' | 'banner' | 'favicon';
 
-export const IMG_KEYS: ImgKey[] = ['logo', 'brand_icon', 'banner', 'favicon'];
+export const IMG_KEYS: ImgKey[] = ['site_logo', 'logo', 'brand_icon', 'banner', 'favicon'];
+
+/** Mapa vazio com todas as chaves — evita esquecer alguma ao adicionar peças. */
+export const emptyImgs = <T,>(v: T): Record<ImgKey, T> =>
+  Object.fromEntries(IMG_KEYS.map((k) => [k, v])) as Record<ImgKey, T>;
 
 /** Cada peça da identidade, com o tamanho recomendado sempre à vista. */
 export const IMG_FIELDS: { key: ImgKey; label: string; hint: string; ratio: string }[] = [
-  { key: 'logo',       label: 'Logo',           hint: 'PNG com fundo transparente · 600×200px (ou 200×200 se for quadrada)', ratio: 'aspect-[3/1]' },
+  { key: 'site_logo',  label: 'Logo do site',    hint: 'PNG transparente · 600×200px · o site tem fundo claro, então use a versão escura/colorida da marca', ratio: 'aspect-[3/1]' },
+  { key: 'logo',       label: 'Logo do sistema', hint: 'PNG transparente · 600×200px · o sistema tem fundo escuro, então use a versão clara/branca da marca', ratio: 'aspect-[3/1]' },
   { key: 'brand_icon', label: 'Ícone de marca', hint: 'PNG transparente · 256×256px · só o símbolo, sem o texto. É o que aparece à esquerda em toda seção do sistema — sem ele entra o símbolo padrão', ratio: 'aspect-square' },
   { key: 'banner',     label: 'Banner',         hint: 'JPG ou PNG · 2400×800px (3:1) · a faixa é larga e baixa — um 16:9 tem metade cortada. Assunto no centro, longe das bordas', ratio: 'aspect-[3/1]' },
   { key: 'favicon',    label: 'Favicon',        hint: 'PNG transparente · 512×512px · só o símbolo, sem o nome escrito', ratio: 'aspect-square' },

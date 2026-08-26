@@ -18,7 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { LOJISTA_APP_URL } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SectionHeader, StatusBadge, Panel, InitialAvatar } from '@/components/admin/ui';
-import { ImageField, IMG_FIELDS, IMG_KEYS, type ImgKey } from '@/components/crm/BrandingFields';
+import { ImageField, IMG_FIELDS, IMG_KEYS, emptyImgs, type ImgKey } from '@/components/crm/BrandingFields';
 
 const inputCls =
   'w-full h-10 px-3 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50 transition-colors';
@@ -304,9 +304,10 @@ function BrandingDialog({
   onClose: () => void;
 }) {
   const update = useUpdateClient();
-  const [files, setFiles] = useState<Record<ImgKey, File | null>>({ logo: null, brand_icon: null, banner: null, favicon: null });
+  const [files, setFiles] = useState<Record<ImgKey, File | null>>(emptyImgs<File | null>(null));
   const [previews, setPreviews] = useState<Record<ImgKey, string | null>>({
-    logo: client.logo_url, brand_icon: null, banner: null, favicon: null,
+    ...emptyImgs<string | null>(null),
+    logo: client.logo_url,
   });
   const [saving, setSaving] = useState(false);
 
@@ -334,6 +335,7 @@ function BrandingDialog({
       await updateCompanyBranding({
         company_id: client.lojista_company_id,
         logo_url: urls.logo,
+        site_logo_url: urls.site_logo,
         brand_icon_url: urls.brand_icon,
         banner_url: urls.banner,
         favicon_url: urls.favicon,
