@@ -420,6 +420,8 @@ interface ProvisionInput {
   hero_subtitle?: string;
   hero_title?: string;
   hero_description?: string;
+  /** Vira a cor primária do site e do sistema do cliente. */
+  primary_color?: string;
   /** Nome de quem recebe — a amostra abre com "Bem-vindo, <nome>". */
   contact_name?: string;
 }
