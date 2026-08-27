@@ -17,6 +17,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { LOJISTA_APP_URL } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { UsoDoSistema } from '@/components/admin/UsoDoSistema';
 import { SectionHeader, StatusBadge, Panel, InitialAvatar } from '@/components/admin/ui';
 import { ImageField, IMG_FIELDS, IMG_KEYS, emptyImgs, type ImgKey } from '@/components/crm/BrandingFields';
 
@@ -632,6 +633,14 @@ export default function ClienteDetalhe() {
                   </div>
                 )}
               </Panel>
+            </div>
+          )}
+
+          {/* Uso do sistema — agregado, com registro de acesso */}
+          {client.lojista_company_id && (
+            <div>
+              <SectionHeader title="Uso do sistema" right={<span className="text-[11px] text-foreground/35">agregado · LGPD</span>} />
+              <UsoDoSistema client={client} />
             </div>
           )}
 

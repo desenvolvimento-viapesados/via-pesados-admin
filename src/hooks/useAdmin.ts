@@ -865,3 +865,180 @@ export const genPassword = () => {
   for (let i = 0; i < 10; i++) out += chars[Math.floor(Math.random() * chars.length)];
   return out;
 };
+
+/* ══ Financeiro ════════════════════════════════════════════════════
+   Mesma espinha do módulo do sistema-lojista: competência separada de
+   caixa, para o DRE não misturar quando o dinheiro entrou com o mês a
+   que o resultado pertence. */
+
+export interface FinCategory {
+  id: string;
+  name: string;
+  type: 'receita' | 'despesa';
+  color: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export type FinStatus = 'pago' | 'pendente' | 'atrasado' | 'cancelado';
+
+export interface FinTransaction {
+  id: string;
+  type: 'receita' | 'despesa';
+  status: FinStatus;
+  category_id: string | null;
+  client_id: string | null;
+  description: string;
+  amount: number;
+  due_date: string;
+  payment_date: string | null;
+  competence_date: string;
+  recurrence: 'unica' | 'mensal' | 'trimestral' | 'anual' | 'parcelada';
+  installment_number: number | null;
+  total_installments: number | null;
+  installment_group_id: string | null;
+  notes: string | null;
+  attachment_url: string | null;
+  created_by: string | null;
+  created_at: string;
+  category?: { id: string; name: string; color: string; type: string } | null;
+  client?: { id: string; company_name: string } | null;
+}
+
+export const useFinCategories = () =>
+  useQuery({
+    queryKey: ['fin-categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('financial_categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('type')
+        .order('name');
+      if (error) throw error;
+      return data as FinCategory[];
+    },
+  });
+
+export const useFinTransactions = () =>
+  useQuery({
+    queryKey: ['fin-transactions'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('financial_transactions')
+        .select('*, category:financial_categories(id, name, color, type), client:clients(id, company_name)')
+        .order('competence_date', { ascending: false });
+      if (error) throw error;
+      return data as FinTransaction[];
+    },
+  });
+
+export const useCreateFinTransaction = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: Partial<FinTransaction>[]) => {
+      const limpo = rows.map(({ category: _c, client: _cl, ...row }) => row);
+      const { error } = await supabase.from('financial_transactions').insert(limpo);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['fin-transactions'] }),
+  });
+};
+
+export const useUpdateFinTransaction = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: Partial<FinTransaction> & { id: string }) => {
+      const { category: _c, client: _cl, ...row } = patch as FinTransaction;
+      const { error } = await supabase.from('financial_transactions').update(row).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['fin-transactions'] }),
+  });
+};
+
+export const useDeleteFinTransaction = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('financial_transactions').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['fin-transactions'] }),
+  });
+};
+
+export const useCreateFinCategory = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { name: string; type: 'receita' | 'despesa'; color: string }) => {
+      const { data, error } = await supabase.from('financial_categories').insert(input).select().single();
+      if (error) throw error;
+      return data as FinCategory;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['fin-categories'] }),
+  });
+};
+
+/* ══ Uso do sistema do cliente (LGPD) ══════════════════════════════
+   Só agregados. A edge function valida o membro da equipe e registra o
+   acesso antes de devolver qualquer número. */
+
+export interface ClientUsage {
+  company_id: string;
+  gerado_em: string;
+  estoque: { total: number; disponiveis: number; vendidos: number; valor_tabela: number };
+  por_tipo: { tipo: string; total: number }[];
+  por_marca: { marca: string; total: number }[];
+  por_carroceria: { carroceria: string; total: number }[];
+  site: { publicados: number; total: number };
+  vendas: { total: number; faturamento: number; lucro: number; ticket_medio: number; ultima_venda: string | null };
+  vendas_por_mes: { mes: string; total: number; faturamento: number; lucro: number }[];
+  vendas_por_tipo: { tipo: string; total: number; faturamento: number }[];
+  uso: { usuarios: number; contatos: number; leads: number; conversas: number; instancias_wa: number };
+  atividade: { ultimo_produto_em: string | null; ultima_venda_em: string | null; ultima_conversa_em: string | null };
+}
+
+export const fetchClientUsage = async (input: {
+  company_id: string;
+  client_id?: string;
+  client_name?: string;
+  purpose?: string;
+}): Promise<ClientUsage> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sessão expirada');
+  const res = await fetch(`${LOJISTA_FUNCTIONS_URL}/client-usage-metrics`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify(input),
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error || 'Erro ao consultar uso do cliente');
+  return data.metrics as ClientUsage;
+};
+
+export interface AccessLogEntry {
+  id: string;
+  client_id: string | null;
+  client_name: string;
+  member_email: string;
+  purpose: string;
+  scope: string;
+  created_at: string;
+}
+
+export const useAccessLog = (clientId?: string) =>
+  useQuery({
+    queryKey: ['access-log', clientId ?? 'all'],
+    queryFn: async () => {
+      let q = supabase
+        .from('client_data_access_log')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (clientId) q = q.eq('client_id', clientId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data as AccessLogEntry[];
+    },
+  });
