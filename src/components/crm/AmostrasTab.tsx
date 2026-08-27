@@ -7,7 +7,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   useDemos, useCreateDemo, useUpdateDemo, useProspects, useAdvanceProspect,
-  provisionCompany, deactivateCompany, updateCompanyBranding, uploadLogo, slugify, genPassword, type Demo,
+  provisionCompany, deactivateCompany, updateCompanyBranding, uploadLogo, slugify, genPassword,
+  saveSystemCredential, type Demo,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import { demoUrl } from '@/integrations/supabase/client';
@@ -433,9 +434,10 @@ function DemoCard({ demo, onEdit }: { demo: Demo; onEdit: (d: Demo) => void }) {
         slug: usedSlug,
         lojista_company_id: provisioned.company_id,
         admin_email: provisioned.admin_email,
-        admin_password: password,
         demo_url: demoUrl(usedSlug),
       });
+      // A senha fica em system_credentials, fora do alcance de quem não é admin.
+      await saveSystemCredential({ demo_id: demo.id, email: provisioned.admin_email, password });
       toast.success('Sistema de demonstração criado!');
     } catch (e) {
       toast.error((e as Error).message || 'Erro ao provisionar');

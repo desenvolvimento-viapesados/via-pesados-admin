@@ -28,7 +28,7 @@ const Loader = () => (
 );
 
 const Gate = () => {
-  const { user, loading } = useAuth();
+  const { user, member, loading, signOut } = useAuth();
 
   if (loading) {
     return (
@@ -39,6 +39,30 @@ const Gate = () => {
   }
 
   if (!user) return <Login />;
+
+  // Autenticado no projeto não é o mesmo que ser da equipe: o cadastro é
+  // aberto, então quem se registrar sozinho chega até aqui sem convite.
+  // Membro desativado cai no mesmo lugar — é isso que faz o botão
+  // "Desativar" da Equipe valer alguma coisa.
+  if (!member || !member.is_active) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <div className="max-w-sm text-center">
+          <p className="text-[15px] font-semibold text-foreground">Acesso não autorizado</p>
+          <p className="text-[12.5px] text-foreground/45 mt-2 leading-relaxed">
+            Esta conta não pertence à equipe Via Pesados, ou o acesso dela foi desativado.
+            Fale com um administrador.
+          </p>
+          <button
+            onClick={signOut}
+            className="mt-5 h-9 px-4 rounded-xl bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 transition-all"
+          >
+            Sair
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Layout>

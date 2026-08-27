@@ -1042,3 +1042,49 @@ export const useAccessLog = (clientId?: string) =>
       return data as AccessLogEntry[];
     },
   });
+
+/* ══ Credenciais do sistema do cliente ═════════════════════════════
+   Saíram de clients/demos: senha em texto puro na mesma linha que toda
+   a equipe lê era passivo desnecessário. Aqui só admin alcança — para
+   vendedor e suporte a consulta simplesmente volta vazia. */
+
+export interface SystemCredential {
+  id: string;
+  client_id: string | null;
+  demo_id: string | null;
+  email: string;
+  password: string;
+  created_at: string;
+}
+
+export const useSystemCredential = (opts: { clientId?: string; demoId?: string; enabled?: boolean }) =>
+  useQuery({
+    queryKey: ['system-credential', opts.clientId ?? opts.demoId ?? 'none'],
+    enabled: Boolean(opts.enabled && (opts.clientId || opts.demoId)),
+    queryFn: async () => {
+      let q = supabase.from('system_credentials').select('*');
+      q = opts.clientId ? q.eq('client_id', opts.clientId) : q.eq('demo_id', opts.demoId!);
+      const { data, error } = await q.maybeSingle();
+      if (error) throw error;
+      return (data as SystemCredential) ?? null;
+    },
+  });
+
+export const saveSystemCredential = async (input: {
+  client_id?: string;
+  demo_id?: string;
+  email: string;
+  password: string;
+}) => {
+  const { error } = await supabase.from('system_credentials').upsert(
+    {
+      client_id: input.client_id ?? null,
+      demo_id: input.demo_id ?? null,
+      email: input.email,
+      password: input.password,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: input.client_id ? 'client_id' : 'demo_id' },
+  );
+  if (error) throw error;
+};

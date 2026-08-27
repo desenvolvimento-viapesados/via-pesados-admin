@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { LOJISTA_APP_URL } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { UsoDoSistema } from '@/components/admin/UsoDoSistema';
+import { useSystemCredential, saveSystemCredential } from '@/hooks/useAdmin';
 import { SectionHeader, StatusBadge, Panel, InitialAvatar } from '@/components/admin/ui';
 import { ImageField, IMG_FIELDS, IMG_KEYS, emptyImgs, type ImgKey } from '@/components/crm/BrandingFields';
 
@@ -192,8 +193,9 @@ function ProvisionDialog({
         id: client.id,
         lojista_company_id: company_id,
         admin_email: email.trim(),
-        admin_password: password,
       });
+      // A senha vai para system_credentials, que só admin lê.
+      await saveSystemCredential({ client_id: client.id, email: email.trim(), password });
       toast.success('Sistema do cliente criado!');
       onDone();
       onClose();
@@ -460,7 +462,7 @@ function TaskRow({
 export default function ClienteDetalhe() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { member } = useAuth();
+  const { member, isAdmin } = useAuth();
   const { data: client, isLoading } = useClient(id);
   const { data: tasks = [] } = useOnboardingTasks(id);
   const { data: contracts = [] } = useContracts(id);
@@ -474,6 +476,7 @@ export default function ClienteDetalhe() {
   const [dialog, setDialog] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [showCreds, setShowCreds] = useState(false);
+  const { data: credencial } = useSystemCredential({ clientId: id, enabled: showCreds && isAdmin });
 
   if (isLoading || !client) {
     return (
@@ -620,15 +623,21 @@ export default function ClienteDetalhe() {
                     </a>
                   </div>
                 </div>
-                {showCreds && client.admin_email && (
+                {showCreds && (
                   <div className="rounded-xl bg-black/[0.04] dark:bg-white/[0.04] p-3 space-y-1.5 text-[11.5px]">
-                    <button onClick={() => copyText(client.admin_email!, 'E-mail')} className="flex items-center gap-1.5 text-foreground/70 hover:text-foreground">
-                      <Copy className="h-3 w-3" /> {client.admin_email}
-                    </button>
-                    {client.admin_password && (
-                      <button onClick={() => copyText(client.admin_password!, 'Senha')} className="flex items-center gap-1.5 text-foreground/70 hover:text-foreground">
-                        <Copy className="h-3 w-3" /> {client.admin_password}
+                    {client.admin_email && (
+                      <button onClick={() => copyText(client.admin_email!, 'E-mail')} className="flex items-center gap-1.5 text-foreground/70 hover:text-foreground">
+                        <Copy className="h-3 w-3" /> {client.admin_email}
                       </button>
+                    )}
+                    {credencial?.password ? (
+                      <button onClick={() => copyText(credencial.password, 'Senha')} className="flex items-center gap-1.5 text-foreground/70 hover:text-foreground">
+                        <Copy className="h-3 w-3" /> {credencial.password}
+                      </button>
+                    ) : (
+                      <p className="text-foreground/35">
+                        {isAdmin ? 'Sem senha guardada para este cliente.' : 'A senha do sistema fica restrita a administradores.'}
+                      </p>
                     )}
                   </div>
                 )}
