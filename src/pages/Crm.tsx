@@ -74,7 +74,7 @@ export default function Crm() {
             <img
               src={theme === 'dark' ? viaPesadosLogoDark : viaPesadosLogoLight}
               alt="Via Pesados"
-              className="h-20 w-auto object-contain"
+              className="h-10 w-auto object-contain"
             />
           </div>
 
