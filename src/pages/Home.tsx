@@ -195,9 +195,9 @@ export default function Home() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <ModuleTile label="Clientes"   description="Carteira e contas"        icon={<Users />}         onClick={() => navigate('/clientes')} />
             <ModuleTile label="Pagamentos" description="Cobranças e recebimentos" icon={<CreditCard />}    onClick={() => navigate('/pagamentos')} />
-            <ModuleTile label="Financeiro" description="MRR e fluxo de caixa"     icon={<DollarSign />}    onClick={() => navigate('/financeiro')} />
+            <ModuleTile label="Financeiro" description="Entradas, saídas e vencimentos"     icon={<DollarSign />}    onClick={() => navigate('/financeiro')} />
             <ModuleTile label="Suporte"    description="Tickets dos clientes"     icon={<MessageSquare />} onClick={() => navigate('/tickets')} badge={openTickets} />
-            <ModuleTile label="Relatórios" description="Conversão e crescimento"  icon={<BarChart3 />}     onClick={() => navigate('/relatorios')} />
+            <ModuleTile label="Relatórios" description="Recorrência, funil e caixa"  icon={<BarChart3 />}     onClick={() => navigate('/relatorios')} />
             <ModuleTile label="Equipe"     description="Membros e acessos"        icon={<UserCheck />}     onClick={() => navigate('/equipe')} />
           </div>
         </div>

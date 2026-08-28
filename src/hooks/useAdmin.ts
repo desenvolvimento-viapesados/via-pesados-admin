@@ -837,7 +837,10 @@ export const useCrmCounts = () => {
         prospects.filter((p) => p.stage === 'fechamento' && !converted.has(p.id)).length +
         clients.filter((c) => c.status === 'onboarding').length,
       pipeline: active.reduce((s, p) => s + (p.proposal_value ?? 0), 0),
-      mrr: clients.filter((c) => c.status === 'ativo' || c.status === 'onboarding')
+      // MRR é só o que está ATIVO. Onboarding é contrato assinado que ainda
+      // não entrou no ar — soma ao caixa futuro, não ao recorrente de hoje.
+      // Relatórios usa a mesma definição; as duas telas têm que bater.
+      mrr: clients.filter((c) => c.status === 'ativo')
         .reduce((s, c) => s + (c.mrr ?? 0), 0),
     };
   }, [prospects, meetings, demos, clients]);
