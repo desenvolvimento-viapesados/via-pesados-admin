@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { useRegisterSale, type Prospect } from '@/hooks/useAdmin';
+import { useRegisterSale, brlFull, type Prospect } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -122,13 +122,20 @@ export function RegistrarVendaDialog({
             </div>
             <div className="grid grid-cols-3 gap-2.5">
               <input className={inputCls} placeholder="Plano" value={form.plan} onChange={(e) => set('plan', e.target.value)} />
-              <input className={inputCls} type="number" placeholder="Valor (R$)" value={form.mrr} onChange={(e) => set('mrr', e.target.value)} />
+              <input className={inputCls} type="number" placeholder="Valor do contrato (R$)" value={form.mrr} onChange={(e) => set('mrr', e.target.value)} />
               <select className={inputCls} value={form.recurrence} onChange={(e) => set('recurrence', e.target.value)}>
                 <option value="mensal">Mensal</option>
                 <option value="anual">Anual</option>
                 <option value="unico">Único</option>
               </select>
             </div>
+            {form.mrr && form.recurrence !== 'mensal' && (
+              <p className="text-[11px] text-foreground/40 px-1">
+                {form.recurrence === 'anual'
+                  ? `Contrato de ${brlFull(Number(form.mrr))} por ano — entra como ${brlFull(Math.round(Number(form.mrr) / 12))} de MRR.`
+                  : 'Pagamento único não gera receita recorrente — o MRR deste cliente fica zerado.'}
+              </p>
+            )}
           </div>
 
           <button

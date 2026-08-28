@@ -100,14 +100,18 @@ export function OperacaoTab({ clients, tickets, team, prospects, meetings, perio
       porPrioridade.set(k, (porPrioridade.get(k) ?? 0) + 1);
     });
 
+    /* Agrupa pelo próprio ticket, não cruzando com `clients`: essa lista
+       já vem recortada pelo seletor de responsável, e o cruzamento jogava
+       todo cliente de outro vendedor num balde gigante "Sem cliente". */
     const porCliente = new Map<string, { nome: string; n: number; abertos: number }>();
+    let semCliente = 0;
     tickets.forEach((t) => {
-      const c = clients.find((x) => x.id === t.client_id);
-      const nome = c?.company_name ?? 'Sem cliente';
-      const a = porCliente.get(nome) ?? { nome, n: 0, abertos: 0 };
+      if (!t.client_id) { semCliente += 1; return; }
+      const a = porCliente.get(t.client_id)
+        ?? { nome: t.client?.company_name ?? 'Cliente removido', n: 0, abertos: 0 };
       a.n += 1;
       if (t.status !== 'resolvido') a.abertos += 1;
-      porCliente.set(nome, a);
+      porCliente.set(t.client_id, a);
     });
 
     const ativos = clients.filter((c) => c.status === 'ativo').length;
@@ -122,6 +126,8 @@ export function OperacaoTab({ clients, tickets, team, prospects, meetings, perio
         .map((p) => ({ nome: p, n: porPrioridade.get(p) ?? 0, cor: PRIO_COR[p] }))
         .filter((p) => p.n > 0),
       porCliente: [...porCliente.values()].sort((a, b) => b.n - a.n).slice(0, 8),
+      nClientesComTicket: porCliente.size,
+      semCliente,
       porBase: ativos > 0 ? tickets.length / ativos : null,
       ativos,
       maisVelho: emAberto.length
@@ -330,9 +336,18 @@ export function OperacaoTab({ clients, tickets, team, prospects, meetings, perio
                       cor={c.abertos > 0 ? 'hsl(0,70%,50%)' : TYPE_COLORS[i % 6]}
                     />
                   ))}
+                  {suporte.semCliente > 0 && (
+                    <p className="text-[11px] text-foreground/30 pt-1">
+                      {suporte.semCliente} chamado{suporte.semCliente > 1 ? 's' : ''} sem cliente vinculado, fora do ranking.
+                    </p>
+                  )}
                 </div>
               ) : (
-                <Empty h={250}>Nenhum ticket registrado.</Empty>
+                <Empty h={250}>
+                  {suporte.semCliente > 0
+                    ? `${suporte.semCliente} chamado${suporte.semCliente > 1 ? 's' : ''} registrado${suporte.semCliente > 1 ? 's' : ''}, nenhum com cliente vinculado.`
+                    : 'Nenhum ticket registrado.'}
+                </Empty>
               )}
             </GCard>
           </div>

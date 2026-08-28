@@ -45,7 +45,12 @@ const ultimos12 = () => {
   return out;
 };
 
-const hoje = () => new Date().toISOString().slice(0, 10);
+/* Data LOCAL. toISOString() devolve UTC: das 21h de Brasília em diante,
+   o vencimento de hoje já apareceria como vencido e o aging ganharia um dia. */
+const hoje = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 const diasEntre = (a: string, b: string) =>
   Math.max(0, Math.round((new Date(b + 'T12:00:00').getTime() - new Date(a + 'T12:00:00').getTime()) / 86_400_000));
 
@@ -134,7 +139,11 @@ export function CaixaTab({ transacoes, payments, periodo, label }: Props) {
     });
 
     const recebidas = validas.filter((p) => p.status === 'pago' && inP(p.paid_at));
+    // Liquidação mede a MESMA coorte: do que venceu no período, quanto entrou.
+    // Dividir recebido-no-período por vencido-no-período mistura dois grupos
+    // e pode passar de 100% quando entra dinheiro de vencimento antigo.
     const cobradas = validas.filter((p) => inP(p.due_date));
+    const liquidadas = cobradas.filter((p) => p.status === 'pago');
 
     const porMetodo = new Map<string, { nome: string; valor: number; n: number }>();
     let semMetodo = 0;
@@ -155,6 +164,8 @@ export function CaixaTab({ transacoes, payments, periodo, label }: Props) {
       nRecebidas: recebidas.length,
       cobrado: cobradas.reduce((s, p) => s + Number(p.amount), 0),
       nCobradas: cobradas.length,
+      liquidado: liquidadas.reduce((s, p) => s + Number(p.amount), 0),
+      nLiquidadas: liquidadas.length,
       porMetodo: [...porMetodo.values()].sort((a, b) => b.valor - a.valor),
       semMetodo,
     };
@@ -223,15 +234,19 @@ export function CaixaTab({ transacoes, payments, periodo, label }: Props) {
                 key={a.nome}
                 nome={a.nome}
                 cor={a.cor}
-                valor={brl(a.valor)}
-                sub={`${a.n} lançamento${a.n !== 1 ? 's' : ''} · ${pct(a.valor, res.receita, 0)} da receita`}
+                valor={a.n > 0 ? brl(a.valor) : '—'}
+                sub={a.n > 0
+                  ? `${a.n} lançamento${a.n !== 1 ? 's' : ''} · ${pct(a.valor, res.receita, 0)} da receita`
+                  : 'Nenhum lançamento nesta área.'}
               />
             ))}
             <AreaCard
               nome="Outras"
               cor="hsl(220,10%,45%)"
-              valor={brl(outrasReceitas.valor)}
-              sub={`${outrasReceitas.n} lançamento${outrasReceitas.n !== 1 ? 's' : ''} · ${pct(outrasReceitas.valor, res.receita, 0)} da receita`}
+              valor={outrasReceitas.n > 0 ? brl(outrasReceitas.valor) : '—'}
+              sub={outrasReceitas.n > 0
+                ? `${outrasReceitas.n} lançamento${outrasReceitas.n !== 1 ? 's' : ''} · ${pct(outrasReceitas.valor, res.receita, 0)} da receita`
+                : 'Nenhum lançamento fora das três áreas.'}
             />
           </div>
 
@@ -382,9 +397,9 @@ export function CaixaTab({ transacoes, payments, periodo, label }: Props) {
             {
               icon: <Percent className="h-4 w-4" />,
               label: `Taxa de liquidação · ${label}`,
-              value: pct(cobranca.recebido, cobranca.cobrado, 0),
+              value: pct(cobranca.liquidado, cobranca.cobrado, 0),
               sub: cobranca.nCobradas > 0
-                ? `Recebido ÷ ${brl(cobranca.cobrado)} com vencimento no período`
+                ? `${cobranca.nLiquidadas} de ${cobranca.nCobradas} que venceram no período`
                 : 'Nada com vencimento no período.',
             },
             {

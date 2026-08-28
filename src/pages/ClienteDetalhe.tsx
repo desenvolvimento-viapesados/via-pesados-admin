@@ -508,8 +508,22 @@ export default function ClienteDetalhe() {
     setNote('');
   };
 
+  /* A data do evento é gravada AQUI, no momento em que ele acontece.
+     Sem isso, Relatórios lê coluna vazia e reporta zero em silêncio:
+     churn some, coorte marca 100% de retenção e a série de MRR não sobe. */
   const setStatus = async (status: Client['status']) => {
-    await update.mutateAsync({ id: client.id, status });
+    const agora = new Date().toISOString();
+    await update.mutateAsync({
+      id: client.id,
+      status,
+      // Primeira ativação carimba; reativar depois não reescreve a original.
+      ...(status === 'ativo' && !client.activated_at ? { activated_at: agora } : {}),
+      // Cancelar carimba; sair de cancelado limpa, senão o cliente fica
+      // vivo e morto ao mesmo tempo nas séries.
+      ...(status === 'cancelado'
+        ? { canceled_at: client.canceled_at ?? agora }
+        : client.canceled_at ? { canceled_at: null } : {}),
+    });
     toast.success('Status atualizado');
   };
 

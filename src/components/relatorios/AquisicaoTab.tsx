@@ -39,20 +39,30 @@ export function AquisicaoTab({ prospects, clients, meetings, demos, periodo, lab
   const inP = (iso: string | null | undefined) =>
     !!iso && iso.slice(0, 10) >= periodo.start && iso.slice(0, 10) <= periodo.end;
 
-  /* ── Funil de MARCOS ──────────────────────────────────────────────
-     Não por `stage`: `stage` é o estado de hoje, e um prospect perdido
-     perde a etapa em que morreu. Os marcos abaixo existem como registro
-     próprio e não são reescritos. */
+  /* ── Funil de MARCOS, sobre UMA coorte ────────────────────────────
+     A coorte é o conjunto de prospects CRIADOS no período. Todas as
+     etapas medem esses mesmos prospects, aconteça o marco quando
+     acontecer — é o que torna as taxas de passagem comparáveis e
+     impede que passem de 100%. Filtrar cada etapa pela própria data
+     misturaria grupos: reuniões de março com prospects de abril.
+
+     Os marcos são registros que existem por si (reunião realizada,
+     amostra criada, proposta com valor); só o último degrau usa
+     `stage`, porque "fechado" não tem marco próprio — e por isso ele
+     mede a situação de HOJE dos prospects da coorte. */
   const funil = useMemo(() => {
     const criados = prospects.filter((p) => inP(p.created_at));
+    const coorte = new Set(criados.map((p) => p.id));
     const comReuniao = new Set(
-      meetings.filter((m) => m.status === 'realizada' && inP(m.scheduled_at)).map((m) => m.prospect_id).filter(Boolean),
+      meetings
+        .filter((m) => m.status === 'realizada' && m.prospect_id && coorte.has(m.prospect_id))
+        .map((m) => m.prospect_id!),
     );
     const comAmostra = new Set(
-      demos.filter((d) => inP(d.created_at) && d.prospect_id).map((d) => d.prospect_id),
+      demos.filter((d) => d.prospect_id && coorte.has(d.prospect_id)).map((d) => d.prospect_id!),
     );
-    const comProposta = prospects.filter((p) => inP(p.created_at) && Number(p.proposal_value ?? 0) > 0);
-    const ganhos = prospects.filter((p) => p.stage === 'ganho' && inP(p.updated_at));
+    const comProposta = criados.filter((p) => Number(p.proposal_value ?? 0) > 0);
+    const ganhos = criados.filter((p) => p.stage === 'ganho');
 
     return [
       { etapa: 'Prospects criados', n: criados.length, cor: TYPE_COLORS[1] },
@@ -72,9 +82,15 @@ export function AquisicaoTab({ prospects, clients, meetings, demos, periodo, lab
     const pipeline = abertos.reduce((s, p) => s + Number(p.proposal_value ?? 0), 0);
     const comValor = abertos.filter((p) => Number(p.proposal_value ?? 0) > 0).length;
 
-    const ciclos = clients
-      .filter((c) => c.contract_signed_at)
-      .map((c) => dias(c.created_at, c.contract_signed_at!));
+    /* Ciclo = do primeiro registro do prospect até virar cliente.
+       `clients.created_at` É o instante do ganho: o cliente nasce no
+       "Registrar venda". Usar contract_signed_at aqui mediria o
+       PÓS-venda — e ele quase nunca é preenchido. */
+    const porId = new Map(prospects.map((p) => [p.id, p]));
+    const ciclos = clients.flatMap((c) => {
+      const origem = c.prospect_id ? porId.get(c.prospect_id) : undefined;
+      return origem ? [dias(origem.created_at, c.created_at)] : [];
+    });
     const ciclo = ciclos.length ? Math.round(ciclos.reduce((a, b) => a + b, 0) / ciclos.length) : null;
 
     return {
@@ -155,9 +171,11 @@ export function AquisicaoTab({ prospects, clients, meetings, demos, periodo, lab
               icon: <Trophy className="h-4 w-4" />, accent: true,
               label: `Negócios ganhos · ${label}`,
               value: kpisFunil.ganhos > 0 ? String(kpisFunil.ganhos) : '—',
-              sub: kpisFunil.valorGanho > 0
-                ? `${brl(kpisFunil.valorGanho)} em propostas fechadas`
-                : 'Nenhum negócio fechado no período.',
+              sub: kpisFunil.ganhos === 0
+                ? 'Nenhum negócio fechado no período.'
+                : kpisFunil.valorGanho > 0
+                  ? `${brl(kpisFunil.valorGanho)} em propostas fechadas`
+                  : 'Sem valor de proposta informado nesses negócios.',
             },
             {
               icon: <Percent className="h-4 w-4" />,
@@ -180,16 +198,16 @@ export function AquisicaoTab({ prospects, clients, meetings, demos, periodo, lab
               label: 'Ciclo de venda · hoje',
               value: kpisFunil.ciclo !== null ? `${kpisFunil.ciclo}d` : '—',
               sub: kpisFunil.nCiclo > 0
-                ? `Média de ${kpisFunil.nCiclo} contrato${kpisFunil.nCiclo > 1 ? 's' : ''} assinado${kpisFunil.nCiclo > 1 ? 's' : ''}`
-                : 'Nenhum contrato assinado ainda.',
+                ? `Do 1º contato ao fechamento · média de ${kpisFunil.nCiclo} venda${kpisFunil.nCiclo > 1 ? 's' : ''}`
+                : 'Nenhuma venda com prospect de origem ainda.',
             },
           ]} />
 
           <GCard>
             <SectionTitle
               icon={<Filter className="h-4 w-4" />}
-              title={`Funil de marcos · ${label}`}
-              sub="Ancorado em registros que existem (reunião realizada, amostra criada, proposta com valor), não na etapa atual — etapa é reescrita quando o negócio é perdido"
+              title={`Funil da coorte · ${label}`}
+              sub="Os mesmos prospects — os criados no período — em todas as etapas, com cada marco contado onde quer que tenha acontecido. É isso que mantém as passagens abaixo de 100%"
             />
             {funil[0].n > 0 ? (
               <div className="space-y-4">
@@ -271,13 +289,13 @@ export function AquisicaoTab({ prospects, clients, meetings, demos, periodo, lab
             },
             {
               icon: <Handshake className="h-4 w-4" />,
-              label: `Ganhos rastreados · ${label}`,
+              label: `Ganhos da coorte · ${label}`,
               value: ganhosPorOrigem.length > 0
                 ? String(ganhosPorOrigem.reduce((s, o) => s + o.ganhos, 0))
                 : '—',
               sub: ganhosPorOrigem.length > 0
-                ? `Vindos de ${ganhosPorOrigem.length} origem${ganhosPorOrigem.length > 1 ? 'ns' : ''}`
-                : 'Nenhum ganho com origem informada.',
+                ? `Criados no período e ganhos até hoje · ${ganhosPorOrigem.length} origem${ganhosPorOrigem.length > 1 ? 'ns' : ''}`
+                : 'Nenhum prospect do período fechou com origem informada.',
             },
           ]} />
 

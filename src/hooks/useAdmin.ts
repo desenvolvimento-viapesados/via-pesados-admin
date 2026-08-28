@@ -299,14 +299,24 @@ export const useRegisterSale = () => {
     mutationFn: async ({ input, prospectId }: { input: SaleInput; prospectId?: string | null }) => {
       const { recurrence = 'mensal', ...clientFields } = input;
 
+      /* MRR é receita MENSAL recorrente. O formulário aceita o valor cheio
+         do contrato com a recorrência ao lado, então uma venda anual de
+         R$ 12.000 gravada crua viraria MRR 12.000 e ARR 144.000.
+         O contrato guarda o valor cheio; o cliente guarda o mensal. */
+      const valorCheio = input.mrr ?? 0;
+      const mrrMensal =
+        recurrence === 'anual' ? Math.round(valorCheio / 12)
+        : recurrence === 'unico' ? 0
+        : valorCheio;
+
       const { data: client, error } = await supabase
         .from('clients')
-        .insert({ ...clientFields, prospect_id: prospectId ?? null, mrr: input.mrr ?? 0 })
+        .insert({ ...clientFields, prospect_id: prospectId ?? null, mrr: mrrMensal })
         .select()
         .single();
       if (error) throw error;
 
-      const value = input.mrr ?? 0;
+      const value = valorCheio;
       const { error: contractErr } = await supabase.from('contracts').insert({
         client_id: client.id,
         prospect_id: prospectId ?? null,

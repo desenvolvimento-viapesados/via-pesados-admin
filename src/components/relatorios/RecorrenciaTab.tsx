@@ -61,6 +61,7 @@ export function RecorrenciaTab({ clients, periodo, label }: Props) {
       comMrr,
       arpa: comMrr > 0 ? mrrAtivo / comMrr : null,
       risco: somaMrr(emRisco),
+      nRisco: emRisco.length,
       nInad: porStatus('inadimplente').length,
       nPausado: porStatus('pausado').length,
       fases: (['onboarding', 'ativo', 'inadimplente', 'pausado', 'cancelado'] as const).map((s) => {
@@ -170,14 +171,18 @@ export function RecorrenciaTab({ clients, periodo, label }: Props) {
             {
               icon: <DollarSign className="h-4 w-4" />, accent: true,
               label: 'MRR ativo · hoje',
-              value: foto.nAtivos > 0 ? brl(foto.mrrAtivo) : '—',
-              sub: foto.nAtivos > 0 ? `${foto.nAtivos} cliente${foto.nAtivos > 1 ? 's' : ''} ativo${foto.nAtivos > 1 ? 's' : ''}` : 'Nenhum cliente ativo.',
+              value: foto.comMrr > 0 ? brl(foto.mrrAtivo) : '—',
+              sub: foto.nAtivos === 0
+                ? 'Nenhum cliente ativo.'
+                : foto.comMrr < foto.nAtivos
+                  ? `${foto.comMrr} de ${foto.nAtivos} ativos com valor informado`
+                  : `${foto.nAtivos} cliente${foto.nAtivos > 1 ? 's' : ''} ativo${foto.nAtivos > 1 ? 's' : ''}`,
             },
             {
               icon: <TrendingUp className="h-4 w-4" />,
               label: 'ARR · hoje',
-              value: foto.nAtivos > 0 ? brl(foto.mrrAtivo * 12) : '—',
-              sub: 'MRR ativo × 12',
+              value: foto.comMrr > 0 ? brl(foto.mrrAtivo * 12) : '—',
+              sub: foto.comMrr > 0 ? 'MRR ativo × 12' : 'Sem MRR informado para projetar.',
             },
             {
               icon: <BarChart3 className="h-4 w-4" />,
@@ -190,9 +195,11 @@ export function RecorrenciaTab({ clients, periodo, label }: Props) {
             {
               icon: <AlertTriangle className="h-4 w-4" />,
               label: 'MRR em risco · hoje',
-              value: brl(foto.risco),
+              value: foto.nRisco > 0 ? brl(foto.risco) : '—',
               negative: foto.risco > 0,
-              sub: `${foto.nInad} inadimplente${foto.nInad !== 1 ? 's' : ''} · ${foto.nPausado} pausado${foto.nPausado !== 1 ? 's' : ''}`,
+              sub: foto.nRisco > 0
+                ? `${foto.nInad} inadimplente${foto.nInad !== 1 ? 's' : ''} · ${foto.nPausado} pausado${foto.nPausado !== 1 ? 's' : ''}`
+                : 'Nenhum cliente inadimplente ou pausado.',
             },
           ]} />
 
