@@ -29,7 +29,7 @@ export default function Login() {
         <img
           src={theme === 'dark' ? viaPesadosLogoDark : viaPesadosLogoLight}
           alt="Via Pesados"
-          className="h-24 w-auto object-contain select-none"
+          className="h-12 w-auto object-contain select-none"
         />
 
         <div className="w-full rounded-2xl border border-black/[0.07] dark:border-white/[0.08] bg-black/[0.03] dark:bg-white/[0.03] p-6">
