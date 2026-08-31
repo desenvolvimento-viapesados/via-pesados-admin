@@ -5,6 +5,10 @@
       "destination": "/conheca/index.html"
     },
     {
+      "source": "/conheca/",
+      "destination": "/conheca/index.html"
+    },
+    {
       "source": "/admin/assets/:file",
       "destination": "/assets/:file"
     },
