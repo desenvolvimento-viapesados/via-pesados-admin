@@ -1,8 +1,24 @@
 {
   "rewrites": [
-    { "source": "/admin/assets/:file", "destination": "/assets/:file" },
-    { "source": "/admin/favicon.png", "destination": "/favicon.png" },
-    { "source": "/admin/(.*)", "destination": "/index.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/conheca",
+      "destination": "/conheca/index.html"
+    },
+    {
+      "source": "/admin/assets/:file",
+      "destination": "/assets/:file"
+    },
+    {
+      "source": "/admin/favicon.png",
+      "destination": "/favicon.png"
+    },
+    {
+      "source": "/admin/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }

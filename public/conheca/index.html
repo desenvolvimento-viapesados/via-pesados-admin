@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Via Pesados — O ERP feito para caminhões e carretas</title>
+<meta name="description" content="Anuncia no WhatsApp, Facebook, Instagram e Mercado Livre sozinho. CRM que não deixa venda escapar. Relatórios que mostram o lucro de verdade. Feito para lojas de caminhões e carretas." />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Via Pesados — O ERP feito para caminhões e carretas" />
+<meta property="og:description" content="Um clique no pátio, dezessete mensagens no cliente. Veja o sistema por dentro, tela por tela." />
+<meta property="og:url" content="https://viapesados.com.br/conheca" />
+<meta property="og:site_name" content="Via Pesados" />
+<meta property="og:image" content="https://viapesados.com.br/conheca/img/crm-whatsapp.jpg" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" href="/favicon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..900&family=Archivo+Black&display=swap" rel="stylesheet" />
+<link rel="preload" as="image" href="img/crm-whatsapp.jpg" />
+<link rel="preload" as="image" href="img/gestao.jpg" />
+<style>
+  /* ── fundações ──────────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --asfalto: #070708;
+    --breu: #0d0d0f;
+    --fuligem: #131316;
+    --linha: #232327;
+    --laranja: #FF6E00;
+    --laranja-claro: #FF8A2B;
+    --zap: #25D366;
+    --zap-escuro: #128C4A;
+    --claro: #F4F1EB;
+    --cinza: #9b98a0;
+    --cinza-escuro: #5d5b63;
+    --display: "Archivo Black", "Archivo", system-ui, sans-serif;
+    --texto: "Archivo", system-ui, -apple-system, sans-serif;
+    --pico: clamp(2.6rem, 8.2vw, 6.4rem);
+    --h2: clamp(2rem, 5vw, 3.9rem);
+    --raio: 18px;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--asfalto);
+    color: var(--claro);
+    font-family: var(--texto);
+    font-size: 17px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  img, video, canvas { max-width: 100%; display: block; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { width: min(1180px, 92vw); margin-inline: auto; }
+  ::selection { background: var(--laranja); color: #000; }
+
+  /* ── ruído e listras de sinalização ─────────────────────────────────── */
+  .grao::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 1; opacity: .05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
+  }
+  .listras {
+    height: 14px;
+    background: repeating-linear-gradient(-45deg, var(--laranja) 0 22px, #101013 22px 44px);
+    border-block: 1px solid #000;
+  }
+
+  /* ── barra fixa ─────────────────────────────────────────────────────── */
+  .topo {
+    position: fixed; inset: 0 0 auto 0; z-index: 60;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px clamp(16px, 4vw, 48px);
+    background: color-mix(in srgb, var(--asfalto) 78%, transparent);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid #ffffff10;
+    transform: translateY(-100%); transition: transform .45s cubic-bezier(.2,.8,.2,1);
+  }
+  .topo.visivel { transform: translateY(0); }
+  .topo img { height: 30px; width: auto; }
+
+  /* ── botão WhatsApp ─────────────────────────────────────────────────── */
+  .btn-zap {
+    display: inline-flex; align-items: center; gap: 12px;
+    background: var(--zap); color: #04240f;
+    font-weight: 800; font-size: 1.02rem; letter-spacing: .01em;
+    padding: 16px 28px; border-radius: 999px;
+    box-shadow: 0 0 0 0 rgba(37,211,102,.45);
+    transition: transform .2s ease, box-shadow .3s ease, background .2s ease;
+    position: relative;
+  }
+  .btn-zap:hover { transform: translateY(-2px) scale(1.02); background: #2ee477; box-shadow: 0 12px 40px -8px rgba(37,211,102,.55); }
+  .btn-zap:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+  .btn-zap svg { width: 24px; height: 24px; flex: none; }
+  .btn-zap.mini { padding: 10px 18px; font-size: .9rem; gap: 9px; }
+  .btn-zap.mini svg { width: 19px; height: 19px; }
+  .btn-zap.gigante { font-size: clamp(1.1rem, 2.4vw, 1.5rem); padding: 22px 44px; }
+  .pulso { animation: pulso 2.6s ease-out infinite; }
+  @keyframes pulso {
+    0%   { box-shadow: 0 0 0 0 rgba(37,211,102,.5); }
+    70%  { box-shadow: 0 0 0 26px rgba(37,211,102,0); }
+    100% { box-shadow: 0 0 0 0 rgba(37,211,102,0); }
+  }
+
+  /* ── herói ──────────────────────────────────────────────────────────── */
+  .heroi {
+    position: relative; z-index: 2;
+    padding: clamp(90px, 14vh, 150px) 0 0;
+    background:
+      radial-gradient(1100px 520px at 78% -10%, rgba(255,110,0,.16), transparent 60%),
+      radial-gradient(700px 420px at 8% 8%, rgba(255,110,0,.07), transparent 55%),
+      var(--asfalto);
+    overflow: clip;
+  }
+  .heroi .faixa-luz {
+    position: absolute; inset: auto 0 0 0; height: 1px;
+    background: linear-gradient(90deg, transparent, #ffffff26, transparent);
+  }
+  .olho {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: .78rem; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--laranja-claro);
+  }
+  .olho::before { content: ""; width: 34px; height: 3px; background: var(--laranja); }
+  .heroi h1 {
+    font-family: var(--display);
+    font-size: var(--pico);
+    line-height: .98; letter-spacing: -.015em;
+    text-wrap: balance;
+    margin: 22px 0 26px;
+    max-width: 15ch;
+  }
+  .heroi h1 .risco { color: var(--laranja); position: relative; white-space: nowrap; }
+  .heroi .sub {
+    font-size: clamp(1.05rem, 1.8vw, 1.3rem); color: var(--cinza);
+    max-width: 52ch; margin-bottom: 38px;
+  }
+  .heroi .sub strong { color: var(--claro); font-weight: 700; }
+  .acoes { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
+  .link-scroll { color: var(--cinza); font-weight: 600; border-bottom: 1px dashed var(--cinza-escuro); padding-bottom: 2px; transition: color .2s; }
+  .link-scroll:hover { color: var(--claro); }
+
+  /* colagem de telas reais */
+  .colagem {
+    position: relative; margin-top: clamp(50px, 8vh, 90px);
+    height: clamp(320px, 52vw, 660px);
+    perspective: 1400px;
+  }
+  .colagem .tela {
+    position: absolute; border-radius: 12px; overflow: hidden;
+    border: 1px solid #ffffff1e;
+    box-shadow: 0 40px 90px -30px rgba(0,0,0,.85), 0 0 0 1px #00000060;
+    will-change: transform;
+  }
+  .colagem .tela img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+  .tela.a { width: 56%; left: 0;  top: 6%;  transform: rotate(-2.2deg); z-index: 2; }
+  .tela.b { width: 52%; right: 0; top: 0;   transform: rotate(1.6deg);  z-index: 3; }
+  .tela.c { width: 44%; left: 26%; top: 46%; transform: rotate(-.8deg); z-index: 4; }
+  .chip-solto {
+    position: absolute; z-index: 6;
+    background: #0f0f11e6; border: 1px solid #ffffff22; border-radius: 999px;
+    padding: 9px 16px; font-size: .82rem; font-weight: 700; letter-spacing: .02em;
+    display: flex; gap: 8px; align-items: center;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 18px 40px -18px #000;
+    animation: flutua 5.5s ease-in-out infinite;
+  }
+  .chip-solto b { color: var(--laranja-claro); font-variant-numeric: tabular-nums; }
+  .chip-solto.z { border-color: #25d36655; } .chip-solto.z b { color: var(--zap); }
+  @keyframes flutua { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+
+  /* ── letreiro ───────────────────────────────────────────────────────── */
+  .letreiro {
+    border-block: 1px solid var(--linha); background: var(--breu);
+    overflow: hidden; padding: 18px 0; margin-top: clamp(40px, 7vh, 80px);
+  }
+  .letreiro .trilho { display: flex; gap: 54px; width: max-content; animation: rola 30s linear infinite; }
+  .letreiro span { display: inline-flex; align-items: center; gap: 14px; font-family: var(--display); font-size: 1.05rem; letter-spacing: .06em; color: var(--claro); white-space: nowrap; }
+  .letreiro img, .letreiro svg { height: 24px; width: auto; }
+  .letreiro .sep { color: var(--laranja); }
+  @keyframes rola { to { transform: translateX(-50%); } }
+
+  /* ── seções ─────────────────────────────────────────────────────────── */
+  section { position: relative; z-index: 2; }
+  .secao { padding: clamp(80px, 12vh, 150px) 0; }
+  .secao h2 {
+    font-family: var(--display); font-size: var(--h2);
+    line-height: 1.02; letter-spacing: -.01em; text-wrap: balance;
+    margin: 18px 0 20px; max-width: 21ch;
+  }
+  .secao .conversa { color: var(--cinza); font-size: clamp(1rem, 1.6vw, 1.18rem); max-width: 56ch; }
+  .secao .conversa strong { color: var(--claro); }
+
+  /* revelação no scroll */
+  .rev { opacity: 0; transform: translateY(34px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
+  .rev.no-ar { opacity: 1; transform: none; }
+  .rev.d1 { transition-delay: .08s; } .rev.d2 { transition-delay: .16s; } .rev.d3 { transition-delay: .24s; }
+
+  /* ── TEMPO: vídeo real ──────────────────────────────────────────────── */
+  .palco-video { display: grid; grid-template-columns: 1.45fr 1fr; gap: clamp(28px, 4vw, 60px); align-items: start; margin-top: 46px; }
+  .navegador {
+    border-radius: var(--raio); overflow: hidden;
+    border: 1px solid #ffffff1c; background: #0c0c0e;
+    box-shadow: 0 60px 120px -40px rgba(0,0,0,.9), 0 0 90px -30px rgba(255,110,0,.35);
+  }
+  .navegador .barra {
+    display: flex; align-items: center; gap: 8px; padding: 12px 16px;
+    background: #151517; border-bottom: 1px solid #ffffff12;
+  }
+  .navegador .bola { width: 11px; height: 11px; border-radius: 50%; background: #333; }
+  .navegador .bola:nth-child(1) { background: #ff5f57; } .navegador .bola:nth-child(2) { background: #febc2e; } .navegador .bola:nth-child(3) { background: #28c840; }
+  .navegador .url {
+    flex: 1; text-align: center; font-size: .75rem; color: var(--cinza);
+    background: #0a0a0c; border-radius: 7px; padding: 5px 12px; margin-inline: 10px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .selo-real {
+    position: absolute; top: 58px; right: 14px; z-index: 5;
+    background: #d92d20; color: #fff; font-weight: 800; font-size: .68rem; letter-spacing: .14em;
+    padding: 6px 12px; border-radius: 6px; display: flex; gap: 7px; align-items: center;
+    box-shadow: 0 10px 30px -10px #d92d20aa;
+  }
+  .selo-real::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: pisca 1.1s steps(2) infinite; }
+  @keyframes pisca { to { opacity: .25; } }
+  .quadro-video { position: relative; }
+  .progresso { height: 4px; background: #ffffff14; }
+  .progresso i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--laranja), var(--laranja-claro)); transition: width .25s linear; }
+
+  .legendas { display: grid; gap: 12px; margin-top: 26px; }
+  .legenda {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 16px 18px; border-radius: 14px;
+    border: 1px solid var(--linha); background: var(--fuligem);
+    color: var(--cinza); transition: all .35s ease;
+  }
+  .legenda .t { font-variant-numeric: tabular-nums; font-weight: 800; color: var(--cinza-escuro); font-size: .82rem; padding-top: 2px; min-width: 44px; }
+  .legenda.ativa { border-color: var(--laranja); background: #1a1310; color: var(--claro); transform: translateX(6px); }
+  .legenda.ativa .t { color: var(--laranja); }
+
+  .canais { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 34px; }
+  .canal {
+    display: flex; align-items: center; gap: 12px;
+    border: 1px solid var(--linha); border-radius: 14px; background: var(--fuligem);
+    padding: 15px 16px; font-weight: 700; font-size: .95rem;
+  }
+  .canal img, .canal svg { width: 26px; height: 26px; object-fit: contain; }
+  .canal small { display: block; font-weight: 500; color: var(--cinza-escuro); font-size: .76rem; }
+
+  /* ── FONE: a gravação que vira animação de scroll ───────────────────── */
+  .trecho-fone { background: linear-gradient(180deg, var(--asfalto), #0B1210 30%, #0B1512 70%, var(--asfalto)); }
+  .palco-fone { height: 340vh; position: relative; }
+  .cola { position: sticky; top: 0; height: 100vh; height: 100svh; display: grid; place-items: center; overflow: clip; }
+  .cena-fone { position: relative; display: grid; place-items: center; width: 100%; }
+  .anel {
+    position: absolute; width: min(72vw, 560px); aspect-ratio: 1; border-radius: 50%;
+    border: 1px solid #25d36626;
+    background: radial-gradient(circle, rgba(37,211,102,.09), transparent 65%);
+    animation: respira 4s ease-in-out infinite;
+  }
+  @keyframes respira { 0%,100% { transform: scale(1); opacity: .8; } 50% { transform: scale(1.08); opacity: 1; } }
+  .iphone {
+    position: relative; width: min(66vw, 318px);
+    border-radius: 48px; padding: 11px;
+    background: linear-gradient(160deg, #3a3a3e, #131315 30%, #232327);
+    box-shadow: 0 60px 130px -30px rgba(0,0,0,.95), 0 0 120px -40px rgba(37,211,102,.45), inset 0 0 0 2px #000;
+    transform: rotate(-1.6deg);
+  }
+  .iphone .telinha { border-radius: 38px; overflow: hidden; background: #000; position: relative; }
+  .iphone canvas { width: 100%; height: auto; }
+  .iphone .ilha {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    width: 32%; height: 26px; background: #000; border-radius: 999px; z-index: 3;
+  }
+  .balao-info {
+    position: absolute; z-index: 5;
+    background: #0f1a14f0; border: 1px solid #25d36648; color: #d7ffe7;
+    font-weight: 700; font-size: clamp(.78rem, 1.6vw, .95rem);
+    padding: 12px 18px; border-radius: 16px; border-bottom-left-radius: 4px;
+    box-shadow: 0 20px 50px -20px #000;
+    opacity: 0; transform: translateY(18px) scale(.94);
+    transition: opacity .5s ease, transform .5s cubic-bezier(.2,.8,.2,1);
+    max-width: 240px; backdrop-filter: blur(6px);
+  }
+  .balao-info.no-ar { opacity: 1; transform: none; }
+  .balao-info b { color: var(--zap); }
+  .titulo-fone { position: absolute; top: clamp(18px, 4vh, 44px); left: 0; right: 0; text-align: center; padding-inline: 6vw; z-index: 6; }
+  .titulo-fone h2 { margin-inline: auto; }
+  .dica-rolar { position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); color: var(--cinza-escuro); font-size: .8rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; display: flex; gap: 8px; align-items: center; }
+  .dica-rolar::after { content: "↓"; animation: desce 1.4s ease-in-out infinite; }
+  @keyframes desce { 50% { transform: translateY(5px); } }
+
+  /* ── VENDA ──────────────────────────────────────────────────────────── */
+  .linhas-venda { display: grid; gap: clamp(50px, 8vh, 100px); margin-top: 60px; }
+  .linha-venda { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(26px, 4vw, 64px); align-items: center; }
+  .linha-venda:nth-child(even) .midia { order: 2; }
+  .midia { border-radius: var(--raio); overflow: hidden; border: 1px solid #ffffff1a; box-shadow: 0 50px 100px -40px #000; position: relative; }
+  .midia::after { content: ""; position: absolute; inset: 0; box-shadow: inset 0 0 0 1px #00000050; border-radius: inherit; pointer-events: none; }
+  .midia img { transition: transform .8s cubic-bezier(.2,.8,.2,1); }
+  .linha-venda:hover .midia img { transform: scale(1.035); }
+  .num-bloco { font-family: var(--display); color: #ffffff14; font-size: clamp(3rem, 7vw, 5.4rem); line-height: 1; }
+  .linha-venda h3 { font-family: var(--display); font-size: clamp(1.4rem, 2.6vw, 2.1rem); letter-spacing: -.01em; margin: 10px 0 14px; text-wrap: balance; }
+  .linha-venda p { color: var(--cinza); max-width: 46ch; }
+  .linha-venda p strong { color: var(--claro); }
+  .etiqueta-mini { display: inline-block; margin-top: 16px; font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--laranja-claro); border: 1px solid #ff6e0040; padding: 7px 13px; border-radius: 999px; }
+
+  /* ── RELATÓRIOS ─────────────────────────────────────────────────────── */
+  .fundo-relat { background: linear-gradient(180deg, var(--asfalto), #120C06 40%, var(--asfalto)); }
+  .numeros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 44px 0; }
+  .numero { border: 1px solid var(--linha); background: #101013cc; border-radius: var(--raio); padding: 26px 22px; }
+  .numero b { font-family: var(--display); font-size: clamp(1.7rem, 3.4vw, 2.7rem); color: var(--laranja); display: block; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .numero span { color: var(--cinza); font-size: .88rem; font-weight: 600; }
+  .trio { display: grid; grid-template-columns: 1.7fr 1fr; gap: 16px; }
+  .trio .midia:first-child { grid-row: span 2; }
+
+  /* ── GRADE: o sistema inteiro ───────────────────────────────────────── */
+  .grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 54px; }
+  .cartao-tela {
+    border-radius: 14px; overflow: hidden; position: relative;
+    border: 1px solid #ffffff14; background: var(--fuligem);
+    transition: transform .35s cubic-bezier(.2,.8,.2,1), border-color .35s, box-shadow .35s;
+  }
+  .cartao-tela:hover { transform: translateY(-7px); border-color: #ff6e0060; box-shadow: 0 34px 70px -30px #000, 0 0 50px -22px rgba(255,110,0,.5); }
+  .cartao-tela figcaption {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 13px 16px; font-size: .88rem; font-weight: 700;
+  }
+  .cartao-tela figcaption small { color: var(--cinza-escuro); font-weight: 600; }
+  .aviso-real { text-align: center; margin-top: 34px; color: var(--cinza-escuro); font-size: .92rem; }
+  .aviso-real b { color: var(--cinza); }
+
+  /* ── CTA final ──────────────────────────────────────────────────────── */
+  .cta-final {
+    background: linear-gradient(160deg, var(--laranja) 0%, #E45E00 55%, #B94A00 100%);
+    color: #180B00; text-align: center;
+    padding: clamp(90px, 14vh, 160px) 0;
+    position: relative; overflow: clip;
+  }
+  .cta-final::before {
+    content: ""; position: absolute; inset: -40% -20%;
+    background: radial-gradient(closest-side, #ffffff33, transparent 70%);
+    top: -70%; pointer-events: none;
+  }
+  .cta-final h2 {
+    font-family: var(--display); font-size: clamp(2.2rem, 6vw, 4.6rem);
+    line-height: .99; letter-spacing: -.015em; text-wrap: balance;
+    max-width: 18ch; margin: 0 auto 20px;
+  }
+  .cta-final p { font-size: clamp(1rem, 2vw, 1.25rem); font-weight: 600; max-width: 44ch; margin: 0 auto 42px; color: #3A1D00; }
+  .cta-final .btn-zap { background: #062e17; color: #7CFFB4; }
+  .cta-final .btn-zap:hover { background: #08351b; }
+  .cta-final .mini-nota { margin-top: 20px; font-size: .85rem; color: #5A2D00; font-weight: 600; }
+
+  /* ── rodapé ─────────────────────────────────────────────────────────── */
+  footer { padding: 44px 0 60px; border-top: 1px solid var(--linha); }
+  footer .wrap { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  footer img { height: 34px; }
+  footer p { color: var(--cinza-escuro); font-size: .85rem; }
+
+  /* ── zap flutuante ──────────────────────────────────────────────────── */
+  .zap-flutuante {
+    position: fixed; right: 20px; bottom: 20px; z-index: 70;
+    width: 62px; height: 62px; border-radius: 50%;
+    background: var(--zap); display: grid; place-items: center;
+    box-shadow: 0 18px 44px -12px rgba(37,211,102,.6);
+    transition: transform .2s ease;
+  }
+  .zap-flutuante:hover { transform: scale(1.1); }
+  .zap-flutuante svg { width: 32px; height: 32px; }
+
+  /* ── responsivo ─────────────────────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .palco-video, .linha-venda, .trio { grid-template-columns: 1fr; }
+    .linha-venda:nth-child(even) .midia { order: 0; }
+    .grade { grid-template-columns: 1fr 1fr; }
+    .numeros { grid-template-columns: 1fr; }
+    .colagem { height: auto; display: grid; gap: 14px; perspective: none; }
+    .colagem .tela { position: static; width: 100% !important; transform: none !important; }
+    .chip-solto { display: none; }
+    .canais { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) { .grade { grid-template-columns: 1fr; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .rev { opacity: 1; transform: none; }
+    .palco-fone { height: auto; }
+    .cola { position: static; height: auto; padding: 60px 0; }
+  }
+</style>
+</head>
+<body class="grao">
+
+<!-- barra fixa -->
+<header class="topo" id="topo">
+  <a href="#inicio" aria-label="Via Pesados"><img src="img/via-logo-white.png" alt="Via Pesados" /></a>
+  <a class="btn-zap mini" href="https://wa.me/5533997075272?text=Ol%C3%A1!%20Vi%20a%20p%C3%A1gina%20do%20Via%20Pesados%20e%20quero%20marcar%20uma%20demonstra%C3%A7%C3%A3o." target="_blank" rel="noopener">
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+    Marcar demonstração
+  </a>
+</header>
+
+<!-- HERÓI -->
+<section class="heroi" id="inicio">
+  <div class="wrap">
+    <p class="olho rev">Via Pesados · Sistema de gestão</p>
+    <h1 class="rev d1">O ERP feito para <span class="risco">caminhões</span> e <span class="risco">carretas</span>.</h1>
+    <p class="sub rev d2">Anuncia no WhatsApp, Facebook, Instagram e Mercado Livre <strong>sozinho</strong>. Controla cada negociação para <strong>nenhuma venda escapar</strong>. E mostra a loja inteira num painel só. <strong>Enquanto o concorrente digita, você fecha.</strong></p>
+    <div class="acoes rev d3">
+      <a class="btn-zap pulso" href="https://wa.me/5533997075272?text=Ol%C3%A1!%20Vi%20a%20p%C3%A1gina%20do%20Via%20Pesados%20e%20quero%20marcar%20uma%20demonstra%C3%A7%C3%A3o." target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+        Quero ver funcionando
+      </a>
+      <a class="link-scroll" href="#tempo">Ver o sistema por dentro ↓</a>
+    </div>
+
+    <div class="colagem" id="colagem">
+      <div class="tela a" data-par="0.05"><img src="img/gestao.jpg" alt="Estoque de veículos no Via Pesados" /></div>
+      <div class="tela b" data-par="-0.045"><img src="img/crm-whatsapp.jpg" alt="WhatsApp da equipe dentro do CRM" /></div>
+      <div class="tela c" data-par="0.09"><img src="img/relatorios.jpg" alt="Relatórios da loja" /></div>
+      <div class="chip-solto z" style="top: 4%; left: 44%;">✓ <b>17 mensagens</b> em 15s</div>
+      <div class="chip-solto" style="top: 38%; left: -6px; animation-delay: 1.2s;">Publicado em <b>4 canais</b></div>
+      <div class="chip-solto" style="bottom: 8%; right: -4px; animation-delay: 2.1s;"><b>R$ 8,6 mi</b> em estoque no painel</div>
+    </div>
+  </div>
+  <div class="faixa-luz"></div>
+</section>
+
+<!-- letreiro -->
+<div class="letreiro" aria-hidden="true">
+  <div class="trilho">
+    <span><svg viewBox="0 0 24 24" fill="#25D366" width="24" height="24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg> WhatsApp</span><span class="sep">•</span>
+    <span><img src="img/instagram.svg" alt="" /> Instagram</span><span class="sep">•</span>
+    <span><img src="img/facebook.svg" alt="" /> Facebook</span><span class="sep">•</span>
+    <span><img src="img/mercadolibre.svg" alt="" /> Mercado Livre</span><span class="sep">•</span>
+    <span>Site próprio incluso</span><span class="sep">•</span>
+    <span><svg viewBox="0 0 24 24" fill="#25D366" width="24" height="24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg> WhatsApp</span><span class="sep">•</span>
+    <span><img src="img/instagram.svg" alt="" /> Instagram</span><span class="sep">•</span>
+    <span><img src="img/facebook.svg" alt="" /> Facebook</span><span class="sep">•</span>
+    <span><img src="img/mercadolibre.svg" alt="" /> Mercado Livre</span><span class="sep">•</span>
+    <span>Site próprio incluso</span><span class="sep">•</span>
+  </div>
+</div>
+
+<!-- TEMPO -->
+<section class="secao" id="tempo">
+  <div class="wrap">
+    <p class="olho rev">Tempo</p>
+    <h2 class="rev d1">Um clique no pátio. Dezessete mensagens no cliente.</h2>
+    <p class="conversa rev d2">Isto não é maquete: é uma <strong>gravação real do sistema, sem cortes</strong>. O vendedor escolhe o caminhão e o Via Pesados dispara ficha completa, fotos, preço, localização e o link do site — <strong>em 15 segundos</strong>, pelo WhatsApp da própria loja.</p>
+
+    <div class="palco-video">
+      <div class="rev">
+        <div class="quadro-video">
+          <span class="selo-real">Gravação real</span>
+          <div class="navegador">
+            <div class="barra">
+              <span class="bola"></span><span class="bola"></span><span class="bola"></span>
+              <span class="url">minascaminhoes · Via CRM — enviando fluxo do MAN TGX 29.480</span>
+            </div>
+            <video id="video-fluxo" src="fluxo.mp4" poster="img/fluxo-poster.jpg" muted playsinline loop preload="metadata"></video>
+            <div class="progresso"><i id="barra-video"></i></div>
+          </div>
+        </div>
+
+        <div class="legendas" id="legendas">
+          <div class="legenda" data-ini="0" data-fim="4"><span class="t">0:00</span><span>O vendedor abre a conversa e escolhe o caminhão. <strong>Só isso.</strong></span></div>
+          <div class="legenda" data-ini="4" data-fim="12"><span class="t">0:04</span><span>O sistema envia sozinho: título, fotos, preço, quilometragem, localização.</span></div>
+          <div class="legenda" data-ini="12" data-fim="16"><span class="t">0:12</span><span><strong>Fluxo enviado: 17 mensagens.</strong> O vendedor já está no próximo cliente.</span></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="canais rev d1" style="grid-template-columns: 1fr;">
+          <div class="canal"><svg viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+            <span>Fluxo de fotos no WhatsApp<small>ficha completa, foto por foto, com link do site</small></span></div>
+          <div class="canal"><img src="img/instagram.svg" alt="" /><span>Posts e stories no Instagram<small>arte pronta, gerada do próprio anúncio</small></span></div>
+          <div class="canal"><img src="img/facebook.svg" alt="" /><span>Página e catálogo no Facebook<small>estoque sincronizado sozinho</small></span></div>
+          <div class="canal"><img src="img/mercadolibre.svg" alt="" /><span>Anúncio no Mercado Livre<small>publica e despublica junto com o estoque</small></span></div>
+        </div>
+        <p class="conversa rev d2" style="margin-top: 30px; font-size: 1rem;"><strong>Cadastrou uma vez, anunciou em todo lugar.</strong> Vendeu? O sistema tira de todos os canais sozinho. Seu vendedor cuida de vender — não de copiar e colar.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FONE: a gravação encantadora -->
+<section class="trecho-fone">
+  <div class="palco-fone" id="palco-fone">
+    <div class="cola">
+      <div class="titulo-fone">
+        <p class="olho" style="justify-content: center;">Do lado de lá</p>
+        <h2>Role a página.<br/>É isto que o seu cliente recebe.</h2>
+      </div>
+      <div class="cena-fone">
+        <div class="anel"></div>
+        <div class="anel" style="animation-delay: 2s; width: min(86vw, 680px);"></div>
+        <div class="iphone">
+          <div class="telinha">
+            <div class="ilha"></div>
+            <canvas id="tela-fone" width="500" height="1014" aria-label="Gravação real do WhatsApp do cliente recebendo o anúncio"></canvas>
+          </div>
+        </div>
+        <div class="balao-info" data-passo="0" style="top: 16%; left: max(4vw, calc(50% - 330px));">Gravado do <b>celular do cliente</b> — de verdade.</div>
+        <div class="balao-info" data-passo="1" style="top: 38%; right: max(4vw, calc(50% - 330px));">Ficha técnica completa, <b>sem digitar nada</b>.</div>
+        <div class="balao-info" data-passo="2" style="top: 58%; left: max(4vw, calc(50% - 340px));"><b>12 fotos</b> do caminhão, na ordem certa.</div>
+        <div class="balao-info" data-passo="3" style="top: 76%; right: max(4vw, calc(50% - 340px));">E o link puxa para o <b>site da sua loja</b>.</div>
+      </div>
+      <p class="dica-rolar">Continue rolando</p>
+    </div>
+  </div>
+</section>
+
+<!-- VENDA -->
+<section class="secao" id="venda">
+  <div class="wrap">
+    <p class="olho rev">Venda</p>
+    <h2 class="rev d1">Nenhuma venda escapa.</h2>
+    <p class="conversa rev d2">O WhatsApp da equipe inteira, o funil e o pós-venda dentro de um lugar só — com o sistema <strong>avisando quem está na hora de comprar de novo</strong>.</p>
+
+    <div class="linhas-venda">
+      <div class="linha-venda rev">
+        <div class="midia"><img src="img/crm-whatsapp.jpg" loading="lazy" alt="WhatsApp de cada vendedor dentro do CRM" /></div>
+        <div>
+          <div class="num-bloco">01</div>
+          <h3>O WhatsApp de cada vendedor, dentro do sistema</h3>
+          <p>Cada vendedor conecta o número dele. Toda conversa vira registro, com etiqueta, funil e histórico — <strong>e nada some quando o vendedor sai</strong>. O dono enxerga tudo.</p>
+          <span class="etiqueta-mini">Conecta em 90 segundos, via QR code</span>
+        </div>
+      </div>
+
+      <div class="linha-venda rev">
+        <div class="midia"><img src="img/funil.jpg" loading="lazy" alt="Funil de vendas" /></div>
+        <div>
+          <div class="num-bloco">02</div>
+          <h3>Funil que arrasta a negociação para frente</h3>
+          <p>Interessado, quente, finalizando, ficha de financiamento, fechado. Cada cliente numa coluna, cada coluna com valor somado. <strong>Bateu o olho, sabe onde está o dinheiro do mês.</strong></p>
+          <span class="etiqueta-mini">Kanban com valor por etapa</span>
+        </div>
+      </div>
+
+      <div class="linha-venda rev">
+        <div class="midia"><img src="img/recorrencia.jpg" loading="lazy" alt="Recorrência: quem está na hora de trocar de caminhão" /></div>
+        <div>
+          <div class="num-bloco">03</div>
+          <h3>O sistema avisa quem está na hora de trocar</h3>
+          <p>Quem comprou há 8 meses está na janela de troca — e o Via Pesados cruza o histórico de cada cliente com o seu pátio de hoje: <strong>"este cliente combina com estas máquinas, por estes motivos".</strong> Venda que nasce dormindo no seu cadastro.</p>
+          <span class="etiqueta-mini">Recorrência automática</span>
+        </div>
+      </div>
+
+      <div class="linha-venda rev">
+        <div class="midia"><img src="img/veiculo.jpg" loading="lazy" alt="Painel do veículo" /></div>
+        <div>
+          <div class="num-bloco">04</div>
+          <h3>Cada caminhão com dossiê completo</h3>
+          <p>Dias em estoque, margem, custo total, fotos, documentos, leads que receberam o veículo. <strong>418 dias parado? O painel te cutuca: urgente girar.</strong></p>
+          <span class="etiqueta-mini">Etiquetas saem sozinhas da ficha</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- RELATÓRIOS -->
+<section class="secao fundo-relat" id="relatorios">
+  <div class="wrap">
+    <p class="olho rev">Relatórios</p>
+    <h2 class="rev d1">A loja inteira num painel. Pesado como tem que ser.</h2>
+    <p class="conversa rev d2">Faturamento, margem bruta, ticket médio, giro de estoque, vendedor a vendedor, área por área. <strong>Não é achismo: é o número na sua frente</strong>, para decidir onde apertar e vender ainda mais.</p>
+
+    <div class="numeros">
+      <div class="numero rev"><b data-conta="17" data-sufixo=" telas">0 telas</b><span>módulos num sistema só: estoque, CRM, financeiro, RH, site, relatórios…</span></div>
+      <div class="numero rev d1"><b data-conta="4" data-sufixo=" canais">0 canais</b><span>publicando sozinhos: WhatsApp, Instagram, Facebook e Mercado Livre</span></div>
+      <div class="numero rev d2"><b data-conta="15" data-sufixo="s">0s</b><span>para o anúncio completo chegar no WhatsApp do cliente</span></div>
+    </div>
+
+    <div class="trio rev">
+      <div class="midia"><img src="img/relatorios.jpg" loading="lazy" alt="Relatório geral da loja" /></div>
+      <div class="midia"><img src="img/vendas.jpg" loading="lazy" alt="Gestão de vendas" /></div>
+      <div class="midia"><img src="img/financeiro.jpg" loading="lazy" alt="Fluxo de caixa" /></div>
+    </div>
+  </div>
+</section>
+
+<!-- O SISTEMA INTEIRO -->
+<section class="secao" id="sistema">
+  <div class="wrap">
+    <p class="olho rev">Sem cortina</p>
+    <h2 class="rev d1">O sistema inteirinho, print por print.</h2>
+    <p class="conversa rev d2">Nada aqui é mockup de designer. <strong>Toda imagem desta página é tela real do Via Pesados</strong> — o mesmo sistema que você recebe no primeiro dia.</p>
+
+    <div class="grade">
+      <figure class="cartao-tela rev"><img src="img/sistema.jpg" loading="lazy" alt="" /><figcaption>Início <small>tudo a um clique</small></figcaption></figure>
+      <figure class="cartao-tela rev d1"><img src="img/gestao.jpg" loading="lazy" alt="" /><figcaption>Estoque <small>consignação, custo e oferta</small></figcaption></figure>
+      <figure class="cartao-tela rev d2"><img src="img/site.jpg" loading="lazy" alt="" /><figcaption>Site próprio <small>com a sua marca</small></figcaption></figure>
+      <figure class="cartao-tela rev"><img src="img/clientes.jpg" loading="lazy" alt="" /><figcaption>Clientes <small>com etiquetas automáticas</small></figcaption></figure>
+      <figure class="cartao-tela rev d1"><img src="img/conectar.jpg" loading="lazy" alt="" /><figcaption>WhatsApp da equipe <small>QR code e pronto</small></figcaption></figure>
+      <figure class="cartao-tela rev d2"><img src="img/calendario.jpg" loading="lazy" alt="" /><figcaption>Agenda <small>visitas, entregas, avaliações</small></figcaption></figure>
+    </div>
+
+    <p class="aviso-real rev">E ainda: financiamento, consórcio, ponto eletrônico, RH, metas, pós-venda, inteligência artificial… <b>a lista não cabe na página — cabe na demonstração.</b></p>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<section class="cta-final" id="contato">
+  <div class="wrap">
+    <h2 class="rev">Chega de perder venda por falta de tempo.</h2>
+    <p class="rev d1">Quinze minutos no WhatsApp e você vê tudo isso rodando — com os seus caminhões, do seu jeito.</p>
+    <a class="btn-zap gigante pulso rev d2" href="https://wa.me/5533997075272?text=Ol%C3%A1!%20Vi%20a%20p%C3%A1gina%20do%20Via%20Pesados%20e%20quero%20marcar%20uma%20demonstra%C3%A7%C3%A3o." target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+      Marcar demonstração no WhatsApp
+    </a>
+    <p class="mini-nota rev d3">Sem cartão, sem compromisso. Só uma conversa de quem entende de pesados.</p>
+  </div>
+</section>
+
+<div class="listras" aria-hidden="true"></div>
+
+<footer>
+  <div class="wrap">
+    <img src="img/via-logo-white.png" alt="Via Pesados" />
+    <p>Feito exclusivamente para o mercado de pesados · viapesados.com.br</p>
+  </div>
+</footer>
+
+<a class="zap-flutuante" href="https://wa.me/5533997075272?text=Ol%C3%A1!%20Vi%20a%20p%C3%A1gina%20do%20Via%20Pesados%20e%20quero%20marcar%20uma%20demonstra%C3%A7%C3%A3o." target="_blank" rel="noopener" aria-label="Falar no WhatsApp">
+  <svg viewBox="0 0 24 24" fill="#04240f"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+</a>
+
+<script>
+(() => {
+  const reduzido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* barra fixa aparece depois do herói */
+  const topo = document.getElementById('topo');
+  addEventListener('scroll', () => {
+    topo.classList.toggle('visivel', scrollY > innerHeight * .55);
+  }, { passive: true });
+
+  /* revelação no scroll */
+  const io = new IntersectionObserver(es => {
+    es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('no-ar'); io.unobserve(e.target); } });
+  }, { threshold: .18 });
+  document.querySelectorAll('.rev').forEach(el => io.observe(el));
+
+  /* parallax da colagem do herói */
+  if (!reduzido) {
+    const telas = [...document.querySelectorAll('.colagem .tela')];
+    let alvo = 0;
+    addEventListener('scroll', () => { alvo = scrollY; }, { passive: true });
+    (function anda() {
+      telas.forEach(t => {
+        const f = parseFloat(t.dataset.par || 0);
+        t.style.translate = `0 ${(alvo * f).toFixed(1)}px`;
+      });
+      requestAnimationFrame(anda);
+    })();
+  }
+
+  /* vídeo do fluxo: toca quando aparece, legendas sincronizadas */
+  const video = document.getElementById('video-fluxo');
+  const barra = document.getElementById('barra-video');
+  const legendas = [...document.querySelectorAll('.legenda')];
+  new IntersectionObserver(es => {
+    es.forEach(e => { e.isIntersecting ? video.play().catch(() => {}) : video.pause(); });
+  }, { threshold: .35 }).observe(video);
+  video.addEventListener('timeupdate', () => {
+    const t = video.currentTime;
+    if (video.duration) barra.style.width = (t / video.duration * 100) + '%';
+    legendas.forEach(l => l.classList.toggle('ativa', t >= +l.dataset.ini && t < +l.dataset.fim));
+  });
+
+  /* contadores */
+  const conta = el => {
+    const fim = +el.dataset.conta, suf = el.dataset.sufixo || '';
+    const t0 = performance.now(), dur = 1200;
+    (function passo(t) {
+      const p = Math.min((t - t0) / dur, 1);
+      el.textContent = Math.round(fim * (1 - Math.pow(1 - p, 3))) + suf;
+      if (p < 1) requestAnimationFrame(passo);
+    })(t0);
+  };
+  const ioNum = new IntersectionObserver(es => {
+    es.forEach(e => { if (e.isIntersecting) { conta(e.target); ioNum.unobserve(e.target); } });
+  }, { threshold: .6 });
+  document.querySelectorAll('[data-conta]').forEach(el => ioNum.observe(el));
+
+  /* ── o celular que rola junto com a página ─────────────────────────── */
+  const TOTAL = 56;
+  const canvas = document.getElementById('tela-fone');
+  const ctx = canvas.getContext('2d');
+  const quadros = new Array(TOTAL);
+  const src = i => `fone/f${String(i).padStart(3, '0')}.jpg`;
+
+  const carrega = i => new Promise(ok => {
+    if (quadros[i]) return ok(quadros[i]);
+    const im = new Image();
+    im.onload = () => { quadros[i] = im; ok(im); };
+    im.onerror = () => ok(null);
+    im.src = src(i);
+  });
+
+  let atual = -1;
+  const desenha = i => {
+    i = Math.max(0, Math.min(TOTAL - 1, i));
+    if (i === atual || !quadros[i]) return;
+    atual = i;
+    ctx.drawImage(quadros[i], 0, 0, canvas.width, canvas.height);
+  };
+
+  carrega(0).then(im => {
+    if (im) { canvas.height = Math.round(canvas.width * im.height / im.width); desenha(0); }
+    /* pré-carrega o resto aos poucos, sem travar nada */
+    let i = 1;
+    (function fila() { if (i < TOTAL) carrega(i++).then(() => setTimeout(fila, 40)); })();
+  });
+
+  const palco = document.getElementById('palco-fone');
+  const baloes = [...document.querySelectorAll('.balao-info')];
+  if (reduzido) {
+    carrega(20).then(() => desenha(20));
+    baloes.forEach(b => b.classList.add('no-ar'));
+  } else {
+    let ticando = false;
+    const passoFone = () => {
+      ticando = false;
+      const r = palco.getBoundingClientRect();
+      const percorrivel = r.height - innerHeight;
+      const p = Math.max(0, Math.min(1, -r.top / percorrivel));
+      desenha(Math.floor(p * (TOTAL - 1)));
+      baloes.forEach((b, k) => b.classList.toggle('no-ar', p > (k + .6) / (baloes.length + 1)));
+    };
+    addEventListener('scroll', () => {
+      if (!ticando) { ticando = true; requestAnimationFrame(passoFone); }
+    }, { passive: true });
+    passoFone();
+  }
+})();
+</script>
+</body>
+</html>
