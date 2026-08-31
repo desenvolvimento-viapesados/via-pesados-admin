@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Via Pesados — O ERP feito para caminhões e carretas</title>
-<meta name="description" content="Anuncia no WhatsApp, Facebook, Instagram e Mercado Livre sozinho. CRM que não deixa venda escapar. Relatórios que mostram o lucro de verdade. Feito para lojas de caminhões e carretas." />
+<title>Via Pesados — O sistema feito para caminhões e carretas</title>
+<meta name="description" content="Anuncia no WhatsApp, Facebook, Instagram e Mercado Livre com um clique. CRM que não deixa venda escapar. Relatórios que mostram o lucro de verdade. Feito para lojas de caminhões e carretas." />
 <meta property="og:type" content="website" />
-<meta property="og:title" content="Via Pesados — O ERP feito para caminhões e carretas" />
+<meta property="og:title" content="Via Pesados — O sistema feito para caminhões e carretas" />
 <meta property="og:description" content="Um clique no pátio, dezessete mensagens no cliente. Veja o sistema por dentro, tela por tela." />
 <meta property="og:url" content="https://viapesados.com.br/conheca" />
 <meta property="og:site_name" content="Via Pesados" />
@@ -15,35 +15,34 @@
 <link rel="icon" href="/favicon.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..900&family=Archivo+Black&display=swap" rel="stylesheet" />
-<link rel="preload" as="image" href="/conheca/img/crm-whatsapp.jpg" />
-<link rel="preload" as="image" href="/conheca/img/gestao.jpg" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<link rel="preload" as="image" href="/conheca/img/via-icon-white.png" />
+<link rel="preload" as="image" href="/conheca/img/scania-card.jpg" />
 <style>
-  /* ── fundações ──────────────────────────────────────────────────────── */
+  /* ── fundações — a estética do sistema Via Pesados: preto, laranja,
+       cartões arredondados de borda fina, Inter em peso alto ───────────── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --asfalto: #070708;
-    --breu: #0d0d0f;
-    --fuligem: #131316;
-    --linha: #232327;
+    --fundo: #060607;
+    --breu: #0c0c0e;
+    --cartao: #121214;
+    --linha: #ffffff14;
     --laranja: #FF6E00;
     --laranja-claro: #FF8A2B;
     --zap: #25D366;
-    --zap-escuro: #128C4A;
-    --claro: #F4F1EB;
-    --cinza: #9b98a0;
-    --cinza-escuro: #5d5b63;
-    --display: "Archivo Black", "Archivo", system-ui, sans-serif;
-    --texto: "Archivo", system-ui, -apple-system, sans-serif;
-    --pico: clamp(2.6rem, 8.2vw, 6.4rem);
-    --h2: clamp(2rem, 5vw, 3.9rem);
-    --raio: 18px;
+    --claro: #F5F3EF;
+    --cinza: #9a97a0;
+    --cinza-escuro: #605e66;
+    --fonte: "Inter", system-ui, -apple-system, sans-serif;
+    --pico: clamp(2.5rem, 7vw, 5.6rem);
+    --h2: clamp(1.9rem, 4.4vw, 3.4rem);
+    --raio: 20px;
   }
   html { scroll-behavior: smooth; }
   body {
-    background: var(--asfalto);
+    background: var(--fundo);
     color: var(--claro);
-    font-family: var(--texto);
+    font-family: var(--fonte);
     font-size: 17px;
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;
@@ -53,226 +52,200 @@
   a { color: inherit; text-decoration: none; }
   .wrap { width: min(1180px, 92vw); margin-inline: auto; }
   ::selection { background: var(--laranja); color: #000; }
+  .branco { filter: brightness(0) invert(1); }
 
-  /* ── ruído e listras de sinalização ─────────────────────────────────── */
-  .grao::before {
-    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 1; opacity: .05;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
-  }
-  .listras {
-    height: 14px;
-    background: repeating-linear-gradient(-45deg, var(--laranja) 0 22px, #101013 22px 44px);
-    border-block: 1px solid #000;
-  }
+  h1, h2, h3 { font-weight: 800; letter-spacing: -.025em; text-wrap: balance; }
+  .acento { color: var(--laranja); }
 
-  /* ── barra fixa ─────────────────────────────────────────────────────── */
+  /* ── barra fixa, sempre presente, com a marca ───────────────────────── */
   .topo {
     position: fixed; inset: 0 0 auto 0; z-index: 60;
     display: flex; align-items: center; justify-content: space-between;
-    padding: 14px clamp(16px, 4vw, 48px);
-    background: color-mix(in srgb, var(--asfalto) 78%, transparent);
+    padding: 12px clamp(16px, 4vw, 48px);
+    background: color-mix(in srgb, var(--fundo) 82%, transparent);
     backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    border-bottom: 1px solid #ffffff10;
-    transform: translateY(-100%); transition: transform .45s cubic-bezier(.2,.8,.2,1);
+    border-bottom: 1px solid var(--linha);
   }
-  .topo.visivel { transform: translateY(0); }
-  .topo img { height: 30px; width: auto; }
+  .topo img { height: 44px; width: auto; }
 
-  /* ── botão WhatsApp ─────────────────────────────────────────────────── */
+  /* ── botão WhatsApp (oficial: glifo branco no verde) ────────────────── */
   .btn-zap {
     display: inline-flex; align-items: center; gap: 12px;
-    background: var(--zap); color: #04240f;
-    font-weight: 800; font-size: 1.02rem; letter-spacing: .01em;
+    background: var(--zap); color: #052e16;
+    font-weight: 800; font-size: 1rem;
     padding: 16px 28px; border-radius: 999px;
-    box-shadow: 0 0 0 0 rgba(37,211,102,.45);
     transition: transform .2s ease, box-shadow .3s ease, background .2s ease;
-    position: relative;
   }
-  .btn-zap:hover { transform: translateY(-2px) scale(1.02); background: #2ee477; box-shadow: 0 12px 40px -8px rgba(37,211,102,.55); }
+  .btn-zap:hover { transform: translateY(-2px); background: #2ee477; box-shadow: 0 12px 40px -8px rgba(37,211,102,.55); }
   .btn-zap:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
-  .btn-zap svg { width: 24px; height: 24px; flex: none; }
-  .btn-zap.mini { padding: 10px 18px; font-size: .9rem; gap: 9px; }
-  .btn-zap.mini svg { width: 19px; height: 19px; }
-  .btn-zap.gigante { font-size: clamp(1.1rem, 2.4vw, 1.5rem); padding: 22px 44px; }
+  .btn-zap svg { width: 23px; height: 23px; flex: none; }
+  .btn-zap.mini { padding: 10px 18px; font-size: .88rem; gap: 9px; }
+  .btn-zap.mini svg { width: 18px; height: 18px; }
+  .btn-zap.gigante { font-size: clamp(1.05rem, 2.2vw, 1.4rem); padding: 21px 42px; }
   .pulso { animation: pulso 2.6s ease-out infinite; }
   @keyframes pulso {
-    0%   { box-shadow: 0 0 0 0 rgba(37,211,102,.5); }
-    70%  { box-shadow: 0 0 0 26px rgba(37,211,102,0); }
+    0%   { box-shadow: 0 0 0 0 rgba(37,211,102,.45); }
+    70%  { box-shadow: 0 0 0 24px rgba(37,211,102,0); }
     100% { box-shadow: 0 0 0 0 rgba(37,211,102,0); }
   }
 
   /* ── herói ──────────────────────────────────────────────────────────── */
   .heroi {
     position: relative; z-index: 2;
-    padding: clamp(90px, 14vh, 150px) 0 0;
+    padding: clamp(120px, 16vh, 170px) 0 clamp(30px, 5vh, 60px);
     background:
-      radial-gradient(1100px 520px at 78% -10%, rgba(255,110,0,.16), transparent 60%),
-      radial-gradient(700px 420px at 8% 8%, rgba(255,110,0,.07), transparent 55%),
-      var(--asfalto);
+      radial-gradient(1000px 500px at 72% -12%, rgba(255,110,0,.15), transparent 60%),
+      radial-gradient(650px 400px at 6% 10%, rgba(255,110,0,.06), transparent 55%),
+      var(--fundo);
     overflow: clip;
+    text-align: center;
   }
-  .heroi .faixa-luz {
-    position: absolute; inset: auto 0 0 0; height: 1px;
-    background: linear-gradient(90deg, transparent, #ffffff26, transparent);
-  }
-  .olho {
-    display: inline-flex; align-items: center; gap: 10px;
-    font-weight: 700; font-size: .78rem; letter-spacing: .22em; text-transform: uppercase;
+  .heroi .marca { height: clamp(64px, 9vw, 96px); width: auto; margin: 0 auto 30px; }
+  .selo-topo {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-weight: 700; font-size: .75rem; letter-spacing: .2em; text-transform: uppercase;
     color: var(--laranja-claro);
+    border: 1px solid #ff6e0038; background: #ff6e000f;
+    padding: 8px 16px; border-radius: 999px; margin-bottom: 26px;
   }
-  .olho::before { content: ""; width: 34px; height: 3px; background: var(--laranja); }
-  .heroi h1 {
-    font-family: var(--display);
-    font-size: var(--pico);
-    line-height: .98; letter-spacing: -.015em;
-    text-wrap: balance;
-    margin: 22px 0 26px;
-    max-width: 15ch;
-  }
-  .heroi h1 .risco { color: var(--laranja); position: relative; white-space: nowrap; }
+  .heroi h1 { font-size: var(--pico); line-height: 1.02; max-width: 17ch; margin: 0 auto 22px; }
   .heroi .sub {
-    font-size: clamp(1.05rem, 1.8vw, 1.3rem); color: var(--cinza);
-    max-width: 52ch; margin-bottom: 38px;
+    font-size: clamp(1.02rem, 1.7vw, 1.25rem); color: var(--cinza);
+    max-width: 56ch; margin: 0 auto 36px;
   }
   .heroi .sub strong { color: var(--claro); font-weight: 700; }
-  .acoes { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
+  .acoes { display: flex; align-items: center; justify-content: center; gap: 24px; flex-wrap: wrap; }
   .link-scroll { color: var(--cinza); font-weight: 600; border-bottom: 1px dashed var(--cinza-escuro); padding-bottom: 2px; transition: color .2s; }
   .link-scroll:hover { color: var(--claro); }
 
-  /* colagem de telas reais */
-  .colagem {
-    position: relative; margin-top: clamp(50px, 8vh, 90px);
-    height: clamp(320px, 52vw, 660px);
-    perspective: 1400px;
-  }
-  .colagem .tela {
-    position: absolute; border-radius: 12px; overflow: hidden;
-    border: 1px solid #ffffff1e;
-    box-shadow: 0 40px 90px -30px rgba(0,0,0,.85), 0 0 0 1px #00000060;
-    will-change: transform;
-  }
-  .colagem .tela img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
-  .tela.a { width: 56%; left: 0;  top: 6%;  transform: rotate(-2.2deg); z-index: 2; }
-  .tela.b { width: 52%; right: 0; top: 0;   transform: rotate(1.6deg);  z-index: 3; }
-  .tela.c { width: 44%; left: 26%; top: 46%; transform: rotate(-.8deg); z-index: 4; }
-  .chip-solto {
-    position: absolute; z-index: 6;
-    background: #0f0f11e6; border: 1px solid #ffffff22; border-radius: 999px;
-    padding: 9px 16px; font-size: .82rem; font-weight: 700; letter-spacing: .02em;
-    display: flex; gap: 8px; align-items: center;
-    backdrop-filter: blur(6px);
-    box-shadow: 0 18px 40px -18px #000;
-    animation: flutua 5.5s ease-in-out infinite;
-  }
-  .chip-solto b { color: var(--laranja-claro); font-variant-numeric: tabular-nums; }
-  .chip-solto.z { border-color: #25d36655; } .chip-solto.z b { color: var(--zap); }
-  @keyframes flutua { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
-
-  /* ── letreiro ───────────────────────────────────────────────────────── */
-  .letreiro {
-    border-block: 1px solid var(--linha); background: var(--breu);
-    overflow: hidden; padding: 18px 0; margin-top: clamp(40px, 7vh, 80px);
-  }
-  .letreiro .trilho { display: flex; gap: 54px; width: max-content; animation: rola 30s linear infinite; }
-  .letreiro span { display: inline-flex; align-items: center; gap: 14px; font-family: var(--display); font-size: 1.05rem; letter-spacing: .06em; color: var(--claro); white-space: nowrap; }
-  .letreiro img, .letreiro svg { height: 24px; width: auto; }
-  .letreiro .sep { color: var(--laranja); }
-  @keyframes rola { to { transform: translateX(-50%); } }
-
-  /* ── seções ─────────────────────────────────────────────────────────── */
-  section { position: relative; z-index: 2; }
-  .secao { padding: clamp(80px, 12vh, 150px) 0; }
-  .secao h2 {
-    font-family: var(--display); font-size: var(--h2);
-    line-height: 1.02; letter-spacing: -.01em; text-wrap: balance;
-    margin: 18px 0 20px; max-width: 21ch;
-  }
-  .secao .conversa { color: var(--cinza); font-size: clamp(1rem, 1.6vw, 1.18rem); max-width: 56ch; }
-  .secao .conversa strong { color: var(--claro); }
-
-  /* revelação no scroll */
-  .rev { opacity: 0; transform: translateY(34px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
+  /* ── revelação no scroll ────────────────────────────────────────────── */
+  .rev { opacity: 0; transform: translateY(30px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
   .rev.no-ar { opacity: 1; transform: none; }
   .rev.d1 { transition-delay: .08s; } .rev.d2 { transition-delay: .16s; } .rev.d3 { transition-delay: .24s; }
 
-  /* ── TEMPO: vídeo real ──────────────────────────────────────────────── */
-  .palco-video { display: grid; grid-template-columns: 1.45fr 1fr; gap: clamp(28px, 4vw, 60px); align-items: start; margin-top: 46px; }
-  .navegador {
-    border-radius: var(--raio); overflow: hidden;
-    border: 1px solid #ffffff1c; background: #0c0c0e;
-    box-shadow: 0 60px 120px -40px rgba(0,0,0,.9), 0 0 90px -30px rgba(255,110,0,.35);
+  /* ── seções ─────────────────────────────────────────────────────────── */
+  section { position: relative; z-index: 2; }
+  .secao { padding: clamp(76px, 11vh, 140px) 0; }
+  .olho {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: .76rem; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--laranja-claro);
   }
-  .navegador .barra {
-    display: flex; align-items: center; gap: 8px; padding: 12px 16px;
-    background: #151517; border-bottom: 1px solid #ffffff12;
-  }
-  .navegador .bola { width: 11px; height: 11px; border-radius: 50%; background: #333; }
-  .navegador .bola:nth-child(1) { background: #ff5f57; } .navegador .bola:nth-child(2) { background: #febc2e; } .navegador .bola:nth-child(3) { background: #28c840; }
-  .navegador .url {
-    flex: 1; text-align: center; font-size: .75rem; color: var(--cinza);
-    background: #0a0a0c; border-radius: 7px; padding: 5px 12px; margin-inline: 10px;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .selo-real {
-    position: absolute; top: 58px; right: 14px; z-index: 5;
-    background: #d92d20; color: #fff; font-weight: 800; font-size: .68rem; letter-spacing: .14em;
-    padding: 6px 12px; border-radius: 6px; display: flex; gap: 7px; align-items: center;
-    box-shadow: 0 10px 30px -10px #d92d20aa;
-  }
-  .selo-real::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: pisca 1.1s steps(2) infinite; }
-  @keyframes pisca { to { opacity: .25; } }
-  .quadro-video { position: relative; }
-  .progresso { height: 4px; background: #ffffff14; }
-  .progresso i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--laranja), var(--laranja-claro)); transition: width .25s linear; }
+  .olho::before { content: ""; width: 30px; height: 2px; background: var(--laranja); border-radius: 2px; }
+  .secao h2 { font-size: var(--h2); line-height: 1.05; margin: 16px 0 18px; max-width: 24ch; }
+  .conversa { color: var(--cinza); font-size: clamp(1rem, 1.55vw, 1.15rem); max-width: 58ch; }
+  .conversa strong { color: var(--claro); }
+  .centrado { text-align: center; }
+  .centrado h2, .centrado .conversa { margin-inline: auto; }
+  .centrado .olho { justify-content: center; }
 
-  .legendas { display: grid; gap: 12px; margin-top: 26px; }
-  .legenda {
-    display: flex; gap: 14px; align-items: flex-start;
-    padding: 16px 18px; border-radius: 14px;
-    border: 1px solid var(--linha); background: var(--fuligem);
-    color: var(--cinza); transition: all .35s ease;
+  /* ── MULTICANAIS: um clique, quatro canais ──────────────────────────── */
+  .multicanal { background: linear-gradient(180deg, var(--fundo), #0B0906 45%, var(--fundo)); }
+  .palco-canais {
+    display: grid; grid-template-columns: minmax(280px, 380px) 1fr;
+    gap: clamp(24px, 5vw, 70px); align-items: center;
+    margin-top: 54px;
   }
-  .legenda .t { font-variant-numeric: tabular-nums; font-weight: 800; color: var(--cinza-escuro); font-size: .82rem; padding-top: 2px; min-width: 44px; }
-  .legenda.ativa { border-color: var(--laranja); background: #1a1310; color: var(--claro); transform: translateX(6px); }
-  .legenda.ativa .t { color: var(--laranja); }
-
-  .canais { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 34px; }
-  .canal {
-    display: flex; align-items: center; gap: 12px;
-    border: 1px solid var(--linha); border-radius: 14px; background: var(--fuligem);
-    padding: 15px 16px; font-weight: 700; font-size: .95rem;
+  .cartao-veiculo {
+    background: var(--cartao); border: 1px solid var(--linha); border-radius: var(--raio);
+    overflow: hidden; position: relative;
+    box-shadow: 0 50px 100px -40px rgba(0,0,0,.9), 0 0 70px -30px rgba(255,110,0,.4);
   }
-  .canal img, .canal svg { width: 26px; height: 26px; object-fit: contain; }
-  .canal small { display: block; font-weight: 500; color: var(--cinza-escuro); font-size: .76rem; }
+  .cartao-veiculo .foto { aspect-ratio: 4/3.4; overflow: hidden; }
+  .cartao-veiculo .foto img { width: 100%; height: 100%; object-fit: cover; }
+  .cartao-veiculo .info { padding: 18px 18px 20px; }
+  .cartao-veiculo h3 { font-size: 1.15rem; letter-spacing: -.01em; }
+  .cartao-veiculo .meta { color: var(--cinza); font-size: .85rem; margin-top: 3px; }
+  .cartao-veiculo .preco { color: var(--laranja); font-weight: 800; font-size: 1.3rem; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .botao-anunciar {
+    margin-top: 16px; width: 100%;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    background: var(--laranja); color: #1d0c00;
+    font-weight: 800; font-size: 1rem; font-family: inherit;
+    border: 0; border-radius: 14px; padding: 15px;
+    animation: pulsa-laranja 3s ease-out infinite;
+  }
+  @keyframes pulsa-laranja {
+    0% { box-shadow: 0 0 0 0 rgba(255,110,0,.5); }
+    60% { box-shadow: 0 0 0 20px rgba(255,110,0,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,110,0,0); }
+  }
+  .canais-fila { display: grid; gap: 16px; }
+  .canal-linha { display: flex; align-items: center; gap: 0; }
+  .fio { flex: 1; height: 2px; background: #ffffff12; position: relative; min-width: 36px; border-radius: 2px; }
+  .fio i {
+    position: absolute; top: 50%; translate: 0 -50%;
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--laranja);
+    box-shadow: 0 0 12px 2px rgba(255,110,0,.6);
+    left: 0; opacity: 0;
+    animation: viaja 9s linear infinite;
+  }
+  @keyframes viaja {
+    0%   { left: 0; opacity: 0; }
+    1.5% { opacity: 1; }
+    11%  { left: calc(100% - 9px); opacity: 1; }
+    13%  { opacity: 0; }
+    100% { left: calc(100% - 9px); opacity: 0; }
+  }
+  .no-canal {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--cartao); border: 1px solid var(--linha); border-radius: 16px;
+    padding: 15px 18px; min-width: min(320px, 62vw);
+  }
+  .no-canal img, .no-canal svg { width: 27px; height: 27px; object-fit: contain; }
+  .no-canal .nome { font-weight: 700; font-size: .98rem; }
+  .no-canal .nome small { display: block; font-weight: 500; color: var(--cinza-escuro); font-size: .75rem; }
+  .chip-no-ar {
+    margin-left: auto;
+    font-size: .72rem; font-weight: 800; letter-spacing: .06em;
+    color: #7CFFB4; background: #12351f; border: 1px solid #25d36640;
+    padding: 5px 11px; border-radius: 999px; white-space: nowrap;
+    opacity: 0; transform: scale(.85);
+    animation: no-ar 9s ease infinite;
+  }
+  @keyframes no-ar {
+    0%, 11%  { opacity: 0; transform: scale(.85); }
+    14%      { opacity: 1; transform: scale(1.06); }
+    16%      { transform: scale(1); }
+    90%      { opacity: 1; }
+    97%,100% { opacity: 0; transform: scale(.85); }
+  }
+  .canal-linha:nth-child(1) .fio i, .canal-linha:nth-child(1) .chip-no-ar { animation-delay: 0s; }
+  .canal-linha:nth-child(2) .fio i, .canal-linha:nth-child(2) .chip-no-ar { animation-delay: 1.15s; }
+  .canal-linha:nth-child(3) .fio i, .canal-linha:nth-child(3) .chip-no-ar { animation-delay: 2.3s; }
+  .canal-linha:nth-child(4) .fio i, .canal-linha:nth-child(4) .chip-no-ar { animation-delay: 3.45s; }
+  .canal-linha:nth-child(5) .fio i, .canal-linha:nth-child(5) .chip-no-ar { animation-delay: 4.6s; }
+  .nota-vendeu {
+    margin-top: 26px; color: var(--cinza); font-size: .95rem;
+  }
+  .nota-vendeu strong { color: var(--claro); }
 
-  /* ── FONE: a gravação que vira animação de scroll ───────────────────── */
-  .trecho-fone { background: linear-gradient(180deg, var(--asfalto), #0B1210 30%, #0B1512 70%, var(--asfalto)); }
-  .palco-fone { height: 340vh; position: relative; }
+  /* ── FONE: a gravação vira animação de scroll ───────────────────────── */
+  .trecho-fone { background: linear-gradient(180deg, var(--fundo), #0A100D 30%, #0A120E 70%, var(--fundo)); }
+  .palco-fone { height: 330vh; position: relative; }
   .cola { position: sticky; top: 0; height: 100vh; height: 100svh; display: grid; place-items: center; overflow: clip; }
   .cena-fone { position: relative; display: grid; place-items: center; width: 100%; }
   .anel {
-    position: absolute; width: min(72vw, 560px); aspect-ratio: 1; border-radius: 50%;
-    border: 1px solid #25d36626;
-    background: radial-gradient(circle, rgba(37,211,102,.09), transparent 65%);
+    position: absolute; width: min(72vw, 540px); aspect-ratio: 1; border-radius: 50%;
+    border: 1px solid #25d36622;
+    background: radial-gradient(circle, rgba(37,211,102,.08), transparent 65%);
     animation: respira 4s ease-in-out infinite;
   }
   @keyframes respira { 0%,100% { transform: scale(1); opacity: .8; } 50% { transform: scale(1.08); opacity: 1; } }
   .iphone {
-    position: relative; width: min(66vw, 318px);
+    position: relative; width: min(64vw, 306px);
     border-radius: 48px; padding: 11px;
-    background: linear-gradient(160deg, #3a3a3e, #131315 30%, #232327);
-    box-shadow: 0 60px 130px -30px rgba(0,0,0,.95), 0 0 120px -40px rgba(37,211,102,.45), inset 0 0 0 2px #000;
-    transform: rotate(-1.6deg);
+    background: linear-gradient(160deg, #38383c, #131315 30%, #232327);
+    box-shadow: 0 60px 130px -30px rgba(0,0,0,.95), 0 0 110px -40px rgba(37,211,102,.4), inset 0 0 0 2px #000;
+    transform: rotate(-1.4deg);
   }
   .iphone .telinha { border-radius: 38px; overflow: hidden; background: #000; position: relative; }
   .iphone canvas { width: 100%; height: auto; }
-  .iphone .ilha {
-    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-    width: 32%; height: 26px; background: #000; border-radius: 999px; z-index: 3;
-  }
+  .iphone .ilha { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 32%; height: 25px; background: #000; border-radius: 999px; z-index: 3; }
   .balao-info {
     position: absolute; z-index: 5;
-    background: #0f1a14f0; border: 1px solid #25d36648; color: #d7ffe7;
+    background: #0e1912f2; border: 1px solid #25d36645; color: #d7ffe7;
     font-weight: 700; font-size: clamp(.78rem, 1.6vw, .95rem);
     padding: 12px 18px; border-radius: 16px; border-bottom-left-radius: 4px;
     box-shadow: 0 20px 50px -20px #000;
@@ -282,100 +255,144 @@
   }
   .balao-info.no-ar { opacity: 1; transform: none; }
   .balao-info b { color: var(--zap); }
-  .titulo-fone { position: absolute; top: clamp(18px, 4vh, 44px); left: 0; right: 0; text-align: center; padding-inline: 6vw; z-index: 6; }
+  .titulo-fone { position: absolute; top: clamp(70px, 9vh, 100px); left: 0; right: 0; text-align: center; padding-inline: 6vw; z-index: 6; }
   .titulo-fone h2 { margin-inline: auto; }
-  .dica-rolar { position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); color: var(--cinza-escuro); font-size: .8rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; display: flex; gap: 8px; align-items: center; }
+  .titulo-fone .conversa { margin: 6px auto 0; }
+  .dica-rolar { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); color: var(--cinza-escuro); font-size: .78rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; display: flex; gap: 8px; align-items: center; }
   .dica-rolar::after { content: "↓"; animation: desce 1.4s ease-in-out infinite; }
   @keyframes desce { 50% { transform: translateY(5px); } }
 
-  /* ── VENDA ──────────────────────────────────────────────────────────── */
-  .linhas-venda { display: grid; gap: clamp(50px, 8vh, 100px); margin-top: 60px; }
+  /* ── vídeo real do CRM ──────────────────────────────────────────────── */
+  .palco-video { display: grid; grid-template-columns: 1.45fr 1fr; gap: clamp(28px, 4vw, 60px); align-items: start; margin-top: 46px; }
+  .navegador {
+    border-radius: var(--raio); overflow: hidden;
+    border: 1px solid var(--linha); background: var(--breu);
+    box-shadow: 0 60px 120px -40px rgba(0,0,0,.9), 0 0 80px -30px rgba(255,110,0,.3);
+  }
+  .navegador .barra { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #151517; border-bottom: 1px solid var(--linha); }
+  .navegador .bola { width: 11px; height: 11px; border-radius: 50%; }
+  .navegador .bola:nth-child(1) { background: #ff5f57; } .navegador .bola:nth-child(2) { background: #febc2e; } .navegador .bola:nth-child(3) { background: #28c840; }
+  .navegador .url { flex: 1; text-align: center; font-size: .74rem; color: var(--cinza); background: #0a0a0c; border-radius: 7px; padding: 5px 12px; margin-inline: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .selo-real {
+    position: absolute; top: 56px; right: 14px; z-index: 5;
+    background: #d92d20; color: #fff; font-weight: 800; font-size: .66rem; letter-spacing: .14em;
+    padding: 6px 12px; border-radius: 6px; display: flex; gap: 7px; align-items: center;
+  }
+  .selo-real::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: pisca 1.1s steps(2) infinite; }
+  @keyframes pisca { to { opacity: .25; } }
+  .quadro-video { position: relative; }
+  .progresso { height: 4px; background: #ffffff12; }
+  .progresso i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--laranja), var(--laranja-claro)); transition: width .25s linear; }
+  .legendas { display: grid; gap: 12px; margin-top: 26px; }
+  .legenda {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 15px 18px; border-radius: 16px;
+    border: 1px solid var(--linha); background: var(--cartao);
+    color: var(--cinza); transition: all .35s ease;
+  }
+  .legenda .t { font-variant-numeric: tabular-nums; font-weight: 800; color: var(--cinza-escuro); font-size: .82rem; padding-top: 2px; min-width: 44px; }
+  .legenda.ativa { border-color: #ff6e0070; background: #1a130e; color: var(--claro); transform: translateX(6px); }
+  .legenda.ativa .t { color: var(--laranja); }
+  .lista-canais-mini { display: grid; gap: 12px; }
+  .canal {
+    display: flex; align-items: center; gap: 13px;
+    border: 1px solid var(--linha); border-radius: 16px; background: var(--cartao);
+    padding: 15px 16px; font-weight: 700; font-size: .95rem;
+  }
+  .canal img, .canal svg { width: 25px; height: 25px; object-fit: contain; }
+  .canal small { display: block; font-weight: 500; color: var(--cinza-escuro); font-size: .76rem; }
+
+  /* ── site próprio ───────────────────────────────────────────────────── */
+  .palco-site { position: relative; margin-top: 50px; }
+  .palco-site .navegador { max-width: 900px; }
+  .site-flutuante {
+    position: absolute; right: 0; bottom: -8%; width: min(44%, 430px); z-index: 5;
+    border-radius: 14px; overflow: hidden;
+    border: 1px solid #ffffff22;
+    box-shadow: 0 40px 90px -30px rgba(0,0,0,.95);
+    transform: rotate(1.8deg);
+  }
+  .beneficios-site { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: clamp(60px, 9vh, 90px); }
+  .beneficio { border: 1px solid var(--linha); background: var(--cartao); border-radius: 16px; padding: 20px; }
+  .beneficio b { display: block; font-size: .98rem; margin-bottom: 5px; }
+  .beneficio span { color: var(--cinza); font-size: .86rem; line-height: 1.45; display: block; }
+
+  /* ── venda ──────────────────────────────────────────────────────────── */
+  .linhas-venda { display: grid; gap: clamp(50px, 8vh, 96px); margin-top: 56px; }
   .linha-venda { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(26px, 4vw, 64px); align-items: center; }
   .linha-venda:nth-child(even) .midia { order: 2; }
-  .midia { border-radius: var(--raio); overflow: hidden; border: 1px solid #ffffff1a; box-shadow: 0 50px 100px -40px #000; position: relative; }
-  .midia::after { content: ""; position: absolute; inset: 0; box-shadow: inset 0 0 0 1px #00000050; border-radius: inherit; pointer-events: none; }
+  .midia { border-radius: var(--raio); overflow: hidden; border: 1px solid var(--linha); box-shadow: 0 50px 100px -40px #000; position: relative; }
   .midia img { transition: transform .8s cubic-bezier(.2,.8,.2,1); }
-  .linha-venda:hover .midia img { transform: scale(1.035); }
-  .num-bloco { font-family: var(--display); color: #ffffff14; font-size: clamp(3rem, 7vw, 5.4rem); line-height: 1; }
-  .linha-venda h3 { font-family: var(--display); font-size: clamp(1.4rem, 2.6vw, 2.1rem); letter-spacing: -.01em; margin: 10px 0 14px; text-wrap: balance; }
+  .linha-venda:hover .midia img { transform: scale(1.03); }
+  .num-bloco { font-weight: 900; color: #ffffff12; font-size: clamp(2.6rem, 6vw, 4.6rem); line-height: 1; letter-spacing: -.03em; }
+  .linha-venda h3 { font-size: clamp(1.35rem, 2.4vw, 1.9rem); margin: 8px 0 13px; }
   .linha-venda p { color: var(--cinza); max-width: 46ch; }
   .linha-venda p strong { color: var(--claro); }
-  .etiqueta-mini { display: inline-block; margin-top: 16px; font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--laranja-claro); border: 1px solid #ff6e0040; padding: 7px 13px; border-radius: 999px; }
+  .etiqueta-mini { display: inline-block; margin-top: 16px; font-size: .76rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--laranja-claro); border: 1px solid #ff6e0040; background: #ff6e000d; padding: 7px 13px; border-radius: 999px; }
 
-  /* ── RELATÓRIOS ─────────────────────────────────────────────────────── */
-  .fundo-relat { background: linear-gradient(180deg, var(--asfalto), #120C06 40%, var(--asfalto)); }
-  .numeros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 44px 0; }
-  .numero { border: 1px solid var(--linha); background: #101013cc; border-radius: var(--raio); padding: 26px 22px; }
-  .numero b { font-family: var(--display); font-size: clamp(1.7rem, 3.4vw, 2.7rem); color: var(--laranja); display: block; line-height: 1.05; font-variant-numeric: tabular-nums; }
-  .numero span { color: var(--cinza); font-size: .88rem; font-weight: 600; }
+  /* ── relatórios ─────────────────────────────────────────────────────── */
+  .fundo-relat { background: linear-gradient(180deg, var(--fundo), #100B06 40%, var(--fundo)); }
+  .numeros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 42px 0; }
+  .numero { border: 1px solid var(--linha); background: var(--cartao); border-radius: var(--raio); padding: 26px 22px; }
+  .numero b { font-weight: 900; font-size: clamp(1.7rem, 3.2vw, 2.5rem); color: var(--laranja); display: block; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .numero span { color: var(--cinza); font-size: .87rem; font-weight: 500; }
   .trio { display: grid; grid-template-columns: 1.7fr 1fr; gap: 16px; }
   .trio .midia:first-child { grid-row: span 2; }
 
-  /* ── GRADE: o sistema inteiro ───────────────────────────────────────── */
-  .grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 54px; }
+  /* ── grade: o sistema inteiro ───────────────────────────────────────── */
+  .grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 50px; }
   .cartao-tela {
-    border-radius: 14px; overflow: hidden; position: relative;
-    border: 1px solid #ffffff14; background: var(--fuligem);
+    border-radius: 16px; overflow: hidden; position: relative;
+    border: 1px solid var(--linha); background: var(--cartao);
     transition: transform .35s cubic-bezier(.2,.8,.2,1), border-color .35s, box-shadow .35s;
   }
-  .cartao-tela:hover { transform: translateY(-7px); border-color: #ff6e0060; box-shadow: 0 34px 70px -30px #000, 0 0 50px -22px rgba(255,110,0,.5); }
-  .cartao-tela figcaption {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 13px 16px; font-size: .88rem; font-weight: 700;
-  }
-  .cartao-tela figcaption small { color: var(--cinza-escuro); font-weight: 600; }
-  .aviso-real { text-align: center; margin-top: 34px; color: var(--cinza-escuro); font-size: .92rem; }
+  .cartao-tela:hover { transform: translateY(-6px); border-color: #ff6e0055; box-shadow: 0 34px 70px -30px #000, 0 0 46px -22px rgba(255,110,0,.45); }
+  .cartao-tela figcaption { display: flex; justify-content: space-between; align-items: center; padding: 13px 16px; font-size: .88rem; font-weight: 700; }
+  .cartao-tela figcaption small { color: var(--cinza-escuro); font-weight: 500; }
+  .aviso-real { text-align: center; margin-top: 32px; color: var(--cinza-escuro); font-size: .92rem; }
   .aviso-real b { color: var(--cinza); }
 
   /* ── CTA final ──────────────────────────────────────────────────────── */
   .cta-final {
-    background: linear-gradient(160deg, var(--laranja) 0%, #E45E00 55%, #B94A00 100%);
-    color: #180B00; text-align: center;
-    padding: clamp(90px, 14vh, 160px) 0;
+    background: linear-gradient(165deg, var(--laranja) 0%, #E86300 55%, #C25100 100%);
+    color: #1d0c00; text-align: center;
+    padding: clamp(84px, 13vh, 150px) 0;
     position: relative; overflow: clip;
   }
-  .cta-final::before {
-    content: ""; position: absolute; inset: -40% -20%;
-    background: radial-gradient(closest-side, #ffffff33, transparent 70%);
-    top: -70%; pointer-events: none;
-  }
-  .cta-final h2 {
-    font-family: var(--display); font-size: clamp(2.2rem, 6vw, 4.6rem);
-    line-height: .99; letter-spacing: -.015em; text-wrap: balance;
-    max-width: 18ch; margin: 0 auto 20px;
-  }
-  .cta-final p { font-size: clamp(1rem, 2vw, 1.25rem); font-weight: 600; max-width: 44ch; margin: 0 auto 42px; color: #3A1D00; }
+  .cta-final::before { content: ""; position: absolute; inset: -40% -20%; top: -70%; background: radial-gradient(closest-side, #ffffff30, transparent 70%); pointer-events: none; }
+  .cta-final .marca-cta { height: 58px; width: auto; margin: 0 auto 30px; filter: brightness(0); opacity: .85; }
+  .cta-final h2 { font-size: clamp(2rem, 5.4vw, 4rem); line-height: 1.02; max-width: 19ch; margin: 0 auto 18px; }
+  .cta-final p { font-size: clamp(1rem, 1.9vw, 1.2rem); font-weight: 600; max-width: 46ch; margin: 0 auto 40px; color: #431F00; }
   .cta-final .btn-zap { background: #062e17; color: #7CFFB4; }
   .cta-final .btn-zap:hover { background: #08351b; }
-  .cta-final .mini-nota { margin-top: 20px; font-size: .85rem; color: #5A2D00; font-weight: 600; }
+  .cta-final .mini-nota { margin-top: 18px; font-size: .85rem; color: #5A2D00; font-weight: 600; }
 
-  /* ── rodapé ─────────────────────────────────────────────────────────── */
-  footer { padding: 44px 0 60px; border-top: 1px solid var(--linha); }
+  footer { padding: 40px 0 56px; border-top: 1px solid var(--linha); }
   footer .wrap { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
-  footer img { height: 34px; }
+  footer img { height: 46px; }
   footer p { color: var(--cinza-escuro); font-size: .85rem; }
 
-  /* ── zap flutuante ──────────────────────────────────────────────────── */
   .zap-flutuante {
     position: fixed; right: 20px; bottom: 20px; z-index: 70;
-    width: 62px; height: 62px; border-radius: 50%;
+    width: 60px; height: 60px; border-radius: 50%;
     background: var(--zap); display: grid; place-items: center;
     box-shadow: 0 18px 44px -12px rgba(37,211,102,.6);
     transition: transform .2s ease;
   }
   .zap-flutuante:hover { transform: scale(1.1); }
-  .zap-flutuante svg { width: 32px; height: 32px; }
+  .zap-flutuante svg { width: 31px; height: 31px; }
 
   /* ── responsivo ─────────────────────────────────────────────────────── */
   @media (max-width: 900px) {
     .palco-video, .linha-venda, .trio { grid-template-columns: 1fr; }
     .linha-venda:nth-child(even) .midia { order: 0; }
     .grade { grid-template-columns: 1fr 1fr; }
-    .numeros { grid-template-columns: 1fr; }
-    .colagem { height: auto; display: grid; gap: 14px; perspective: none; }
-    .colagem .tela { position: static; width: 100% !important; transform: none !important; }
-    .chip-solto { display: none; }
-    .canais { grid-template-columns: 1fr; }
+    .numeros, .beneficios-site { grid-template-columns: 1fr; }
+    .palco-canais { grid-template-columns: 1fr; }
+    .cartao-veiculo { max-width: 420px; margin-inline: auto; }
+    .fio { min-width: 20px; }
+    .no-canal { flex: 1; min-width: 0; }
+    .site-flutuante { position: static; width: 100%; margin-top: 14px; transform: none; }
   }
   @media (max-width: 560px) { .grade { grid-template-columns: 1fr; } }
 
@@ -385,14 +402,15 @@
     .rev { opacity: 1; transform: none; }
     .palco-fone { height: auto; }
     .cola { position: static; height: auto; padding: 60px 0; }
+    .chip-no-ar { opacity: 1; transform: none; }
   }
 </style>
 </head>
-<body class="grao">
+<body>
 
-<!-- barra fixa -->
-<header class="topo" id="topo">
-  <a href="#inicio" aria-label="Via Pesados"><img src="/conheca/img/via-logo-white.png" alt="Via Pesados" /></a>
+<!-- barra fixa com a marca -->
+<header class="topo">
+  <a href="#inicio" aria-label="Via Pesados"><img src="/conheca/img/via-icon-white.png" alt="Via Pesados" /></a>
   <a class="btn-zap mini" href="https://wa.me/5533997075272?text=Ol%C3%A1!%20Vi%20a%20p%C3%A1gina%20do%20Via%20Pesados%20e%20quero%20marcar%20uma%20demonstra%C3%A7%C3%A3o." target="_blank" rel="noopener">
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
     Marcar demonstração
@@ -402,50 +420,119 @@
 <!-- HERÓI -->
 <section class="heroi" id="inicio">
   <div class="wrap">
-    <p class="olho rev">Via Pesados · Sistema de gestão</p>
-    <h1 class="rev d1">O ERP feito para <span class="risco">caminhões</span> e <span class="risco">carretas</span>.</h1>
-    <p class="sub rev d2">Anuncia no WhatsApp, Facebook, Instagram e Mercado Livre <strong>sozinho</strong>. Controla cada negociação para <strong>nenhuma venda escapar</strong>. E mostra a loja inteira num painel só. <strong>Enquanto o concorrente digita, você fecha.</strong></p>
+    <img class="marca rev" src="/conheca/img/via-icon-white.png" alt="Via Pesados" />
+    <div><span class="selo-topo rev d1">Sistema de gestão para lojas de pesados</span></div>
+    <h1 class="rev d1">O sistema feito para <span class="acento">caminhões</span> e <span class="acento">carretas</span>.</h1>
+    <p class="sub rev d2">Anuncia no WhatsApp, Facebook, Instagram e Mercado Livre <strong>com um clique</strong>. Controla cada negociação para <strong>nenhuma venda escapar</strong>. E mostra a loja inteira num painel só. <strong>Enquanto o concorrente digita, você fecha.</strong></p>
     <div class="acoes rev d3">
       <a class="btn-zap pulso" href="https://wa.me/5533997075272?text=Ol%C3%A1!%20Vi%20a%20p%C3%A1gina%20do%20Via%20Pesados%20e%20quero%20marcar%20uma%20demonstra%C3%A7%C3%A3o." target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
         Quero ver funcionando
       </a>
-      <a class="link-scroll" href="#tempo">Ver o sistema por dentro ↓</a>
-    </div>
-
-    <div class="colagem" id="colagem">
-      <div class="tela a" data-par="0.05"><img src="/conheca/img/gestao.jpg" alt="Estoque de veículos no Via Pesados" /></div>
-      <div class="tela b" data-par="-0.045"><img src="/conheca/img/crm-whatsapp.jpg" alt="WhatsApp da equipe dentro do CRM" /></div>
-      <div class="tela c" data-par="0.09"><img src="/conheca/img/relatorios.jpg" alt="Relatórios da loja" /></div>
-      <div class="chip-solto z" style="top: 4%; left: 44%;">✓ <b>17 mensagens</b> em 15s</div>
-      <div class="chip-solto" style="top: 38%; left: -6px; animation-delay: 1.2s;">Publicado em <b>4 canais</b></div>
-      <div class="chip-solto" style="bottom: 8%; right: -4px; animation-delay: 2.1s;"><b>R$ 8,6 mi</b> em estoque no painel</div>
+      <a class="link-scroll" href="#canais">Ver o sistema por dentro ↓</a>
     </div>
   </div>
-  <div class="faixa-luz"></div>
 </section>
 
-<!-- letreiro -->
-<div class="letreiro" aria-hidden="true">
-  <div class="trilho">
-    <span><svg viewBox="0 0 24 24" fill="#25D366" width="24" height="24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg> WhatsApp</span><span class="sep">•</span>
-    <span><img src="/conheca/img/instagram.svg" alt="" /> Instagram</span><span class="sep">•</span>
-    <span><img src="/conheca/img/facebook.svg" alt="" /> Facebook</span><span class="sep">•</span>
-    <span><img src="/conheca/img/mercadolibre.svg" alt="" /> Mercado Livre</span><span class="sep">•</span>
-    <span>Site próprio incluso</span><span class="sep">•</span>
-    <span><svg viewBox="0 0 24 24" fill="#25D366" width="24" height="24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg> WhatsApp</span><span class="sep">•</span>
-    <span><img src="/conheca/img/instagram.svg" alt="" /> Instagram</span><span class="sep">•</span>
-    <span><img src="/conheca/img/facebook.svg" alt="" /> Facebook</span><span class="sep">•</span>
-    <span><img src="/conheca/img/mercadolibre.svg" alt="" /> Mercado Livre</span><span class="sep">•</span>
-    <span>Site próprio incluso</span><span class="sep">•</span>
-  </div>
-</div>
+<!-- MULTICANAIS -->
+<section class="secao multicanal" id="canais">
+  <div class="wrap">
+    <div class="centrado">
+      <p class="olho rev">Anuncie em todo lugar</p>
+      <h2 class="rev d1">Cadastra <span class="acento">uma vez</span>. O sistema anuncia em <span class="acento">todo lugar</span>.</h2>
+      <p class="conversa rev d2">Você cadastra o caminhão e aperta <strong>um botão</strong>. O Via Pesados publica no WhatsApp, no Instagram, no Facebook, no Mercado Livre e no seu site — <strong>sozinho, com as fotos já editadas</strong>.</p>
+    </div>
 
-<!-- TEMPO -->
+    <div class="palco-canais">
+      <div class="cartao-veiculo rev">
+        <div class="foto"><img src="/conheca/img/scania-card.jpg" alt="Scania S 540 no pátio" /></div>
+        <div class="info">
+          <h3>SCANIA S 540 6x4</h3>
+          <p class="meta">2022/2022 · Cavalo · 244.000 km</p>
+          <p class="preco">R$ 701.000</p>
+          <button class="botao-anunciar" type="button" aria-hidden="true">⚡ Anunciar — 1 clique</button>
+        </div>
+      </div>
+
+      <div class="canais-fila rev d1">
+        <div class="canal-linha">
+          <div class="fio"><i></i></div>
+          <div class="no-canal">
+            <svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+            <span class="nome">WhatsApp<small>fluxo de fotos direto na conversa</small></span>
+            <span class="chip-no-ar">✓ ENVIADO</span>
+          </div>
+        </div>
+        <div class="canal-linha">
+          <div class="fio"><i></i></div>
+          <div class="no-canal">
+            <img class="branco" src="/conheca/img/instagram.svg" alt="Instagram" />
+            <span class="nome">Instagram<small>post e story com arte pronta</small></span>
+            <span class="chip-no-ar">✓ NO AR</span>
+          </div>
+        </div>
+        <div class="canal-linha">
+          <div class="fio"><i></i></div>
+          <div class="no-canal">
+            <img class="branco" src="/conheca/img/facebook.svg" alt="Facebook" />
+            <span class="nome">Facebook<small>página e catálogo sincronizados</small></span>
+            <span class="chip-no-ar">✓ NO AR</span>
+          </div>
+        </div>
+        <div class="canal-linha">
+          <div class="fio"><i></i></div>
+          <div class="no-canal">
+            <img class="branco" src="/conheca/img/mercadolibre.svg" alt="Mercado Livre" />
+            <span class="nome">Mercado Livre<small>anuncia e despublica com o estoque</small></span>
+            <span class="chip-no-ar">✓ NO AR</span>
+          </div>
+        </div>
+        <div class="canal-linha">
+          <div class="fio"><i></i></div>
+          <div class="no-canal">
+            <img src="/conheca/img/via-icon-white.png" alt="Site da loja" style="width:27px;height:27px;object-fit:contain;" />
+            <span class="nome">Site da sua loja<small>com a sua marca e as suas cores</small></span>
+            <span class="chip-no-ar">✓ NO AR</span>
+          </div>
+        </div>
+        <p class="nota-vendeu">E quando vender? <strong>O sistema tira o anúncio de todos os canais sozinho.</strong> Ninguém liga por caminhão que já saiu.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FONE: a gravação real virando animação -->
+<section class="trecho-fone">
+  <div class="palco-fone" id="palco-fone">
+    <div class="cola">
+      <div class="titulo-fone">
+        <h2>Role a página. <span class="acento">É isto que o seu cliente recebe.</span></h2>
+        <p class="conversa">Um clique do vendedor — e o caminhão inteiro chega assim.</p>
+      </div>
+      <div class="cena-fone">
+        <div class="anel"></div>
+        <div class="anel" style="animation-delay: 2s; width: min(86vw, 660px);"></div>
+        <div class="iphone">
+          <div class="telinha">
+            <div class="ilha"></div>
+            <canvas id="tela-fone" width="500" height="1014" aria-label="Gravação real do WhatsApp do cliente recebendo o anúncio"></canvas>
+          </div>
+        </div>
+        <div class="balao-info" data-passo="0" style="top: 18%; left: max(4vw, calc(50% - 330px));">Gravado do <b>celular do cliente</b> — de verdade.</div>
+        <div class="balao-info" data-passo="1" style="top: 38%; right: max(4vw, calc(50% - 330px));">Ficha completa, <b>sem digitar nada</b>.</div>
+        <div class="balao-info" data-passo="2" style="top: 58%; left: max(4vw, calc(50% - 340px));"><b>12 fotos</b> do caminhão, na ordem certa.</div>
+        <div class="balao-info" data-passo="3" style="top: 76%; right: max(4vw, calc(50% - 340px));">E o link puxa para o <b>site da sua loja</b>.</div>
+      </div>
+      <p class="dica-rolar">Continue rolando</p>
+    </div>
+  </div>
+</section>
+
+<!-- TEMPO: vídeo real do CRM -->
 <section class="secao" id="tempo">
   <div class="wrap">
-    <p class="olho rev">Tempo</p>
-    <h2 class="rev d1">Um clique no pátio. Dezessete mensagens no cliente.</h2>
+    <p class="olho rev">Do lado de cá</p>
+    <h2 class="rev d1">Um clique no pátio. <span class="acento">Dezessete mensagens</span> no cliente.</h2>
     <p class="conversa rev d2">Isto não é maquete: é uma <strong>gravação real do sistema, sem cortes</strong>. O vendedor escolhe o caminhão e o Via Pesados dispara ficha completa, fotos, preço, localização e o link do site — <strong>em 15 segundos</strong>, pelo WhatsApp da própria loja.</p>
 
     <div class="palco-video">
@@ -455,7 +542,7 @@
           <div class="navegador">
             <div class="barra">
               <span class="bola"></span><span class="bola"></span><span class="bola"></span>
-              <span class="url">minascaminhoes · Via CRM — enviando fluxo do MAN TGX 29.480</span>
+              <span class="url">Via CRM — enviando fluxo do MAN TGX 29.480</span>
             </div>
             <video id="video-fluxo" src="/conheca/fluxo.mp4" poster="/conheca/img/fluxo-poster.jpg" muted playsinline loop preload="metadata"></video>
             <div class="progresso"><i id="barra-video"></i></div>
@@ -470,42 +557,42 @@
       </div>
 
       <div>
-        <div class="canais rev d1" style="grid-template-columns: 1fr;">
-          <div class="canal"><svg viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+        <div class="lista-canais-mini rev d1">
+          <div class="canal"><svg viewBox="0 0 24 24" fill="#fff"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
             <span>Fluxo de fotos no WhatsApp<small>ficha completa, foto por foto, com link do site</small></span></div>
-          <div class="canal"><img src="/conheca/img/instagram.svg" alt="" /><span>Posts e stories no Instagram<small>arte pronta, gerada do próprio anúncio</small></span></div>
-          <div class="canal"><img src="/conheca/img/facebook.svg" alt="" /><span>Página e catálogo no Facebook<small>estoque sincronizado sozinho</small></span></div>
-          <div class="canal"><img src="/conheca/img/mercadolibre.svg" alt="" /><span>Anúncio no Mercado Livre<small>publica e despublica junto com o estoque</small></span></div>
+          <div class="canal"><img class="branco" src="/conheca/img/instagram.svg" alt="" /><span>Posts e stories no Instagram<small>arte pronta, gerada do próprio anúncio</small></span></div>
+          <div class="canal"><img class="branco" src="/conheca/img/facebook.svg" alt="" /><span>Página e catálogo no Facebook<small>estoque sincronizado sozinho</small></span></div>
+          <div class="canal"><img class="branco" src="/conheca/img/mercadolibre.svg" alt="" /><span>Anúncio no Mercado Livre<small>publica e despublica junto com o estoque</small></span></div>
         </div>
-        <p class="conversa rev d2" style="margin-top: 30px; font-size: 1rem;"><strong>Cadastrou uma vez, anunciou em todo lugar.</strong> Vendeu? O sistema tira de todos os canais sozinho. Seu vendedor cuida de vender — não de copiar e colar.</p>
+        <p class="conversa rev d2" style="margin-top: 28px; font-size: 1rem;"><strong>Seu vendedor cuida de vender</strong> — não de copiar e colar anúncio.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- FONE: a gravação encantadora -->
-<section class="trecho-fone">
-  <div class="palco-fone" id="palco-fone">
-    <div class="cola">
-      <div class="titulo-fone">
-        <p class="olho" style="justify-content: center;">Do lado de lá</p>
-        <h2>Role a página.<br/>É isto que o seu cliente recebe.</h2>
-      </div>
-      <div class="cena-fone">
-        <div class="anel"></div>
-        <div class="anel" style="animation-delay: 2s; width: min(86vw, 680px);"></div>
-        <div class="iphone">
-          <div class="telinha">
-            <div class="ilha"></div>
-            <canvas id="tela-fone" width="500" height="1014" aria-label="Gravação real do WhatsApp do cliente recebendo o anúncio"></canvas>
-          </div>
+<!-- SITE PRÓPRIO -->
+<section class="secao" id="site">
+  <div class="wrap">
+    <p class="olho rev">A sua vitrine</p>
+    <h2 class="rev d1">A sua loja ganha um <span class="acento">site assim</span>.</h2>
+    <p class="conversa rev d2">Com a <strong>sua marca, suas cores e seu WhatsApp</strong>. O estoque entra e sai do site sozinho, cada caminhão com página própria, simulador de financiamento e botão de conversa — <strong>é para lá que os anúncios apontam</strong>.</p>
+
+    <div class="palco-site rev">
+      <div class="navegador">
+        <div class="barra">
+          <span class="bola"></span><span class="bola"></span><span class="bola"></span>
+          <span class="url">o site da sua loja — este é o da Minas Caminhões, cliente de demonstração</span>
         </div>
-        <div class="balao-info" data-passo="0" style="top: 16%; left: max(4vw, calc(50% - 330px));">Gravado do <b>celular do cliente</b> — de verdade.</div>
-        <div class="balao-info" data-passo="1" style="top: 38%; right: max(4vw, calc(50% - 330px));">Ficha técnica completa, <b>sem digitar nada</b>.</div>
-        <div class="balao-info" data-passo="2" style="top: 58%; left: max(4vw, calc(50% - 340px));"><b>12 fotos</b> do caminhão, na ordem certa.</div>
-        <div class="balao-info" data-passo="3" style="top: 76%; right: max(4vw, calc(50% - 340px));">E o link puxa para o <b>site da sua loja</b>.</div>
+        <img src="/conheca/img/site.jpg" alt="Site da loja com a marca do lojista" />
       </div>
-      <p class="dica-rolar">Continue rolando</p>
+      <div class="site-flutuante"><img src="/conheca/img/site-veiculo.jpg" alt="Página do veículo no site da loja" /></div>
+    </div>
+
+    <div class="beneficios-site">
+      <div class="beneficio rev"><b>Sua marca na frente</b><span>Logo, cores e telefone da sua loja. A Via Pesados fica nos bastidores.</span></div>
+      <div class="beneficio rev d1"><b>Estoque sempre certo</b><span>Cadastrou, apareceu. Vendeu, saiu. Sem site desatualizado.</span></div>
+      <div class="beneficio rev d2"><b>WhatsApp em cada veículo</b><span>O cliente vê o caminhão e fala com o vendedor em um toque.</span></div>
+      <div class="beneficio rev d3"><b>Financiamento na hora</b><span>Simulador em cada página. O cliente chega na conversa já sabendo a parcela.</span></div>
     </div>
   </div>
 </section>
@@ -514,7 +601,7 @@
 <section class="secao" id="venda">
   <div class="wrap">
     <p class="olho rev">Venda</p>
-    <h2 class="rev d1">Nenhuma venda escapa.</h2>
+    <h2 class="rev d1">Nenhuma venda <span class="acento">escapa</span>.</h2>
     <p class="conversa rev d2">O WhatsApp da equipe inteira, o funil e o pós-venda dentro de um lugar só — com o sistema <strong>avisando quem está na hora de comprar de novo</strong>.</p>
 
     <div class="linhas-venda">
@@ -534,7 +621,7 @@
           <div class="num-bloco">02</div>
           <h3>Funil que arrasta a negociação para frente</h3>
           <p>Interessado, quente, finalizando, ficha de financiamento, fechado. Cada cliente numa coluna, cada coluna com valor somado. <strong>Bateu o olho, sabe onde está o dinheiro do mês.</strong></p>
-          <span class="etiqueta-mini">Kanban com valor por etapa</span>
+          <span class="etiqueta-mini">Funil com valor por etapa</span>
         </div>
       </div>
 
@@ -553,7 +640,7 @@
         <div>
           <div class="num-bloco">04</div>
           <h3>Cada caminhão com dossiê completo</h3>
-          <p>Dias em estoque, margem, custo total, fotos, documentos, leads que receberam o veículo. <strong>418 dias parado? O painel te cutuca: urgente girar.</strong></p>
+          <p>Dias em estoque, margem, custo total, fotos, documentos, quem já recebeu o veículo. <strong>418 dias parado? O painel te cutuca: urgente girar.</strong></p>
           <span class="etiqueta-mini">Etiquetas saem sozinhas da ficha</span>
         </div>
       </div>
@@ -565,12 +652,12 @@
 <section class="secao fundo-relat" id="relatorios">
   <div class="wrap">
     <p class="olho rev">Relatórios</p>
-    <h2 class="rev d1">A loja inteira num painel. Pesado como tem que ser.</h2>
-    <p class="conversa rev d2">Faturamento, margem bruta, ticket médio, giro de estoque, vendedor a vendedor, área por área. <strong>Não é achismo: é o número na sua frente</strong>, para decidir onde apertar e vender ainda mais.</p>
+    <h2 class="rev d1">A loja inteira <span class="acento">num painel</span>. Pesado como tem que ser.</h2>
+    <p class="conversa rev d2">Faturamento, margem, ticket médio, giro de estoque, vendedor a vendedor, área por área. <strong>Não é achismo: é o número na sua frente</strong>, para decidir onde apertar e vender ainda mais.</p>
 
     <div class="numeros">
-      <div class="numero rev"><b data-conta="17" data-sufixo=" telas">0 telas</b><span>módulos num sistema só: estoque, CRM, financeiro, RH, site, relatórios…</span></div>
-      <div class="numero rev d1"><b data-conta="4" data-sufixo=" canais">0 canais</b><span>publicando sozinhos: WhatsApp, Instagram, Facebook e Mercado Livre</span></div>
+      <div class="numero rev"><b data-conta="17" data-sufixo=" módulos">0 módulos</b><span>num sistema só: estoque, CRM, financeiro, equipe, site, relatórios…</span></div>
+      <div class="numero rev d1"><b data-conta="5" data-sufixo=" canais">0 canais</b><span>anunciando com um clique: WhatsApp, Instagram, Facebook, Mercado Livre e seu site</span></div>
       <div class="numero rev d2"><b data-conta="15" data-sufixo="s">0s</b><span>para o anúncio completo chegar no WhatsApp do cliente</span></div>
     </div>
 
@@ -586,8 +673,8 @@
 <section class="secao" id="sistema">
   <div class="wrap">
     <p class="olho rev">Sem cortina</p>
-    <h2 class="rev d1">O sistema inteirinho, print por print.</h2>
-    <p class="conversa rev d2">Nada aqui é mockup de designer. <strong>Toda imagem desta página é tela real do Via Pesados</strong> — o mesmo sistema que você recebe no primeiro dia.</p>
+    <h2 class="rev d1">O sistema inteirinho, <span class="acento">print por print</span>.</h2>
+    <p class="conversa rev d2">Nada aqui é desenho de designer. <strong>Toda imagem desta página é tela real do Via Pesados</strong> — o mesmo sistema que você recebe no primeiro dia.</p>
 
     <div class="grade">
       <figure class="cartao-tela rev"><img src="/conheca/img/sistema.jpg" loading="lazy" alt="" /><figcaption>Início <small>tudo a um clique</small></figcaption></figure>
@@ -598,13 +685,14 @@
       <figure class="cartao-tela rev d2"><img src="/conheca/img/calendario.jpg" loading="lazy" alt="" /><figcaption>Agenda <small>visitas, entregas, avaliações</small></figcaption></figure>
     </div>
 
-    <p class="aviso-real rev">E ainda: financiamento, consórcio, ponto eletrônico, RH, metas, pós-venda, inteligência artificial… <b>a lista não cabe na página — cabe na demonstração.</b></p>
+    <p class="aviso-real rev">E ainda: financiamento, consórcio, ponto eletrônico, equipe, metas, pós-venda, inteligência artificial… <b>a lista não cabe na página — cabe na demonstração.</b></p>
   </div>
 </section>
 
 <!-- CTA FINAL -->
 <section class="cta-final" id="contato">
   <div class="wrap">
+    <img class="marca-cta rev" src="/conheca/img/via-icon-white.png" alt="Via Pesados" />
     <h2 class="rev">Chega de perder venda por falta de tempo.</h2>
     <p class="rev d1">Quinze minutos no WhatsApp e você vê tudo isso rodando — com os seus caminhões, do seu jeito.</p>
     <a class="btn-zap gigante pulso rev d2" href="https://wa.me/5533997075272?text=Ol%C3%A1!%20Vi%20a%20p%C3%A1gina%20do%20Via%20Pesados%20e%20quero%20marcar%20uma%20demonstra%C3%A7%C3%A3o." target="_blank" rel="noopener">
@@ -615,48 +703,26 @@
   </div>
 </section>
 
-<div class="listras" aria-hidden="true"></div>
-
 <footer>
   <div class="wrap">
-    <img src="/conheca/img/via-logo-white.png" alt="Via Pesados" />
+    <img src="/conheca/img/via-icon-white.png" alt="Via Pesados" />
     <p>Feito exclusivamente para o mercado de pesados · viapesados.com.br</p>
   </div>
 </footer>
 
 <a class="zap-flutuante" href="https://wa.me/5533997075272?text=Ol%C3%A1!%20Vi%20a%20p%C3%A1gina%20do%20Via%20Pesados%20e%20quero%20marcar%20uma%20demonstra%C3%A7%C3%A3o." target="_blank" rel="noopener" aria-label="Falar no WhatsApp">
-  <svg viewBox="0 0 24 24" fill="#04240f"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+  <svg viewBox="0 0 24 24" fill="#052e16"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
 </a>
 
 <script>
 (() => {
   const reduzido = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* barra fixa aparece depois do herói */
-  const topo = document.getElementById('topo');
-  addEventListener('scroll', () => {
-    topo.classList.toggle('visivel', scrollY > innerHeight * .55);
-  }, { passive: true });
-
   /* revelação no scroll */
   const io = new IntersectionObserver(es => {
     es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('no-ar'); io.unobserve(e.target); } });
   }, { threshold: .18 });
   document.querySelectorAll('.rev').forEach(el => io.observe(el));
-
-  /* parallax da colagem do herói */
-  if (!reduzido) {
-    const telas = [...document.querySelectorAll('.colagem .tela')];
-    let alvo = 0;
-    addEventListener('scroll', () => { alvo = scrollY; }, { passive: true });
-    (function anda() {
-      telas.forEach(t => {
-        const f = parseFloat(t.dataset.par || 0);
-        t.style.translate = `0 ${(alvo * f).toFixed(1)}px`;
-      });
-      requestAnimationFrame(anda);
-    })();
-  }
 
   /* vídeo do fluxo: toca quando aparece, legendas sincronizadas */
   const video = document.getElementById('video-fluxo');
@@ -723,7 +789,7 @@
   };
 
   carrega(0).then(im => {
-    if (im) { canvas.height = Math.round(canvas.width * im.height / im.width); desenha(0); }
+    if (im) { canvas.height = Math.round(canvas.width * im.height / im.width); atual = -1; desenha(0); }
     /* pré-carrega o resto aos poucos, sem travar nada */
     let i = 1;
     (function fila() { if (i < TOTAL) carrega(i++).then(() => { if (Math.abs(pedido - (i - 1)) < 4) desenha(pedido); setTimeout(fila, 40); }); })();
