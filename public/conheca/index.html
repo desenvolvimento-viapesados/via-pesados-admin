@@ -701,10 +701,23 @@
     im.src = src(i);
   });
 
-  let atual = -1;
+  let atual = -1, pedido = 0;
   const desenha = i => {
     i = Math.max(0, Math.min(TOTAL - 1, i));
-    if (i === atual || !quadros[i]) return;
+    pedido = i;
+    // ainda baixando? usa o quadro carregado mais próximo, em vez de
+    // congelar num antigo — quem rola rápido na primeira visita não
+    // pode ver a conversa presa no comecinho
+    if (!quadros[i]) {
+      let melhor = -1;
+      for (let d = 1; d < TOTAL; d++) {
+        if (quadros[i - d]) { melhor = i - d; break; }
+        if (quadros[i + d]) { melhor = i + d; break; }
+      }
+      if (melhor < 0 || melhor === atual) return;
+      i = melhor;
+    }
+    if (i === atual) return;
     atual = i;
     ctx.drawImage(quadros[i], 0, 0, canvas.width, canvas.height);
   };
@@ -713,7 +726,7 @@
     if (im) { canvas.height = Math.round(canvas.width * im.height / im.width); desenha(0); }
     /* pré-carrega o resto aos poucos, sem travar nada */
     let i = 1;
-    (function fila() { if (i < TOTAL) carrega(i++).then(() => setTimeout(fila, 40)); })();
+    (function fila() { if (i < TOTAL) carrega(i++).then(() => { if (Math.abs(pedido - (i - 1)) < 4) desenha(pedido); setTimeout(fila, 40); }); })();
   });
 
   const palco = document.getElementById('palco-fone');
