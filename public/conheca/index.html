@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Via Pesados — O sistema feito para caminhões e carretas</title>
-<meta name="description" content="Anuncia no WhatsApp, Facebook, Instagram e Mercado Livre com um clique. CRM que não deixa venda escapar. Relatórios que mostram o lucro de verdade. Feito para lojas de caminhões e carretas." />
+<meta name="description" content="Cadastre o caminhão uma vez. O sistema anuncia no WhatsApp, Instagram, Facebook, Mercado Livre e no site da sua loja, organiza cada negociação e mostra quanto cada venda deixou no caixa." />
 <meta property="og:type" content="website" />
 <meta property="og:title" content="Via Pesados — O sistema feito para caminhões e carretas" />
 <meta property="og:description" content="Um clique no pátio, dezessete mensagens no cliente. Veja o sistema por dentro, tela por tela." />
@@ -19,8 +19,7 @@
 <link rel="preload" as="image" href="/conheca/img/via-icon-white.png" />
 <link rel="preload" as="image" href="/conheca/img/scania-card.jpg" />
 <style>
-  /* ── fundações — a estética do sistema Via Pesados: preto, laranja,
-       cartões arredondados de borda fina, Inter em peso alto ───────────── */
+  /* ── fundações — a estética do sistema Via Pesados ───────────────────── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
     --fundo: #060607;
@@ -40,24 +39,19 @@
   }
   html { scroll-behavior: smooth; }
   body {
-    background: var(--fundo);
-    color: var(--claro);
-    font-family: var(--fonte);
-    font-size: 17px;
-    line-height: 1.55;
-    -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
+    background: var(--fundo); color: var(--claro);
+    font-family: var(--fonte); font-size: 17px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
   }
   img, video, canvas { max-width: 100%; display: block; }
   a { color: inherit; text-decoration: none; }
   .wrap { width: min(1180px, 92vw); margin-inline: auto; }
   ::selection { background: var(--laranja); color: #000; }
   .branco { filter: brightness(0) invert(1); }
-
   h1, h2, h3 { font-weight: 800; letter-spacing: -.025em; text-wrap: balance; }
   .acento { color: var(--laranja); }
 
-  /* ── barra fixa, sempre presente, com a marca ───────────────────────── */
+  /* ── barra fixa ─────────────────────────────────────────────────────── */
   .topo {
     position: fixed; inset: 0 0 auto 0; z-index: 60;
     display: flex; align-items: center; justify-content: space-between;
@@ -68,7 +62,7 @@
   }
   .topo img { height: 44px; width: auto; }
 
-  /* ── botão WhatsApp (oficial: glifo branco no verde) ────────────────── */
+  /* ── botão WhatsApp ─────────────────────────────────────────────────── */
   .btn-zap {
     display: inline-flex; align-items: center; gap: 12px;
     background: var(--zap); color: #052e16;
@@ -92,13 +86,12 @@
   /* ── herói ──────────────────────────────────────────────────────────── */
   .heroi {
     position: relative; z-index: 2;
-    padding: clamp(120px, 16vh, 170px) 0 clamp(30px, 5vh, 60px);
+    padding: clamp(120px, 16vh, 170px) 0 clamp(40px, 6vh, 70px);
     background:
       radial-gradient(1000px 500px at 72% -12%, rgba(255,110,0,.15), transparent 60%),
       radial-gradient(650px 400px at 6% 10%, rgba(255,110,0,.06), transparent 55%),
       var(--fundo);
-    overflow: clip;
-    text-align: center;
+    overflow: clip; text-align: center;
   }
   .heroi .marca { height: clamp(64px, 9vw, 96px); width: auto; margin: 0 auto 30px; }
   .selo-topo {
@@ -108,17 +101,17 @@
     border: 1px solid #ff6e0038; background: #ff6e000f;
     padding: 8px 16px; border-radius: 999px; margin-bottom: 26px;
   }
-  .heroi h1 { font-size: var(--pico); line-height: 1.02; max-width: 17ch; margin: 0 auto 22px; }
+  .heroi h1 { font-size: var(--pico); line-height: 1.02; max-width: 17ch; margin: 0 auto 24px; }
   .heroi .sub {
-    font-size: clamp(1.02rem, 1.7vw, 1.25rem); color: var(--cinza);
-    max-width: 56ch; margin: 0 auto 36px;
+    font-size: clamp(1.05rem, 1.75vw, 1.3rem); color: var(--cinza);
+    max-width: 54ch; margin: 0 auto 38px; line-height: 1.6;
   }
   .heroi .sub strong { color: var(--claro); font-weight: 700; }
   .acoes { display: flex; align-items: center; justify-content: center; gap: 24px; flex-wrap: wrap; }
   .link-scroll { color: var(--cinza); font-weight: 600; border-bottom: 1px dashed var(--cinza-escuro); padding-bottom: 2px; transition: color .2s; }
   .link-scroll:hover { color: var(--claro); }
 
-  /* ── revelação no scroll ────────────────────────────────────────────── */
+  /* ── revelação ──────────────────────────────────────────────────────── */
   .rev { opacity: 0; transform: translateY(30px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
   .rev.no-ar { opacity: 1; transform: none; }
   .rev.d1 { transition-delay: .08s; } .rev.d2 { transition-delay: .16s; } .rev.d3 { transition-delay: .24s; }
@@ -139,89 +132,129 @@
   .centrado h2, .centrado .conversa { margin-inline: auto; }
   .centrado .olho { justify-content: center; }
 
-  /* ── MULTICANAIS: um clique, quatro canais ──────────────────────────── */
-  .multicanal { background: linear-gradient(180deg, var(--fundo), #0B0906 45%, var(--fundo)); }
-  .palco-canais {
-    display: grid; grid-template-columns: minmax(280px, 380px) 1fr;
-    gap: clamp(24px, 5vw, 70px); align-items: center;
-    margin-top: 54px;
+  /* ══ MULTICANAIS — a sequência de um clique ═════════════════════════ */
+  .multicanal { background: linear-gradient(180deg, var(--fundo), #0B0906 45%, var(--fundo)); padding-block: clamp(60px, 8vh, 96px); }
+
+  /* trilha de etapas: diz em palavras o que a animação está fazendo */
+  .etapas { display: flex; justify-content: center; gap: 0; flex-wrap: wrap; margin-top: 30px; }
+  .etapa {
+    display: flex; align-items: center; gap: 11px;
+    padding: 11px 20px; border-radius: 999px;
+    border: 1px solid var(--linha); background: var(--cartao);
+    font-weight: 700; font-size: .92rem; color: var(--cinza-escuro);
+    transition: all .45s cubic-bezier(.2,.8,.2,1);
   }
+  .etapa b {
+    width: 24px; height: 24px; border-radius: 50%; flex: none;
+    display: grid; place-items: center;
+    background: #ffffff10; color: var(--cinza-escuro);
+    font-size: .78rem; font-weight: 800;
+    transition: all .45s ease;
+  }
+  .etapa.agora { color: var(--claro); border-color: #ff6e0066; background: #1a120a; }
+  .etapa.agora b { background: var(--laranja); color: #1d0c00; }
+  .tracinho { width: clamp(16px, 4vw, 46px); height: 2px; background: #ffffff14; align-self: center; }
+
+  .palco-canais {
+    display: grid; grid-template-columns: minmax(270px, 360px) 1fr;
+    gap: clamp(20px, 4vw, 56px); align-items: center; margin-top: 30px;
+  }
+
+  /* o cartão do veículo, como aparece no estoque */
   .cartao-veiculo {
     background: var(--cartao); border: 1px solid var(--linha); border-radius: var(--raio);
     overflow: hidden; position: relative;
-    box-shadow: 0 50px 100px -40px rgba(0,0,0,.9), 0 0 70px -30px rgba(255,110,0,.4);
+    box-shadow: 0 50px 100px -40px rgba(0,0,0,.9), 0 0 70px -30px rgba(255,110,0,.35);
   }
-  .cartao-veiculo .foto { aspect-ratio: 4/3.4; overflow: hidden; }
-  .cartao-veiculo .foto img { width: 100%; height: 100%; object-fit: cover; }
-  .cartao-veiculo .info { padding: 18px 18px 20px; }
-  .cartao-veiculo h3 { font-size: 1.15rem; letter-spacing: -.01em; }
-  .cartao-veiculo .meta { color: var(--cinza); font-size: .85rem; margin-top: 3px; }
-  .cartao-veiculo .preco { color: var(--laranja); font-weight: 800; font-size: 1.3rem; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .cartao-veiculo .foto { aspect-ratio: 16/10; overflow: hidden; }
+  .cartao-veiculo .foto img { width: 100%; height: 100%; object-fit: cover; object-position: center 42%; }
+  .cartao-veiculo .info { padding: 16px 16px 18px; }
+  .cartao-veiculo h3 { font-size: 1.1rem; }
+  .cartao-veiculo .meta { color: var(--cinza); font-size: .84rem; margin-top: 3px; }
+  .cartao-veiculo .preco { color: var(--laranja); font-weight: 800; font-size: 1.28rem; margin-top: 9px; font-variant-numeric: tabular-nums; }
+
+  .caixa-botao { position: relative; margin-top: 15px; }
   .botao-anunciar {
-    margin-top: 16px; width: 100%;
-    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
     background: var(--laranja); color: #1d0c00;
     font-weight: 800; font-size: 1rem; font-family: inherit;
-    border: 0; border-radius: 14px; padding: 15px;
-    animation: pulsa-laranja 3s ease-out infinite;
+    border: 0; border-radius: 14px; padding: 15px; cursor: default;
+    transition: transform .12s ease, filter .12s ease;
   }
-  @keyframes pulsa-laranja {
-    0% { box-shadow: 0 0 0 0 rgba(255,110,0,.5); }
-    60% { box-shadow: 0 0 0 20px rgba(255,110,0,0); }
-    100% { box-shadow: 0 0 0 0 rgba(255,110,0,0); }
+  .botao-anunciar.apertado { transform: scale(.955); filter: brightness(.86); }
+  /* a onda que sai do clique — deixa claro que o botão FOI apertado */
+  .onda {
+    position: absolute; inset: 0; border-radius: 14px; pointer-events: none;
+    border: 2px solid var(--laranja); opacity: 0;
   }
-  .canais-fila { display: grid; gap: 16px; }
-  .canal-linha { display: flex; align-items: center; gap: 0; }
-  .fio { flex: 1; height: 2px; background: #ffffff12; position: relative; min-width: 36px; border-radius: 2px; }
+  .onda.bate { animation: onda .85s cubic-bezier(.2,.7,.3,1) forwards; }
+  @keyframes onda {
+    0%   { opacity: .95; transform: scale(1); }
+    100% { opacity: 0;   transform: scale(1.35); }
+  }
+  /* o cursor que vai até o botão — dá o "quem faz" da cena */
+  .cursor {
+    position: absolute; z-index: 8; width: 26px; height: 26px;
+    right: 5%; bottom: 3%; opacity: 0;
+    transition: transform .95s cubic-bezier(.3,.9,.3,1), opacity .35s ease;
+    filter: drop-shadow(0 3px 8px #000);
+  }
+  .cursor.aparece { opacity: 1; }
+  .cursor.mira { transform: translate(-78px, -34px); }
+  .cursor.clicou { transform: translate(-78px, -30px) scale(.86); }
+
+  /* fios e canais */
+  .canais-fila { display: grid; gap: 11px; }
+  .canal-linha { display: flex; align-items: center; }
+  .fio { flex: 1; height: 2px; background: #ffffff12; position: relative; min-width: 34px; border-radius: 2px; overflow: visible; }
   .fio i {
-    position: absolute; top: 50%; translate: 0 -50%;
-    width: 9px; height: 9px; border-radius: 50%;
-    background: var(--laranja);
-    box-shadow: 0 0 12px 2px rgba(255,110,0,.6);
-    left: 0; opacity: 0;
-    animation: viaja 9s linear infinite;
+    position: absolute; top: 50%; left: 0; translate: 0 -50%;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--laranja); box-shadow: 0 0 14px 3px rgba(255,110,0,.75);
+    opacity: 0;
   }
+  .canal-linha.disparou .fio i { animation: viaja .85s cubic-bezier(.4,0,.5,1) forwards; }
   @keyframes viaja {
     0%   { left: 0; opacity: 0; }
-    1.5% { opacity: 1; }
-    11%  { left: calc(100% - 9px); opacity: 1; }
-    13%  { opacity: 0; }
-    100% { left: calc(100% - 9px); opacity: 0; }
+    12%  { opacity: 1; }
+    88%  { opacity: 1; }
+    100% { left: calc(100% - 10px); opacity: 0; }
   }
+  .canal-linha.disparou .fio { background: linear-gradient(90deg, #ff6e0055, #ffffff12); }
+
   .no-canal {
     display: flex; align-items: center; gap: 14px;
     background: var(--cartao); border: 1px solid var(--linha); border-radius: 16px;
-    padding: 15px 18px; min-width: min(320px, 62vw);
+    padding: 12px 16px; min-width: min(320px, 62vw);
+    transition: border-color .4s ease, background .4s ease, transform .4s cubic-bezier(.2,.8,.2,1);
   }
-  .no-canal img, .no-canal svg { width: 27px; height: 27px; object-fit: contain; }
-  .no-canal .nome { font-weight: 700; font-size: .98rem; }
+  .canal-linha.no-ar .no-canal { border-color: #25d36655; background: #0e1712; }
+  .no-canal img, .no-canal svg { width: 27px; height: 27px; object-fit: contain; flex: none; }
+  .no-canal .nome { font-weight: 700; font-size: .97rem; }
   .no-canal .nome small { display: block; font-weight: 500; color: var(--cinza-escuro); font-size: .75rem; }
   .chip-no-ar {
-    margin-left: auto;
-    font-size: .72rem; font-weight: 800; letter-spacing: .06em;
+    margin-left: auto; font-size: .71rem; font-weight: 800; letter-spacing: .06em;
     color: #7CFFB4; background: #12351f; border: 1px solid #25d36640;
     padding: 5px 11px; border-radius: 999px; white-space: nowrap;
-    opacity: 0; transform: scale(.85);
-    animation: no-ar 9s ease infinite;
+    opacity: 0; transform: scale(.8); transition: opacity .3s ease, transform .3s cubic-bezier(.2,1.5,.4,1);
   }
-  @keyframes no-ar {
-    0%, 11%  { opacity: 0; transform: scale(.85); }
-    14%      { opacity: 1; transform: scale(1.06); }
-    16%      { transform: scale(1); }
-    90%      { opacity: 1; }
-    97%,100% { opacity: 0; transform: scale(.85); }
+  .canal-linha.no-ar .chip-no-ar { opacity: 1; transform: scale(1); }
+
+  .placar {
+    margin-top: 24px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    color: var(--cinza); font-size: .95rem;
+    opacity: 0; transform: translateY(10px); transition: all .5s ease;
   }
-  .canal-linha:nth-child(1) .fio i, .canal-linha:nth-child(1) .chip-no-ar { animation-delay: 0s; }
-  .canal-linha:nth-child(2) .fio i, .canal-linha:nth-child(2) .chip-no-ar { animation-delay: 1.15s; }
-  .canal-linha:nth-child(3) .fio i, .canal-linha:nth-child(3) .chip-no-ar { animation-delay: 2.3s; }
-  .canal-linha:nth-child(4) .fio i, .canal-linha:nth-child(4) .chip-no-ar { animation-delay: 3.45s; }
-  .canal-linha:nth-child(5) .fio i, .canal-linha:nth-child(5) .chip-no-ar { animation-delay: 4.6s; }
-  .nota-vendeu {
-    margin-top: 26px; color: var(--cinza); font-size: .95rem;
+  .placar.no-ar { opacity: 1; transform: none; }
+  .placar b { color: var(--claro); }
+  .placar .selo-tempo {
+    font-weight: 800; color: #7CFFB4; background: #12351f;
+    border: 1px solid #25d36640; padding: 6px 13px; border-radius: 999px; font-size: .84rem;
   }
+  .nota-vendeu { margin-top: 18px; color: var(--cinza); font-size: .95rem; }
   .nota-vendeu strong { color: var(--claro); }
 
-  /* ── FONE: a gravação vira animação de scroll ───────────────────────── */
+  /* ── FONE ───────────────────────────────────────────────────────────── */
   .trecho-fone { background: linear-gradient(180deg, var(--fundo), #0A100D 30%, #0A120E 70%, var(--fundo)); }
   .palco-fone { height: 330vh; position: relative; }
   .cola { position: sticky; top: 0; height: 100vh; height: 100svh; display: grid; place-items: center; overflow: clip; }
@@ -262,17 +295,19 @@
   .dica-rolar::after { content: "↓"; animation: desce 1.4s ease-in-out infinite; }
   @keyframes desce { 50% { transform: translateY(5px); } }
 
-  /* ── vídeo real do CRM ──────────────────────────────────────────────── */
-  .palco-video { display: grid; grid-template-columns: 1.45fr 1fr; gap: clamp(28px, 4vw, 60px); align-items: start; margin-top: 46px; }
+  /* ── moldura de navegador ───────────────────────────────────────────── */
   .navegador {
     border-radius: var(--raio); overflow: hidden;
     border: 1px solid var(--linha); background: var(--breu);
-    box-shadow: 0 60px 120px -40px rgba(0,0,0,.9), 0 0 80px -30px rgba(255,110,0,.3);
+    box-shadow: 0 60px 120px -40px rgba(0,0,0,.9), 0 0 80px -30px rgba(255,110,0,.28);
   }
   .navegador .barra { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #151517; border-bottom: 1px solid var(--linha); }
   .navegador .bola { width: 11px; height: 11px; border-radius: 50%; }
   .navegador .bola:nth-child(1) { background: #ff5f57; } .navegador .bola:nth-child(2) { background: #febc2e; } .navegador .bola:nth-child(3) { background: #28c840; }
   .navegador .url { flex: 1; text-align: center; font-size: .74rem; color: var(--cinza); background: #0a0a0c; border-radius: 7px; padding: 5px 12px; margin-inline: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── vídeo real do CRM ──────────────────────────────────────────────── */
+  .palco-video { display: grid; grid-template-columns: 1.45fr 1fr; gap: clamp(28px, 4vw, 60px); align-items: start; margin-top: 46px; }
   .selo-real {
     position: absolute; top: 56px; right: 14px; z-index: 5;
     background: #d92d20; color: #fff; font-weight: 800; font-size: .66rem; letter-spacing: .14em;
@@ -299,30 +334,58 @@
     border: 1px solid var(--linha); border-radius: 16px; background: var(--cartao);
     padding: 15px 16px; font-weight: 700; font-size: .95rem;
   }
-  .canal img, .canal svg { width: 25px; height: 25px; object-fit: contain; }
+  .canal img, .canal svg { width: 25px; height: 25px; object-fit: contain; flex: none; }
   .canal small { display: block; font-weight: 500; color: var(--cinza-escuro); font-size: .76rem; }
 
   /* ── site próprio ───────────────────────────────────────────────────── */
   .palco-site { position: relative; margin-top: 50px; }
-  .palco-site .navegador { max-width: 900px; }
+  .palco-site .navegador { max-width: 880px; }
   .site-flutuante {
-    position: absolute; right: 0; bottom: -8%; width: min(44%, 430px); z-index: 5;
-    border-radius: 14px; overflow: hidden;
-    border: 1px solid #ffffff22;
+    position: absolute; right: 0; bottom: -10%; width: min(46%, 450px); z-index: 5;
+    border-radius: 14px; overflow: hidden; border: 1px solid #ffffff22;
     box-shadow: 0 40px 90px -30px rgba(0,0,0,.95);
     transform: rotate(1.8deg);
   }
-  .beneficios-site { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: clamp(60px, 9vh, 90px); }
+  .etiqueta-flutuante {
+    position: absolute; left: 0; bottom: -5%; z-index: 6;
+    background: #0f0f11f2; border: 1px solid #ff6e0055; border-radius: 14px;
+    padding: 13px 17px; max-width: 260px; font-size: .88rem; color: var(--cinza);
+    backdrop-filter: blur(8px); box-shadow: 0 24px 50px -20px #000;
+  }
+  .etiqueta-flutuante b { color: var(--claro); display: block; margin-bottom: 3px; }
+  .beneficios-site { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: clamp(70px, 10vh, 110px); }
   .beneficio { border: 1px solid var(--linha); background: var(--cartao); border-radius: 16px; padding: 20px; }
   .beneficio b { display: block; font-size: .98rem; margin-bottom: 5px; }
   .beneficio span { color: var(--cinza); font-size: .86rem; line-height: 1.45; display: block; }
+
+  /* ── relatórios ─────────────────────────────────────────────────────── */
+  .fundo-relat { background: linear-gradient(180deg, var(--fundo), #100B06 35%, #0C0906 75%, var(--fundo)); }
+  .numeros { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 40px 0 46px; }
+  .numero { border: 1px solid var(--linha); background: var(--cartao); border-radius: var(--raio); padding: 22px 20px; }
+  .numero b { font-weight: 900; font-size: clamp(1.5rem, 2.7vw, 2.1rem); color: var(--laranja); display: block; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .numero span { color: var(--cinza); font-size: .85rem; font-weight: 500; }
+  .painel-grande { margin-bottom: 18px; }
+  .legenda-img { color: var(--cinza-escuro); font-size: .85rem; margin-top: 12px; text-align: center; }
+  .legenda-img b { color: var(--cinza); }
+  .perguntas { display: grid; gap: clamp(40px, 6vh, 72px); margin-top: clamp(56px, 8vh, 90px); }
+  .pergunta { display: grid; grid-template-columns: 1fr 1.35fr; gap: clamp(24px, 4vw, 56px); align-items: center; }
+  .pergunta:nth-child(even) .midia { order: -1; }
+  .pergunta h3 { font-size: clamp(1.25rem, 2.2vw, 1.75rem); margin-bottom: 12px; }
+  .pergunta p { color: var(--cinza); max-width: 44ch; }
+  .pergunta p strong { color: var(--claro); }
+  .midia { border-radius: var(--raio); overflow: hidden; border: 1px solid var(--linha); box-shadow: 0 50px 100px -40px #000; }
+  .fichas { display: flex; flex-wrap: wrap; gap: 9px; margin-top: clamp(50px, 7vh, 80px); justify-content: center; }
+  .ficha {
+    font-size: .84rem; font-weight: 600; color: var(--cinza);
+    border: 1px solid var(--linha); background: var(--cartao);
+    padding: 9px 15px; border-radius: 999px;
+  }
 
   /* ── venda ──────────────────────────────────────────────────────────── */
   .linhas-venda { display: grid; gap: clamp(50px, 8vh, 96px); margin-top: 56px; }
   .linha-venda { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(26px, 4vw, 64px); align-items: center; }
   .linha-venda:nth-child(even) .midia { order: 2; }
-  .midia { border-radius: var(--raio); overflow: hidden; border: 1px solid var(--linha); box-shadow: 0 50px 100px -40px #000; position: relative; }
-  .midia img { transition: transform .8s cubic-bezier(.2,.8,.2,1); }
+  .linha-venda .midia img { transition: transform .8s cubic-bezier(.2,.8,.2,1); }
   .linha-venda:hover .midia img { transform: scale(1.03); }
   .num-bloco { font-weight: 900; color: #ffffff12; font-size: clamp(2.6rem, 6vw, 4.6rem); line-height: 1; letter-spacing: -.03em; }
   .linha-venda h3 { font-size: clamp(1.35rem, 2.4vw, 1.9rem); margin: 8px 0 13px; }
@@ -330,16 +393,7 @@
   .linha-venda p strong { color: var(--claro); }
   .etiqueta-mini { display: inline-block; margin-top: 16px; font-size: .76rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--laranja-claro); border: 1px solid #ff6e0040; background: #ff6e000d; padding: 7px 13px; border-radius: 999px; }
 
-  /* ── relatórios ─────────────────────────────────────────────────────── */
-  .fundo-relat { background: linear-gradient(180deg, var(--fundo), #100B06 40%, var(--fundo)); }
-  .numeros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 42px 0; }
-  .numero { border: 1px solid var(--linha); background: var(--cartao); border-radius: var(--raio); padding: 26px 22px; }
-  .numero b { font-weight: 900; font-size: clamp(1.7rem, 3.2vw, 2.5rem); color: var(--laranja); display: block; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
-  .numero span { color: var(--cinza); font-size: .87rem; font-weight: 500; }
-  .trio { display: grid; grid-template-columns: 1.7fr 1fr; gap: 16px; }
-  .trio .midia:first-child { grid-row: span 2; }
-
-  /* ── grade: o sistema inteiro ───────────────────────────────────────── */
+  /* ── grade ──────────────────────────────────────────────────────────── */
   .grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 50px; }
   .cartao-tela {
     border-radius: 16px; overflow: hidden; position: relative;
@@ -356,8 +410,7 @@
   .cta-final {
     background: linear-gradient(165deg, var(--laranja) 0%, #E86300 55%, #C25100 100%);
     color: #1d0c00; text-align: center;
-    padding: clamp(84px, 13vh, 150px) 0;
-    position: relative; overflow: clip;
+    padding: clamp(84px, 13vh, 150px) 0; position: relative; overflow: clip;
   }
   .cta-final::before { content: ""; position: absolute; inset: -40% -20%; top: -70%; background: radial-gradient(closest-side, #ffffff30, transparent 70%); pointer-events: none; }
   .cta-final .marca-cta { height: 58px; width: auto; margin: 0 auto 30px; filter: brightness(0); opacity: .85; }
@@ -376,25 +429,50 @@
     position: fixed; right: 20px; bottom: 20px; z-index: 70;
     width: 60px; height: 60px; border-radius: 50%;
     background: var(--zap); display: grid; place-items: center;
-    box-shadow: 0 18px 44px -12px rgba(37,211,102,.6);
-    transition: transform .2s ease;
+    box-shadow: 0 18px 44px -12px rgba(37,211,102,.6); transition: transform .2s ease;
   }
   .zap-flutuante:hover { transform: scale(1.1); }
   .zap-flutuante svg { width: 31px; height: 31px; }
 
+  /* itens de grid têm min-width:auto por padrão e são estourados por
+     conteúdo de largura intrínseca (o vídeo, os prints). min-width:0 é o
+     que impede a barra de rolagem horizontal. */
+  .palco-video > *, .palco-canais > *, .pergunta > *, .linha-venda > *,
+  .trio > *, .grade > *, .numeros > *, .beneficios-site > * { min-width: 0; }
+
   /* ── responsivo ─────────────────────────────────────────────────────── */
   @media (max-width: 900px) {
-    .palco-video, .linha-venda, .trio { grid-template-columns: 1fr; }
-    .linha-venda:nth-child(even) .midia { order: 0; }
+    .palco-video, .linha-venda, .pergunta { grid-template-columns: 1fr; }
+    .linha-venda:nth-child(even) .midia, .pergunta:nth-child(even) .midia { order: 0; }
     .grade { grid-template-columns: 1fr 1fr; }
-    .numeros, .beneficios-site { grid-template-columns: 1fr; }
+    .numeros { grid-template-columns: 1fr 1fr; }
+    .beneficios-site { grid-template-columns: 1fr 1fr; }
     .palco-canais { grid-template-columns: 1fr; }
-    .cartao-veiculo { max-width: 420px; margin-inline: auto; }
-    .fio { min-width: 20px; }
-    .no-canal { flex: 1; min-width: 0; }
+    .cartao-veiculo { max-width: 400px; margin-inline: auto; }
+    /* no celular não há espaço para os fios: o sinal chega pela própria
+       borda do cartão, que acende de laranja e assenta em verde */
+    .fio { display: none; }
+    .no-canal {
+      flex: 1; min-width: 0 !important; width: 100%;
+      padding: 13px 15px; gap: 12px;
+      border-left: 3px solid var(--linha);
+      transition: border-left-color .35s ease, border-color .4s ease, background .4s ease;
+    }
+    .canal-linha.disparou .no-canal { border-left-color: var(--laranja); }
+    .canal-linha.no-ar .no-canal { border-left-color: var(--zap); }
+    .no-canal .nome { font-size: .92rem; }
+    .no-canal .nome small { font-size: .72rem; }
+    .chip-no-ar { font-size: .64rem; padding: 4px 9px; }
+    .cartao-veiculo { margin-bottom: 6px; }
     .site-flutuante { position: static; width: 100%; margin-top: 14px; transform: none; }
+    .etiqueta-flutuante { position: static; max-width: none; margin-top: 14px; }
+    .tracinho { display: none; }
+    .etapas { gap: 8px; }
   }
-  @media (max-width: 560px) { .grade { grid-template-columns: 1fr; } }
+  @media (max-width: 560px) {
+    .grade, .numeros, .beneficios-site { grid-template-columns: 1fr; }
+    .etapa { font-size: .84rem; padding: 9px 15px; }
+  }
 
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
@@ -402,13 +480,13 @@
     .rev { opacity: 1; transform: none; }
     .palco-fone { height: auto; }
     .cola { position: static; height: auto; padding: 60px 0; }
-    .chip-no-ar { opacity: 1; transform: none; }
+    .chip-no-ar, .placar { opacity: 1; transform: none; }
+    .etapa { color: var(--claro); }
   }
 </style>
 </head>
 <body>
 
-<!-- barra fixa com a marca -->
 <header class="topo">
   <a href="#inicio" aria-label="Via Pesados"><img src="/conheca/img/via-icon-white.png" alt="Via Pesados" /></a>
   <a class="btn-zap mini" href="https://wa.me/5533997075272?text=Ol%C3%A1!%20Vi%20a%20p%C3%A1gina%20do%20Via%20Pesados%20e%20quero%20marcar%20uma%20demonstra%C3%A7%C3%A3o." target="_blank" rel="noopener">
@@ -423,7 +501,7 @@
     <img class="marca rev" src="/conheca/img/via-icon-white.png" alt="Via Pesados" />
     <div><span class="selo-topo rev d1">Sistema de gestão para lojas de pesados</span></div>
     <h1 class="rev d1">O sistema feito para <span class="acento">caminhões</span> e <span class="acento">carretas</span>.</h1>
-    <p class="sub rev d2">Anuncia no WhatsApp, Facebook, Instagram e Mercado Livre <strong>com um clique</strong>. Controla cada negociação para <strong>nenhuma venda escapar</strong>. E mostra a loja inteira num painel só. <strong>Enquanto o concorrente digita, você fecha.</strong></p>
+    <p class="sub rev d2">Cadastre o caminhão uma vez. O sistema <strong>anuncia em todos os canais</strong>, não deixa negociação esfriar e mostra, no fim do mês, <strong>quanto cada venda deixou no caixa</strong>.</p>
     <div class="acoes rev d3">
       <a class="btn-zap pulso" href="https://wa.me/5533997075272?text=Ol%C3%A1!%20Vi%20a%20p%C3%A1gina%20do%20Via%20Pesados%20e%20quero%20marcar%20uma%20demonstra%C3%A7%C3%A3o." target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
@@ -439,22 +517,34 @@
   <div class="wrap">
     <div class="centrado">
       <p class="olho rev">Anuncie em todo lugar</p>
-      <h2 class="rev d1">Cadastra <span class="acento">uma vez</span>. O sistema anuncia em <span class="acento">todo lugar</span>.</h2>
-      <p class="conversa rev d2">Você cadastra o caminhão e aperta <strong>um botão</strong>. O Via Pesados publica no WhatsApp, no Instagram, no Facebook, no Mercado Livre e no seu site — <strong>sozinho, com as fotos já editadas</strong>.</p>
+      <h2 class="rev d1">Um clique. E o caminhão está <span class="acento">em cinco lugares</span>.</h2>
+      <p class="conversa rev d2">Hoje é abrir cinco aplicativos e escrever a mesma coisa cinco vezes. Aqui é <strong>apertar um botão na ficha do veículo</strong> — com as fotos já editadas.</p>
+
+      <div class="etapas rev d3" id="etapas">
+        <span class="etapa" data-etapa="1"><b>1</b> Você aperta o botão</span>
+        <span class="tracinho"></span>
+        <span class="etapa" data-etapa="2"><b>2</b> O sistema publica</span>
+        <span class="tracinho"></span>
+        <span class="etapa" data-etapa="3"><b>3</b> Está tudo no ar</span>
+      </div>
     </div>
 
-    <div class="palco-canais">
+    <div class="palco-canais" id="palco-canais">
       <div class="cartao-veiculo rev">
-        <div class="foto"><img src="/conheca/img/scania-card.jpg" alt="Scania S 540 no pátio" /></div>
+        <div class="foto"><img src="/conheca/img/scania-card.jpg" alt="Scania S 540 no pátio da loja" /></div>
         <div class="info">
           <h3>SCANIA S 540 6x4</h3>
           <p class="meta">2022/2022 · Cavalo · 244.000 km</p>
           <p class="preco">R$ 701.000</p>
-          <button class="botao-anunciar" type="button" aria-hidden="true">⚡ Anunciar — 1 clique</button>
+          <div class="caixa-botao">
+            <button class="botao-anunciar" id="botao-anunciar" type="button" tabindex="-1" aria-hidden="true">⚡ Anunciar em todos os canais</button>
+            <span class="onda" id="onda"></span>
+          </div>
         </div>
+        <svg class="cursor" id="cursor" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2.5 19 12l-6.2 1.3L9.9 19 5 2.5Z" fill="#fff" stroke="#000" stroke-width="1.2" stroke-linejoin="round"/></svg>
       </div>
 
-      <div class="canais-fila rev d1">
+      <div class="canais-fila rev d1" id="canais-fila">
         <div class="canal-linha">
           <div class="fio"><i></i></div>
           <div class="no-canal">
@@ -482,7 +572,7 @@
         <div class="canal-linha">
           <div class="fio"><i></i></div>
           <div class="no-canal">
-            <img class="branco" src="/conheca/img/mercadolibre.svg" alt="Mercado Livre" />
+            <img src="/conheca/img/mercadolivre-branco.png" alt="Mercado Livre" />
             <span class="nome">Mercado Livre<small>anuncia e despublica com o estoque</small></span>
             <span class="chip-no-ar">✓ NO AR</span>
           </div>
@@ -490,10 +580,15 @@
         <div class="canal-linha">
           <div class="fio"><i></i></div>
           <div class="no-canal">
-            <img src="/conheca/img/via-icon-white.png" alt="Site da loja" style="width:27px;height:27px;object-fit:contain;" />
+            <img src="/conheca/img/via-icon-white.png" alt="Site da loja" />
             <span class="nome">Site da sua loja<small>com a sua marca e as suas cores</small></span>
             <span class="chip-no-ar">✓ NO AR</span>
           </div>
+        </div>
+
+        <div class="placar" id="placar">
+          <span class="selo-tempo">5 canais · 1 clique</span>
+          <span>O mesmo trabalho que levava <b>meia hora</b>, feito enquanto você atende o próximo cliente.</span>
         </div>
         <p class="nota-vendeu">E quando vender? <strong>O sistema tira o anúncio de todos os canais sozinho.</strong> Ninguém liga por caminhão que já saiu.</p>
       </div>
@@ -501,8 +596,8 @@
   </div>
 </section>
 
-<!-- FONE: a gravação real virando animação -->
-<section class="trecho-fone">
+<!-- FLUXO: o celular do cliente -->
+<section class="trecho-fone" id="fluxo">
   <div class="palco-fone" id="palco-fone">
     <div class="cola">
       <div class="titulo-fone">
@@ -528,7 +623,7 @@
   </div>
 </section>
 
-<!-- TEMPO: vídeo real do CRM -->
+<!-- FLUXO: o lado de cá, gravação real do CRM -->
 <section class="secao" id="tempo">
   <div class="wrap">
     <p class="olho rev">Do lado de cá</p>
@@ -548,7 +643,6 @@
             <div class="progresso"><i id="barra-video"></i></div>
           </div>
         </div>
-
         <div class="legendas" id="legendas">
           <div class="legenda" data-ini="0" data-fim="4"><span class="t">0:00</span><span>O vendedor abre a conversa e escolhe o caminhão. <strong>Só isso.</strong></span></div>
           <div class="legenda" data-ini="4" data-fim="12"><span class="t">0:04</span><span>O sistema envia sozinho: título, fotos, preço, quilometragem, localização.</span></div>
@@ -562,7 +656,7 @@
             <span>Fluxo de fotos no WhatsApp<small>ficha completa, foto por foto, com link do site</small></span></div>
           <div class="canal"><img class="branco" src="/conheca/img/instagram.svg" alt="" /><span>Posts e stories no Instagram<small>arte pronta, gerada do próprio anúncio</small></span></div>
           <div class="canal"><img class="branco" src="/conheca/img/facebook.svg" alt="" /><span>Página e catálogo no Facebook<small>estoque sincronizado sozinho</small></span></div>
-          <div class="canal"><img class="branco" src="/conheca/img/mercadolibre.svg" alt="" /><span>Anúncio no Mercado Livre<small>publica e despublica junto com o estoque</small></span></div>
+          <div class="canal"><img src="/conheca/img/mercadolivre-branco.png" alt="" /><span>Anúncio no Mercado Livre<small>publica e despublica junto com o estoque</small></span></div>
         </div>
         <p class="conversa rev d2" style="margin-top: 28px; font-size: 1rem;"><strong>Seu vendedor cuida de vender</strong> — não de copiar e colar anúncio.</p>
       </div>
@@ -570,12 +664,12 @@
   </div>
 </section>
 
-<!-- SITE PRÓPRIO -->
+<!-- SITE PRÓPRIO — logo abaixo do fluxo -->
 <section class="secao" id="site">
   <div class="wrap">
     <p class="olho rev">A sua vitrine</p>
-    <h2 class="rev d1">A sua loja ganha um <span class="acento">site assim</span>.</h2>
-    <p class="conversa rev d2">Com a <strong>sua marca, suas cores e seu WhatsApp</strong>. O estoque entra e sai do site sozinho, cada caminhão com página própria, simulador de financiamento e botão de conversa — <strong>é para lá que os anúncios apontam</strong>.</p>
+    <h2 class="rev d1">E o link leva para <span class="acento">um site desse nível</span>.</h2>
+    <p class="conversa rev d2">Todo anúncio que o sistema dispara termina no site da sua loja — <strong>com a sua marca, as suas cores e o seu WhatsApp</strong>. Cada caminhão ganha página própria, galeria, ficha técnica, simulador de financiamento e botão de conversa. <strong>Você não paga um site à parte: ele já vem no sistema.</strong></p>
 
     <div class="palco-site rev">
       <div class="navegador">
@@ -583,9 +677,10 @@
           <span class="bola"></span><span class="bola"></span><span class="bola"></span>
           <span class="url">o site da sua loja — este é o da Minas Caminhões, cliente de demonstração</span>
         </div>
-        <img src="/conheca/img/site.jpg" alt="Site da loja com a marca do lojista" />
+        <img src="/conheca/img/site.jpg" alt="Página inicial do site da loja, com a marca do lojista" />
       </div>
-      <div class="site-flutuante"><img src="/conheca/img/site-veiculo.jpg" alt="Página do veículo no site da loja" /></div>
+      <div class="site-flutuante"><img src="/conheca/img/site-veiculo.jpg" alt="Página do Scania S 540 no site da loja" /></div>
+      <div class="etiqueta-flutuante"><b>O mesmo Scania de agora há pouco.</b> Você apertou um botão lá em cima — a página dele já estava assim.</div>
     </div>
 
     <div class="beneficios-site">
@@ -593,6 +688,63 @@
       <div class="beneficio rev d1"><b>Estoque sempre certo</b><span>Cadastrou, apareceu. Vendeu, saiu. Sem site desatualizado.</span></div>
       <div class="beneficio rev d2"><b>WhatsApp em cada veículo</b><span>O cliente vê o caminhão e fala com o vendedor em um toque.</span></div>
       <div class="beneficio rev d3"><b>Financiamento na hora</b><span>Simulador em cada página. O cliente chega na conversa já sabendo a parcela.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- RELATÓRIOS — logo depois do site, bem detalhado -->
+<section class="secao fundo-relat" id="relatorios">
+  <div class="wrap">
+    <div class="centrado">
+      <p class="olho rev">Relatórios</p>
+      <h2 class="rev d1">No fim do mês, o número <span class="acento">não vem de achismo</span>.</h2>
+      <p class="conversa rev d2">Toda venda, toda compra, toda consignação e todo dia de pátio viram número. O painel abre a loja inteira: <strong>quanto entrou, quanto sobrou, o que está parado e por que você perdeu o que perdeu</strong>.</p>
+    </div>
+
+    <div class="numeros">
+      <div class="numero rev"><b data-conta="458100" data-prefixo="R$ ">R$ 0</b><span>faturado no ano — com margem, ticket e volume separados</span></div>
+      <div class="numero rev d1"><b data-conta="27" data-sufixo=" veículos">0 veículos</b><span>em estoque, cada um com dias parado e margem própria</span></div>
+      <div class="numero rev d2"><b data-conta="17" data-sufixo=",7%">0,7%</b><span>de margem bruta média — a conta que o Excel nunca fechava</span></div>
+      <div class="numero rev d3"><b data-conta="205" data-sufixo=" dias">0 dias</b><span>de giro médio: quanto tempo o seu dinheiro fica no pátio</span></div>
+    </div>
+
+    <div class="painel-grande rev">
+      <div class="midia"><img src="/conheca/img/rel-geral.jpg" loading="lazy" alt="Painel de resultados do ano com faturamento, volume, ticket médio e margem" /></div>
+      <p class="legenda-img"><b>Resultado geral do ano</b> — veículos, financiamento e consórcio somados e separados, do jeito que o contador pede.</p>
+    </div>
+
+    <div class="perguntas">
+      <div class="pergunta rev">
+        <div>
+          <h3>“Qual caminhão está travando o meu dinheiro?”</h3>
+          <p>A lista inteira do pátio, ordenada por <strong>dias parado</strong>, com placa, status, preço e a margem de cada um. O que passou dos 200 dias aparece em vermelho — não dá para fingir que não viu.</p>
+        </div>
+        <div class="midia"><img src="/conheca/img/rel-giro.jpg" loading="lazy" alt="Lista de veículos por dias em estoque, preço e margem" /></div>
+      </div>
+
+      <div class="pergunta rev">
+        <div>
+          <h3>“Estou comprando bem? De qual marca?”</h3>
+          <p>Estoque por status, ranking de marcas, entradas mês a mês e o <strong>custo contra o preço médio de cada marca</strong>. É onde você descobre que Volvo te dá 33% e outra marca te dá 9%.</p>
+        </div>
+        <div class="midia"><img src="/conheca/img/rel-estoque.jpg" loading="lazy" alt="Relatório de estoque com margens e ranking de marcas" /></div>
+      </div>
+
+      <div class="pergunta rev">
+        <div>
+          <h3>“Por que eu perdi essas vendas?”</h3>
+          <p>Cada negociação perdida com <strong>o motivo, o valor que escapou e o vendedor</strong>. “Comprou em outra loja, R$ 202.800” é uma frase incômoda — e é exatamente por isso que ela precisa estar na tela.</p>
+        </div>
+        <div class="midia"><img src="/conheca/img/rel-perdidos.jpg" loading="lazy" alt="Relatório de negociações perdidas com motivos e valores" /></div>
+      </div>
+    </div>
+
+    <div class="fichas rev">
+      <span class="ficha">Faturamento</span><span class="ficha">Margem bruta</span><span class="ficha">Ticket médio</span>
+      <span class="ficha">Volume total</span><span class="ficha">Lucro por venda</span><span class="ficha">Tempo médio de giro</span>
+      <span class="ficha">Custo total do estoque</span><span class="ficha">Margem por marca</span><span class="ficha">Entradas por mês</span>
+      <span class="ficha">Vendedores ativos</span><span class="ficha">Leads do WhatsApp</span><span class="ficha">Motivos de perda</span>
+      <span class="ficha">Perdas por vendedor</span><span class="ficha">Veículos em oferta</span><span class="ficha">Financiamento e consórcio</span>
     </div>
   </div>
 </section>
@@ -630,7 +782,7 @@
         <div>
           <div class="num-bloco">03</div>
           <h3>O sistema avisa quem está na hora de trocar</h3>
-          <p>Quem comprou há 8 meses está na janela de troca — e o Via Pesados cruza o histórico de cada cliente com o seu pátio de hoje: <strong>"este cliente combina com estas máquinas, por estes motivos".</strong> Venda que nasce dormindo no seu cadastro.</p>
+          <p>Quem comprou há 8 meses está na janela de troca — e o Via Pesados cruza o histórico de cada cliente com o seu pátio de hoje: <strong>“este cliente combina com estas máquinas, por estes motivos”.</strong> Venda que nasce dormindo no seu cadastro.</p>
           <span class="etiqueta-mini">Recorrência automática</span>
         </div>
       </div>
@@ -644,27 +796,6 @@
           <span class="etiqueta-mini">Etiquetas saem sozinhas da ficha</span>
         </div>
       </div>
-    </div>
-  </div>
-</section>
-
-<!-- RELATÓRIOS -->
-<section class="secao fundo-relat" id="relatorios">
-  <div class="wrap">
-    <p class="olho rev">Relatórios</p>
-    <h2 class="rev d1">A loja inteira <span class="acento">num painel</span>. Pesado como tem que ser.</h2>
-    <p class="conversa rev d2">Faturamento, margem, ticket médio, giro de estoque, vendedor a vendedor, área por área. <strong>Não é achismo: é o número na sua frente</strong>, para decidir onde apertar e vender ainda mais.</p>
-
-    <div class="numeros">
-      <div class="numero rev"><b data-conta="17" data-sufixo=" módulos">0 módulos</b><span>num sistema só: estoque, CRM, financeiro, equipe, site, relatórios…</span></div>
-      <div class="numero rev d1"><b data-conta="5" data-sufixo=" canais">0 canais</b><span>anunciando com um clique: WhatsApp, Instagram, Facebook, Mercado Livre e seu site</span></div>
-      <div class="numero rev d2"><b data-conta="15" data-sufixo="s">0s</b><span>para o anúncio completo chegar no WhatsApp do cliente</span></div>
-    </div>
-
-    <div class="trio rev">
-      <div class="midia"><img src="/conheca/img/relatorios.jpg" loading="lazy" alt="Relatório geral da loja" /></div>
-      <div class="midia"><img src="/conheca/img/vendas.jpg" loading="lazy" alt="Gestão de vendas" /></div>
-      <div class="midia"><img src="/conheca/img/financeiro.jpg" loading="lazy" alt="Fluxo de caixa" /></div>
     </div>
   </div>
 </section>
@@ -721,8 +852,63 @@
   /* revelação no scroll */
   const io = new IntersectionObserver(es => {
     es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('no-ar'); io.unobserve(e.target); } });
-  }, { threshold: .18 });
+  }, { threshold: .15 });
   document.querySelectorAll('.rev').forEach(el => io.observe(el));
+
+  /* ── a cena do clique único ────────────────────────────────────────────
+     Um roteiro explícito, em vez de animações soltas em laço: o cursor
+     chega, o botão afunda, os pulsos saem e cada canal acende na ordem.
+     Assim dá para entender o que está acontecendo sem ninguém explicar. */
+  const cursor  = document.getElementById('cursor');
+  const botao   = document.getElementById('botao-anunciar');
+  const onda    = document.getElementById('onda');
+  const linhas  = [...document.querySelectorAll('#canais-fila .canal-linha')];
+  const etapas  = [...document.querySelectorAll('#etapas .etapa')];
+  const placar  = document.getElementById('placar');
+  const palco   = document.getElementById('palco-canais');
+
+  const marcaEtapa = n => etapas.forEach(e => e.classList.toggle('agora', +e.dataset.etapa === n));
+  const limpa = () => {
+    cursor.classList.remove('aparece', 'mira', 'clicou');
+    onda.classList.remove('bate');
+    linhas.forEach(l => l.classList.remove('disparou', 'no-ar'));
+    placar.classList.remove('no-ar');
+    marcaEtapa(0);
+  };
+
+  const roteiro = [
+    [   0, limpa],
+    [ 250, () => cursor.classList.add('aparece')],
+    [ 400, () => { cursor.classList.add('mira'); marcaEtapa(1); }],
+    [1450, () => { cursor.classList.add('clicou'); botao.classList.add('apertado'); }],
+    [1620, () => { botao.classList.remove('apertado'); onda.classList.add('bate'); marcaEtapa(2); }],
+    [1750, () => cursor.classList.remove('clicou')],
+    [2100, () => cursor.classList.remove('aparece', 'mira')],
+  ];
+  linhas.forEach((l, k) => {
+    roteiro.push([1750 + k * 320, () => l.classList.add('disparou')]);
+    roteiro.push([2450 + k * 320, () => l.classList.add('no-ar')]);
+  });
+  roteiro.push([2450 + linhas.length * 320 + 250, () => { marcaEtapa(3); placar.classList.add('no-ar'); }]);
+
+  let relogios = [], ciclo = null;
+  const roda = () => {
+    relogios.forEach(clearTimeout);
+    relogios = roteiro.map(([t, fn]) => setTimeout(fn, t));
+  };
+  const paraTudo = () => { relogios.forEach(clearTimeout); relogios = []; clearInterval(ciclo); ciclo = null; };
+
+  if (reduzido) {
+    linhas.forEach(l => l.classList.add('no-ar'));
+    placar.classList.add('no-ar');
+    marcaEtapa(3);
+  } else {
+    /* só anima enquanto a seção está à vista */
+    new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting) { if (!ciclo) { roda(); ciclo = setInterval(roda, 9000); } }
+      else paraTudo();
+    }), { threshold: .28 }).observe(palco);
+  }
 
   /* vídeo do fluxo: toca quando aparece, legendas sincronizadas */
   const video = document.getElementById('video-fluxo');
@@ -739,11 +925,12 @@
 
   /* contadores */
   const conta = el => {
-    const fim = +el.dataset.conta, suf = el.dataset.sufixo || '';
-    const t0 = performance.now(), dur = 1200;
+    const fim = +el.dataset.conta, suf = el.dataset.sufixo || '', pre = el.dataset.prefixo || '';
+    const t0 = performance.now(), dur = 1300;
     (function passo(t) {
       const p = Math.min((t - t0) / dur, 1);
-      el.textContent = Math.round(fim * (1 - Math.pow(1 - p, 3))) + suf;
+      const v = Math.round(fim * (1 - Math.pow(1 - p, 3)));
+      el.textContent = pre + v.toLocaleString('pt-BR') + suf;
       if (p < 1) requestAnimationFrame(passo);
     })(t0);
   };
@@ -771,9 +958,9 @@
   const desenha = i => {
     i = Math.max(0, Math.min(TOTAL - 1, i));
     pedido = i;
-    // ainda baixando? usa o quadro carregado mais próximo, em vez de
-    // congelar num antigo — quem rola rápido na primeira visita não
-    // pode ver a conversa presa no comecinho
+    /* ainda baixando? usa o quadro carregado mais próximo, em vez de
+       congelar num antigo — quem rola rápido na primeira visita não
+       pode ver a conversa presa no comecinho */
     if (!quadros[i]) {
       let melhor = -1;
       for (let d = 1; d < TOTAL; d++) {
@@ -790,12 +977,11 @@
 
   carrega(0).then(im => {
     if (im) { canvas.height = Math.round(canvas.width * im.height / im.width); atual = -1; desenha(0); }
-    /* pré-carrega o resto aos poucos, sem travar nada */
     let i = 1;
     (function fila() { if (i < TOTAL) carrega(i++).then(() => { if (Math.abs(pedido - (i - 1)) < 4) desenha(pedido); setTimeout(fila, 40); }); })();
   });
 
-  const palco = document.getElementById('palco-fone');
+  const palcoFone = document.getElementById('palco-fone');
   const baloes = [...document.querySelectorAll('.balao-info')];
   if (reduzido) {
     carrega(20).then(() => desenha(20));
@@ -804,7 +990,7 @@
     let ticando = false;
     const passoFone = () => {
       ticando = false;
-      const r = palco.getBoundingClientRect();
+      const r = palcoFone.getBoundingClientRect();
       const percorrivel = r.height - innerHeight;
       const p = Math.max(0, Math.min(1, -r.top / percorrivel));
       desenha(Math.floor(p * (TOTAL - 1)));
