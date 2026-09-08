@@ -1101,3 +1101,35 @@ export const saveSystemCredential = async (input: {
   );
   if (error) throw error;
 };
+
+/* ── canais que o cliente trabalha ─────────────────────────────────────────
+   Nem toda revenda usa todos os canais. Quem libera é a equipe Via Pesados,
+   aqui: o sistema do lojista só oferece conexão para o que estiver ligado, e
+   só acusa queda desses. Sem isso, uma loja que nunca quis Mercado Livre via
+   alarme vermelho permanente por um canal que não pretende usar. */
+export const getCompanyChannels = async (company_id: string): Promise<{
+  canais: string[]; disponiveis: string[]; conectados: string[];
+}> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sessão expirada');
+  const res = await fetch(`${LOJISTA_FUNCTIONS_URL}/admin-canais`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ action: 'get', company_id }),
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error || 'Erro ao ler canais');
+  return data;
+};
+
+export const setCompanyChannels = async (company_id: string, canais: string[]): Promise<void> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sessão expirada');
+  const res = await fetch(`${LOJISTA_FUNCTIONS_URL}/admin-canais`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ action: 'set', company_id, canais }),
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error || 'Erro ao salvar canais');
+};

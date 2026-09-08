@@ -17,6 +17,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { LOJISTA_APP_URL } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { CanaisDoCliente } from '@/components/CanaisDoCliente';
 import { UsoDoSistema } from '@/components/admin/UsoDoSistema';
 import { useSystemCredential, saveSystemCredential } from '@/hooks/useAdmin';
 import { SectionHeader, StatusBadge, Panel, InitialAvatar } from '@/components/admin/ui';
@@ -655,6 +656,16 @@ export default function ClienteDetalhe() {
                     )}
                   </div>
                 )}
+              </Panel>
+            </div>
+          )}
+
+          {/* Canais que o cliente trabalha */}
+          {client.lojista_company_id && (
+            <div>
+              <SectionHeader title="Canais liberados" right={<span className="text-[11px] text-foreground/35">define o que ele conecta</span>} />
+              <Panel className="p-4">
+                <CanaisDoCliente companyId={client.lojista_company_id} />
               </Panel>
             </div>
           )}
