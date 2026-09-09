@@ -13,11 +13,14 @@ import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
 
 type TabKey = 'funil' | 'reunioes' | 'amostras' | 'conexao';
 
+/**
+ * Por enquanto só o Funil. Reunião, Amostra e Conexão deixaram de ser etapas
+ * separadas: reunião virou coluna, e a conexão acontece quando o prospect vai
+ * para Vendido. As telas continuam no código — para devolver qualquer uma,
+ * basta reinserir a linha aqui; a barra de abas volta a aparecer sozinha.
+ */
 const TABS: { key: TabKey; label: string; newLabel: string; icon: typeof Kanban }[] = [
   { key: 'funil',    label: 'Funil',    newLabel: 'Prospect', icon: Kanban },
-  { key: 'reunioes', label: 'Reuniões', newLabel: 'Reunião',  icon: CalendarDays },
-  { key: 'amostras', label: 'Amostras', newLabel: 'Amostra',  icon: MonitorPlay },
-  { key: 'conexao',  label: 'Conexão',  newLabel: 'Venda',    icon: Rocket },
 ];
 
 const isTab = (v: string | null): v is TabKey => TABS.some((t) => t.key === v);
@@ -88,7 +91,7 @@ export default function Crm() {
 
         {/* ── Abas ─────────────────────────────────────────── */}
         <div className="px-4 sm:px-6 pb-2.5 flex items-center gap-2">
-          <div className="flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+          <div className={cn('items-center gap-1 overflow-x-auto', TABS.length > 1 ? 'flex' : 'hidden')} style={{ scrollbarWidth: 'none' }}>
             {TABS.map(({ key, label, icon: Icon }) => {
               const active = tab === key;
               const count = counts[key];

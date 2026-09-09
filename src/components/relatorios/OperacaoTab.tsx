@@ -141,14 +141,14 @@ export function OperacaoTab({ clients, tickets, team, prospects, meetings, perio
     const ativos = team.filter((m) => m.is_active);
     const linhas = ativos.map((m) => {
       const meusProspects = prospects.filter((p) => p.owner_id === m.id);
-      const ganhos = meusProspects.filter((p) => p.stage === 'ganho' && inP(p.updated_at));
+      const ganhos = meusProspects.filter((p) => p.stage === 'vendido' && inP(p.updated_at));
       const perdidos = meusProspects.filter((p) => p.stage === 'perdido' && inP(p.updated_at));
       const meusClientes = clients.filter((c) => c.owner_id === m.id && c.status === 'ativo');
       return {
         id: m.id,
         nome: m.full_name,
         papel: m.role,
-        abertos: meusProspects.filter((p) => !['ganho', 'perdido'].includes(p.stage)).length,
+        abertos: meusProspects.filter((p) => !['vendido', 'perdido'].includes(p.stage)).length,
         ganhos: ganhos.length,
         decididos: ganhos.length + perdidos.length,
         reunioes: meetings.filter((x) => x.owner_id === m.id && x.status === 'realizada' && inP(x.scheduled_at)).length,

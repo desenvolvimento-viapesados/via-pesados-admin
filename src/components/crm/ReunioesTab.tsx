@@ -47,7 +47,7 @@ function NewMeetingDialog({
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  const activeProspects = prospects.filter((p) => !['ganho', 'perdido'].includes(p.stage));
+  const activeProspects = prospects.filter((p) => !['vendido', 'perdido'].includes(p.stage));
   const availableDemos = demos.filter((d) => !form.prospect_id || d.prospect_id === form.prospect_id || !d.prospect_id);
 
   const submit = async () => {

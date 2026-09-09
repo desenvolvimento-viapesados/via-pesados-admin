@@ -212,7 +212,7 @@ function DemoDialog({
 
         const prospect = prospects.find((x) => x.id === form.prospect_id);
         if (prospect) {
-          await advance.mutateAsync({ id: prospect.id, from: prospect.stage, to: 'amostra' });
+          await advance.mutateAsync({ id: prospect.id, from: prospect.stage, to: 'oportunidade' });
         }
         toast.success('Amostra criada — provisione para gerar o sistema');
       }
@@ -242,7 +242,7 @@ function DemoDialog({
           {!editando && (
             <select className={inputCls} value={form.prospect_id} onChange={(e) => handleProspect(e.target.value)}>
               <option value="">Vincular a um prospect (opcional)…</option>
-              {prospects.filter((p) => !['ganho', 'perdido'].includes(p.stage)).map((p) => (
+              {prospects.filter((p) => !['vendido', 'perdido'].includes(p.stage)).map((p) => (
                 <option key={p.id} value={p.id}>{p.company_name}</option>
               ))}
             </select>
@@ -577,7 +577,7 @@ export function AmostrasTab({
   /** Chegou na etapa Amostra e ainda não tem demo montada. */
   const pending = useMemo(() => {
     const withDemo = new Set(demos.map((d) => d.prospect_id).filter(Boolean) as string[]);
-    return prospects.filter((p) => p.stage === 'amostra' && !withDemo.has(p.id));
+    return prospects.filter((p) => p.stage === 'oportunidade' && !withDemo.has(p.id));
   }, [prospects, demos]);
 
   const closeDialog = () => { setCreateFor(null); setEditing(null); onCloseNew(); };

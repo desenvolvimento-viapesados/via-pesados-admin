@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, FileText } from 'lucide-react';
+import { Loader2, FileText, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useRegisterSale, brlFull, type Prospect } from '@/hooks/useAdmin';
@@ -10,11 +10,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 const inputCls =
   'w-full h-10 px-3 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50 transition-colors';
 
+/* Os mesmos canais que CanaisDoCliente edita depois. A escolha nasce aqui,
+   na venda, porque é decisão comercial — e nesse momento o sistema do cliente
+   ainda não existe, então ela fica guardada no cadastro até o provisionamento. */
+const CANAIS_VENDA = [
+  { id: 'mercadolivre', nome: 'Mercado Livre', sub: 'anúncios de veículo com preço sincronizado' },
+  { id: 'facebook',     nome: 'Facebook, Instagram e WhatsApp', sub: 'um login libera Página, Instagram e catálogo' },
+] as const;
+
 const empty = {
   company_name: '', legal_name: '', cnpj: '', address: '',
   legal_rep_name: '', legal_rep_cpf: '',
   contact_name: '', whatsapp: '', email: '', city: '', state: '',
-  plan: '', mrr: '', recurrence: 'mensal',
+  plan: '', mrr: '', recurrence: 'mensal', canais: [] as string[],
 };
 
 /**
@@ -50,6 +58,11 @@ export function RegistrarVendaDialog({
   }, [open, prospect?.id]);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const alternarCanal = (id: string) =>
+    setForm((f) => ({
+      ...f,
+      canais: f.canais.includes(id) ? f.canais.filter((c) => c !== id) : [...f.canais, id],
+    }));
 
   const submit = async () => {
     if (!form.company_name.trim()) { toast.error('Informe o nome da empresa'); return; }
@@ -71,6 +84,7 @@ export function RegistrarVendaDialog({
           plan: form.plan || null,
           mrr: form.mrr ? Number(form.mrr) : 0,
           recurrence: form.recurrence as 'mensal' | 'anual' | 'unico',
+          canais: form.canais,
           owner_id: member?.id ?? null,
         },
       });
@@ -136,6 +150,42 @@ export function RegistrarVendaDialog({
                   : 'Pagamento único não gera receita recorrente — o MRR deste cliente fica zerado.'}
               </p>
             )}
+
+            <div className="pt-1">
+              <p className="text-[11.5px] font-medium text-foreground/70 px-1 pb-1.5">Canais contratados</p>
+              <div className="space-y-1.5">
+                {CANAIS_VENDA.map((c) => {
+                  const on = form.canais.includes(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => alternarCanal(c.id)}
+                      className={`w-full flex items-start gap-2.5 text-left px-3 py-2.5 rounded-xl border transition-colors ${
+                        on
+                          ? 'border-primary/50 bg-primary/[0.06]'
+                          : 'border-black/[0.1] dark:border-white/[0.1] hover:border-black/20 dark:hover:border-white/20'
+                      }`}
+                    >
+                      <span
+                        className={`mt-0.5 h-4 w-4 shrink-0 rounded-[5px] border flex items-center justify-center ${
+                          on ? 'bg-primary border-primary' : 'border-black/25 dark:border-white/25'
+                        }`}
+                      >
+                        {on && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[12.5px] text-foreground leading-tight">{c.nome}</span>
+                        <span className="block text-[11px] text-foreground/40 leading-snug">{c.sub}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-foreground/40 px-1 pt-1.5">
+                Define o que ele consegue conectar. Editável depois, na ficha do cliente.
+              </p>
+            </div>
           </div>
 
           <button

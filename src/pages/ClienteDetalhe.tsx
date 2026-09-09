@@ -12,6 +12,7 @@ import {
   useContracts, useCreateContract, usePayments, useCreatePayment,
   useActivities, useCreateActivity,
   provisionCompany, updateCompanyBranding, uploadLogo, slugify, genPassword,
+  setCompanyChannels,
   brlFull, brl, type Client, type OnboardingTask,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
@@ -195,6 +196,16 @@ function ProvisionDialog({
         lojista_company_id: company_id,
         admin_email: email.trim(),
       });
+      /* Os canais foram escolhidos na venda, quando ainda não havia tenant
+         onde gravá-los. Agora existe. Falhar aqui não desfaz o sistema, que
+         já está criado — o aviso manda o operador ajustar na ficha. */
+      if (client.canais?.length) {
+        try {
+          await setCompanyChannels(company_id, client.canais);
+        } catch {
+          toast.warning('Sistema criado, mas os canais não foram aplicados. Ajuste em "Canais liberados".');
+        }
+      }
       // A senha vai para system_credentials, que só admin lê.
       await saveSystemCredential({ client_id: client.id, email: email.trim(), password });
       toast.success('Sistema do cliente criado!');

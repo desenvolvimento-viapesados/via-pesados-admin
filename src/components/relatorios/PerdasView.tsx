@@ -96,7 +96,7 @@ export function PerdasView({ clients, prospects, periodo, label }: Props) {
   const perdidos = useMemo(() => {
     const todos = prospects.filter((p) => p.stage === 'perdido');
     const noP = todos.filter((p) => inP(p.updated_at));
-    const ganhosNoP = prospects.filter((p) => p.stage === 'ganho' && inP(p.updated_at)).length;
+    const ganhosNoP = prospects.filter((p) => p.stage === 'vendido' && inP(p.updated_at)).length;
 
     const motivos = new Map<string, { nome: string; n: number; valor: number }>();
     let semMotivo = 0;

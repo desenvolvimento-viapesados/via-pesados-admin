@@ -15,12 +15,10 @@ import { StatusBadge } from '@/components/admin/ui';
 import { RegistrarVendaDialog } from './RegistrarVendaDialog';
 
 const PIPELINE: { key: ProspectStage; label: string }[] = [
-  { key: 'novo',       label: 'Novos' },
-  { key: 'contato',    label: 'Em contato' },
-  { key: 'reuniao',    label: 'Reunião' },
-  { key: 'amostra',    label: 'Amostra' },
-  { key: 'proposta',   label: 'Proposta' },
-  { key: 'fechamento', label: 'Fechamento' },
+  { key: 'contato',      label: 'Contato' },
+  { key: 'oportunidade', label: 'Oportunidade' },
+  { key: 'reuniao',      label: 'Reunião' },
+  { key: 'vendido',      label: 'Vendido' },
 ];
 
 const inputCls =
@@ -253,6 +251,17 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
     const p = prospects.find((x) => x.id === dragId);
     setDragId(null);
     if (!p || p.stage === stage) return;
+
+    // Vendido não é um card arrastado para uma coluna: é a venda acontecendo.
+    // Abre o registro (mensalidade, contrato, canais, domínio) e o próprio
+    // fluxo grava o estágio no fim. Mover sem isso deixaria um "vendido" sem
+    // cliente provisionado, que é o estado que ninguém consegue explicar
+    // depois.
+    if (stage === 'vendido') {
+      setSaleFor(p);
+      return;
+    }
+
     try {
       await update.mutateAsync({ id: p.id, stage });
     } catch {

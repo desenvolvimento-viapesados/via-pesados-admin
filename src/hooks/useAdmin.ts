@@ -4,7 +4,7 @@ import { supabase, LOJISTA_FUNCTIONS_URL } from '@/integrations/supabase/client'
 
 /* ═══ Tipos ═══════════════════════════════════════════════════ */
 
-export type ProspectStage = 'novo' | 'contato' | 'reuniao' | 'amostra' | 'proposta' | 'fechamento' | 'ganho' | 'perdido';
+export type ProspectStage = 'contato' | 'oportunidade' | 'reuniao' | 'vendido' | 'perdido';
 
 export interface Prospect {
   id: string;
@@ -93,6 +93,8 @@ export interface Client {
   status: 'onboarding' | 'ativo' | 'inadimplente' | 'pausado' | 'cancelado';
   lojista_company_id: string | null;
   domain: string | null;
+  /** Canais contratados na venda; aplicados no tenant ao criar o sistema. */
+  canais: string[];
   logo_url: string | null;
   admin_email: string | null;
   admin_password: string | null;
@@ -222,7 +224,7 @@ export const useWinProspect = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (p: Prospect) => {
-      const { error: upErr } = await supabase.from('prospects').update({ stage: 'ganho' }).eq('id', p.id);
+      const { error: upErr } = await supabase.from('prospects').update({ stage: 'vendido' }).eq('id', p.id);
       if (upErr) throw upErr;
       const { data: client, error } = await supabase
         .from('clients')
@@ -254,7 +256,7 @@ export const useWinProspect = () => {
 
 /** Ordem da esteira. Ações só empurram para frente, nunca para trás. */
 export const STAGE_RANK: Record<ProspectStage, number> = {
-  novo: 0, contato: 1, reuniao: 2, amostra: 3, proposta: 4, fechamento: 5, ganho: 6, perdido: 99,
+  contato: 0, oportunidade: 1, reuniao: 2, vendido: 3, perdido: 99,
 };
 
 /** Avança o prospect ao executar a ação da etapa (agendar, criar amostra...). */
@@ -262,7 +264,7 @@ export const useAdvanceProspect = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, from, to }: { id: string; from: ProspectStage; to: ProspectStage }) => {
-      if (from === 'ganho' || from === 'perdido') return;
+      if (from === 'vendido' || from === 'perdido') return;
       if (STAGE_RANK[from] >= STAGE_RANK[to]) return;
       const { error } = await supabase.from('prospects').update({ stage: to }).eq('id', id);
       if (error) throw error;
@@ -287,6 +289,8 @@ export interface SaleInput {
   mrr?: number | null;
   recurrence?: 'mensal' | 'anual' | 'unico';
   owner_id?: string | null;
+  /** Canais contratados. Vão para o tenant quando o sistema for criado. */
+  canais?: string[];
 }
 
 /**
@@ -335,7 +339,7 @@ export const useRegisterSale = () => {
         .eq('task_key', 'contrato_gerado');
 
       if (prospectId) {
-        await supabase.from('prospects').update({ stage: 'ganho' }).eq('id', prospectId);
+        await supabase.from('prospects').update({ stage: 'vendido' }).eq('id', prospectId);
       }
 
       return client as Client;
@@ -821,7 +825,7 @@ export const useCrmCounts = () => {
   const { data: clients = [] } = useClients();
 
   return useMemo(() => {
-    const activeStages = new Set<ProspectStage>(['novo', 'contato', 'reuniao', 'amostra', 'proposta', 'fechamento']);
+    const activeStages = new Set<ProspectStage>(['contato', 'oportunidade', 'reuniao']);
     const active = prospects.filter((p) => activeStages.has(p.stage));
 
     const scheduled = new Set(
@@ -839,12 +843,14 @@ export const useCrmCounts = () => {
 
     return {
       funil: active.length,
+      // Reuniões e Amostras deixaram de ser abas; a contagem fica para quando
+      // voltarem. Conexão virou consequência do Vendido, não etapa própria.
       reunioes:
         prospects.filter((p) => p.stage === 'reuniao' && !scheduled.has(p.id)).length +
         meetings.filter((m) => m.status === 'agendada' && sameDay(m.scheduled_at)).length,
-      amostras: prospects.filter((p) => p.stage === 'amostra' && !withDemo.has(p.id)).length,
+      amostras: demos.filter((d) => !d.prospect_id || withDemo.has(d.prospect_id)).length * 0,
       conexao:
-        prospects.filter((p) => p.stage === 'fechamento' && !converted.has(p.id)).length +
+        prospects.filter((p) => p.stage === 'vendido' && !converted.has(p.id)).length +
         clients.filter((c) => c.status === 'onboarding').length,
       pipeline: active.reduce((s, p) => s + (p.proposal_value ?? 0), 0),
       // MRR é só o que está ATIVO. Onboarding é contrato assinado que ainda

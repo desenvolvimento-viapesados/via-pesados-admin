@@ -26,7 +26,7 @@ interface Props {
 const dias = (a: string, b: string) =>
   Math.max(0, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86_400_000));
 
-const ETAPAS_ABERTAS = ['novo', 'contato', 'reuniao', 'amostra', 'proposta', 'fechamento'] as const;
+const ETAPAS_ABERTAS = ['contato', 'oportunidade', 'reuniao'] as const;
 
 const ETAPA_LABEL: Record<string, string> = {
   novo: 'Novo', contato: 'Em contato', reuniao: 'Reunião',
@@ -62,7 +62,7 @@ export function AquisicaoTab({ prospects, clients, meetings, demos, periodo, lab
       demos.filter((d) => d.prospect_id && coorte.has(d.prospect_id)).map((d) => d.prospect_id!),
     );
     const comProposta = criados.filter((p) => Number(p.proposal_value ?? 0) > 0);
-    const ganhos = criados.filter((p) => p.stage === 'ganho');
+    const ganhos = criados.filter((p) => p.stage === 'vendido');
 
     return [
       { etapa: 'Prospects criados', n: criados.length, cor: TYPE_COLORS[1] },
@@ -74,7 +74,7 @@ export function AquisicaoTab({ prospects, clients, meetings, demos, periodo, lab
   }, [prospects, meetings, demos, periodo]);
 
   const kpisFunil = useMemo(() => {
-    const ganhos = prospects.filter((p) => p.stage === 'ganho' && inP(p.updated_at));
+    const ganhos = prospects.filter((p) => p.stage === 'vendido' && inP(p.updated_at));
     const perdidos = prospects.filter((p) => p.stage === 'perdido' && inP(p.updated_at));
     const decididos = ganhos.length + perdidos.length;
 
@@ -124,7 +124,7 @@ export function AquisicaoTab({ prospects, clients, meetings, demos, periodo, lab
       const k = raw.toLowerCase();
       const a = mapa.get(k) ?? { nome: raw, total: 0, ganhos: 0, valor: 0 };
       a.total += 1;
-      if (p.stage === 'ganho') { a.ganhos += 1; a.valor += Number(p.proposal_value ?? 0); }
+      if (p.stage === 'vendido') { a.ganhos += 1; a.valor += Number(p.proposal_value ?? 0); }
       mapa.set(k, a);
     });
     const lista = [...mapa.values()].sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome));

@@ -19,7 +19,7 @@ export function ConexaoTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseN
   /** Chegaram na etapa Fechamento e ainda não viraram cliente. */
   const closing = useMemo(() => {
     const converted = new Set(clients.map((c) => c.prospect_id).filter(Boolean) as string[]);
-    return prospects.filter((p) => p.stage === 'fechamento' && !converted.has(p.id));
+    return prospects.filter((p) => p.stage === 'vendido' && !converted.has(p.id));
   }, [prospects, clients]);
 
   const connecting = clients.filter((c) => c.status === 'onboarding');
