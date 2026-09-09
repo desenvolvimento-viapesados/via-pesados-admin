@@ -107,6 +107,8 @@ export interface Client {
   plan_id: string | null;
   asaas_customer_id: string | null;
   asaas_subscription_id: string | null;
+  asaas_payment_link_id: string | null;
+  asaas_payment_link_url: string | null;
   contract_signed_at: string | null;
   activated_at: string | null;
   canceled_at: string | null;
@@ -213,16 +215,22 @@ export const usePlans = () =>
   });
 
 /**
- * Cria a cobrança recorrente do cliente no Asaas.
+ * Gera o link de cobrança mensal recorrente do cliente no Asaas.
  *
- * Ação explícita: gera cobrança de verdade na conta de uma empresa real.
- * A função do servidor é idempotente — se a assinatura já existe, devolve
- * a que existe em vez de criar a segunda.
+ * Ação explícita: cria cobrança de verdade. A função do servidor é
+ * idempotente — com link já gerado devolve o que existe, para dois cliques
+ * não virarem duas mensalidades no mesmo lojista.
  */
 export const useCriarAssinaturaAsaas = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { client_id: string; billing_type?: string; due_day?: number }) => {
+    mutationFn: async (input: {
+      client_id: string;
+      /** O valor negociado na venda. Manda sobre o do cadastro. */
+      valor?: number;
+      billing_type?: string;
+      vencimento_dias?: number;
+    }) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Sessão expirada');
       const res = await fetch(
@@ -236,8 +244,8 @@ export const useCriarAssinaturaAsaas = () => {
       const dados = await res.json();
       if (!res.ok || dados.error) throw new Error(dados.error || 'Erro ao criar a cobrança');
       return dados as {
-        ok: true; ja_existia?: boolean; customer_id: string; subscription_id: string;
-        valor?: number; plano?: string | null; proximo_vencimento?: string; ambiente?: string;
+        ok: true; ja_existia?: boolean; url: string; link_id: string;
+        valor?: number; ambiente?: string;
       };
     },
     onSuccess: () => {

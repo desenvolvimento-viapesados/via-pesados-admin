@@ -255,28 +255,26 @@ function ProvisionDialog({
 /* ── Cobrança recorrente no Asaas ─────────────────────────────── */
 function CobrancaPanel({ client }: { client: Client }) {
   const { data: planos = [] } = usePlans();
-  const criar = useCriarAssinaturaAsaas();
+  const gerar = useCriarAssinaturaAsaas();
   const update = useUpdateClient();
   const [tipo, setTipo] = useState('UNDEFINED');
-  const [dia, setDia] = useState('');
+  const [valor, setValor] = useState(client.mrr ? String(client.mrr) : '');
 
-  const plano = planos.find((p) => p.id === client.plan_id) ?? null;
-  const jaTem = !!client.asaas_subscription_id;
+  const link = client.asaas_payment_link_url;
 
-  const criarAssinatura = async () => {
+  const gerarCobranca = async () => {
+    const v = Number(valor);
+    if (!(v > 0)) { toast.error('Informe a mensalidade'); return; }
     try {
-      const r = await criar.mutateAsync({
-        client_id: client.id,
-        billing_type: tipo,
-        due_day: dia ? Number(dia) : undefined,
-      });
+      const r = await gerar.mutateAsync({ client_id: client.id, valor: v, billing_type: tipo });
+      await navigator.clipboard.writeText(r.url).catch(() => {});
       toast.success(
         r.ja_existia
-          ? 'Este cliente já tinha assinatura no Asaas.'
-          : `Cobrança criada — ${brlFull(r.valor ?? 0)}/mês, primeiro vencimento em ${r.proximo_vencimento}.`,
+          ? 'Este cliente já tinha cobrança — link copiado.'
+          : `Cobrança de ${brlFull(r.valor ?? v)}/mês criada — link copiado.`,
       );
     } catch (e) {
-      toast.error((e as Error).message || 'Não foi possível criar a cobrança');
+      toast.error((e as Error).message || 'Não foi possível gerar a cobrança');
     }
   };
 
@@ -286,73 +284,90 @@ function CobrancaPanel({ client }: { client: Client }) {
         <div className="min-w-0">
           <p className="text-[12.5px] font-semibold text-foreground flex items-center gap-1.5">
             <Repeat className="h-3.5 w-3.5 text-foreground/40" />
-            {plano ? plano.name : 'Plano não definido'}
+            {client.mrr ? `${brlFull(client.mrr)} por mês` : 'Mensalidade não definida'}
           </p>
           <p className="text-[11px] text-foreground/40">
-            {plano ? `${brlFull(plano.monthly_value)} por mês` : 'Escolha o plano para poder cobrar'}
+            {client.plan ? `Plano ${client.plan}` : 'Valor livre, definido na venda'}
           </p>
         </div>
-        {jaTem && (
+        {link && (
           <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/12 text-emerald-400 border border-emerald-500/25">
-            assinatura ativa
+            cobrança ativa
           </span>
         )}
       </div>
 
-      <select
-        className={inputCls}
-        value={client.plan_id ?? ''}
-        onChange={async (e) => {
-          const p = planos.find((x) => x.id === e.target.value);
-          // O valor acompanha o plano — são a mesma verdade em dois lugares.
-          await update.mutateAsync({
-            id: client.id,
-            plan_id: e.target.value || null,
-            plan: p?.name ?? null,
-            mrr: p ? Number(p.monthly_value) : client.mrr,
-          });
-          toast.success('Plano atualizado');
-        }}
-      >
-        <option value="">Sem plano</option>
-        {planos.map((p) => (
-          <option key={p.id} value={p.id}>{p.name} — {brlFull(p.monthly_value)}/mês</option>
-        ))}
-      </select>
-
-      {jaTem ? (
-        <p className="text-[11.5px] text-foreground/40">
-          Assinatura <span className="font-mono text-foreground/60">{client.asaas_subscription_id}</span>.
-          As cobranças chegam sozinhas em Pagamentos, pelo webhook.
-        </p>
+      {link ? (
+        <>
+          <div className="flex items-center gap-2">
+            <input className={cn(inputCls, 'font-mono text-[11.5px]')} value={link} readOnly />
+            <button
+              onClick={() => { navigator.clipboard.writeText(link); toast.success('Link copiado'); }}
+              className="h-10 w-10 shrink-0 rounded-xl border border-black/[0.1] dark:border-white/[0.1] flex items-center justify-center hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+            >
+              <Copy className="h-3.5 w-3.5 text-foreground/60" />
+            </button>
+            <a
+              href={link} target="_blank" rel="noopener noreferrer"
+              className="h-10 w-10 shrink-0 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
+          <p className="text-[11px] text-foreground/35">
+            O Asaas cobra o lojista todo mês por este link e avisa ele sozinho. Os pagamentos
+            aparecem em Pagamentos conforme forem entrando.
+          </p>
+        </>
       ) : (
         <>
-          <div className="grid grid-cols-[1fr_110px] gap-2.5">
+          <select
+            className={inputCls}
+            value={client.plan_id ?? ''}
+            onChange={async (e) => {
+              const pl = planos.find((x) => x.id === e.target.value);
+              // O plano é sugestão de preço: preenche o campo, não trava o valor.
+              if (pl) setValor(String(pl.monthly_value));
+              await update.mutateAsync({
+                id: client.id,
+                plan_id: e.target.value || null,
+                plan: pl?.name ?? null,
+              });
+            }}
+          >
+            <option value="">Sem plano — valor livre</option>
+            {planos.map((pl) => (
+              <option key={pl.id} value={pl.id}>{pl.name} — {brlFull(pl.monthly_value)}/mês</option>
+            ))}
+          </select>
+
+          <div className="grid grid-cols-[130px_1fr] gap-2.5">
+            <input
+              className={inputCls}
+              type="number"
+              placeholder="R$ / mês"
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+            />
             <select className={inputCls} value={tipo} onChange={(e) => setTipo(e.target.value)}>
-              <option value="UNDEFINED">O cliente escolhe (Pix, boleto ou cartão)</option>
+              <option value="UNDEFINED">Cliente escolhe como pagar</option>
               <option value="PIX">Pix</option>
               <option value="BOLETO">Boleto</option>
               <option value="CREDIT_CARD">Cartão de crédito</option>
             </select>
-            <input
-              className={inputCls}
-              type="number" min={1} max={28}
-              placeholder="dia venc."
-              value={dia}
-              onChange={(e) => setDia(e.target.value)}
-            />
           </div>
+
           <button
-            onClick={criarAssinatura}
-            disabled={criar.isPending || !client.plan_id}
+            onClick={gerarCobranca}
+            disabled={gerar.isPending || !(Number(valor) > 0)}
             className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
           >
-            {criar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-3.5 w-3.5" />}
-            Criar cobrança recorrente
+            {gerar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-3.5 w-3.5" />}
+            Gerar cobrança mensal
           </button>
           <p className="text-[11px] text-foreground/35">
-            Gera cobrança real na conta do cliente, todo mês. Exige CNPJ preenchido.
-            Sem dia informado, o primeiro vencimento cai daqui a 7 dias.
+            Gera cobrança real, todo mês. O link é copiado para você mandar ao lojista —
+            ele preenche os próprios dados na primeira vez que abrir.
           </p>
         </>
       )}

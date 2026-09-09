@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, FileText, Check } from 'lucide-react';
+import { Loader2, FileText, Check, Link2, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { useRegisterSale, usePlans, brlFull, type Prospect } from '@/hooks/useAdmin';
+import {
+  useRegisterSale, usePlans, useCriarAssinaturaAsaas, brlFull, type Prospect,
+} from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -23,6 +25,7 @@ const empty = {
   legal_rep_name: '', legal_rep_cpf: '',
   contact_name: '', whatsapp: '', email: '', city: '', state: '',
   plan_id: '', plan: '', mrr: '', recurrence: 'mensal', canais: [] as string[],
+  gerar_cobranca: true,
 };
 
 /**
@@ -40,6 +43,7 @@ export function RegistrarVendaDialog({
   const navigate = useNavigate();
   const register = useRegisterSale();
   const { data: planos = [] } = usePlans();
+  const gerarLink = useCriarAssinaturaAsaas();
   const [form, setForm] = useState(empty);
 
   // pré-preenche com o que já sabemos do prospect
@@ -90,7 +94,25 @@ export function RegistrarVendaDialog({
           owner_id: member?.id ?? null,
         },
       });
-      toast.success('Venda registrada — contrato emitido em rascunho');
+      // A cobrança sai junto com a venda: é o momento em que o valor está
+      // acertado e o lojista está do outro lado esperando o link. Falhar
+      // aqui não desfaz a venda — o botão continua na ficha do cliente.
+      if (form.gerar_cobranca && Number(form.mrr) > 0) {
+        try {
+          const r = await gerarLink.mutateAsync({
+            client_id: client.id,
+            valor: Number(form.mrr),
+          });
+          await navigator.clipboard.writeText(r.url).catch(() => {});
+          toast.success('Venda registrada e link de cobrança copiado — é só mandar ao cliente.');
+        } catch (e) {
+          toast.warning(
+            `Venda registrada, mas a cobrança não foi gerada: ${(e as Error).message}. Dá para gerar na ficha do cliente.`,
+          );
+        }
+      } else {
+        toast.success('Venda registrada — contrato emitido em rascunho');
+      }
       onClose();
       navigate(`/clientes/${client.id}`);
     } catch {
@@ -171,6 +193,40 @@ export function RegistrarVendaDialog({
                   : 'Pagamento único não gera receita recorrente — o MRR deste cliente fica zerado.'}
               </p>
             )}
+
+            {/* Cobrança recorrente — o valor é o da venda, não o do plano */}
+            <button
+              type="button"
+              onClick={() => setForm((f) => ({ ...f, gerar_cobranca: !f.gerar_cobranca }))}
+              disabled={form.recurrence !== 'mensal'}
+              className={cn(
+                'w-full flex items-start gap-2.5 p-3 rounded-xl border text-left transition-colors disabled:opacity-40',
+                form.gerar_cobranca && form.recurrence === 'mensal'
+                  ? 'border-emerald-400/30 bg-emerald-400/[0.06]'
+                  : 'border-black/[0.1] dark:border-white/[0.1] hover:bg-black/[0.03] dark:hover:bg-white/[0.04]',
+              )}
+            >
+              <span className={cn(
+                'h-4 w-4 rounded-md border flex items-center justify-center shrink-0 mt-px',
+                form.gerar_cobranca && form.recurrence === 'mensal'
+                  ? 'bg-emerald-500 border-emerald-500'
+                  : 'border-black/20 dark:border-white/25',
+              )}>
+                {form.gerar_cobranca && form.recurrence === 'mensal' && <Check className="h-3 w-3 text-white" />}
+              </span>
+              <span className="min-w-0">
+                <span className="text-[12.5px] font-medium text-foreground flex items-center gap-1.5">
+                  <Link2 className="h-3 w-3" /> Gerar cobrança mensal no Asaas
+                </span>
+                <span className="block text-[11px] text-foreground/45 mt-0.5">
+                  {form.recurrence !== 'mensal'
+                    ? 'Disponível só para contrato mensal.'
+                    : form.mrr
+                      ? `${brlFull(Number(form.mrr))} por mês, todo mês, no Pix, boleto ou cartão. O link é copiado ao salvar.`
+                      : 'Informe a mensalidade acima para gerar.'}
+                </span>
+              </span>
+            </button>
 
             <div className="pt-1">
               <p className="text-[11.5px] font-medium text-foreground/70 px-1 pb-1.5">Canais contratados</p>
