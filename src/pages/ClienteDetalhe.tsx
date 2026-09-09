@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Loader2, Check, FileText, CreditCard, Rocket, Globe, Upload,
   Copy, ExternalLink, Phone, Mail, MapPin, Plus, StickyNote,
-  PartyPopper, KeyRound,
-  CreditCard, Repeat,
+  PartyPopper, KeyRound, Repeat,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';

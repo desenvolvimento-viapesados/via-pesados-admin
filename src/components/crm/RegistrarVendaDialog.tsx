@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2, FileText, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { useRegisterSale, brlFull, type Prospect   usePlans,
-} from '@/hooks/useAdmin';
+import { useRegisterSale, usePlans, brlFull, type Prospect } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -40,6 +39,7 @@ export function RegistrarVendaDialog({
   const { member } = useAuth();
   const navigate = useNavigate();
   const register = useRegisterSale();
+  const { data: planos = [] } = usePlans();
   const [form, setForm] = useState(empty);
 
   // pré-preenche com o que já sabemos do prospect
