@@ -4,6 +4,7 @@ import {
   Loader2, Check, FileText, CreditCard, Rocket, Globe, Upload,
   Copy, ExternalLink, Phone, Mail, MapPin, Plus, StickyNote,
   PartyPopper, KeyRound,
+  CreditCard, Repeat,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -14,6 +15,7 @@ import {
   provisionCompany, updateCompanyBranding, uploadLogo, slugify, genPassword,
   setCompanyChannels,
   brlFull, brl, type Client, type OnboardingTask,
+  usePlans, useCriarAssinaturaAsaas,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import { LOJISTA_APP_URL } from '@/integrations/supabase/client';
@@ -248,6 +250,114 @@ function ProvisionDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/* ── Cobrança recorrente no Asaas ─────────────────────────────── */
+function CobrancaPanel({ client }: { client: Client }) {
+  const { data: planos = [] } = usePlans();
+  const criar = useCriarAssinaturaAsaas();
+  const update = useUpdateClient();
+  const [tipo, setTipo] = useState('UNDEFINED');
+  const [dia, setDia] = useState('');
+
+  const plano = planos.find((p) => p.id === client.plan_id) ?? null;
+  const jaTem = !!client.asaas_subscription_id;
+
+  const criarAssinatura = async () => {
+    try {
+      const r = await criar.mutateAsync({
+        client_id: client.id,
+        billing_type: tipo,
+        due_day: dia ? Number(dia) : undefined,
+      });
+      toast.success(
+        r.ja_existia
+          ? 'Este cliente já tinha assinatura no Asaas.'
+          : `Cobrança criada — ${brlFull(r.valor ?? 0)}/mês, primeiro vencimento em ${r.proximo_vencimento}.`,
+      );
+    } catch (e) {
+      toast.error((e as Error).message || 'Não foi possível criar a cobrança');
+    }
+  };
+
+  return (
+    <Panel className="p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <p className="text-[12.5px] font-semibold text-foreground flex items-center gap-1.5">
+            <Repeat className="h-3.5 w-3.5 text-foreground/40" />
+            {plano ? plano.name : 'Plano não definido'}
+          </p>
+          <p className="text-[11px] text-foreground/40">
+            {plano ? `${brlFull(plano.monthly_value)} por mês` : 'Escolha o plano para poder cobrar'}
+          </p>
+        </div>
+        {jaTem && (
+          <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/12 text-emerald-400 border border-emerald-500/25">
+            assinatura ativa
+          </span>
+        )}
+      </div>
+
+      <select
+        className={inputCls}
+        value={client.plan_id ?? ''}
+        onChange={async (e) => {
+          const p = planos.find((x) => x.id === e.target.value);
+          // O valor acompanha o plano — são a mesma verdade em dois lugares.
+          await update.mutateAsync({
+            id: client.id,
+            plan_id: e.target.value || null,
+            plan: p?.name ?? null,
+            mrr: p ? Number(p.monthly_value) : client.mrr,
+          });
+          toast.success('Plano atualizado');
+        }}
+      >
+        <option value="">Sem plano</option>
+        {planos.map((p) => (
+          <option key={p.id} value={p.id}>{p.name} — {brlFull(p.monthly_value)}/mês</option>
+        ))}
+      </select>
+
+      {jaTem ? (
+        <p className="text-[11.5px] text-foreground/40">
+          Assinatura <span className="font-mono text-foreground/60">{client.asaas_subscription_id}</span>.
+          As cobranças chegam sozinhas em Pagamentos, pelo webhook.
+        </p>
+      ) : (
+        <>
+          <div className="grid grid-cols-[1fr_110px] gap-2.5">
+            <select className={inputCls} value={tipo} onChange={(e) => setTipo(e.target.value)}>
+              <option value="UNDEFINED">O cliente escolhe (Pix, boleto ou cartão)</option>
+              <option value="PIX">Pix</option>
+              <option value="BOLETO">Boleto</option>
+              <option value="CREDIT_CARD">Cartão de crédito</option>
+            </select>
+            <input
+              className={inputCls}
+              type="number" min={1} max={28}
+              placeholder="dia venc."
+              value={dia}
+              onChange={(e) => setDia(e.target.value)}
+            />
+          </div>
+          <button
+            onClick={criarAssinatura}
+            disabled={criar.isPending || !client.plan_id}
+            className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
+          >
+            {criar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-3.5 w-3.5" />}
+            Criar cobrança recorrente
+          </button>
+          <p className="text-[11px] text-foreground/35">
+            Gera cobrança real na conta do cliente, todo mês. Exige CNPJ preenchido.
+            Sem dia informado, o primeiro vencimento cai daqui a 7 dias.
+          </p>
+        </>
+      )}
+    </Panel>
   );
 }
 
@@ -618,6 +728,12 @@ export default function ClienteDetalhe() {
                 <PartyPopper className="h-4 w-4" /> Ativar cliente — go-live concluído
               </button>
             )}
+          </div>
+
+          {/* Cobrança recorrente */}
+          <div>
+            <SectionHeader title="Cobrança" />
+            <CobrancaPanel client={client} />
           </div>
 
           {/* Sistema provisionado */}

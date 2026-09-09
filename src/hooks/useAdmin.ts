@@ -104,6 +104,9 @@ export interface Client {
   address: string | null;
   legal_rep_name: string | null;
   legal_rep_cpf: string | null;
+  plan_id: string | null;
+  asaas_customer_id: string | null;
+  asaas_subscription_id: string | null;
   contract_signed_at: string | null;
   activated_at: string | null;
   canceled_at: string | null;
@@ -185,6 +188,64 @@ export interface Activity {
   author_id: string | null;
   created_at: string;
 }
+
+/* ═══ Planos e cobrança ═══════════════════════════════════════ */
+
+export interface Plan {
+  id: string;
+  name: string;
+  monthly_value: number;
+  description: string | null;
+  is_active: boolean;
+  sort: number;
+}
+
+export const usePlans = () =>
+  useQuery({
+    queryKey: ['plans'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('plans').select('*').eq('is_active', true).order('sort').order('monthly_value');
+      if (error) throw error;
+      return data as Plan[];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+/**
+ * Cria a cobrança recorrente do cliente no Asaas.
+ *
+ * Ação explícita: gera cobrança de verdade na conta de uma empresa real.
+ * A função do servidor é idempotente — se a assinatura já existe, devolve
+ * a que existe em vez de criar a segunda.
+ */
+export const useCriarAssinaturaAsaas = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { client_id: string; billing_type?: string; due_day?: number }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Sessão expirada');
+      const res = await fetch(
+        'https://ktjvyysqhsyvjmhumjly.supabase.co/functions/v1/asaas-assinatura',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify(input),
+        },
+      );
+      const dados = await res.json();
+      if (!res.ok || dados.error) throw new Error(dados.error || 'Erro ao criar a cobrança');
+      return dados as {
+        ok: true; ja_existia?: boolean; customer_id: string; subscription_id: string;
+        valor?: number; plano?: string | null; proximo_vencimento?: string; ambiente?: string;
+      };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clients'] });
+      qc.invalidateQueries({ queryKey: ['payments'] });
+    },
+  });
+};
 
 /* ═══ Canais de aquisição ═════════════════════════════════════ */
 
@@ -355,6 +416,8 @@ export interface SaleInput {
   city?: string | null;
   state?: string | null;
   plan?: string | null;
+  /** O plano carrega o preço; mrr vem dele, não do teclado. */
+  plan_id?: string | null;
   mrr?: number | null;
   recurrence?: 'mensal' | 'anual' | 'unico';
   owner_id?: string | null;

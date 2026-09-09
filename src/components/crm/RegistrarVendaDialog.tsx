@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2, FileText, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { useRegisterSale, brlFull, type Prospect } from '@/hooks/useAdmin';
+import { useRegisterSale, brlFull, type Prospect   usePlans,
+} from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -22,7 +23,7 @@ const empty = {
   company_name: '', legal_name: '', cnpj: '', address: '',
   legal_rep_name: '', legal_rep_cpf: '',
   contact_name: '', whatsapp: '', email: '', city: '', state: '',
-  plan: '', mrr: '', recurrence: 'mensal', canais: [] as string[],
+  plan_id: '', plan: '', mrr: '', recurrence: 'mensal', canais: [] as string[],
 };
 
 /**
@@ -82,6 +83,7 @@ export function RegistrarVendaDialog({
           city: form.city || null,
           state: form.state || null,
           plan: form.plan || null,
+          plan_id: form.plan_id || null,
           mrr: form.mrr ? Number(form.mrr) : 0,
           recurrence: form.recurrence as 'mensal' | 'anual' | 'unico',
           canais: form.canais,
@@ -135,7 +137,26 @@ export function RegistrarVendaDialog({
               <input className={inputCls} placeholder="CPF do representante" value={form.legal_rep_cpf} onChange={(e) => set('legal_rep_cpf', e.target.value)} />
             </div>
             <div className="grid grid-cols-3 gap-2.5">
-              <input className={inputCls} placeholder="Plano" value={form.plan} onChange={(e) => set('plan', e.target.value)} />
+              <select
+                className={inputCls}
+                value={form.plan_id}
+                onChange={(e) => {
+                  const p = planos.find((x) => x.id === e.target.value);
+                  // O plano carrega o preço: digitar de novo abriria espaço
+                  // para vender o mesmo plano por valores diferentes.
+                  setForm((f) => ({
+                    ...f,
+                    plan_id: e.target.value,
+                    plan: p?.name ?? '',
+                    mrr: p && f.recurrence === 'mensal' ? String(p.monthly_value) : f.mrr,
+                  }));
+                }}
+              >
+                <option value="">Plano…</option>
+                {planos.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name} — {brlFull(p.monthly_value)}/mês</option>
+                ))}
+              </select>
               <input className={inputCls} type="number" placeholder="Valor do contrato (R$)" value={form.mrr} onChange={(e) => set('mrr', e.target.value)} />
               <select className={inputCls} value={form.recurrence} onChange={(e) => set('recurrence', e.target.value)}>
                 <option value="mensal">Mensal</option>
