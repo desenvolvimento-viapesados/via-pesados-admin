@@ -73,7 +73,7 @@ export function ConexaoTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseN
         <EmptyState
           icon={<Rocket />}
           title="Nenhuma venda em conexão"
-          sub="Mova um prospect para Fechamento no funil — ele aparece aqui para registrar"
+          sub="Mova um prospect para Vendido no funil — ele aparece aqui para registrar"
         />
       ) : (
         <>
