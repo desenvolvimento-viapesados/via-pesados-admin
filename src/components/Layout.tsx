@@ -15,7 +15,10 @@ const PAGE_TITLES: Record<string, string> = {
   '/relatorios': 'Relatórios',
 };
 
-const FULLPAGE_ROUTES = new Set(['/crm']);
+// Telas que trazem o próprio cabeçalho. Comparação por prefixo porque a
+// ficha do prospect é /crm/prospect/<id> — com Set de caminho exato ela
+// ganharia dois cabeçalhos empilhados.
+const FULLPAGE_PREFIXES = ['/crm'];
 
 export function Layout({ children }: { children: ReactNode }) {
   const { theme, toggleTheme } = useTheme();
@@ -24,7 +27,9 @@ export function Layout({ children }: { children: ReactNode }) {
   const location = useLocation();
 
   const isHome = location.pathname === '/' || location.pathname === '';
-  const isFullPage = FULLPAGE_ROUTES.has(location.pathname);
+  const isFullPage = FULLPAGE_PREFIXES.some(
+    (r) => location.pathname === r || location.pathname.startsWith(r + '/'),
+  );
 
   if (isHome || isFullPage) return <>{children}</>;
 

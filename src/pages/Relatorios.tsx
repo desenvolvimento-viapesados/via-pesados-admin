@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Repeat, Target, Wallet, LifeBuoy, XCircle, Users } from 'lucide-react';
+import { Repeat, Target, Wallet, LifeBuoy, XCircle, Users, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   useClients, useProspects, useMeetings, useDemos, useTickets,
-  usePayments, useFinTransactions, useTeam,
+  usePayments, useFinTransactions, useTeam, useChannels, useProspectEvents,
 } from '@/hooks/useAdmin';
 import { getDateRangeForPeriod } from '@/utils/periodFilter';
 import { DateRangeSelector } from '@/components/ui/date-range-selector';
@@ -12,6 +12,7 @@ import { AquisicaoTab } from '@/components/relatorios/AquisicaoTab';
 import { CaixaTab } from '@/components/relatorios/CaixaTab';
 import { OperacaoTab } from '@/components/relatorios/OperacaoTab';
 import { PerdasView } from '@/components/relatorios/PerdasView';
+import { CanaisTab } from '@/components/relatorios/CanaisTab';
 
 /* ══════════════════════════════════════════════════════════════════
    Relatórios da Via Pesados.
@@ -39,11 +40,12 @@ import { PerdasView } from '@/components/relatorios/PerdasView';
    demos.presented_at.
    ══════════════════════════════════════════════════════════════════ */
 
-type AbaId = 'recorrencia' | 'aquisicao' | 'caixa' | 'operacao' | 'perdas';
+type AbaId = 'recorrencia' | 'aquisicao' | 'canais' | 'caixa' | 'operacao' | 'perdas';
 
 const ABAS: { id: AbaId; rotulo: string; icone: typeof Repeat }[] = [
   { id: 'recorrencia', rotulo: 'Recorrência', icone: Repeat },
   { id: 'aquisicao', rotulo: 'Aquisição', icone: Target },
+  { id: 'canais', rotulo: 'Canais', icone: Radio },
   { id: 'caixa', rotulo: 'Caixa', icone: Wallet },
   { id: 'operacao', rotulo: 'Operação', icone: LifeBuoy },
   { id: 'perdas', rotulo: 'Perdas', icone: XCircle },
@@ -74,6 +76,8 @@ export default function Relatorios() {
   const { data: payments = [] } = usePayments();
   const { data: transacoes = [] } = useFinTransactions();
   const { data: team = [] } = useTeam();
+  const { data: canais = [] } = useChannels();
+  const { data: eventos = [] } = useProspectEvents();
 
   const efetivo = periodo === 'personalizado' && inicio && fim
     ? `custom:${inicio}:${fim}`
@@ -166,6 +170,13 @@ export default function Relatorios() {
           prospects={filtrado.prospects} clients={filtrado.clients}
           meetings={filtrado.meetings} demos={filtrado.demos}
           periodo={range} label={label}
+        />
+      )}
+      {aba === 'canais' && (
+        <CanaisTab
+          prospects={filtrado.prospects} clients={filtrado.clients}
+          meetings={filtrado.meetings} canais={canais} eventos={eventos}
+          transacoes={transacoes} periodo={range} label={label}
         />
       )}
       {aba === 'caixa' && (

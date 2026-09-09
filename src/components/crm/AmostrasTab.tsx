@@ -50,7 +50,7 @@ const emptyForm = {
 };
 
 /** Cria ou edita uma amostra. Editando, o que já estiver no ar é atualizado junto. */
-function DemoDialog({
+export function DemoDialog({
   open, onClose, defaultProspectId, demo,
 }: {
   open: boolean;

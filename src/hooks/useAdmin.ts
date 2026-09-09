@@ -14,7 +14,9 @@ export interface Prospect {
   email: string | null;
   city: string | null;
   state: string | null;
+  /** Detalhe livre: a campanha, quem indicou, qual feira. A CATEGORIA é channel_id. */
   source: string | null;
+  channel_id: string | null;
   stage: ProspectStage;
   proposal_value: number | null;
   plan: string | null;
@@ -183,6 +185,73 @@ export interface Activity {
   author_id: string | null;
   created_at: string;
 }
+
+/* ═══ Canais de aquisição ═════════════════════════════════════ */
+
+export interface AcquisitionChannel {
+  id: string;
+  name: string;
+  slug: string;
+  color: string;
+  is_active: boolean;
+  sort: number;
+}
+
+export const useChannels = () =>
+  useQuery({
+    queryKey: ['acquisition-channels'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('acquisition_channels').select('*').order('sort').order('name');
+      if (error) throw error;
+      return data as AcquisitionChannel[];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+export const useCreateChannel = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { name: string; color?: string }) => {
+      const slug = input.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const { data, error } = await supabase.from('acquisition_channels')
+        .insert({ name: input.name.trim(), slug, color: input.color ?? '#6b7280', sort: 99 })
+        .select().single();
+      if (error) throw error;
+      return data as AcquisitionChannel;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['acquisition-channels'] }),
+  });
+};
+
+/* ═══ Histórico de etapa ══════════════════════════════════════ */
+
+export interface ProspectEvent {
+  id: string;
+  prospect_id: string;
+  from_stage: ProspectStage | null;
+  to_stage: ProspectStage;
+  at: string;
+  actor_id: string | null;
+}
+
+/**
+ * Toda transição de etapa, gravada por gatilho no banco. É o que permite
+ * medir tempo em cada fase e em que degrau o lead morreu — `stage` sozinho
+ * só conta o estado de hoje, e um perdido perde a etapa em que caiu.
+ */
+export const useProspectEvents = (prospectId?: string) =>
+  useQuery({
+    queryKey: ['prospect-events', prospectId ?? 'todos'],
+    queryFn: async () => {
+      let q = supabase.from('prospect_events').select('*').order('at');
+      if (prospectId) q = q.eq('prospect_id', prospectId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data as ProspectEvent[];
+    },
+  });
 
 /* ═══ Prospects ═══════════════════════════════════════════════ */
 
@@ -918,6 +987,8 @@ export interface FinTransaction {
   installment_group_id: string | null;
   notes: string | null;
   attachment_url: string | null;
+  /** Só em despesa de aquisição — é o numerador do CAC por canal. */
+  channel_id: string | null;
   created_by: string | null;
   created_at: string;
   category?: { id: string; name: string; color: string; type: string } | null;

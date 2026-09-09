@@ -6,9 +6,10 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
-  useProspects, useCreateProspect, useUpdateProspect,
+  useProspects, useCreateProspect, useUpdateProspect, useChannels,
   brl, type Prospect, type ProspectStage,
 } from '@/hooks/useAdmin';
+import { AgendarReuniaoDialog } from './AgendarReuniaoDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/admin/ui';
@@ -28,15 +29,20 @@ const inputCls =
 function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { member } = useAuth();
   const create = useCreateProspect();
+  const { data: canais = [] } = useChannels();
   const [form, setForm] = useState({
     company_name: '', contact_name: '', whatsapp: '', email: '',
-    city: '', state: '', source: '', proposal_value: '', plan: '', notes: '',
+    city: '', state: '', channel_id: '', source: '', proposal_value: '', plan: '', notes: '',
   });
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const submit = async () => {
     if (!form.company_name.trim()) { toast.error('Informe o nome da empresa'); return; }
+    // Canal é obrigatório na entrada, não depois: preenchido de memória semanas
+    // adiante ele deixa de ser dado e vira chute — e é a base de todo o
+    // relatório de aquisição.
+    if (!form.channel_id) { toast.error('Escolha por onde este prospect chegou'); return; }
     try {
       await create.mutateAsync({
         company_name: form.company_name.trim(),
@@ -45,6 +51,7 @@ function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => vo
         email: form.email || null,
         city: form.city || null,
         state: form.state || null,
+        channel_id: form.channel_id,
         source: form.source || null,
         proposal_value: form.proposal_value ? Number(form.proposal_value) : null,
         plan: form.plan || null,
@@ -52,7 +59,7 @@ function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => vo
         owner_id: member?.id ?? null,
       });
       toast.success('Prospect criado');
-      setForm({ company_name: '', contact_name: '', whatsapp: '', email: '', city: '', state: '', source: '', proposal_value: '', plan: '', notes: '' });
+      setForm({ company_name: '', contact_name: '', whatsapp: '', email: '', city: '', state: '', channel_id: '', source: '', proposal_value: '', plan: '', notes: '' });
       onClose();
     } catch {
       toast.error('Erro ao criar prospect');
@@ -76,9 +83,13 @@ function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => vo
             <input className={inputCls} placeholder="Cidade" value={form.city} onChange={(e) => set('city', e.target.value)} />
             <input className={inputCls} placeholder="UF" maxLength={2} value={form.state} onChange={(e) => set('state', e.target.value.toUpperCase())} />
           </div>
+          <select className={inputCls} value={form.channel_id} onChange={(e) => set('channel_id', e.target.value)}>
+            <option value="">Por onde chegou? *</option>
+            {canais.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
           <div className="grid grid-cols-2 gap-2.5">
             <input className={inputCls} placeholder="Mensalidade (R$)" type="number" value={form.proposal_value} onChange={(e) => set('proposal_value', e.target.value)} />
-            <input className={inputCls} placeholder="Origem (indicação...)" value={form.source} onChange={(e) => set('source', e.target.value)} />
+            <input className={inputCls} placeholder="Detalhe: campanha, quem indicou…" value={form.source} onChange={(e) => set('source', e.target.value)} />
           </div>
           <textarea className={cn(inputCls, 'h-20 py-2 resize-none')} placeholder="Observações" value={form.notes} onChange={(e) => set('notes', e.target.value)} />
           <button
@@ -95,148 +106,13 @@ function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => vo
   );
 }
 
-/* ── Detalhe do prospect ────────────────────────────────────── */
-function ProspectDialog({
-  prospect, onClose, onRegisterSale,
-}: {
-  prospect: Prospect | null;
-  onClose: () => void;
-  onRegisterSale: (p: Prospect) => void;
-}) {
-  const navigate = useNavigate();
-  const update = useUpdateProspect();
-  const [lostMode, setLostMode] = useState(false);
-  const [lostReason, setLostReason] = useState('');
-  const [value, setValue] = useState('');
-
-  useEffect(() => {
-    setValue(prospect?.proposal_value?.toString() ?? '');
-    setLostMode(false);
-    setLostReason('');
-  }, [prospect?.id]);
-
-  if (!prospect) return null;
-
-  const saveValue = async () => {
-    const num = value ? Number(value) : null;
-    if (num === prospect.proposal_value) return;
-    await update.mutateAsync({ id: prospect.id, proposal_value: num });
-    toast.success('Valor atualizado');
-  };
-
-  const handleWin = () => {
-    const p = prospect;
-    onClose();
-    onRegisterSale(p);
-  };
-
-  const handleLose = async () => {
-    try {
-      await update.mutateAsync({ id: prospect.id, stage: 'perdido', lost_reason: lostReason || null });
-      toast.success('Prospect marcado como perdido');
-      onClose();
-    } catch {
-      toast.error('Erro ao atualizar');
-    }
-  };
-
-  return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md bg-background border-black/[0.1] dark:border-white/[0.1] rounded-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-[15px] font-semibold flex items-center gap-2.5">
-            {prospect.company_name}
-            <StatusBadge status={prospect.stage} />
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4 pt-1">
-          <div className="space-y-1.5 text-[12.5px] text-foreground/60">
-            {prospect.contact_name && <p>Contato: <span className="text-foreground">{prospect.contact_name}</span></p>}
-            {prospect.whatsapp && (
-              <p className="flex items-center gap-1.5">
-                <Phone className="h-3 w-3" /> {prospect.whatsapp}
-                <a
-                  href={`https://wa.me/55${prospect.whatsapp.replace(/\D/g, '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-emerald-500 hover:underline flex items-center gap-1"
-                >
-                  <MessageCircle className="h-3 w-3" /> abrir
-                </a>
-              </p>
-            )}
-            {(prospect.city || prospect.state) && (
-              <p className="flex items-center gap-1.5"><MapPin className="h-3 w-3" /> {[prospect.city, prospect.state].filter(Boolean).join(' / ')}</p>
-            )}
-            {prospect.source && <p>Origem: <span className="text-foreground">{prospect.source}</span></p>}
-            {prospect.notes && <p className="text-foreground/50 border-l-2 border-primary/30 pl-2 mt-2">{prospect.notes}</p>}
-          </div>
-
-          <input
-            className={inputCls}
-            type="number"
-            placeholder="Mensalidade proposta (R$)"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onBlur={saveValue}
-          />
-
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => { onClose(); navigate(`/crm?tab=reunioes&new=1&prospect=${prospect.id}`); }}
-              className="h-9 rounded-xl border border-blue-400/25 bg-blue-400/[0.06] text-blue-400 text-[12px] font-medium hover:bg-blue-400/[0.12] transition-colors flex items-center justify-center gap-1.5"
-            >
-              <CalendarPlus className="h-3.5 w-3.5" /> Agendar reunião
-            </button>
-            <button
-              onClick={() => { onClose(); navigate(`/crm?tab=amostras&new=1&prospect=${prospect.id}`); }}
-              className="h-9 rounded-xl border border-violet-400/25 bg-violet-400/[0.06] text-violet-400 text-[12px] font-medium hover:bg-violet-400/[0.12] transition-colors flex items-center justify-center gap-1.5"
-            >
-              <MonitorPlay className="h-3.5 w-3.5" /> Criar amostra
-            </button>
-          </div>
-
-          {lostMode ? (
-            <div className="space-y-2">
-              <input className={inputCls} placeholder="Motivo da perda" value={lostReason} onChange={(e) => setLostReason(e.target.value)} />
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => setLostMode(false)} className="h-9 rounded-xl border border-black/[0.1] dark:border-white/[0.1] text-[12px] text-foreground/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]">
-                  Voltar
-                </button>
-                <button onClick={handleLose} className="h-9 rounded-xl bg-red-500/15 text-red-400 text-[12px] font-semibold hover:bg-red-500/25 transition-colors">
-                  Confirmar perda
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2 pt-1 border-t border-black/[0.06] dark:border-white/[0.06]">
-              <button
-                onClick={() => setLostMode(true)}
-                className="h-10 rounded-xl border border-red-400/20 text-red-400/80 text-[12.5px] font-medium hover:bg-red-500/10 transition-colors flex items-center justify-center gap-1.5 mt-2"
-              >
-                <XCircle className="h-3.5 w-3.5" /> Perdido
-              </button>
-              <button
-                onClick={handleWin}
-                className="h-10 rounded-xl bg-emerald-500 text-white text-[12.5px] font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-1.5 mt-2"
-              >
-                <Trophy className="h-3.5 w-3.5" /> Venda fechada
-              </button>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 /* ── Aba ────────────────────────────────────────────────────── */
 export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew: () => void }) {
+  const navigate = useNavigate();
   const { data: prospects = [], isLoading } = useProspects();
   const update = useUpdateProspect();
-  const [selected, setSelected] = useState<Prospect | null>(null);
   const [saleFor, setSaleFor] = useState<Prospect | null>(null);
+  const [reuniaoPara, setReuniaoPara] = useState<Prospect | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
 
   const byStage = useMemo(() => {
@@ -259,6 +135,13 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
     // depois.
     if (stage === 'vendido') {
       setSaleFor(p);
+      return;
+    }
+
+    // Reunião sem horário marcado é um card que mente: a coluna existe para
+    // mostrar o que está agendado. O diálogo cria a reunião e só então move.
+    if (stage === 'reuniao') {
+      setReuniaoPara(p);
       return;
     }
 
@@ -310,7 +193,7 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
                       draggable
                       onDragStart={() => setDragId(p.id)}
                       onDragEnd={() => setDragId(null)}
-                      onClick={() => setSelected(p)}
+                      onClick={() => navigate(`/crm/prospect/${p.id}`)}
                       className={cn(
                         'rounded-xl border border-black/[0.07] dark:border-white/[0.08] bg-background p-3 cursor-pointer',
                         'hover:border-primary/40 hover:shadow-md transition-all',
@@ -340,8 +223,14 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
       </div>
 
       <NewProspectDialog open={newOpen} onClose={onCloseNew} />
-      <ProspectDialog prospect={selected} onClose={() => setSelected(null)} onRegisterSale={setSaleFor} />
       <RegistrarVendaDialog open={!!saleFor} prospect={saleFor} onClose={() => setSaleFor(null)} />
+      {reuniaoPara && (
+        <AgendarReuniaoDialog
+          prospect={reuniaoPara}
+          moverParaReuniao
+          onClose={() => setReuniaoPara(null)}
+        />
+      )}
     </>
   );
 }

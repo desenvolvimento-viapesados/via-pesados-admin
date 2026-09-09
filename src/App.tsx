@@ -16,6 +16,7 @@ const Financeiro     = lazy(() => import('@/pages/Financeiro'));
 const Tickets        = lazy(() => import('@/pages/Tickets'));
 const Equipe         = lazy(() => import('@/pages/Equipe'));
 const Relatorios     = lazy(() => import('@/pages/Relatorios'));
+const ProspectDetalhe= lazy(() => import('@/pages/ProspectDetalhe'));
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -70,6 +71,7 @@ const Gate = () => {
         <Routes>
           <Route path="/"              index element={<Home />} />
           <Route path="/crm"           element={<Crm />} />
+          <Route path="/crm/prospect/:id" element={<ProspectDetalhe />} />
           <Route path="/clientes"      element={<Clientes />} />
           <Route path="/clientes/:id"  element={<ClienteDetalhe />} />
           <Route path="/pagamentos"    element={<Pagamentos />} />

@@ -9,6 +9,7 @@ import {
   useClients, usePayments, useFinCategories, useFinTransactions,
   useCreateFinTransaction, useUpdateFinTransaction, useDeleteFinTransaction,
   brl, brlFull, type FinTransaction, type FinStatus,
+  useChannels,
 } from '@/hooks/useAdmin';
 import { SectionHeader, Panel } from '@/components/admin/ui';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -69,12 +70,13 @@ const atrasado = (t: FinTransaction) =>
 /* ── Diálogo de lançamento ──────────────────────────────────────── */
 function LancamentoDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: categorias = [] } = useFinCategories();
+  const { data: canaisAquisicao = [] } = useChannels();
   const { data: clients = [] } = useClients();
   const criar = useCreateFinTransaction();
 
   const vazio = {
     tipo: 'despesa' as 'receita' | 'despesa',
-    description: '', amount: '', category_id: '', client_id: '',
+    description: '', amount: '', category_id: '', client_id: '', channel_id: '',
     due_date: hoje(), competence_date: hoje(), pago: false,
     recurrence: 'unica' as FinTransaction['recurrence'], parcelas: '2', notes: '',
   };
@@ -108,6 +110,8 @@ function LancamentoDialog({ open, onClose }: { open: boolean; onClose: () => voi
           type: form.tipo,
           status: (pago ? 'pago' : 'pendente') as FinStatus,
           category_id: form.category_id || null,
+          // Só faz sentido em despesa: é o numerador do CAC por canal.
+          channel_id: form.tipo === 'despesa' ? (form.channel_id || null) : null,
           client_id: form.client_id || null,
           description: form.description.trim(),
           notes: form.notes.trim() || null,
@@ -174,6 +178,19 @@ function LancamentoDialog({ open, onClose }: { open: boolean; onClose: () => voi
               <option value="">Vincular a um cliente (opcional)…</option>
               {clients.map((c) => <option key={c.id} value={c.id}>{c.company_name}</option>)}
             </select>
+          )}
+
+          {form.tipo === 'despesa' && (
+            <div>
+              <select className={inputCls} value={form.channel_id}
+                onChange={(e) => setForm((f) => ({ ...f, channel_id: e.target.value }))}>
+                <option value="">Canal de aquisição (opcional)…</option>
+                {canaisAquisicao.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <p className="text-[11px] text-foreground/35 mt-1.5">
+                Marcando o canal, esta despesa entra no CAC dele em Relatórios → Canais.
+              </p>
+            </div>
           )}
 
           <div className="grid grid-cols-2 gap-2.5">
