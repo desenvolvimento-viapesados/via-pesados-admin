@@ -376,6 +376,14 @@ function CobrancaPanel({ client }: { client: Client }) {
 }
 
 /* ── Dialog: conectar domínio ───────────────────────────────── */
+/** Hostname puro: sem protocolo, sem caminho, sem www e em minúsculas. */
+function normalizarDominio(v: string): string {
+  return String(v ?? '').trim().toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/.*$/, '')
+    .replace(/^www\./, '');
+}
+
 function DomainDialog({
   client, onDone, onClose,
 }: {
@@ -385,6 +393,12 @@ function DomainDialog({
 }) {
   const update = useUpdateClient();
   const [domain, setDomain] = useState(client.domain || '');
+  const limpo = normalizarDominio(domain);
+  /* Apex (cliente.com.br) exige registro A: a maioria dos registradores não
+     aceita CNAME na raiz. Subdomínio (loja.cliente.com.br) aceita CNAME, que
+     é melhor porque sobrevive a troca de IP da Vercel. Mostrar os dois sem
+     dizer quando usar cada um é o que gera o suporte de meia hora. */
+  const ehApex = limpo ? limpo.split('.').length <= 3 && !/^(www|loja|app|sistema)\./.test(limpo) : true;
   const [loading, setLoading] = useState(false);
   const [verificando, setVerificando] = useState(false);
   const [diag, setDiag] = useState<null | {
@@ -397,7 +411,7 @@ function DomainDialog({
      ou o DNS ainda não aponta (é com ele), ou aponta e falta adicionar no
      projeto Vercel (é com você), ou já está no ar. */
   const verificar = async () => {
-    const clean = domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    const clean = normalizarDominio(domain);
     if (!clean) { toast.error('Informe o domínio'); return; }
     setVerificando(true);
     setDiag(null);
@@ -418,7 +432,11 @@ function DomainDialog({
   };
 
   const submit = async () => {
-    const clean = domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
+    /* www. sai aqui porque a resolução do tenant tira o www do hostname antes
+       de consultar. Guardar 'www.cliente.com.br' faria a busca por
+       'cliente.com.br' nunca casar — e o cliente veria o site genérico, sem
+       erro em lugar nenhum. */
+    const clean = normalizarDominio(domain);
     if (!clean) { toast.error('Informe o domínio'); return; }
     setLoading(true);
     try {
@@ -445,21 +463,40 @@ function DomainDialog({
         <div className="space-y-2.5 pt-1">
           <input className={inputCls} placeholder="ex: cliente.com.br" value={domain} onChange={(e) => setDomain(e.target.value)} />
           <div className="rounded-xl bg-black/[0.04] dark:bg-white/[0.04] p-3 text-[11.5px] text-foreground/50 space-y-2">
-            <p className="font-semibold text-foreground/70">O cliente configura no DNS dele:</p>
-            {[['A', '76.76.21.21'], ['CNAME', 'cname.vercel-dns.com']].map(([tipo, valor]) => (
-              <div key={tipo} className="flex items-center gap-2">
-                <span className="font-mono text-foreground/70 w-14 shrink-0">{tipo}</span>
-                <span className="font-mono text-foreground flex-1 truncate">{valor}</span>
-                <button
-                  type="button"
-                  onClick={() => { navigator.clipboard.writeText(valor); toast.success(`${tipo} copiado`); }}
-                  className="h-6 px-2 rounded-md border border-black/[0.1] dark:border-white/[0.12] text-[10.5px] text-foreground/60 hover:bg-black/[0.05] dark:hover:bg-white/[0.08] shrink-0"
-                >
-                  copiar
-                </button>
+            <p className="font-semibold text-foreground/70">
+              O cliente cria este registro no DNS dele:
+            </p>
+            {(ehApex
+              ? [['A', '@', '76.76.21.21']]
+              : [['CNAME', limpo.split('.')[0], 'cname.vercel-dns.com']]
+            ).map(([tipo, host, valor]) => (
+              <div key={tipo} className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-foreground/70 w-16 shrink-0">Tipo</span>
+                  <span className="font-mono text-foreground flex-1">{tipo}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-foreground/70 w-16 shrink-0">Nome</span>
+                  <span className="font-mono text-foreground flex-1">{host}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-foreground/70 w-16 shrink-0">Valor</span>
+                  <span className="font-mono text-foreground flex-1 truncate">{valor}</span>
+                  <button
+                    type="button"
+                    onClick={() => { navigator.clipboard.writeText(valor); toast.success('Valor copiado'); }}
+                    className="h-6 px-2 rounded-md border border-black/[0.1] dark:border-white/[0.12] text-[10.5px] text-foreground/60 hover:bg-black/[0.05] dark:hover:bg-white/[0.08] shrink-0"
+                  >
+                    copiar
+                  </button>
+                </div>
               </div>
             ))}
-            <p className="text-foreground/35 pt-0.5">Um dos dois, não os dois.</p>
+            <p className="text-foreground/35 pt-0.5">
+              {ehApex
+                ? 'Domínio raiz usa registro A — a maioria dos registradores não aceita CNAME na raiz.'
+                : 'Subdomínio usa CNAME, que continua valendo se a Vercel trocar de IP.'}
+            </p>
           </div>
 
           <button
