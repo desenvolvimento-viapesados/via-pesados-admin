@@ -1,4 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { ligarNotaFiscal } from '../_shared/nota.ts';
+
+/** O que sai como observação na nota fiscal do lojista. */
+const descricaoDaNota = (c: { plan?: string | null } | null | undefined) =>
+  `Assinatura mensal do sistema Via Pesados${c?.plan ? ` — plano ${c.plan}` : ''}.`;
 
 /**
  * Checkout na página da própria Via Pesados.
@@ -215,6 +220,10 @@ Deno.serve(async (req) => {
           asaas_subscription_id: subId,
           checkout_billing_type: 'UNDEFINED',
         }).eq('id', cli.id);
+        /* Emissão de nota é por assinatura. Falhar aqui não derruba a venda:
+           `nota-configurar` conserta depois, e perder o cliente não tem
+           conserto. */
+        await ligarNotaFiscal(base, chave, subId!, descricaoDaNota(cli));
       }
 
       const cobranca = await primeiraCobranca(subId!);
@@ -364,6 +373,7 @@ Deno.serve(async (req) => {
           asaas_subscription_id: sub.id,
           checkout_billing_type: 'CREDIT_CARD',
         }).eq('id', cli.id);
+        await ligarNotaFiscal(base, chave, sub.id, descricaoDaNota(cli));
         return json(200, {
           ok: true, tipo: 'cartao', valor,
           recorrencia_ativada: true,
@@ -386,6 +396,7 @@ Deno.serve(async (req) => {
         asaas_subscription_id: sub.id,
         checkout_billing_type: 'UNDEFINED',
       }).eq('id', cli.id);
+      await ligarNotaFiscal(base, chave, sub.id, descricaoDaNota(cli));
 
       const primeira = await primeiraCobranca(sub.id);
       if (!primeira) return json(502, { error: 'A cobrança está sendo gerada. Tente em alguns segundos.' });

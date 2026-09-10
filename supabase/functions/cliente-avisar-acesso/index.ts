@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { enviarTemplate, primeiroNome } from '../_shared/wa.ts';
+import { tentarNotasPendentes } from '../_shared/nota-aviso.ts';
 
 /**
  * Avisa o lojista de que o sistema está no ar.
@@ -47,7 +48,16 @@ Deno.serve(async (req) => {
       chave: `acesso_liberado:${c.id}`,
       params: { body: [primeiroNome(c.contact_name), c.company_name] },
     });
-    return json(200, r);
+    /* Acesso liberado é o portão da PRIMEIRA nota. Se ela já foi emitida e
+       estava esperando, sai agora — nesta ordem: primeiro o sistema, depois
+       o documento fiscal dele. */
+    let notas: unknown = null;
+    if (r.ok) {
+      try { notas = await tentarNotasPendentes(db, c.id); }
+      catch (e) { notas = { erro: e instanceof Error ? e.message : 'falha' }; }
+    }
+
+    return json(200, { ...r, notas });
   } catch (e) {
     return json(500, { error: e instanceof Error ? e.message : 'Erro' });
   }

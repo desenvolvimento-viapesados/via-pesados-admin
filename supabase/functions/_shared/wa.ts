@@ -25,7 +25,15 @@ export type Resultado =
   | { ok: false; motivo: string; inerte?: boolean; repetido?: boolean };
 
 /** Componente de corpo/cabeçalho: lista de textos, na ordem das variáveis. */
-export type Params = { header?: string[]; body?: string[]; urlSuffix?: string };
+export type Params = {
+  header?: string[];
+  /* Cabeçalho de DOCUMENTO. O link precisa ser público: quem baixa o
+     arquivo é a Meta, não o lojista — um PDF atrás de login chega como
+     falha de mídia, não como mensagem sem anexo. */
+  documento?: { link: string; filename: string };
+  body?: string[];
+  urlSuffix?: string;
+};
 
 /**
  * E.164 sem "+". O cadastro guarda com máscara, e a Graph API recusa
@@ -113,7 +121,12 @@ export async function enviarTemplate(
   }
 
   const componentes: unknown[] = [];
-  if (args.params?.header?.length) {
+  if (args.params?.documento) {
+    componentes.push({
+      type: 'header',
+      parameters: [{ type: 'document', document: args.params.documento }],
+    });
+  } else if (args.params?.header?.length) {
     componentes.push({ type: 'header', parameters: textos(args.params.header) });
   }
   if (args.params?.body?.length) {

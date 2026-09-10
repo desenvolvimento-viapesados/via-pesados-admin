@@ -61,6 +61,14 @@ const STATUS_STYLES: Record<string, string> = {
   // contracts
   enviado:  'bg-blue-500/15 text-blue-400',
   assinado: 'bg-emerald-500/15 text-emerald-500',
+  /* notas fiscais — 'agendada' e 'cancelada' reaproveitam as de reunião.
+     'erro' é vermelho porque é a única que exige alguém agir: nota que
+     falhou não sai sozinha depois. */
+  enviada:             'bg-blue-500/15 text-blue-400',
+  autorizada:          'bg-emerald-500/15 text-emerald-500',
+  cancelando:          'bg-amber-500/15 text-amber-500',
+  cancelamento_negado: 'bg-orange-500/15 text-orange-400',
+  erro:                'bg-red-500/15 text-red-400',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -74,6 +82,8 @@ const STATUS_LABELS: Record<string, string> = {
   agendada: 'Agendada', realizada: 'Realizada', cancelada: 'Cancelada', remarcada: 'Remarcada',
   aberto: 'Aberto', em_andamento: 'Em andamento', aguardando: 'Aguardando', resolvido: 'Resolvido',
   enviado: 'Enviado', assinado: 'Assinado',
+  enviada: 'Na prefeitura', autorizada: 'Autorizada', cancelando: 'Cancelando',
+  cancelamento_negado: 'Cancelamento negado', erro: 'Erro',
 };
 
 export const StatusBadge = ({ status, className }: { status: string; className?: string }) => (

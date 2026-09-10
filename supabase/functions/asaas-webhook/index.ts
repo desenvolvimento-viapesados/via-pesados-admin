@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { enviarTemplate, mesDe, dataBR, brl, primeiroNome, proximoMes } from '../_shared/wa.ts';
+import { tentarNotasPendentes } from '../_shared/nota-aviso.ts';
 
 /**
  * Recebe os eventos de cobrança do Asaas e mantém `payments` em dia.
@@ -197,7 +198,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json(200, { ok: true, evento, status, client_id: clientId, aviso });
+    /* O aviso de pagamento é o portão das mensalidades seguintes: assim que
+       ele sai, a nota daquele mês pode ir atrás. A nota pode ter sido
+       autorizada ANTES desta mensagem — nesse caso ela ficou esperando aqui. */
+    let notas: unknown = null;
+    if (template === 'pagamento_confirmado' && clientId) {
+      try { notas = await tentarNotasPendentes(db, clientId); }
+      catch (e) { notas = { erro: e instanceof Error ? e.message : 'falha' }; }
+    }
+
+    return json(200, { ok: true, evento, status, client_id: clientId, aviso, notas });
   } catch (err) {
     console.error('asaas-webhook:', err);
     /* Erro do PostgREST não é `Error`: é objeto com message/code/details, e

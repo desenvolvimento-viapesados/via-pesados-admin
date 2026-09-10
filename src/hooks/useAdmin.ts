@@ -1281,3 +1281,41 @@ export const setCompanyChannels = async (company_id: string, canais: string[]): 
   const data = await res.json();
   if (!res.ok || data.error) throw new Error(data.error || 'Erro ao salvar canais');
 };
+
+/* ── Notas fiscais ──────────────────────────────────────────────────────
+   Somente leitura, de propósito: a tabela é escrita pelo webhook asaas-nota
+   e por mais ninguém. Nota fiscal editada à mão no banco divergiria do
+   documento que a prefeitura tem — e o que vale é o da prefeitura. */
+export type NotaFiscal = {
+  id: string;
+  client_id: string | null;
+  asaas_invoice_id: string;
+  asaas_payment_id: string | null;
+  numero: string | null;
+  serie: string | null;
+  codigo_verificacao: string | null;
+  status: string;
+  valor: number | null;
+  descricao: string | null;
+  competencia: string | null;
+  pdf_url: string | null;
+  xml_url: string | null;
+  erro: string | null;
+  emitida_em: string | null;
+  created_at: string;
+};
+
+export const useNotasFiscais = (clientId?: string) =>
+  useQuery({
+    queryKey: ['notas_fiscais', clientId ?? 'all'],
+    queryFn: async () => {
+      let q = supabase
+        .from('notas_fiscais')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (clientId) q = q.eq('client_id', clientId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as NotaFiscal[];
+    },
+  });
