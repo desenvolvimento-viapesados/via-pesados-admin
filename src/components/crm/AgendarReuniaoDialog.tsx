@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useCreateMeeting, useUpdateProspect, type Prospect } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const inputCls =
@@ -79,7 +80,7 @@ export function AgendarReuniaoDialog({
 
     setSalvando(true);
     try {
-      await criar.mutateAsync({
+      const reuniao = await criar.mutateAsync({
         prospect_id: prospect.id,
         title: `${TIPOS[form.kind]} — ${prospect.company_name}`,
         scheduled_at: quando.toISOString(),
@@ -95,6 +96,28 @@ export function AgendarReuniaoDialog({
       // fica onde estava em vez de virar um "em reunião" sem reunião.
       if (moverParaReuniao && prospect.stage !== 'reuniao') {
         await atualizar.mutateAsync({ id: prospect.id, stage: 'reuniao' });
+      }
+
+      /* Confirmação no WhatsApp do prospecto. Fora do try principal de
+         propósito: reunião agendada e mensagem enviada são coisas
+         diferentes, e uma falha no aviso não pode desfazer o agendamento
+         nem assustar quem já marcou. Se não sair, o servidor registra o
+         motivo em wa_envios. */
+      const meetingId = (reuniao as { id?: string } | undefined)?.id;
+      if (meetingId) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reuniao-avisos`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session?.access_token ?? ''}`,
+            },
+            body: JSON.stringify({ acao: 'confirmada', meeting_id: meetingId }),
+          });
+        } catch {
+          // silencioso: o agendamento é o que importa nesta tela
+        }
       }
 
       toast.success(
