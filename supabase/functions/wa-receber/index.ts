@@ -21,7 +21,7 @@ import { semSufixo } from '../_shared/evolution.ts';
  *     que não soubemos tratar.
  */
 
-const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type' };
+const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type', 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS', };
 const ok = (b: unknown = { ok: true }) =>
   new Response(JSON.stringify(b), { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } });
 

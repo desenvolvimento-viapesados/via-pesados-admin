@@ -14,7 +14,7 @@ import { enviarTemplate } from '../_shared/wa.ts';
  * constante. Sem isso, qualquer um mandaria mensagem como Via Pesados.
  */
 
-const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type, x-interno' };
+const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type, x-interno', 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS', };
 const json = (s: number, b: unknown) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...cors, 'Content-Type': 'application/json' } });
 

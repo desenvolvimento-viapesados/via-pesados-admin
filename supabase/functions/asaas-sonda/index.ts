@@ -8,7 +8,7 @@
  *   403 → recurso bloqueado para a conta (é com o gerente)
  *   400 → recurso liberado, só faltaram campos
  */
-const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type' };
+const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type', 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS', };
 
 Deno.serve(async () => {
   const chave = Deno.env.get('ASAAS_API_KEY');
