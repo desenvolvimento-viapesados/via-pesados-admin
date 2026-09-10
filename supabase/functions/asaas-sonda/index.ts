@@ -26,6 +26,11 @@ Deno.serve(async () => {
     ['assinatura · pix',               'POST', '/subscriptions', { billingType: 'PIX', cycle: 'MONTHLY' }],
     ['tokenizar cartão',               'POST', '/creditCard/tokenizeCreditCard', {}],
     ['débito automático (conta)',      'POST', '/payments', { billingType: 'DEBIT_CARD' }],
+    ['nota fiscal · listar',           'GET',  '/invoices?limit=1'],
+    ['nota fiscal · agendar',          'POST', '/invoices', {}],
+    ['nota fiscal · config fiscal',    'GET',  '/fiscalInfo'],
+    ['nota fiscal · opções município', 'GET',  '/fiscalInfo/municipalOptions'],
+    ['nota fiscal · serviços município','GET', '/fiscalInfo/services?limit=1'],
     ['conta · status',                 'GET',  '/myAccount/status'],
     ['conta · comercial',              'GET',  '/myAccount/commercialInfo'],
   ];
@@ -63,6 +68,26 @@ Deno.serve(async () => {
     };
   } catch { /* diagnóstico não pode derrubar a sonda */ }
 
-  return new Response(JSON.stringify({ ambiente: base.includes('sandbox') ? 'sandbox' : 'producao', conta, sonda: saida }, null, 1),
+  /* O que o município exige para emitir NFS-e, e se a assinatura aceita
+     emissão automática. É isso que separa "dá para fazer" de "dá para
+     fazer sozinho". */
+  let fiscal: Record<string, unknown> = {};
+  try {
+    const mo = await (await fetch(`${base}/fiscalInfo/municipalOptions`, { headers: h })).json();
+    const sv = await (await fetch(`${base}/fiscalInfo/services?limit=3`, { headers: h })).json();
+    // Endpoint de emissão automática por assinatura.
+    const cfg = await fetch(`${base}/subscriptions/inexistente/invoiceSettings`, { headers: h });
+    fiscal = {
+      municipio: mo?.municipalityName ?? mo?.name,
+      autenticacao_exigida: mo?.authenticationType,
+      usa_certificado: mo?.usesDigitalCertificate ?? mo?.digitalCertificateRequired,
+      usa_usuario_senha: mo?.usesSpecialUserAndPassword ?? mo?.specialUserAndPasswordRequired,
+      usa_token: mo?.usesAccessToken,
+      servicos_disponiveis: (sv?.data ?? []).length,
+      emissao_automatica_por_assinatura: cfg.status === 404 ? 'endpoint existe (assinatura inexistente)' : `http ${cfg.status}`,
+    };
+  } catch (e) { fiscal = { erro: e instanceof Error ? e.message : 'falha' }; }
+
+  return new Response(JSON.stringify({ ambiente: base.includes('sandbox') ? 'sandbox' : 'producao', conta, fiscal, sonda: saida }, null, 1),
     { headers: { ...cors, 'Content-Type': 'application/json' } });
 });

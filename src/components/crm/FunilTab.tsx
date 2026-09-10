@@ -10,6 +10,7 @@ import {
   brl, type Prospect, type ProspectStage,
 } from '@/hooks/useAdmin';
 import { AgendarReuniaoDialog } from './AgendarReuniaoDialog';
+import { CidadeUF } from './CidadeUF';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/admin/ui';
@@ -31,11 +32,20 @@ function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => vo
   const create = useCreateProspect();
   const { data: canais = [] } = useChannels();
   const [form, setForm] = useState({
-    company_name: '', contact_name: '', whatsapp: '', email: '',
-    city: '', state: '', channel_id: '', source: '', proposal_value: '', plan: '', notes: '',
+    company_name: '', contact_name: '', whatsapp: '',
+    city: '', state: '', channel_id: '', source: '', proposal_value: '',
   });
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  /* 'Base de contatos' já vem escolhido: é de onde vem a maior parte da
+     entrada hoje. Continua trocável, e continua obrigatório — o que não pode
+     é ficar vazio e o relatório de aquisição virar chute. */
+  useEffect(() => {
+    if (form.channel_id || !canais.length) return;
+    const base = canais.find((c) => c.name === 'Base de contatos');
+    if (base) setForm((f) => ({ ...f, channel_id: base.id }));
+  }, [canais, form.channel_id]);
 
   const submit = async () => {
     if (!form.company_name.trim()) { toast.error('Informe o nome da empresa'); return; }
@@ -53,18 +63,15 @@ function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => vo
         company_name: form.company_name.trim(),
         contact_name: form.contact_name || null,
         whatsapp: form.whatsapp || null,
-        email: form.email || null,
         city: form.city || null,
         state: form.state || null,
         channel_id: form.channel_id,
         source: form.source || null,
         proposal_value: form.proposal_value ? Number(form.proposal_value) : null,
-        plan: form.plan || null,
-        notes: form.notes || null,
         owner_id: member?.id ?? null,
       });
       toast.success('Prospect criado');
-      setForm({ company_name: '', contact_name: '', whatsapp: '', email: '', city: '', state: '', channel_id: '', source: '', proposal_value: '', plan: '', notes: '' });
+      setForm({ company_name: '', contact_name: '', whatsapp: '', city: '', state: '', channel_id: '', source: '', proposal_value: '' });
       onClose();
     } catch {
       toast.error('Erro ao criar prospect');
@@ -80,14 +87,14 @@ function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => vo
         <div className="space-y-2.5 pt-1">
           <input className={inputCls} placeholder="Nome da empresa *" value={form.company_name} onChange={(e) => set('company_name', e.target.value)} />
           <div className="grid grid-cols-2 gap-2.5">
-            <input className={inputCls} placeholder="Contato" value={form.contact_name} onChange={(e) => set('contact_name', e.target.value)} />
-            <input className={inputCls} placeholder="WhatsApp" value={form.whatsapp} onChange={(e) => set('whatsapp', e.target.value)} />
+            <input className={inputCls} placeholder="Nome do responsável" value={form.contact_name} onChange={(e) => set('contact_name', e.target.value)} />
+            <input className={inputCls} placeholder="WhatsApp *" value={form.whatsapp} onChange={(e) => set('whatsapp', e.target.value)} />
           </div>
-          <input className={inputCls} placeholder="E-mail" value={form.email} onChange={(e) => set('email', e.target.value)} />
-          <div className="grid grid-cols-[1fr_80px] gap-2.5">
-            <input className={inputCls} placeholder="Cidade" value={form.city} onChange={(e) => set('city', e.target.value)} />
-            <input className={inputCls} placeholder="UF" maxLength={2} value={form.state} onChange={(e) => set('state', e.target.value.toUpperCase())} />
-          </div>
+          <CidadeUF
+            uf={form.state}
+            cidade={form.city}
+            onChange={({ uf, cidade }) => setForm((f) => ({ ...f, state: uf, city: cidade }))}
+          />
           <select className={inputCls} value={form.channel_id} onChange={(e) => set('channel_id', e.target.value)}>
             <option value="">Por onde chegou? *</option>
             {canais.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -96,7 +103,6 @@ function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => vo
             <input className={inputCls} placeholder="Mensalidade (R$)" type="number" value={form.proposal_value} onChange={(e) => set('proposal_value', e.target.value)} />
             <input className={inputCls} placeholder="Detalhe: campanha, quem indicou…" value={form.source} onChange={(e) => set('source', e.target.value)} />
           </div>
-          <textarea className={cn(inputCls, 'h-20 py-2 resize-none')} placeholder="Observações" value={form.notes} onChange={(e) => set('notes', e.target.value)} />
           <button
             onClick={submit}
             disabled={create.isPending}
