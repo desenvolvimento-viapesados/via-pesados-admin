@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { enviarTemplate, mesDe, dataBR, brl, primeiroNome, proximoMes } from '../_shared/wa.ts';
 
 /**
  * Recebe os eventos de cobrança do Asaas e mantém `payments` em dia.
@@ -45,7 +46,69 @@ const STATUS_POR_EVENTO: Record<string, 'pago' | 'pendente' | 'atrasado' | 'canc
   PAYMENT_REFUNDED: 'cancelado',
   PAYMENT_CHARGEBACK_REQUESTED: 'atrasado',
   PAYMENT_RESTORED: 'pendente',
+  // A recusa do débito automático não muda o status — a cobrança segue
+  // pendente. Está aqui para o evento não ser descartado antes do aviso.
+  PAYMENT_CREDIT_CARD_CAPTURE_REFUSED: 'pendente',
 };
+
+/**
+ * A forma de pagamento do Asaas para o vocabulário da coluna `method`, que
+ * tem CHECK em pix/boleto/cartao/transferencia/outro. Gravar o valor cru do
+ * Asaas viola o CHECK e derruba o upsert inteiro — foi o que aconteceu.
+ *
+ * UNDEFINED vira NULL de propósito: quer dizer que o lojista ainda não
+ * escolheu como pagar, e "outro" mentiria sobre isso.
+ */
+function metodoNosso(billingType: unknown): string | null {
+  switch (String(billingType ?? '').toUpperCase()) {
+    case 'PIX': return 'pix';
+    case 'BOLETO': return 'boleto';
+    case 'CREDIT_CARD': case 'DEBIT_CARD': return 'cartao';
+    case 'TRANSFER': return 'transferencia';
+    case 'UNDEFINED': case '': return null;
+    default: return 'outro';
+  }
+}
+
+/** Qual template cada evento dispara. Evento fora daqui não avisa ninguém. */
+const TEMPLATE_POR_EVENTO: Record<string, string> = {
+  PAYMENT_CREATED: 'cobranca_mensal_disponivel',
+  PAYMENT_OVERDUE: 'cobranca_em_atraso',
+  PAYMENT_RECEIVED: 'pagamento_confirmado',
+  PAYMENT_CONFIRMED: 'pagamento_confirmado',
+  PAYMENT_CREDIT_CARD_CAPTURE_REFUSED: 'cartao_recusado',
+};
+
+/**
+ * Ordem das variáveis de cada template, exatamente como foram aprovadas.
+ * Trocar a ordem aqui manda o valor no lugar do nome — e o template
+ * aprovado não protege contra isso, porque para a Meta é só texto.
+ */
+function paramsDoTemplate(
+  template: string,
+  p: Record<string, any>,
+  c: { contact_name: string | null; checkout_token: string | null },
+) {
+  const nome = primeiroNome(c.contact_name);
+  const mes = mesDe(p.dueDate);
+  const valor = brl(Number(p.value) || 0);
+  const venc = dataBR(p.dueDate);
+  const token = c.checkout_token ?? '';
+
+  switch (template) {
+    case 'cobranca_mensal_disponivel':
+      return { header: [mes], body: [nome, mes, valor, venc], urlSuffix: token };
+    case 'cobranca_em_atraso':
+      return { body: [nome, mes, valor, venc], urlSuffix: token };
+    case 'pagamento_confirmado':
+      // Sem botão: o único link seria de pagamento, e a cobrança já foi paga.
+      return { body: [nome, mes, valor, proximoMes(p.dueDate)] };
+    case 'cartao_recusado':
+      return { body: [nome, mes], urlSuffix: token };
+    default:
+      return {};
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
@@ -76,16 +139,18 @@ Deno.serve(async (req) => {
 
     // Acha o cliente: primeiro pelo externalReference (que gravamos como o
     // nosso id), depois pelo id do cadastro no Asaas.
-    let clientId: string | null = null;
+    const CAMPOS = 'id, contact_name, company_name, whatsapp, checkout_token';
+    let cliente: { id: string; contact_name: string | null; company_name: string | null; whatsapp: string | null; checkout_token: string | null } | null = null;
     const ref = String(p.externalReference ?? '').trim();
     if (/^[0-9a-f-]{36}$/i.test(ref)) {
-      const { data } = await db.from('clients').select('id').eq('id', ref).maybeSingle();
-      clientId = data?.id ?? null;
+      const { data } = await db.from('clients').select(CAMPOS).eq('id', ref).maybeSingle();
+      cliente = data ?? null;
     }
-    if (!clientId && p.customer) {
-      const { data } = await db.from('clients').select('id').eq('asaas_customer_id', p.customer).maybeSingle();
-      clientId = data?.id ?? null;
+    if (!cliente && p.customer) {
+      const { data } = await db.from('clients').select(CAMPOS).eq('asaas_customer_id', p.customer).maybeSingle();
+      cliente = data ?? null;
     }
+    const clientId = cliente?.id ?? null;
     if (!clientId) {
       // 200 de propósito: cobrança de fora do sistema não é erro nosso, e
       // devolver 4xx faria o Asaas reenviar para sempre.
@@ -99,7 +164,7 @@ Deno.serve(async (req) => {
       due_date: p.dueDate ?? null,
       paid_at: status === 'pago' ? (p.paymentDate ?? p.confirmedDate ?? new Date().toISOString()) : null,
       status,
-      method: p.billingType ?? null,
+      method: metodoNosso(p.billingType),
       invoice_url: p.invoiceUrl ?? null,
       asaas_payment_id: p.id,
       asaas_subscription_id: p.subscription ?? null,
@@ -110,10 +175,39 @@ Deno.serve(async (req) => {
     const { error } = await db.from('payments').upsert(linha, { onConflict: 'asaas_payment_id' });
     if (error) throw error;
 
-    return json(200, { ok: true, evento, status, client_id: clientId });
+    /* Aviso no WhatsApp — DEPOIS de gravar, e sempre dentro de try. O banco
+       em dia é a obrigação desta função; a mensagem é o extra. Se a Meta
+       estiver fora do ar, o Asaas não pode ficar sabendo. */
+    let aviso: unknown = { ok: false, motivo: 'sem template para o evento' };
+    const template = TEMPLATE_POR_EVENTO[evento];
+    if (template && cliente) {
+      try {
+        aviso = await enviarTemplate(db, {
+          para: cliente.whatsapp,
+          template,
+          client_id: cliente.id,
+          // A chave amarra o disparo ao evento: PAYMENT_CREATED e
+          // PAYMENT_RECEIVED da MESMA cobrança são avisos diferentes, e
+          // cada um pode sair uma vez só.
+          chave: `${evento}:${p.id}`,
+          params: paramsDoTemplate(template, p, cliente),
+        });
+      } catch (e) {
+        console.error('asaas-webhook aviso:', e);
+      }
+    }
+
+    return json(200, { ok: true, evento, status, client_id: clientId, aviso });
   } catch (err) {
     console.error('asaas-webhook:', err);
-    // Erro nosso: 500 para o Asaas reenviar e a cobrança não se perder.
-    return json(500, { error: err instanceof Error ? err.message : 'Erro' });
+    /* Erro do PostgREST não é `Error`: é objeto com message/code/details, e
+       tratar como Error devolvia só "Erro" — o que escondeu por semanas um
+       upsert que nunca funcionou. */
+    const e = err as { message?: string; code?: string; details?: string; hint?: string };
+    const detalhe = err instanceof Error
+      ? err.message
+      : [e?.message, e?.code && `code ${e.code}`, e?.details, e?.hint].filter(Boolean).join(' · ') || 'Erro';
+    // 500 para o Asaas reenviar e a cobrança não se perder.
+    return json(500, { error: detalhe });
   }
 });
