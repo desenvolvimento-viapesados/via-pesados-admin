@@ -71,6 +71,14 @@ export function RegistrarVendaDialog({
 
   const submit = async () => {
     if (!form.company_name.trim()) { toast.error('Informe o nome da empresa'); return; }
+    /* WhatsApp é obrigatório na venda, não depois. Toda a régua de cobrança
+       fala por ele: link do mês, aviso de vencimento, atraso, confirmação de
+       pagamento. Sem o número, nada disso sai — e não sai em SILÊNCIO, sem
+       erro em lugar nenhum. Descobre-se quando o lojista some. */
+    if (form.whatsapp.replace(/\D/g, '').length < 10) {
+      toast.error('Informe o WhatsApp do cliente — é por onde toda a cobrança é enviada');
+      return;
+    }
     try {
       const client = await register.mutateAsync({
         prospectId: prospect?.id ?? null,

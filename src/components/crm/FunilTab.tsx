@@ -43,6 +43,11 @@ function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => vo
     // adiante ele deixa de ser dado e vira chute — e é a base de todo o
     // relatório de aquisição.
     if (!form.channel_id) { toast.error('Escolha por onde este prospect chegou'); return; }
+    // Mesma razão da venda: confirmação e lembrete de reunião saem por aqui.
+    if (String(form.whatsapp ?? '').replace(/\D/g, '').length < 10) {
+      toast.error('Informe o WhatsApp — é por onde a confirmação de reunião é enviada');
+      return;
+    }
     try {
       await create.mutateAsync({
         company_name: form.company_name.trim(),
