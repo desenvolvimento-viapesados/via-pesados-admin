@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Kanban, CalendarDays, MonitorPlay, Rocket, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Kanban, CalendarDays, MonitorPlay, Rocket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useCrmCounts, brl } from '@/hooks/useAdmin';
@@ -9,6 +9,7 @@ import { ReunioesTab } from '@/components/crm/ReunioesTab';
 import { AmostrasTab } from '@/components/crm/AmostrasTab';
 import { ConexaoTab } from '@/components/crm/ConexaoTab';
 import { WhatsAppTab } from '@/components/crm/WhatsAppTab';
+import whatsappLogo from '@/assets/whatsapp-logo.png';
 import viaPesadosLogoLight from '@/assets/via-pesados-icon-color.png';
 import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
 
@@ -20,10 +21,19 @@ type TabKey = 'whatsapp' | 'funil' | 'reunioes' | 'amostras' | 'conexao';
  * para Vendido. As telas continuam no código — para devolver qualquer uma,
  * basta reinserir a linha aqui; a barra de abas volta a aparecer sozinha.
  */
-const TABS: { key: TabKey; label: string; newLabel: string; icon: typeof Kanban }[] = [
+/* A marca do WhatsApp, e não um balãozinho genérico: quem olha a barra
+   reconhece antes de ler. Assina como os ícones lucide para entrar no map
+   das abas sem virar exceção. */
+const IconeWhatsApp = ({ className }: { className?: string }) => (
+  <img src={whatsappLogo} alt="" className={cn('object-contain select-none', className)} draggable={false} />
+);
+
+type IconeDaAba = React.ComponentType<{ className?: string }>;
+
+const TABS: { key: TabKey; label: string; newLabel: string; icon: IconeDaAba }[] = [
   // WhatsApp vem primeiro: é onde o dia começa. Quem abre o CRM de manhã
   // quer ver quem escreveu, não o funil.
-  { key: 'whatsapp', label: 'WhatsApp', newLabel: 'Número',   icon: MessageCircle },
+  { key: 'whatsapp', label: 'WhatsApp', newLabel: 'Número',   icon: IconeWhatsApp },
   { key: 'funil',    label: 'Funil',    newLabel: 'Prospect', icon: Kanban },
 ];
 

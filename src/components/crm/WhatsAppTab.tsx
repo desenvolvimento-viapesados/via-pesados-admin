@@ -128,9 +128,15 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
           </div>
         </div>
 
-        {/* Números que precisam de QR aparecem aqui, não escondidos numa
-            configuração: número desconectado é atendimento parado. */}
-        {instancias.filter((i) => i.origem === 'evolution' && i.connection_state !== 'open').map((i) => (
+        {/* Aviso só do número que está sendo visto — ou de todos, quando a
+            visão é "Todos os números". Avisar sobre um número enquanto se
+            trabalha em outro é ruído: a pessoa não vai parar o atendimento
+            para resolver, e o alerta perde o efeito quando importar. O
+            seletor lá em cima já mostra "Conectar" ao lado de quem caiu. */}
+        {instancias
+          .filter((i) => i.origem === 'evolution' && i.connection_state !== 'open')
+          .filter((i) => !instanciaId || i.id === instanciaId)
+          .map((i) => (
           <button
             key={i.id}
             onClick={() => conectar(i)}
