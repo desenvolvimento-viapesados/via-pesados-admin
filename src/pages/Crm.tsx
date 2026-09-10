@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Kanban, CalendarDays, MonitorPlay, Rocket } from 'lucide-react';
+import { ArrowLeft, Plus, Kanban, CalendarDays, MonitorPlay, Rocket, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useCrmCounts, brl } from '@/hooks/useAdmin';
@@ -8,10 +8,11 @@ import { FunilTab } from '@/components/crm/FunilTab';
 import { ReunioesTab } from '@/components/crm/ReunioesTab';
 import { AmostrasTab } from '@/components/crm/AmostrasTab';
 import { ConexaoTab } from '@/components/crm/ConexaoTab';
+import { WhatsAppTab } from '@/components/crm/WhatsAppTab';
 import viaPesadosLogoLight from '@/assets/via-pesados-icon-color.png';
 import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
 
-type TabKey = 'funil' | 'reunioes' | 'amostras' | 'conexao';
+type TabKey = 'whatsapp' | 'funil' | 'reunioes' | 'amostras' | 'conexao';
 
 /**
  * Por enquanto só o Funil. Reunião, Amostra e Conexão deixaram de ser etapas
@@ -20,6 +21,9 @@ type TabKey = 'funil' | 'reunioes' | 'amostras' | 'conexao';
  * basta reinserir a linha aqui; a barra de abas volta a aparecer sozinha.
  */
 const TABS: { key: TabKey; label: string; newLabel: string; icon: typeof Kanban }[] = [
+  // WhatsApp vem primeiro: é onde o dia começa. Quem abre o CRM de manhã
+  // quer ver quem escreveu, não o funil.
+  { key: 'whatsapp', label: 'WhatsApp', newLabel: 'Número',   icon: MessageCircle },
   { key: 'funil',    label: 'Funil',    newLabel: 'Prospect', icon: Kanban },
 ];
 
@@ -31,7 +35,7 @@ export default function Crm() {
   const [params, setParams] = useSearchParams();
 
   const urlTab = params.get('tab');
-  const [tab, setTab] = useState<TabKey>(isTab(urlTab) ? urlTab : 'funil');
+  const [tab, setTab] = useState<TabKey>(isTab(urlTab) ? urlTab : 'whatsapp');
   const [newOpen, setNewOpen] = useState(false);
   const [defaultProspect, setDefaultProspect] = useState<string | null>(null);
 
@@ -94,7 +98,9 @@ export default function Crm() {
           <div className={cn('items-center gap-1 overflow-x-auto', TABS.length > 1 ? 'flex' : 'hidden')} style={{ scrollbarWidth: 'none' }}>
             {TABS.map(({ key, label, icon: Icon }) => {
               const active = tab === key;
-              const count = counts[key];
+              // WhatsApp não tem contagem no `counts` — o número de não
+              // lidas já aparece dentro da própria aba, por conversa.
+              const count = (counts as Record<string, number>)[key];
               return (
                 <button
                   key={key}
@@ -131,7 +137,9 @@ export default function Crm() {
       </header>
 
       {/* ── Conteúdo ───────────────────────────────────────── */}
-      <main className={cn('flex-1 w-full py-5', tab === 'funil' ? 'px-4 sm:px-6' : 'px-4 sm:px-6 max-w-6xl mx-auto')}>
+      <main className={cn('flex-1 w-full py-5',
+        tab === 'funil' || tab === 'whatsapp' ? 'px-4 sm:px-6' : 'px-4 sm:px-6 max-w-6xl mx-auto')}>
+        {tab === 'whatsapp' && <WhatsAppTab newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'funil'    && <FunilTab    newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'reunioes' && <ReunioesTab newOpen={newOpen} onCloseNew={closeNew} defaultProspectId={defaultProspect} />}
         {tab === 'amostras' && <AmostrasTab newOpen={newOpen} onCloseNew={closeNew} defaultProspectId={defaultProspect} />}
