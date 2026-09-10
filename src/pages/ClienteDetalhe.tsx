@@ -386,6 +386,36 @@ function DomainDialog({
   const update = useUpdateClient();
   const [domain, setDomain] = useState(client.domain || '');
   const [loading, setLoading] = useState(false);
+  const [verificando, setVerificando] = useState(false);
+  const [diag, setDiag] = useState<null | {
+    passo: { codigo: string; titulo: string; dono: string | null };
+    dns: { A: string[]; CNAME: string[] };
+  }>(null);
+
+  /* Conectar domínio falha de três jeitos que o cliente descreve igual —
+     "não abre". Verificar antes de investigar poupa a meia hora de chute:
+     ou o DNS ainda não aponta (é com ele), ou aponta e falta adicionar no
+     projeto Vercel (é com você), ou já está no ar. */
+  const verificar = async () => {
+    const clean = domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    if (!clean) { toast.error('Informe o domínio'); return; }
+    setVerificando(true);
+    setDiag(null);
+    try {
+      const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dominio-verificar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dominio: clean }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error || 'Não foi possível verificar');
+      setDiag(d);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setVerificando(false);
+    }
+  };
 
   const submit = async () => {
     const clean = domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
@@ -414,12 +444,59 @@ function DomainDialog({
         </DialogHeader>
         <div className="space-y-2.5 pt-1">
           <input className={inputCls} placeholder="ex: cliente.com.br" value={domain} onChange={(e) => setDomain(e.target.value)} />
-          <div className="rounded-xl bg-black/[0.04] dark:bg-white/[0.04] p-3 text-[11.5px] text-foreground/50 space-y-1">
-            <p className="font-semibold text-foreground/70">Configuração DNS do cliente:</p>
-            <p>• Registro <span className="font-mono text-foreground">A</span> → <span className="font-mono text-foreground">76.76.21.21</span></p>
-            <p>• Ou <span className="font-mono text-foreground">CNAME</span> → <span className="font-mono text-foreground">cname.vercel-dns.com</span></p>
-            <p className="text-foreground/35 pt-1">Depois, adicione o domínio no projeto Vercel do sistema.</p>
+          <div className="rounded-xl bg-black/[0.04] dark:bg-white/[0.04] p-3 text-[11.5px] text-foreground/50 space-y-2">
+            <p className="font-semibold text-foreground/70">O cliente configura no DNS dele:</p>
+            {[['A', '76.76.21.21'], ['CNAME', 'cname.vercel-dns.com']].map(([tipo, valor]) => (
+              <div key={tipo} className="flex items-center gap-2">
+                <span className="font-mono text-foreground/70 w-14 shrink-0">{tipo}</span>
+                <span className="font-mono text-foreground flex-1 truncate">{valor}</span>
+                <button
+                  type="button"
+                  onClick={() => { navigator.clipboard.writeText(valor); toast.success(`${tipo} copiado`); }}
+                  className="h-6 px-2 rounded-md border border-black/[0.1] dark:border-white/[0.12] text-[10.5px] text-foreground/60 hover:bg-black/[0.05] dark:hover:bg-white/[0.08] shrink-0"
+                >
+                  copiar
+                </button>
+              </div>
+            ))}
+            <p className="text-foreground/35 pt-0.5">Um dos dois, não os dois.</p>
           </div>
+
+          <button
+            type="button"
+            onClick={verificar}
+            disabled={verificando}
+            className="w-full h-9 rounded-xl border border-black/[0.1] dark:border-white/[0.12] text-[12px] font-medium text-foreground/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {verificando && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            Verificar em que passo está
+          </button>
+
+          {diag && (
+            <div className={cn(
+              'rounded-xl p-3 text-[11.5px] space-y-1.5 border',
+              diag.passo.codigo === 'pronto'
+                ? 'bg-emerald-500/[0.08] border-emerald-500/25 text-emerald-400/90'
+                : diag.passo.dono === 'voce'
+                  ? 'bg-primary/[0.08] border-primary/25 text-primary'
+                  : 'bg-amber-500/[0.08] border-amber-500/25 text-amber-400/90',
+            )}>
+              <p className="font-semibold">{diag.passo.titulo}</p>
+              {diag.passo.dono === 'voce' && (
+                <p className="text-foreground/50">
+                  O DNS do cliente já está certo. Falta você abrir o projeto na Vercel e
+                  adicionar <span className="font-mono">{domain.trim().toLowerCase()}</span> em Domains.
+                </p>
+              )}
+              {diag.passo.dono === 'cliente' && (
+                <p className="text-foreground/50">
+                  {diag.dns.A.length || diag.dns.CNAME.length
+                    ? <>Hoje aponta para <span className="font-mono">{[...diag.dns.A, ...diag.dns.CNAME].slice(0, 2).join(', ')}</span>. Mande os valores acima para ele.</>
+                    : <>Ou ainda não foi configurado, ou o DNS não propagou — costuma levar de minutos a algumas horas.</>}
+                </p>
+              )}
+            </div>
+          )}
           <button
             onClick={submit}
             disabled={loading}
