@@ -35,6 +35,13 @@ const dia = (iso: string) =>
 export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew: () => void }) {
   const { data: instancias = [], isLoading: carregandoInst } = useInstancias();
   const [instanciaId, setInstanciaId] = useState<string | null>(null);
+  /* Sempre num número concreto. Uma visão "todas" misturaria caixas de
+     pessoas diferentes na mesma lista — e quem atende precisa saber por qual
+     número a conversa entrou antes de responder, porque a regra das 24h só
+     vale num deles. */
+  useEffect(() => {
+    if (!instanciaId && instancias.length) setInstanciaId(instancias[0].id);
+  }, [instancias, instanciaId]);
   const [conversaId, setConversaId] = useState<string | null>(null);
   const [busca, setBusca] = useState('');
   const [texto, setTexto] = useState('');
@@ -135,7 +142,7 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
             seletor lá em cima já mostra "Conectar" ao lado de quem caiu. */}
         {instancias
           .filter((i) => i.origem === 'evolution' && i.connection_state !== 'open')
-          .filter((i) => !instanciaId || i.id === instanciaId)
+          .filter((i) => i.id === instanciaId)
           .map((i) => (
           <button
             key={i.id}
@@ -286,7 +293,7 @@ function SeletorDeNumero({
   }, []);
 
   const atual = instancias.find((i) => i.id === selecionada);
-  const titulo = atual?.nome ?? 'Todos os números';
+  const titulo = atual?.nome ?? 'Carregando…';
 
   return (
     <div ref={caixa} className="relative">
@@ -300,12 +307,6 @@ function SeletorDeNumero({
 
       {aberto && (
         <div className="absolute z-50 mt-2 w-[290px] rounded-2xl border border-black/[0.08] dark:border-white/[0.1] bg-background shadow-2xl overflow-hidden py-1.5">
-          <ItemDoSeletor
-            nome="Todos os números"
-            marcado={!selecionada}
-            onClick={() => { onSelecionar(null); setAberto(false); }}
-          />
-          <div className="h-px bg-black/[0.06] dark:bg-white/[0.06] my-1.5 mx-3" />
           {instancias.map((i) => {
             const ligado = i.connection_state === 'open';
             return (
