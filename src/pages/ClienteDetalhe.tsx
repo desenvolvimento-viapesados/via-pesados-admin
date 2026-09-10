@@ -444,7 +444,28 @@ function DomainDialog({
         await updateCompanyBranding({ company_id: client.lojista_company_id, domains: [clean] });
       }
       await update.mutateAsync({ id: client.id, domain: clean });
-      toast.success('Domínio registrado');
+
+      /* Adiciona na Vercel no mesmo clique. Era o passo manual invisível:
+         ninguém lembrava, e o sintoma era igual ao de um DNS errado do
+         cliente. Falhar aqui não desfaz o registro — só avisa que a parte
+         da Vercel ficou para a mão. */
+      let naVercel = '';
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const rv = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/vercel-dominio`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token ?? ''}` },
+          body: JSON.stringify({ dominio: clean }),
+        });
+        const dv = await rv.json();
+        if (dv?.ok) naVercel = dv.estado === 'ja_estava' ? ' (já estava na Vercel)' : ' e adicionado na Vercel';
+        else if (dv?.estado === 'nao_configurado') naVercel = ' — falta adicionar na Vercel à mão';
+        else naVercel = ` — Vercel: ${dv?.detalhe ?? 'não adicionado'}`;
+      } catch {
+        naVercel = ' — não consegui falar com a Vercel';
+      }
+
+      toast.success(`Domínio registrado${naVercel}`);
       onDone();
       onClose();
     } catch (e) {
