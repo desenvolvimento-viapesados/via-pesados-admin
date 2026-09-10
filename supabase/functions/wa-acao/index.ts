@@ -122,7 +122,13 @@ Deno.serve(async (req) => {
 
       let providerId: string | null = null;
 
-      if (inst.origem === 'cloud') {
+      /* `!== 'evolution'` e não `=== 'cloud_api'`, igual às outras duas
+         checagens deste arquivo. O CHECK do banco só aceita 'evolution' e
+         'cloud_api', e esta linha comparava com 'cloud' — valor que nunca
+         existiu. O ramo da Meta era código morto: TODO envio caía no
+         Evolution, com instância nula, e o número oficial recebia sem nunca
+         responder. Escrito assim, origem nova erra para o lado certo. */
+      if (inst.origem !== 'evolution') {
         const token = Deno.env.get('META_WABA_TOKEN');
         if (!token) return json(500, { error: 'META_WABA_TOKEN ausente' });
         const r = await fetch(`${GRAPH}/${inst.cloud_phone_number_id}/messages`, {
@@ -148,7 +154,12 @@ Deno.serve(async (req) => {
         }
         providerId = d?.messages?.[0]?.id ?? null;
       } else {
-        const d = await evolution('message/sendText', inst.evolution_instance!, 'POST', {
+        /* Sem esta guarda o bug acima era silencioso: chamávamos o Evolution
+           com instância nula e a falha não dizia o que estava errado. */
+        if (!inst.evolution_instance) {
+          return json(400, { error: 'Este número não tem instância do Evolution ligada.' });
+        }
+        const d = await evolution('message/sendText', inst.evolution_instance, 'POST', {
           number: paraEnvio(conversa.telefone), text: texto,
         }) as { key?: { id?: string } };
         providerId = d?.key?.id ?? null;

@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useCreateMeeting, useUpdateProspect, type Prospect } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, FUNCTIONS_URL } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const inputCls =
@@ -107,7 +107,7 @@ export function AgendarReuniaoDialog({
       if (meetingId) {
         try {
           const { data: { session } } = await supabase.auth.getSession();
-          await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reuniao-avisos`, {
+          await fetch(`${FUNCTIONS_URL}/reuniao-avisos`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

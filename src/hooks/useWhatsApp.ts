@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, FUNCTIONS_URL } from '@/integrations/supabase/client';
 
 /**
  * Dados da aba de WhatsApp.
@@ -35,7 +35,7 @@ export type Mensagem = {
 
 async function chamar(acao: string, corpo: Record<string, unknown> = {}) {
   const { data: { session } } = await supabase.auth.getSession();
-  const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/wa-acao`, {
+  const r = await fetch(`${FUNCTIONS_URL}/wa-acao`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token ?? ''}` },
     body: JSON.stringify({ acao, ...corpo }),

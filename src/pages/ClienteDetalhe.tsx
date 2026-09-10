@@ -17,10 +17,11 @@ import {
   usePlans, useCriarAssinaturaAsaas,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
-import { LOJISTA_APP_URL, supabase } from '@/integrations/supabase/client';
+import { LOJISTA_APP_URL, supabase, FUNCTIONS_URL } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CanaisDoCliente } from '@/components/CanaisDoCliente';
 import { UsoDoSistema } from '@/components/admin/UsoDoSistema';
+import { NotasFiscais } from '@/components/admin/NotasFiscais';
 import { useSystemCredential, saveSystemCredential } from '@/hooks/useAdmin';
 import { SectionHeader, StatusBadge, Panel, InitialAvatar } from '@/components/admin/ui';
 import { ImageField, IMG_FIELDS, IMG_KEYS, emptyImgs, type ImgKey } from '@/components/crm/BrandingFields';
@@ -416,7 +417,7 @@ function DomainDialog({
     setVerificando(true);
     setDiag(null);
     try {
-      const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dominio-verificar`, {
+      const r = await fetch(`${FUNCTIONS_URL}/dominio-verificar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dominio: clean }),
@@ -452,7 +453,7 @@ function DomainDialog({
       let naVercel = '';
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        const rv = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/vercel-dominio`, {
+        const rv = await fetch(`${FUNCTIONS_URL}/vercel-dominio`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token ?? ''}` },
           body: JSON.stringify({ dominio: clean }),
@@ -756,7 +757,7 @@ export default function ClienteDetalhe() {
     setAvisando(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cliente-avisar-acesso`, {
+      const r = await fetch(`${FUNCTIONS_URL}/cliente-avisar-acesso`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token ?? ''}` },
         body: JSON.stringify({ client_id: client!.id }),
@@ -1059,6 +1060,11 @@ export default function ClienteDetalhe() {
               )}
             </Panel>
           </div>
+
+          {/* Notas fiscais — logo abaixo de Pagamentos porque é a mesma
+              história: a cobrança sai, a nota sai atrás. Ver as duas juntas
+              é o que denuncia a nota que não veio. */}
+          <NotasFiscais clientId={id} />
 
           {/* Contratos */}
           <div>

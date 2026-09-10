@@ -13,6 +13,14 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   },
 });
 
+/* As funções DESTE projeto. Existe porque cinco telas montavam a URL a
+   partir de `import.meta.env.VITE_SUPABASE_URL`, variável que nunca foi
+   definida na Vercel: o build escrevia `undefined` literal, o navegador
+   resolvia como caminho relativo, a reescrita devolvia o index.html e o
+   POST num arquivo estático virava 405. A URL já estava aqui, correta e
+   fixa — faltava usá-la. */
+export const FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
+
 // Sistema lojista (produto vendido) — usado para provisionar amostras e sistemas de clientes
 export const LOJISTA_FUNCTIONS_URL = 'https://ljjkerbczuwmxdbnxfes.supabase.co/functions/v1';
 

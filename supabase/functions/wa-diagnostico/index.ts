@@ -41,9 +41,27 @@ Deno.serve(async (req) => {
     const porStatus: Record<string, number> = {};
     for (const t of lista) porStatus[t.status] = (porStatus[t.status] ?? 0) + 1;
 
+    /* O número em si, não só os templates. Listar template prova que o
+       token lê a conta; não prova que ele ENVIA. É a diferença que separou
+       "recebe mas não responde" de "token errado" quando o envio quebrou. */
+    const numeroId = Deno.env.get('WA_PHONE_NUMBER_ID');
+    let numero: unknown = { motivo: 'WA_PHONE_NUMBER_ID ausente' };
+    if (numeroId) {
+      const rn = await fetch(
+        `https://graph.facebook.com/v21.0/${numeroId}?fields=display_phone_number,verified_name,quality_rating,platform_type,throughput`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const dn = await rn.json().catch(() => null);
+      numero = rn.ok
+        ? { alcancavel: true, telefone: dn?.display_phone_number, nome: dn?.verified_name,
+            qualidade: dn?.quality_rating, plataforma: dn?.platform_type }
+        : { alcancavel: false, erro: dn?.error?.message, codigo: dn?.error?.code };
+    }
+
     return json(200, {
       ok: true,
       token: 'válido',
+      numero,
       total: lista.length,
       por_status: porStatus,
       templates: lista
