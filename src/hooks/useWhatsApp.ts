@@ -40,8 +40,21 @@ async function chamar(acao: string, corpo: Record<string, unknown> = {}) {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token ?? ''}` },
     body: JSON.stringify({ acao, ...corpo }),
   });
-  const d = await r.json();
-  if (!r.ok) throw new Error(d?.error || 'Falhou');
+  /* Ler texto antes de decodificar. Quando a função estoura o tempo, o
+     Supabase devolve 5xx SEM CORPO, e r.json() morre com "Unexpected end of
+     JSON input" — mensagem que não diz nada a quem está usando. */
+  const bruto = await r.text();
+  let d: Record<string, unknown> | null = null;
+  try { d = bruto ? JSON.parse(bruto) : null; } catch { /* corpo não-JSON */ }
+  if (!r.ok) {
+    throw new Error(
+      (d?.error as string) ||
+      (r.status >= 500
+        ? 'O servidor demorou demais para responder. Tente de novo em alguns segundos.'
+        : `Falhou (${r.status})`),
+    );
+  }
+  if (!d) throw new Error('Resposta vazia do servidor. Tente de novo.');
   return d;
 }
 

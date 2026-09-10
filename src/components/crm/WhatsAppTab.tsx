@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Loader2, Send, Search, Plus, QrCode, ShieldCheck, Smartphone, X, RefreshCw,
+  Loader2, Send, Search, Plus, QrCode, RefreshCw, ChevronDown, Check, Settings2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -93,7 +93,8 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
 
   const conectar = async (inst: Instancia) => {
     try {
-      const r = await acao.mutateAsync({ acao: 'conectar', instancia_id: inst.id });
+      const r = await acao.mutateAsync({ acao: 'conectar', instancia_id: inst.id }) as
+        { qr?: string | null; codigo?: string | null };
       setQr({ instancia: inst, imagem: r.qr ?? null, codigo: r.codigo ?? null });
     } catch (e) {
       toast.error((e as Error).message);
@@ -106,52 +107,22 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
 
   return (
     <div className="flex h-[calc(100vh-190px)] min-h-[420px] rounded-2xl overflow-hidden border border-black/[0.08] dark:border-white/[0.08]">
-      {/* ── Rail de números ───────────────────────────────── */}
-      <aside className="w-[68px] shrink-0 bg-black/[0.03] dark:bg-white/[0.03] border-r border-black/[0.08] dark:border-white/[0.08] flex flex-col items-center py-3 gap-2">
-        <button
-          onClick={() => { setInstanciaId(null); setConversaId(null); }}
-          title="Todas as conversas"
-          className={cn('h-10 w-10 rounded-xl text-[11px] font-semibold transition-colors',
-            !instanciaId ? 'bg-primary text-primary-foreground' : 'text-foreground/50 hover:bg-black/[0.05] dark:hover:bg-white/[0.06]')}
-        >
-          Tudo
-        </button>
-        {instancias.map((i) => {
-          const ligado = i.connection_state === 'open';
-          return (
-            <button
-              key={i.id}
-              onClick={() => { setInstanciaId(i.id); setConversaId(null); }}
-              title={`${i.nome}${i.telefone ? ` · ${fone(i.telefone)}` : ''}`}
-              className={cn('relative h-10 w-10 rounded-xl flex items-center justify-center transition-colors',
-                instanciaId === i.id ? 'bg-primary/15 ring-1 ring-primary/40' : 'hover:bg-black/[0.05] dark:hover:bg-white/[0.06]')}
-            >
-              {i.origem === 'cloud_api'
-                ? <ShieldCheck className={cn('h-4 w-4', ligado ? 'text-emerald-500' : 'text-foreground/40')} />
-                : <Smartphone className={cn('h-4 w-4', ligado ? 'text-emerald-500' : 'text-foreground/40')} />}
-              <span className={cn('absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full',
-                ligado ? 'bg-emerald-500' : 'bg-amber-500')} />
-            </button>
-          );
-        })}
-        <button
-          onClick={onCloseNew}
-          title="Adicionar número"
-          className="h-10 w-10 rounded-xl text-foreground/40 hover:bg-black/[0.05] dark:hover:bg-white/[0.06] flex items-center justify-center mt-1"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
-      </aside>
-
       {/* ── Lista de conversas ────────────────────────────── */}
-      <div className="w-[300px] shrink-0 border-r border-black/[0.08] dark:border-white/[0.08] flex flex-col">
-        <div className="p-2.5 border-b border-black/[0.08] dark:border-white/[0.08]">
+      <div className="w-[320px] shrink-0 border-r border-black/[0.08] dark:border-white/[0.08] flex flex-col">
+        <div className="p-3 border-b border-black/[0.08] dark:border-white/[0.08] space-y-2.5">
+          <SeletorDeNumero
+            instancias={instancias}
+            selecionada={instanciaId}
+            onSelecionar={(id) => { setInstanciaId(id); setConversaId(null); }}
+            onNovo={onCloseNew}
+            onConectar={conectar}
+          />
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground/30" />
             <input
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar conversa"
+              placeholder="Pesquisar"
               className="w-full h-9 pl-8 pr-3 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] text-[12.5px] focus:outline-none"
             />
           </div>
@@ -275,6 +246,127 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
 
       <QrDialog qr={qr} onClose={() => setQr(null)} onRefazer={conectar} />
       <NovoNumeroDialog open={newOpen} onClose={onCloseNew} />
+    </div>
+  );
+}
+
+/**
+ * Troca de número, no formato do WhatsApp do lojista: o nome grande com
+ * chevron, e a lista abrindo por baixo.
+ *
+ * O ponto de estado ao lado de cada nome é o que faz esta lista valer: número
+ * caído é atendimento parado, e sem o aviso aqui ninguém descobre até um
+ * cliente reclamar. Quem está desconectado ganha "Conectar" no lugar do
+ * ponto — o conserto fica a um clique de onde o problema aparece.
+ */
+function SeletorDeNumero({
+  instancias, selecionada, onSelecionar, onNovo, onConectar,
+}: {
+  instancias: Instancia[];
+  selecionada: string | null;
+  onSelecionar: (id: string | null) => void;
+  onNovo: () => void;
+  onConectar: (i: Instancia) => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const caixa = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const fora = (e: MouseEvent) => {
+      if (caixa.current && !caixa.current.contains(e.target as Node)) setAberto(false);
+    };
+    document.addEventListener('mousedown', fora);
+    return () => document.removeEventListener('mousedown', fora);
+  }, []);
+
+  const atual = instancias.find((i) => i.id === selecionada);
+  const titulo = atual?.nome ?? 'Todos os números';
+
+  return (
+    <div ref={caixa} className="relative">
+      <button
+        onClick={() => setAberto((v) => !v)}
+        className="flex items-center gap-1.5 text-left w-full group"
+      >
+        <span className="text-[19px] font-semibold text-foreground truncate">{titulo}</span>
+        <ChevronDown className={cn('h-4 w-4 shrink-0 text-foreground/40 transition-transform', aberto && 'rotate-180')} />
+      </button>
+
+      {aberto && (
+        <div className="absolute z-50 mt-2 w-[290px] rounded-2xl border border-black/[0.08] dark:border-white/[0.1] bg-background shadow-2xl overflow-hidden py-1.5">
+          <ItemDoSeletor
+            nome="Todos os números"
+            marcado={!selecionada}
+            onClick={() => { onSelecionar(null); setAberto(false); }}
+          />
+          <div className="h-px bg-black/[0.06] dark:bg-white/[0.06] my-1.5 mx-3" />
+          {instancias.map((i) => {
+            const ligado = i.connection_state === 'open';
+            return (
+              <ItemDoSeletor
+                key={i.id}
+                nome={i.nome}
+                detalhe={i.telefone ? fone(i.telefone) : undefined}
+                marcado={selecionada === i.id}
+                ligado={ligado}
+                oficial={i.origem === 'cloud_api'}
+                acao={!ligado && i.origem === 'evolution'
+                  ? { rotulo: 'Conectar', ao: () => { onConectar(i); setAberto(false); } }
+                  : undefined}
+                onClick={() => { onSelecionar(i.id); setAberto(false); }}
+              />
+            );
+          })}
+          <div className="h-px bg-black/[0.06] dark:bg-white/[0.06] my-1.5 mx-3" />
+          <button
+            onClick={() => { onNovo(); setAberto(false); }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors"
+          >
+            <span className="h-8 w-8 rounded-full bg-black/[0.05] dark:bg-white/[0.07] flex items-center justify-center shrink-0">
+              <Settings2 className="h-3.5 w-3.5 text-foreground/40" />
+            </span>
+            <span className="text-[13.5px] text-foreground/50">Adicionar número da equipe</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ItemDoSeletor({
+  nome, detalhe, marcado, ligado, oficial, acao, onClick,
+}: {
+  nome: string; detalhe?: string; marcado?: boolean;
+  ligado?: boolean; oficial?: boolean;
+  acao?: { rotulo: string; ao: () => void };
+  onClick: () => void;
+}) {
+  return (
+    <div
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-3 py-2 hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors cursor-pointer"
+    >
+      <span className={cn('h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-[13px] font-semibold',
+        ligado ? 'bg-emerald-500/20 text-emerald-500' : 'bg-black/[0.06] dark:bg-white/[0.08] text-foreground/50')}>
+        {nome.charAt(0).toUpperCase()}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[13.5px] text-foreground truncate">{nome}</p>
+        {detalhe && <p className="text-[11px] text-foreground/35 truncate">{detalhe}</p>}
+      </div>
+      {acao ? (
+        <button
+          onClick={(e) => { e.stopPropagation(); acao.ao(); }}
+          className="shrink-0 text-[11.5px] text-primary hover:underline"
+        >
+          {acao.rotulo}
+        </button>
+      ) : ligado !== undefined ? (
+        <span className={cn('shrink-0 h-2 w-2 rounded-full', ligado ? 'bg-emerald-500' : 'bg-foreground/25')}
+              title={ligado ? 'Conectado' : 'Desconectado'} />
+      ) : null}
+      {oficial && <span className="shrink-0 text-[9.5px] text-emerald-500/70 uppercase tracking-wide">API</span>}
+      {marcado && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
     </div>
   );
 }

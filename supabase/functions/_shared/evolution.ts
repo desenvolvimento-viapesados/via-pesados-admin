@@ -18,11 +18,16 @@ export async function evolution(
 ) {
   const segredo = Deno.env.get('WA_INTERNAL_SECRET');
   if (!segredo) throw new Error('WA_INTERNAL_SECRET ausente');
+  /* Teto explícito: a Evolution às vezes fica pendurada, e sem isto a nossa
+     função morre por tempo e devolve 5xx sem corpo — erro que não explica
+     nada para quem está olhando a tela. */
+  const corta = AbortSignal.timeout(20_000);
   const r = await fetch(PASSAGEM, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-interno': segredo },
     body: JSON.stringify({ caminho, instancia, metodo, corpo }),
-  });
+    signal: corta,
+  }).catch(() => { throw new Error('A Evolution não respondeu a tempo.'); });
   const d = await r.json().catch(() => null);
   if (!r.ok || !d?.ok) throw new Error(d?.error ?? `passagem respondeu ${r.status}`);
   return d.dados;

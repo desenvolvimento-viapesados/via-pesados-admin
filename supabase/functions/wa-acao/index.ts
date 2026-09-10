@@ -65,10 +65,15 @@ Deno.serve(async (req) => {
       if (inst.origem !== 'evolution') {
         return json(400, { error: 'O número da API oficial não conecta por QR — ele já está ligado pela Meta.' });
       }
+      /* O QR é o que a pessoa está esperando na tela, e ele expira em
+         segundos. Criar a instância e pedir o código vêm primeiro; o webhook
+         é configurado DEPOIS, sem segurar a resposta — três saltos em série
+         até a Evolution estouravam o tempo da função, e o Supabase devolve
+         5xx sem corpo, que na tela virava "Unexpected end of JSON input". */
       await criarInstancia(inst.evolution_instance!);
-      await garantirWebhook(inst.evolution_instance!);
       const c = await evolution('instance/connect', inst.evolution_instance!, 'GET') as
         { base64?: string; code?: string; pairingCode?: string } | null;
+      garantirWebhook(inst.evolution_instance!).catch((e) => console.warn('webhook:', e));
       const precisaQr = !!(c?.base64 || c?.code);
       await db.from('wa_instancias').update({
         precisa_qr: precisaQr,
