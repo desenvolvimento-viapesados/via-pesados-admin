@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { ligarNotaFiscal } from '../_shared/nota.ts';
+import { ligarNotaFiscal, emissaoLigada } from '../_shared/nota.ts';
 
 /**
  * Liga (ou reaplica) a emissão automática de nota fiscal em TODAS as
@@ -33,6 +33,17 @@ Deno.serve(async (req) => {
   /* Permite mirar num cliente só. É como a primeira nota deve ser ligada:
      um cliente, um ciclo, conferir — e só então valer para todos. */
   const { client_id } = await req.json().catch(() => ({})) as { client_id?: string };
+
+  /* Diz o estado antes de tentar. Sem isto, com a emissão desligada a
+     função responderia "configurei" para cada cliente e nada teria sido
+     configurado — silêncio que só apareceria quando a nota não saísse. */
+  if (!emissaoLigada()) {
+    return json(200, {
+      ok: false,
+      emissao: 'DESLIGADA',
+      como_ligar: 'supabase secrets set NOTA_EMISSAO=ligada --project-ref ktjvyysqhsyvjmhumjly',
+    });
+  }
 
   let q = db.from('clients')
     .select('id, company_name, plan, asaas_subscription_id')

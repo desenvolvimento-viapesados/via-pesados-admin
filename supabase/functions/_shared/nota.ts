@@ -31,6 +31,23 @@ export type ResultadoNota =
   | { ok: true; iss: number; verificado: boolean }
   | { ok: false; motivo: string };
 
+/**
+ * O interruptor da emissão.
+ *
+ * A polaridade é proposital: DESLIGADO por omissão. Emitir nota é o único
+ * passo deste sistema que cria documento com valor legal, e desfazer exige
+ * cancelamento formal na prefeitura. Variável de ambiente que some — troca
+ * de projeto, secret não copiado — tem de resultar em "não emite", nunca em
+ * "emite sem querer".
+ *
+ * Para ligar:  supabase secrets set NOTA_EMISSAO=ligada
+ *
+ * Quando existir a opção por cliente, este passa a ser o padrão da conta e
+ * a coluna do cliente decide caso a caso.
+ */
+export const emissaoLigada = () =>
+  (Deno.env.get('NOTA_EMISSAO') ?? '').trim().toLowerCase() === 'ligada';
+
 export async function ligarNotaFiscal(
   base: string,
   chave: string,
@@ -41,6 +58,8 @@ export async function ligarNotaFiscal(
      `nota-configurar`, que roda fora da pressa. */
   verificar = false,
 ): Promise<ResultadoNota> {
+  if (!emissaoLigada()) return { ok: false, motivo: 'emissão de nota desligada (NOTA_EMISSAO)' };
+
   const iss = Number(Deno.env.get('NOTA_ISS_ALIQUOTA') ?? ISS_PADRAO);
   const cab = { access_token: chave, 'Content-Type': 'application/json', 'User-Agent': 'ViaPesados/1.0' };
 

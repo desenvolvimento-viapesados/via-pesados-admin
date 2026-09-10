@@ -47,21 +47,45 @@ Deno.serve(async (req) => {
     const numeroId = Deno.env.get('WA_PHONE_NUMBER_ID');
     let numero: unknown = { motivo: 'WA_PHONE_NUMBER_ID ausente' };
     if (numeroId) {
+      const campos = [
+        'display_phone_number', 'verified_name', 'quality_rating', 'platform_type',
+        'throughput', 'name_status', 'code_verification_status', 'status',
+        'messaging_limit_tier', 'is_official_business_account', 'is_pin_enabled',
+      ].join(',');
       const rn = await fetch(
-        `https://graph.facebook.com/v21.0/${numeroId}?fields=display_phone_number,verified_name,quality_rating,platform_type,throughput`,
+        `https://graph.facebook.com/v21.0/${numeroId}?fields=${campos}`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       const dn = await rn.json().catch(() => null);
       numero = rn.ok
         ? { alcancavel: true, telefone: dn?.display_phone_number, nome: dn?.verified_name,
-            qualidade: dn?.quality_rating, plataforma: dn?.platform_type }
+            qualidade: dn?.quality_rating, plataforma: dn?.platform_type,
+            /* Os quatro que decidem o selo verde. `name_status` precisa estar
+               APPROVED, e `is_official_business_account` é o selo em si. */
+            nome_status: dn?.name_status, verificacao_codigo: dn?.code_verification_status,
+            situacao: dn?.status, limite_mensagens: dn?.messaging_limit_tier,
+            selo_oficial: dn?.is_official_business_account ?? false,
+            bruto: dn }
         : { alcancavel: false, erro: dn?.error?.message, codigo: dn?.error?.code };
     }
+
+    /* A conta e a empresa. O selo depende de verificação de negócio
+       concluída e da revisão da conta — nenhuma das duas fica no número. */
+    const rw = await fetch(
+      `https://graph.facebook.com/v21.0/${WABA}?fields=id,name,account_review_status,business_verification_status,country,ownership_type,timezone_id`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    const dw = await rw.json().catch(() => null);
 
     return json(200, {
       ok: true,
       token: 'válido',
       numero,
+      conta_waba: rw.ok
+        ? { nome: dw?.name, revisao_da_conta: dw?.account_review_status,
+            verificacao_do_negocio: dw?.business_verification_status,
+            pais: dw?.country, propriedade: dw?.ownership_type }
+        : { erro: dw?.error?.message },
       total: lista.length,
       por_status: porStatus,
       templates: lista
