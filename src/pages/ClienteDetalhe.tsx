@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Loader2, Check, FileText, CreditCard, Rocket, Globe, Upload,
   Copy, ExternalLink, Phone, Mail, MapPin, Plus, StickyNote,
-  PartyPopper, KeyRound, Repeat,
+  PartyPopper, KeyRound, Repeat, Send,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -17,7 +17,7 @@ import {
   usePlans, useCriarAssinaturaAsaas,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
-import { LOJISTA_APP_URL } from '@/integrations/supabase/client';
+import { LOJISTA_APP_URL, supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CanaisDoCliente } from '@/components/CanaisDoCliente';
 import { UsoDoSistema } from '@/components/admin/UsoDoSistema';
@@ -612,6 +612,31 @@ export default function ClienteDetalhe() {
   const [dialog, setDialog] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [showCreds, setShowCreds] = useState(false);
+  const [avisando, setAvisando] = useState(false);
+
+  /* Aviso manual de que o sistema está no ar. Manual porque pagamento
+     confirmado não é loja pronta — falta estoque, marca, canais. Quem sabe
+     que chegou lá é quem montou. O servidor manda uma vez por cliente. */
+  const avisarAcesso = async () => {
+    setAvisando(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cliente-avisar-acesso`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token ?? ''}` },
+        body: JSON.stringify({ client_id: client!.id }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error || 'Não foi possível avisar.');
+      if (d.ok) toast.success('Aviso enviado no WhatsApp do lojista');
+      else if (d.repetido) toast.info('Esse aviso já foi enviado antes.');
+      else toast.warning(`Não enviado: ${d.motivo}`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setAvisando(false);
+    }
+  };
   const { data: credencial } = useSystemCredential({ clientId: id, enabled: showCreds && isAdmin });
 
   if (isLoading || !client) {
@@ -768,6 +793,15 @@ export default function ClienteDetalhe() {
                       className="h-8 px-2.5 rounded-lg border border-black/[0.1] dark:border-white/[0.1] text-[11.5px] font-medium text-foreground/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] flex items-center gap-1.5"
                     >
                       <KeyRound className="h-3 w-3" /> Acesso
+                    </button>
+                    <button
+                      onClick={avisarAcesso}
+                      disabled={avisando}
+                      title="Manda ao lojista, no WhatsApp, que o sistema está no ar"
+                      className="h-8 px-2.5 rounded-lg border border-primary/40 text-[11.5px] font-medium text-primary hover:bg-primary/10 disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {avisando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                      Avisar que está pronto
                     </button>
                     <a
                       href={client.domain ? `https://${client.domain}` : LOJISTA_APP_URL}
