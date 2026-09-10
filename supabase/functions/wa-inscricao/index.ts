@@ -8,10 +8,13 @@
  *
  * GET lista. POST inscreve.
  */
-const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type' 
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'content-type',
   // Sem Allow-Methods o navegador barra o preflight e o pedido nem sai —
-  // some no console e nao aparece log nenhum no servidor.
-  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',};
+  // some no console e não aparece log nenhum no servidor.
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+};
 const json = (s: number, b: unknown) =>
   new Response(JSON.stringify(b, null, 1), { status: s, headers: { ...cors, 'Content-Type': 'application/json' } });
 
