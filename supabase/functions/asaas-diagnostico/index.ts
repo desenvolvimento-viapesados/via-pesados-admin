@@ -44,9 +44,55 @@ Deno.serve(async (req) => {
         falhas_penalizadas: det?.penalizedRequestsCount ?? null,
       });
     }
+    /* Pix Automático é liberado por conta, igual à tokenização de cartão.
+       Uma listagem (leitura pura) já diz se está disponível: conta sem
+       elegibilidade responde erro em vez de lista vazia. */
+    const pixAut = await fetch(`${base}/pix/automatic/authorizations?limit=1`, {
+      headers: { access_token: chave, 'User-Agent': 'ViaPesados/1.0' },
+    });
+    const pixBody = await pixAut.json().catch(() => null);
+
+    /* Tokenização: sonda com corpo VAZIO de propósito — nenhum cartão real
+       envolvido. O que interessa é o tipo do erro:
+         403 = conta sem permissão (travado no gerente)
+         400 = endpoint funciona e só reclamou dos campos que faltam */
+    const tok = await fetch(`${base}/creditCard/tokenizeCreditCard`, {
+      method: 'POST',
+      headers: { access_token: chave, 'Content-Type': 'application/json', 'User-Agent': 'ViaPesados/1.0' },
+      body: JSON.stringify({}),
+    });
+    const tokBody = await tok.json().catch(() => null);
+
+    /* Existe um segundo caminho para recorrência no cartão: mandar o cartão
+       direto na criação da ASSINATURA, deixando a Asaas guardar por dentro,
+       sem passar pelo /creditCard/tokenizeCreditCard. Se este não for 403,
+       dá para ter débito automático hoje, sem esperar o gerente.
+       Corpo proposital incompleto: nenhum cartão real envolvido. */
+    const assin = await fetch(`${base}/subscriptions`, {
+      method: 'POST',
+      headers: { access_token: chave, 'Content-Type': 'application/json', 'User-Agent': 'ViaPesados/1.0' },
+      body: JSON.stringify({ billingType: 'CREDIT_CARD', cycle: 'MONTHLY' }),
+    });
+    const assinBody = await assin.json().catch(() => null);
+
     return json(200, {
       ok: true,
       ambiente: base.includes('sandbox') ? 'sandbox' : 'producao',
+      assinatura_cartao_direto: {
+        http: assin.status,
+        bloqueado_por_permissao: assin.status === 403,
+        detalhe: (assinBody?.errors ?? []).map((e: { description?: string }) => e.description) ?? assinBody,
+      },
+      tokenizacao_cartao: {
+        http: tok.status,
+        liberada: tok.status !== 403,
+        detalhe: (tokBody?.errors ?? [{}])[0]?.description ?? tokBody?.message ?? tokBody,
+      },
+      pix_automatico: {
+        http: pixAut.status,
+        disponivel: pixAut.ok,
+        detalhe: pixAut.ok ? `${(pixBody?.data ?? []).length} autorizações` : pixBody?.errors ?? pixBody,
+      },
       total: hooks.length,
       detalhes,
       webhooks: hooks.map((h) => ({

@@ -342,12 +342,12 @@ Deno.serve(async (req) => {
       });
 
       if (autorizar_recorrencia) {
-        const tk = await asaas(base, chave, '/creditCard/tokenizeCreditCard', {
-          customer,
-          remoteIp: ipDoComprador(req),
-          creditCard: dadosCartao,
-          creditCardHolderInfo: dadosTitular,
-        });
+        /* O cartão vai DIRETO na assinatura, e a Asaas guarda por dentro.
+           Antes isto passava por /creditCard/tokenizeCreditCard, que a conta
+           responde com 403 — permissão que só o gerente libera. Este caminho
+           não é bloqueado, e o resultado para o lojista é idêntico: ele digita
+           o cartão uma vez e a mensalidade passa sozinha todo mês.
+           Nós continuamos sem guardar cartão nenhum: quem guarda é a Asaas. */
         const sub = await asaas(base, chave, '/subscriptions', {
           customer,
           billingType: 'CREDIT_CARD',
@@ -356,7 +356,8 @@ Deno.serve(async (req) => {
           cycle: 'MONTHLY',
           description: `Via Pesados — ${cli.plan ? `plano ${cli.plan}` : 'mensalidade'}`,
           externalReference: cli.id,
-          creditCardToken: tk.creditCardToken,
+          creditCard: dadosCartao,
+          creditCardHolderInfo: dadosTitular,
           remoteIp: ipDoComprador(req),
         });
         await db.from('clients').update({
@@ -366,7 +367,8 @@ Deno.serve(async (req) => {
         return json(200, {
           ok: true, tipo: 'cartao', valor,
           recorrencia_ativada: true,
-          final: tk.creditCardNumber, bandeira: tk.creditCardBrand,
+          // A Asaas devolve os dados mascarados do cartão guardado.
+          final: sub?.creditCard?.creditCardNumber, bandeira: sub?.creditCard?.creditCardBrand,
         });
       }
 
