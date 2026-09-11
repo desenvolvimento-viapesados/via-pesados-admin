@@ -7,6 +7,7 @@ import {
   useRegisterSale, usePlans, useCriarAssinaturaAsaas, brlFull, type Prospect,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
+import { mascaraTelefone, soDigitos, mascaraMoeda, valorDaMoeda, moedaDeNumero } from '@/lib/mascaras';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const inputCls =
@@ -53,16 +54,19 @@ export function RegistrarVendaDialog({
       ...empty,
       company_name: prospect?.company_name ?? '',
       contact_name: prospect?.contact_name ?? '',
-      whatsapp: prospect?.whatsapp ?? '',
+      whatsapp: mascaraTelefone(prospect?.whatsapp),
       email: prospect?.email ?? '',
       city: prospect?.city ?? '',
       state: prospect?.state ?? '',
       plan: prospect?.plan ?? '',
-      mrr: prospect?.proposal_value?.toString() ?? '',
+      mrr: moedaDeNumero(prospect?.proposal_value),
     });
   }, [open, prospect?.id]);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  // O campo é texto mascarado ("1.200,00"), então Number() nele daria 1.2.
+  // Converte num lugar só — este número vira a cobrança no Asaas.
+  const mrrNum = valorDaMoeda(form.mrr) ?? 0;
   const alternarCanal = (id: string) =>
     setForm((f) => ({
       ...f,
@@ -75,7 +79,7 @@ export function RegistrarVendaDialog({
        fala por ele: link do mês, aviso de vencimento, atraso, confirmação de
        pagamento. Sem o número, nada disso sai — e não sai em SILÊNCIO, sem
        erro em lugar nenhum. Descobre-se quando o lojista some. */
-    if (form.whatsapp.replace(/\D/g, '').length < 10) {
+    if (soDigitos(form.whatsapp).length < 10) {
       toast.error('Informe o WhatsApp do cliente — é por onde toda a cobrança é enviada');
       return;
     }
@@ -96,7 +100,7 @@ export function RegistrarVendaDialog({
           state: form.state || null,
           plan: form.plan || null,
           plan_id: form.plan_id || null,
-          mrr: form.mrr ? Number(form.mrr) : 0,
+          mrr: mrrNum,
           recurrence: form.recurrence as 'mensal' | 'anual' | 'unico',
           canais: form.canais,
           owner_id: member?.id ?? null,
@@ -105,11 +109,11 @@ export function RegistrarVendaDialog({
       // A cobrança sai junto com a venda: é o momento em que o valor está
       // acertado e o lojista está do outro lado esperando o link. Falhar
       // aqui não desfaz a venda — o botão continua na ficha do cliente.
-      if (form.gerar_cobranca && Number(form.mrr) > 0) {
+      if (form.gerar_cobranca && mrrNum > 0) {
         try {
           const r = await gerarLink.mutateAsync({
             client_id: client.id,
-            valor: Number(form.mrr),
+            valor: mrrNum,
           });
           await navigator.clipboard.writeText(r.url).catch(() => {});
           toast.success('Venda registrada e link de cobrança copiado — é só mandar ao cliente.');
@@ -145,7 +149,7 @@ export function RegistrarVendaDialog({
             <input className={inputCls} placeholder="Nome da empresa *" value={form.company_name} onChange={(e) => set('company_name', e.target.value)} />
             <div className="grid grid-cols-2 gap-2.5">
               <input className={inputCls} placeholder="Contato" value={form.contact_name} onChange={(e) => set('contact_name', e.target.value)} />
-              <input className={inputCls} placeholder="WhatsApp" value={form.whatsapp} onChange={(e) => set('whatsapp', e.target.value)} />
+              <input className={inputCls} placeholder="WhatsApp" inputMode="numeric" value={form.whatsapp} onChange={(e) => set('whatsapp', mascaraTelefone(e.target.value))} />
             </div>
             <input className={inputCls} placeholder="E-mail" value={form.email} onChange={(e) => set('email', e.target.value)} />
             <div className="grid grid-cols-[1fr_70px] gap-2.5">
@@ -178,7 +182,7 @@ export function RegistrarVendaDialog({
                     ...f,
                     plan_id: e.target.value,
                     plan: p?.name ?? '',
-                    mrr: p && f.recurrence === 'mensal' ? String(p.monthly_value) : f.mrr,
+                    mrr: p && f.recurrence === 'mensal' ? moedaDeNumero(p.monthly_value) : f.mrr,
                   }));
                 }}
               >
@@ -187,7 +191,7 @@ export function RegistrarVendaDialog({
                   <option key={p.id} value={p.id}>{p.name} — {brlFull(p.monthly_value)}/mês</option>
                 ))}
               </select>
-              <input className={inputCls} type="number" placeholder="Valor do contrato (R$)" value={form.mrr} onChange={(e) => set('mrr', e.target.value)} />
+              <input className={inputCls} inputMode="numeric" placeholder="Valor do contrato (R$)" value={form.mrr} onChange={(e) => set('mrr', mascaraMoeda(e.target.value))} />
               <select className={inputCls} value={form.recurrence} onChange={(e) => set('recurrence', e.target.value)}>
                 <option value="mensal">Mensal</option>
                 <option value="anual">Anual</option>
@@ -197,7 +201,7 @@ export function RegistrarVendaDialog({
             {form.mrr && form.recurrence !== 'mensal' && (
               <p className="text-[11px] text-foreground/40 px-1">
                 {form.recurrence === 'anual'
-                  ? `Contrato de ${brlFull(Number(form.mrr))} por ano — entra como ${brlFull(Math.round(Number(form.mrr) / 12))} de MRR.`
+                  ? `Contrato de ${brlFull(mrrNum)} por ano — entra como ${brlFull(Math.round(mrrNum / 12))} de MRR.`
                   : 'Pagamento único não gera receita recorrente — o MRR deste cliente fica zerado.'}
               </p>
             )}
@@ -230,7 +234,7 @@ export function RegistrarVendaDialog({
                   {form.recurrence !== 'mensal'
                     ? 'Disponível só para contrato mensal.'
                     : form.mrr
-                      ? `${brlFull(Number(form.mrr))} por mês, todo mês, no Pix, boleto ou cartão. O link é copiado ao salvar.`
+                      ? `${brlFull(mrrNum)} por mês, todo mês, no Pix, boleto ou cartão. O link é copiado ao salvar.`
                       : 'Informe a mensalidade acima para gerar.'}
                 </span>
               </span>

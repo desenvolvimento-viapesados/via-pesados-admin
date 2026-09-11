@@ -11,6 +11,7 @@ import {
 } from '@/hooks/useAdmin';
 import { AgendarReuniaoDialog } from './AgendarReuniaoDialog';
 import { CidadeUF } from './CidadeUF';
+import { mascaraTelefone, soDigitos, mascaraMoeda, valorDaMoeda } from '@/lib/mascaras';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/admin/ui';
@@ -54,7 +55,7 @@ function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => vo
     // relatório de aquisição.
     if (!form.channel_id) { toast.error('Escolha por onde este prospect chegou'); return; }
     // Mesma razão da venda: confirmação e lembrete de reunião saem por aqui.
-    if (String(form.whatsapp ?? '').replace(/\D/g, '').length < 10) {
+    if (soDigitos(form.whatsapp).length < 10) {
       toast.error('Informe o WhatsApp — é por onde a confirmação de reunião é enviada');
       return;
     }
@@ -62,12 +63,12 @@ function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => vo
       await create.mutateAsync({
         company_name: form.company_name.trim(),
         contact_name: form.contact_name || null,
-        whatsapp: form.whatsapp || null,
+        whatsapp: form.whatsapp || null,  // guardado mascarado; quem disca usa replace(/\D/g,'')
         city: form.city || null,
         state: form.state || null,
         channel_id: form.channel_id,
         source: form.source || null,
-        proposal_value: form.proposal_value ? Number(form.proposal_value) : null,
+        proposal_value: valorDaMoeda(form.proposal_value),
         owner_id: member?.id ?? null,
       });
       toast.success('Prospect criado');
@@ -88,7 +89,7 @@ function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => vo
           <input className={inputCls} placeholder="Nome da empresa *" value={form.company_name} onChange={(e) => set('company_name', e.target.value)} />
           <div className="grid grid-cols-2 gap-2.5">
             <input className={inputCls} placeholder="Nome do responsável" value={form.contact_name} onChange={(e) => set('contact_name', e.target.value)} />
-            <input className={inputCls} placeholder="WhatsApp *" value={form.whatsapp} onChange={(e) => set('whatsapp', e.target.value)} />
+            <input className={inputCls} placeholder="WhatsApp *" inputMode="numeric" value={form.whatsapp} onChange={(e) => set('whatsapp', mascaraTelefone(e.target.value))} />
           </div>
           <CidadeUF
             uf={form.state}
@@ -100,7 +101,7 @@ function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => vo
             {canais.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <div className="grid grid-cols-2 gap-2.5">
-            <input className={inputCls} placeholder="Mensalidade (R$)" type="number" value={form.proposal_value} onChange={(e) => set('proposal_value', e.target.value)} />
+            <input className={inputCls} placeholder="Mensalidade (R$)" inputMode="numeric" value={form.proposal_value} onChange={(e) => set('proposal_value', mascaraMoeda(e.target.value))} />
             <input className={inputCls} placeholder="Detalhe: campanha, quem indicou…" value={form.source} onChange={(e) => set('source', e.target.value)} />
           </div>
           <button

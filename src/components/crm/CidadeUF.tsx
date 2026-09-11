@@ -42,21 +42,29 @@ export function CidadeUF({
   const [busca, setBusca] = useState('');
   const [cidades, setCidades] = useState<string[]>(cache.get(uf) ?? []);
   const [carregando, setCarregando] = useState(false);
+  const [falhou, setFalhou] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!uf) { setCidades([]); return; }
     if (cache.has(uf)) { setCidades(cache.get(uf)!); return; }
-    setCarregando(true);
-    fetch(`https://servicosdados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`)
-      .then((r) => r.json())
+    setCarregando(true); setFalhou(false);
+    // O host é servicoDADOS, singular. Estava "servicosdados" aqui, um domínio
+    // que não existe — a lista de cidades nunca carregou, para estado nenhum.
+    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`)
+      .then((r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      })
       .then((d: Array<{ nome: string }>) => {
         const nomes = d.map((m) => m.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
         cache.set(uf, nomes);
         setCidades(nomes);
       })
-      // Sem internet ou IBGE fora do ar, o campo continua aceitando digitação.
-      .catch(() => setCidades([]))
+      // Sem internet ou IBGE fora do ar, o campo continua aceitando digitação —
+      // mas dizendo que falhou. Lista vazia calada é indistinguível de um
+      // estado sem cidades, e foi assim que o defeito passou despercebido.
+      .catch(() => { setCidades([]); setFalhou(true); })
       .finally(() => setCarregando(false));
   }, [uf]);
 
@@ -78,7 +86,43 @@ export function CidadeUF({
   }, [busca, cidades]);
 
   return (
-    <div ref={caixa} className="grid grid-cols-[1fr_110px] gap-2.5">
+    /* UF primeiro, e estreito. Antes a cidade vinha à esquerda, larga e
+       desabilitada, dizendo "Escolha a UF primeiro" — e o seletor de UF era
+       a caixinha ao lado. Quem lê da esquerda para a direita esbarrava no
+       campo morto e não achava onde escolher. A ordem de leitura tem de ser
+       a ordem de uso. */
+    <div ref={caixa} className="grid grid-cols-[110px_1fr] gap-2.5">
+      {/* UF */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => { setAbertoUf((v) => !v); setAbertaCidade(false); }}
+          className={campo}
+        >
+          <span className={cn(!uf && 'text-foreground/30')}>{uf || 'UF'}</span>
+          <ChevronDown className="h-3.5 w-3.5 opacity-40 shrink-0" />
+        </button>
+        {abertoUf && (
+          <div className="absolute z-50 mt-1 left-0 w-56 rounded-xl border border-black/[0.1] dark:border-white/[0.12] bg-background shadow-xl overflow-hidden">
+            <div className="max-h-52 overflow-y-auto">
+              {UFS.map(([sigla, nome]) => (
+                <button
+                  key={sigla}
+                  type="button"
+                  /* Trocar de UF limpa a cidade: manter 'Contagem' com UF 'SP'
+                     é o tipo de dado que ninguém confere e todo relatório usa. */
+                  onClick={() => { onChange({ uf: sigla, cidade: sigla === uf ? cidade : '' }); setAbertoUf(false); }}
+                  className="w-full text-left px-3 py-2 text-[12.5px] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] flex items-center gap-2"
+                >
+                  <Check className={cn('h-3 w-3 shrink-0', uf === sigla ? 'opacity-100 text-primary' : 'opacity-0')} />
+                  <span className="font-mono w-6">{sigla}</span>
+                  <span className="truncate text-foreground/50">{nome}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
       {/* Cidade */}
       <div className="relative">
         <button
@@ -124,44 +168,17 @@ export function CidadeUF({
                 </button>
               ))}
               {!filtradas.length && !busca.trim() && (
-                <p className="px-3 py-3 text-[12px] text-foreground/40">Nenhuma cidade carregada.</p>
+                <p className="px-3 py-3 text-[12px] text-foreground/40">
+                  {falhou
+                    ? 'Não consegui carregar a lista do IBGE. Digite o nome da cidade acima.'
+                    : carregando ? 'Carregando…' : 'Nenhuma cidade encontrada.'}
+                </p>
               )}
             </div>
           </div>
         )}
       </div>
 
-      {/* UF */}
-      <div className="relative">
-        <button
-          type="button"
-          onClick={() => { setAbertoUf((v) => !v); setAbertaCidade(false); }}
-          className={campo}
-        >
-          <span className={cn(!uf && 'text-foreground/30')}>{uf || 'UF'}</span>
-          <ChevronDown className="h-3.5 w-3.5 opacity-40 shrink-0" />
-        </button>
-        {abertoUf && (
-          <div className="absolute z-50 mt-1 right-0 w-56 rounded-xl border border-black/[0.1] dark:border-white/[0.12] bg-background shadow-xl overflow-hidden">
-            <div className="max-h-52 overflow-y-auto">
-              {UFS.map(([sigla, nome]) => (
-                <button
-                  key={sigla}
-                  type="button"
-                  /* Trocar de UF limpa a cidade: manter 'Contagem' com UF 'SP'
-                     é o tipo de dado que ninguém confere e todo relatório usa. */
-                  onClick={() => { onChange({ uf: sigla, cidade: sigla === uf ? cidade : '' }); setAbertoUf(false); }}
-                  className="w-full text-left px-3 py-2 text-[12.5px] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] flex items-center gap-2"
-                >
-                  <Check className={cn('h-3 w-3 shrink-0', uf === sigla ? 'opacity-100 text-primary' : 'opacity-0')} />
-                  <span className="font-mono w-6">{sigla}</span>
-                  <span className="truncate text-foreground/50">{nome}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
