@@ -140,14 +140,34 @@ export default function RegistrarVenda() {
   const [salvando, setSalvando] = useState(false);
   const set = (k: keyof typeof vazio, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
 
-  /* Amostras que este prospect já viu. Adotar a amostra de outro prospect
-     entregaria ao cliente um sistema com a marca de terceiro, então a lista
-     fica restrita ao que foi apresentado a ele. */
-  const amostras = useMemo(
-    () => demos.filter((d) => d.prospect_id === prospectId && d.lojista_company_id
-      && d.status !== 'descartada' && d.status !== 'convertida'),
-    [demos, prospectId],
-  );
+  /* Amostras adotáveis, as mais prováveis primeiro.
+     Filtrar por prospect_id parecia óbvio e estava errado: na prática toda
+     amostra é criada com prospect_id nulo, então o filtro não devolveria
+     nenhuma e a venda criaria um sistema vazio sem dizer por quê. Aqui a
+     lista mostra tudo que é adotável e ordena pelo que combina — quem
+     escolhe é o operador, que sabe qual apresentou. */
+  const normaliza = (v?: string | null) =>
+    (v ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
+  const amostras = useMemo(() => {
+    const adotaveis = demos.filter((d) => d.lojista_company_id
+      && d.status !== 'descartada' && d.status !== 'convertida');
+    const alvo = normaliza(prospect?.company_name);
+    const peso = (d: typeof adotaveis[number]) =>
+      d.prospect_id && d.prospect_id === prospectId ? 0
+      : alvo && normaliza(d.company_name) === alvo ? 1
+      : 2;
+    return [...adotaveis].sort((a, b) => peso(a) - peso(b));
+  }, [demos, prospectId, prospect?.company_name]);
+
+  /** Só pré-seleciona quando não há dúvida de qual é. */
+  const amostraObvia = useMemo(() => {
+    const alvo = normaliza(prospect?.company_name);
+    const doProspect = amostras.filter((d) => d.prospect_id && d.prospect_id === prospectId);
+    if (doProspect.length === 1) return doProspect[0].id;
+    const porNome = alvo ? amostras.filter((d) => normaliza(d.company_name) === alvo) : [];
+    return porNome.length === 1 ? porNome[0].id : '';
+  }, [amostras, prospectId, prospect?.company_name]);
 
   useEffect(() => {
     setForm((f) => ({
@@ -160,13 +180,15 @@ export default function RegistrarVenda() {
       mrr: moedaDeNumero(prospect?.proposal_value),
       acesso_nome: prospect?.contact_name ?? '',
       owner_id: prospect?.owner_id ?? member?.id ?? '',
-      demo_id: f.demo_id || (amostras.length === 1 ? amostras[0].id : ''),
+      demo_id: f.demo_id || amostraObvia,
     }));
-  }, [prospect?.id, amostras.length, member?.id]);
+  }, [prospect?.id, amostraObvia, member?.id]);
 
   // O campo é texto mascarado ("1.200,00"): Number() nele daria 1.2, e este
   // número vira a cobrança no Asaas.
   const mrrNum = valorDaMoeda(form.mrr) ?? 0;
+  // O nome é editável: compara com o que está na tela, não só com o prospect.
+  const nomeAlvo = normaliza(form.company_name || prospect?.company_name);
   const amostra = amostras.find((d) => d.id === form.demo_id) ?? null;
 
   const alternarCanal = (cid: string) =>
@@ -361,7 +383,16 @@ export default function RegistrarVenda() {
                         <Sparkles className="h-3 w-3 text-primary" /> {d.company_name}
                       </span>
                     }
-                    sub={d.admin_email ?? d.slug}
+                    sub={
+                      <>
+                        {d.admin_email ?? d.slug}
+                        {!!nomeAlvo && normaliza(d.company_name) !== nomeAlvo && (
+                          <span className="block text-amber-500/80">
+                            Outro nome de empresa — confira se foi esta que você apresentou.
+                          </span>
+                        )}
+                      </>
+                    }
                   />
                 ))}
                 <Opcao
@@ -385,9 +416,7 @@ export default function RegistrarVenda() {
                 )}
                 {!amostras.length && (
                   <p className="text-[11px] text-foreground/40 leading-snug px-1 pt-2">
-                    {prospectId
-                      ? 'Este prospect não tem amostra provisionada. O sistema será criado vazio.'
-                      : 'Venda avulsa, sem prospect — não há amostra para aproveitar. O sistema será criado vazio.'}
+                    Não há nenhuma amostra provisionada disponível. O sistema será criado vazio.
                   </p>
                 )}
               </div>
