@@ -106,8 +106,11 @@ export default function Crm() {
         </div>
 
         {/* ── Abas ─────────────────────────────────────────── */}
-        <div className="px-4 sm:px-6 pb-2.5 flex items-center gap-2">
-          <div className={cn('items-center gap-1 overflow-x-auto', TABS.length > 1 ? 'flex' : 'hidden')} style={{ scrollbarWidth: 'none' }}>
+        {/* Abas. A pílula laranja preenchida disputava atenção com o botão
+            de ação, que é o único laranja sólido da tela. Aqui a aba ativa é
+            marcada pelo mesmo filete de 3px que assina o resto do sistema. */}
+        <div className="px-4 sm:px-6 flex items-end gap-3">
+          <div className={cn('items-end gap-0.5 overflow-x-auto -mb-px', TABS.length > 1 ? 'flex' : 'hidden')} style={{ scrollbarWidth: 'none' }}>
             {TABS.map(({ key, label, icon: Icon }) => {
               const active = tab === key;
               // WhatsApp não tem contagem no `counts` — o número de não
@@ -118,22 +121,24 @@ export default function Crm() {
                   key={key}
                   onClick={() => goTab(key)}
                   className={cn(
-                    'h-9 px-3 rounded-xl text-[12.5px] font-medium whitespace-nowrap transition-colors flex items-center gap-1.5',
-                    active
-                      ? 'bg-primary/15 text-primary border border-primary/30'
-                      : 'border border-transparent text-foreground/45 hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.05]',
+                    'group relative h-11 px-3.5 text-[12.5px] whitespace-nowrap transition-colors flex items-center gap-1.5',
+                    active ? 'text-foreground font-semibold' : 'text-foreground/40 font-medium hover:text-foreground/75',
                   )}
                 >
-                  <Icon className="h-3.5 w-3.5" />
+                  <Icon className={cn('h-3.5 w-3.5 transition-colors', active ? 'text-primary' : '')} />
                   {label}
                   {count > 0 && (
                     <span className={cn(
-                      'text-[10px] font-bold rounded-full px-1.5 py-px tabular-nums',
-                      active ? 'bg-primary/20' : 'bg-black/[0.06] dark:bg-white/[0.08]',
+                      'text-[10px] font-semibold rounded-full px-1.5 py-px tabular-nums transition-colors',
+                      active ? 'bg-primary/15 text-primary' : 'bg-black/[0.05] dark:bg-white/[0.07] text-foreground/45',
                     )}>
                       {count}
                     </span>
                   )}
+                  <span className={cn(
+                    'absolute inset-x-2.5 bottom-0 h-[3px] rounded-full transition-all',
+                    active ? 'bg-primary' : 'bg-transparent group-hover:bg-foreground/10',
+                  )} />
                 </button>
               );
             })}
@@ -141,7 +146,7 @@ export default function Crm() {
 
           <button
             onClick={() => setNewOpen(true)}
-            className="ml-auto h-9 px-3.5 rounded-xl bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 transition-all flex items-center gap-1.5 shrink-0"
+            className="ml-auto mb-2 h-9 px-3.5 rounded-xl bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 transition-all flex items-center gap-1.5 shrink-0"
           >
             <Plus className="h-3.5 w-3.5" /> {current.newLabel}
           </button>

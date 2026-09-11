@@ -2,14 +2,14 @@ import { useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Phone, MapPin, MessageCircle, CalendarPlus, MonitorPlay, Trophy,
-  XCircle, Loader2, Clock, Radio, ExternalLink, StickyNote, Send,
+  XCircle, Loader2, Clock, Radio, ExternalLink, StickyNote, Send, Copy,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   useProspects, useUpdateProspect, useChannels, useProspectEvents,
   useMeetings, useDemos, useActivities, useCreateActivity,
-  brl, type Prospect, type ProspectStage,
+  brl, type Prospect, type ProspectStage, type Demo,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import { StatusBadge } from '@/components/admin/ui';
@@ -45,13 +45,116 @@ function duracao(ms: number) {
 /* ── Cartão ───────────────────────────────────────────────────── */
 function Cartao({ titulo, children, acao }: { titulo: string; children: React.ReactNode; acao?: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-black/[0.07] dark:border-white/[0.07] bg-black/[0.015] dark:bg-white/[0.02] p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-[11px] font-semibold tracking-wide uppercase text-foreground/40">{titulo}</h2>
+    <section className="rounded-2xl border border-black/[0.07] dark:border-white/[0.07] bg-black/[0.015] dark:bg-white/[0.02] p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <h2 className="text-[10.5px] font-semibold tracking-[0.18em] uppercase text-foreground/30 whitespace-nowrap">{titulo}</h2>
+        <div className="flex-1 h-px bg-black/[0.06] dark:bg-white/[0.07]" />
         {acao}
       </div>
       {children}
     </section>
+  );
+}
+
+/* ── Amostra em destaque ──────────────────────────────────────
+   A amostra é o argumento de venda: é o sistema do cliente, com a marca
+   dele, no ar. Ficava como uma linha de lista no rodapé da ficha, do
+   mesmo tamanho de uma anotação. Sobe para o topo, com o link à mão. */
+function AmostraDestaque({ amostra }: { amostra: Demo }) {
+  const cor = amostra.primary_color || '#E36C0A';
+  const logo = amostra.logo_url || amostra.site_logo_url;
+  const link = amostra.demo_url;
+  const rascunho = amostra.status === 'rascunho';
+
+  return (
+    <section className="rounded-2xl border border-black/[0.07] dark:border-white/[0.08] overflow-hidden bg-black/[0.015] dark:bg-white/[0.02]">
+      {/* Faixa com a marca do cliente — é o que ele vê ao abrir */}
+      <div
+        className="h-24 flex items-center justify-center relative"
+        style={{ background: `linear-gradient(135deg, ${cor}22, ${cor}0A)` }}
+      >
+        <div className="absolute inset-x-0 top-0 h-[3px]" style={{ background: cor }} />
+        {/* Sem logo entra o monograma, não o nome: o nome já está logo
+            abaixo, e repeti-lo faz o cartão parecer um erro de montagem. */}
+        {logo
+          ? <img src={logo} alt="" className="max-h-12 max-w-[55%] object-contain" />
+          : (
+            <span
+              className="h-12 w-12 rounded-2xl flex items-center justify-center text-[17px] font-bold tracking-tight"
+              style={{ background: `${cor}26`, color: cor }}
+            >
+              {amostra.company_name.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}
+            </span>
+          )}
+      </div>
+
+      <div className="p-5 space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10.5px] font-semibold tracking-[0.18em] uppercase text-foreground/30">Amostra</p>
+            <p className="text-[15px] font-semibold text-foreground mt-1 truncate">{amostra.company_name}</p>
+          </div>
+          <StatusBadge status={amostra.status} />
+        </div>
+
+        {rascunho ? (
+          <p className="text-[12px] text-amber-500/90 leading-snug">
+            O sistema desta amostra não subiu, então não há link para apresentar.
+            Abra a aba Amostras e use "Tentar de novo".
+          </p>
+        ) : (
+          <div className="space-y-2.5">
+            <Campo
+              rotulo="Link"
+              /* Sem o https:// e sem o host: o que distingue uma amostra da
+                 outra é o slug, e é ele que precisa caber na linha. */
+              valor={link ? link.replace(/^https?:\/\//, '') : '—'}
+              copiar={link ?? undefined}
+            />
+            <Campo rotulo="Login" valor={amostra.admin_email ?? '—'} copiar={amostra.admin_email ?? undefined} />
+          </div>
+        )}
+
+        {!rascunho && link && (
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => { navigator.clipboard.writeText(link); toast.success('Link copiado'); }}
+              className="h-10 rounded-xl border border-black/[0.1] dark:border-white/[0.12] text-[12px] font-medium text-foreground/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Copy className="h-3.5 w-3.5" /> Copiar link
+            </button>
+            <a
+              href={link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-10 rounded-xl text-[12px] font-semibold flex items-center justify-center gap-1.5 transition-opacity hover:opacity-85"
+              style={{ background: cor, color: '#fff' }}
+            >
+              <ExternalLink className="h-3.5 w-3.5" /> Abrir amostra
+            </a>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/** Linha rótulo/valor com cópia — o valor é longo e ninguém digita à mão. */
+function Campo({ rotulo, valor, copiar }: { rotulo: string; valor: string; copiar?: string }) {
+  return (
+    <div className="flex items-center gap-3 min-w-0">
+      <span className="text-[11px] text-foreground/35 w-11 shrink-0">{rotulo}</span>
+      <span className="text-[11.5px] text-foreground/80 font-mono truncate flex-1" title={valor}>{valor}</span>
+      {copiar && (
+        <button
+          onClick={() => { navigator.clipboard.writeText(copiar); toast.success(`${rotulo} copiado`); }}
+          className="text-foreground/30 hover:text-foreground transition-colors shrink-0"
+          title={`Copiar ${rotulo.toLowerCase()}`}
+        >
+          <Copy className="h-3 w-3" />
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -164,28 +267,46 @@ export default function ProspectDetalhe() {
           <span>Funil</span>
         </button>
 
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <h1 className="text-[19px] font-bold text-foreground">{prospect.company_name}</h1>
-          <StatusBadge status={prospect.stage} />
-          {canal && (
-            <span
-              className="text-[11px] font-medium px-2 py-0.5 rounded-full border"
-              style={{ color: canal.color, borderColor: `${canal.color}55`, background: `${canal.color}14` }}
-            >
-              {canal.name}
-            </span>
-          )}
+        <div className="flex items-end gap-4 flex-wrap">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5 mb-2">
+              <p className="text-[11px] font-light tracking-[0.22em] uppercase text-primary">
+                {ROTULO_ETAPA[prospect.stage] ?? prospect.stage}
+              </p>
+              {canal && (
+                <>
+                  <span className="h-3 w-px bg-foreground/15" />
+                  <span className="text-[11px] font-light tracking-[0.12em] uppercase" style={{ color: canal.color }}>
+                    {canal.name}
+                  </span>
+                </>
+              )}
+            </div>
+            <h1 className="text-[26px] sm:text-[32px] font-bold text-foreground leading-[1.1] tracking-tight">
+              {prospect.company_name}
+            </h1>
+            {(prospect.city || prospect.state) && (
+              <p className="text-[12px] text-foreground/35 flex items-center gap-1.5 mt-1.5">
+                <MapPin className="h-3 w-3" /> {[prospect.city, prospect.state].filter(Boolean).join(' / ')}
+              </p>
+            )}
+          </div>
           {prospect.proposal_value ? (
-            <span className="text-[13px] text-foreground/50 tabular-nums ml-auto">
-              {brl(prospect.proposal_value)}<span className="text-[10px]">/mês</span>
-            </span>
+            <p className="text-[20px] font-semibold text-foreground tabular-nums ml-auto leading-none pb-1">
+              {brl(prospect.proposal_value)}
+              <span className="text-[11px] font-normal text-foreground/35">/mês</span>
+            </p>
           ) : null}
         </div>
+        <div className="h-[3px] w-14 bg-primary rounded-full mt-5" />
       </header>
 
       <main className="px-4 sm:px-6 py-5 max-w-5xl mx-auto grid gap-4 lg:grid-cols-[1fr_340px] items-start">
         {/* ── Coluna principal ───────────────────────────────── */}
         <div className="space-y-4 min-w-0">
+          {/* A amostra vem antes de tudo: é o que se mostra ao cliente. */}
+          {minhasAmostras.map((a) => <AmostraDestaque key={a.id} amostra={a} />)}
+
           {/* Ações */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <button
@@ -276,34 +397,6 @@ export default function ProspectDetalhe() {
                     {r.meet_link && (
                       <a href={r.meet_link} target="_blank" rel="noopener noreferrer" className="text-primary shrink-0">
                         <ExternalLink className="h-3 w-3" />
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Cartao>
-
-          {/* Amostras */}
-          <Cartao
-            titulo={`Amostras (${minhasAmostras.length})`}
-            acao={
-              <button onClick={() => setAmostraAberta(true)} className="text-[11.5px] text-primary hover:underline">
-                criar
-              </button>
-            }
-          >
-            {minhasAmostras.length === 0 ? (
-              <p className="text-[12.5px] text-foreground/35">Nenhuma amostra criada.</p>
-            ) : (
-              <ul className="space-y-2">
-                {minhasAmostras.map((a) => (
-                  <li key={a.id} className="flex items-center gap-2.5 text-[12.5px]">
-                    <span className="text-foreground truncate">{a.company_name}</span>
-                    <span className="text-[11px] text-foreground/40 capitalize">{a.status}</span>
-                    {a.demo_url && (
-                      <a href={a.demo_url} target="_blank" rel="noopener noreferrer" className="ml-auto text-primary flex items-center gap-1 shrink-0">
-                        abrir <ExternalLink className="h-3 w-3" />
                       </a>
                     )}
                   </li>
@@ -430,11 +523,6 @@ export default function ProspectDetalhe() {
             )}
           </Cartao>
 
-          {(prospect.city || prospect.state) && (
-            <p className="text-[11.5px] text-foreground/35 flex items-center gap-1.5 px-1">
-              <MapPin className="h-3 w-3" /> {[prospect.city, prospect.state].filter(Boolean).join(' / ')}
-            </p>
-          )}
         </div>
       </main>
 

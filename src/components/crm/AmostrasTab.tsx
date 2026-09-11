@@ -24,6 +24,61 @@ const copyText = (text: string, label: string) => {
   toast.success(`${label} copiado`);
 };
 
+/**
+ * Cria a empresa no sistema do lojista a partir da amostra e devolve o
+ * patch que a amostra precisa gravar.
+ *
+ * Vive fora dos dois componentes porque provisionar deixou de ser um passo
+ * separado: acontece junto com a criação. O botão "provisionar" continua
+ * existindo só para a amostra que ficou em rascunho porque o provisionamento
+ * falhou — e aí é o mesmo código que roda de novo.
+ */
+export async function provisionarAmostra(demo: Demo) {
+  const slug = `demo-${demo.slug}`;
+  const email = `${slug}@viapesados.com.br`;
+  const password = genPassword();
+  const provisioned = await provisionCompany({
+    company_name: demo.company_name,
+    company_slug: slug,
+    admin_email: email,
+    admin_password: password,
+    admin_full_name: demo.contact_name || `Demo ${demo.company_name}`,
+    logo_url: demo.logo_url ?? undefined,
+    site_logo_url: demo.site_logo_url ?? undefined,
+    brand_icon_url: demo.brand_icon_url ?? undefined,
+    banner_url: demo.banner_url ?? undefined,
+    favicon_url: demo.favicon_url ?? undefined,
+    contact_name: demo.contact_name ?? undefined,
+    primary_color: demo.primary_color ?? undefined,
+    hero_subtitle: demo.hero_subtitle ?? undefined,
+    hero_title: demo.hero_title ?? undefined,
+    hero_description: demo.hero_description ?? undefined,
+    about_photo_url: demo.about_photo_url ?? undefined,
+    about_title: demo.about_title ?? undefined,
+    about_text: demo.about_text ?? undefined,
+    address: demo.address ?? undefined,
+    city: demo.city ?? undefined,
+    state: demo.state ?? undefined,
+    business_hours: demo.business_hours ?? undefined,
+    maps_url: demo.maps_url ?? undefined,
+  });
+
+  // O slug pode ter mudado: repetir uma amostra da mesma empresa gera
+  // "demo-x-2". A URL precisa acompanhar, senão aponta para a antiga.
+  const usedSlug = provisioned.company_slug.replace(/^demo-/, '');
+  // A senha fica em system_credentials, fora do alcance de quem não é admin.
+  await saveSystemCredential({ demo_id: demo.id, email: provisioned.admin_email, password });
+
+  return {
+    id: demo.id,
+    status: 'provisionada' as const,
+    slug: usedSlug,
+    lojista_company_id: provisioned.company_id,
+    admin_email: provisioned.admin_email,
+    demo_url: demoUrl(usedSlug),
+  };
+}
+
 const HERO_FIELDS: { key: 'hero_subtitle' | 'hero_title' | 'hero_description'; label: string; placeholder: string; multiline?: boolean }[] = [
   { key: 'hero_subtitle',    label: 'Selo',      placeholder: 'Autoridade em Caminhões' },
   { key: 'hero_title',       label: 'Título',    placeholder: 'O caminhão certo, com quem entende do mercado' },
@@ -197,7 +252,7 @@ export function DemoDialog({
         }
         toast.success(demo.lojista_company_id ? 'Amostra atualizada e aplicada no sistema' : 'Amostra atualizada');
       } else {
-        await create.mutateAsync({
+        const nova = await create.mutateAsync({
           prospect_id: form.prospect_id || null,
           slug,
           ...campos,
@@ -214,7 +269,18 @@ export function DemoDialog({
         if (prospect) {
           await advance.mutateAsync({ id: prospect.id, from: prospect.stage, to: 'oportunidade' });
         }
-        toast.success('Amostra criada — provisione para gerar o sistema');
+
+        /* Provisiona agora. Deixar a amostra em rascunho esperando um
+           segundo clique não servia a ninguém: quem cria uma amostra quer
+           o sistema no ar, e o rascunho só criava a chance de apresentar
+           um link que não existe. Falhar aqui não perde o cadastro — a
+           amostra fica em rascunho e o botão refaz esta mesma chamada. */
+        try {
+          await update.mutateAsync(await provisionarAmostra(nova));
+          toast.success('Amostra criada e sistema no ar');
+        } catch (e) {
+          toast.warning(`Amostra criada, mas o sistema não subiu: ${(e as Error).message}. Use "Provisionar" na amostra.`);
+        }
       }
       onClose();
     } catch (e) {
@@ -395,49 +461,7 @@ function DemoCard({ demo, onEdit }: { demo: Demo; onEdit: (d: Demo) => void }) {
   const provision = async () => {
     setProvisioning(true);
     try {
-      const slug = `demo-${demo.slug}`;
-      const email = `${slug}@viapesados.com.br`;
-      const password = genPassword();
-      const provisioned = await provisionCompany({
-        company_name: demo.company_name,
-        company_slug: slug,
-        admin_email: email,
-        admin_password: password,
-        admin_full_name: demo.contact_name || `Demo ${demo.company_name}`,
-        logo_url: demo.logo_url ?? undefined,
-        site_logo_url: demo.site_logo_url ?? undefined,
-        brand_icon_url: demo.brand_icon_url ?? undefined,
-        banner_url: demo.banner_url ?? undefined,
-        favicon_url: demo.favicon_url ?? undefined,
-        contact_name: demo.contact_name ?? undefined,
-        primary_color: demo.primary_color ?? undefined,
-        hero_subtitle: demo.hero_subtitle ?? undefined,
-        hero_title: demo.hero_title ?? undefined,
-        hero_description: demo.hero_description ?? undefined,
-        about_photo_url: demo.about_photo_url ?? undefined,
-        about_title: demo.about_title ?? undefined,
-        about_text: demo.about_text ?? undefined,
-        address: demo.address ?? undefined,
-        city: demo.city ?? undefined,
-        state: demo.state ?? undefined,
-        business_hours: demo.business_hours ?? undefined,
-        maps_url: demo.maps_url ?? undefined,
-      });
-
-      // O slug pode ter mudado: repetir uma amostra da mesma empresa gera
-      // "demo-x-2". A URL precisa acompanhar, senão aponta para a antiga.
-      const usedSlug = provisioned.company_slug.replace(/^demo-/, '');
-
-      await update.mutateAsync({
-        id: demo.id,
-        status: 'provisionada',
-        slug: usedSlug,
-        lojista_company_id: provisioned.company_id,
-        admin_email: provisioned.admin_email,
-        demo_url: demoUrl(usedSlug),
-      });
-      // A senha fica em system_credentials, fora do alcance de quem não é admin.
-      await saveSystemCredential({ demo_id: demo.id, email: provisioned.admin_email, password });
+      await update.mutateAsync(await provisionarAmostra(demo));
       toast.success('Sistema de demonstração criado!');
     } catch (e) {
       toast.error((e as Error).message || 'Erro ao provisionar');
@@ -499,15 +523,23 @@ function DemoCard({ demo, onEdit }: { demo: Demo; onEdit: (d: Demo) => void }) {
         </div>
 
         <div className="mt-auto flex flex-col gap-1.5">
+          {/* Rascunho deixou de ser estado normal: a criação já provisiona.
+              Chegar aqui significa que o provisionamento falhou, então o
+              texto diz isso em vez de fingir que era um passo previsto. */}
           {demo.status === 'rascunho' && (
-            <button
-              onClick={provision}
-              disabled={provisioning}
-              className="h-9 rounded-xl bg-primary text-primary-foreground text-[12px] font-semibold hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-1.5"
-            >
-              {provisioning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5" />}
-              Provisionar sistema
-            </button>
+            <>
+              <p className="text-[11px] text-amber-500/90 leading-snug">
+                O sistema desta amostra não subiu. Sem ele não há link para apresentar.
+              </p>
+              <button
+                onClick={provision}
+                disabled={provisioning}
+                className="h-9 rounded-xl bg-primary text-primary-foreground text-[12px] font-semibold hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-1.5"
+              >
+                {provisioning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5" />}
+                Tentar de novo
+              </button>
+            </>
           )}
 
           {noAr && (
