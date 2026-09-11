@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Check, Copy, FileText, KeyRound, Link2, Loader2, Monitor, Sparkles, Trophy,
+  ArrowLeft, Check, FileText, KeyRound, Link2, Loader2, Trophy,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
-  useProspects, useRegisterSale, usePlans, useCriarAssinaturaAsaas, useDemos, useUpdateDemo,
+  useProspects, useRegisterSale, useCriarAssinaturaAsaas, useDemos, useUpdateDemo,
   useUpdateClient, useTeam, adotarAmostra, saveSystemCredential, setCompanyChannels,
   genPassword, slugify, brlFull,
 } from '@/hooks/useAdmin';
@@ -102,7 +102,7 @@ const vazio = {
   company_name: '', legal_name: '', cnpj: '', address: '',
   legal_rep_name: '', legal_rep_cpf: '',
   contact_name: '', whatsapp: '', city: '', state: '',
-  plan_id: '', plan: '', mrr: '', recurrence: 'mensal', canais: [] as string[],
+  mrr: '', canais: [] as string[],
   gerar_cobranca: true,
   acesso_nome: '', acesso_email: '',
   demo_id: '',
@@ -122,7 +122,6 @@ export default function RegistrarVenda() {
   const navigate = useNavigate();
   const { member } = useAuth();
   const { data: prospects = [] } = useProspects();
-  const { data: planos = [] } = usePlans();
   const { data: demos = [] } = useDemos();
   const { data: equipe = [] } = useTeam();
   const register = useRegisterSale();
@@ -136,38 +135,19 @@ export default function RegistrarVenda() {
   );
 
   const [form, setForm] = useState(vazio);
+  /* Senha gerada e nunca mostrada: quem define a dele é o próprio cliente,
+     pelo link de primeiro acesso. Esta fica guardada em credenciais do
+     sistema só como caminho de recuperação para o suporte. */
   const [senha] = useState(genPassword());
   const [salvando, setSalvando] = useState(false);
   const set = (k: keyof typeof vazio, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
 
-  /* Amostras adotáveis, as mais prováveis primeiro.
-     Filtrar por prospect_id parecia óbvio e estava errado: na prática toda
-     amostra é criada com prospect_id nulo, então o filtro não devolveria
-     nenhuma e a venda criaria um sistema vazio sem dizer por quê. Aqui a
-     lista mostra tudo que é adotável e ordena pelo que combina — quem
-     escolhe é o operador, que sabe qual apresentou. */
-  const normaliza = (v?: string | null) =>
-    (v ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-
-  const amostras = useMemo(() => {
-    const adotaveis = demos.filter((d) => d.lojista_company_id
-      && d.status !== 'descartada' && d.status !== 'convertida');
-    const alvo = normaliza(prospect?.company_name);
-    const peso = (d: typeof adotaveis[number]) =>
-      d.prospect_id && d.prospect_id === prospectId ? 0
-      : alvo && normaliza(d.company_name) === alvo ? 1
-      : 2;
-    return [...adotaveis].sort((a, b) => peso(a) - peso(b));
-  }, [demos, prospectId, prospect?.company_name]);
-
-  /** Só pré-seleciona quando não há dúvida de qual é. */
-  const amostraObvia = useMemo(() => {
-    const alvo = normaliza(prospect?.company_name);
-    const doProspect = amostras.filter((d) => d.prospect_id && d.prospect_id === prospectId);
-    if (doProspect.length === 1) return doProspect[0].id;
-    const porNome = alvo ? amostras.filter((d) => normaliza(d.company_name) === alvo) : [];
-    return porNome.length === 1 ? porNome[0].id : '';
-  }, [amostras, prospectId, prospect?.company_name]);
+  /** As amostras que dá para adotar. Quem escolhe é quem apresentou. */
+  const amostras = useMemo(
+    () => demos.filter((d) => d.lojista_company_id
+      && d.status !== 'descartada' && d.status !== 'convertida'),
+    [demos],
+  );
 
   useEffect(() => {
     setForm((f) => ({
@@ -180,15 +160,13 @@ export default function RegistrarVenda() {
       mrr: moedaDeNumero(prospect?.proposal_value),
       acesso_nome: prospect?.contact_name ?? '',
       owner_id: prospect?.owner_id ?? member?.id ?? '',
-      demo_id: f.demo_id || amostraObvia,
+      demo_id: f.demo_id,
     }));
-  }, [prospect?.id, amostraObvia, member?.id]);
+  }, [prospect?.id, member?.id]);
 
   // O campo é texto mascarado ("1.200,00"): Number() nele daria 1.2, e este
   // número vira a cobrança no Asaas.
   const mrrNum = valorDaMoeda(form.mrr) ?? 0;
-  // O nome é editável: compara com o que está na tela, não só com o prospect.
-  const nomeAlvo = normaliza(form.company_name || prospect?.company_name);
   const amostra = amostras.find((d) => d.id === form.demo_id) ?? null;
 
   const alternarCanal = (cid: string) =>
@@ -227,10 +205,10 @@ export default function RegistrarVenda() {
           email,
           city: form.city || null,
           state: form.state || null,
-          plan: form.plan || null,
-          plan_id: form.plan_id || null,
           mrr: mrrNum,
-          recurrence: form.recurrence as 'mensal' | 'anual' | 'unico',
+          // Só existe contrato mensal. O campo continua no banco porque
+          // clientes antigos têm outros valores gravados.
+          recurrence: 'mensal' as const,
           canais: form.canais,
           owner_id: form.owner_id || member?.id || null,
         },
@@ -270,7 +248,7 @@ export default function RegistrarVenda() {
         }
       }
 
-      if (form.gerar_cobranca && form.recurrence === 'mensal' && mrrNum > 0) {
+      if (form.gerar_cobranca && mrrNum > 0) {
         try {
           await gerarLink.mutateAsync({ client_id: client.id, valor: mrrNum });
           toast.success('Venda registrada e cobrança mensal criada');
@@ -349,20 +327,10 @@ export default function RegistrarVenda() {
                   <input className={campo} placeholder="Nome de quem recebe" value={form.acesso_nome} onChange={(e) => set('acesso_nome', e.target.value)} />
                   <input className={campo} type="email" placeholder="E-mail do primeiro acesso *" value={form.acesso_email} onChange={(e) => set('acesso_email', e.target.value)} />
                 </div>
-                <div className="flex items-center gap-2.5 px-3.5 h-11 rounded-xl border border-black/[0.1] dark:border-white/[0.1] bg-background">
-                  <KeyRound className="h-3.5 w-3.5 text-foreground/35 shrink-0" />
-                  <span className="text-[12.5px] font-mono text-foreground/70 truncate flex-1">{senha}</span>
-                  <button
-                    type="button"
-                    onClick={() => { navigator.clipboard.writeText(senha); toast.success('Senha copiada'); }}
-                    className="text-[11px] text-primary hover:opacity-70 flex items-center gap-1 shrink-0"
-                  >
-                    <Copy className="h-3 w-3" /> copiar
-                  </button>
-                </div>
-                <p className="text-[11px] text-foreground/40 leading-snug px-1">
-                  A senha é gerada agora e guardada em credenciais do sistema, que só o admin lê.
-                  Ela vai junto com o aviso de liberação de acesso.
+                <p className="text-[11px] text-foreground/45 leading-snug px-1 flex items-start gap-1.5">
+                  <KeyRound className="h-3 w-3 mt-0.5 shrink-0" />
+                  Não há senha a combinar. Quando você liberar o acesso, ele recebe no WhatsApp um
+                  link de primeiro acesso e define a própria senha. O link vale 24 horas.
                 </p>
               </div>
             </Secao>
@@ -370,104 +338,34 @@ export default function RegistrarVenda() {
             <Secao
               numero="03"
               titulo="Vincular projeto a"
-              descricao="A amostra que ele viu já tem a identidade visual, o site, o domínio e os canais montados. Ela passa a ser o sistema real da empresa."
+              descricao="O e-mail do sistema que passa a ser dele. A amostra escolhida vira o sistema real da empresa."
             >
-              <div className="space-y-1.5">
+              <select className={campo} value={form.demo_id} onChange={(e) => set('demo_id', e.target.value)}>
+                <option value="">Criar um sistema novo depois</option>
                 {amostras.map((d) => (
-                  <Opcao
-                    key={d.id}
-                    ligada={form.demo_id === d.id}
-                    onClick={() => set('demo_id', form.demo_id === d.id ? '' : d.id)}
-                    titulo={
-                      <span className="flex items-center gap-1.5">
-                        <Sparkles className="h-3 w-3 text-primary" /> {d.company_name}
-                      </span>
-                    }
-                    sub={
-                      <>
-                        {d.admin_email ?? d.slug}
-                        {!!nomeAlvo && normaliza(d.company_name) !== nomeAlvo && (
-                          <span className="block text-amber-500/80">
-                            Outro nome de empresa — confira se foi esta que você apresentou.
-                          </span>
-                        )}
-                      </>
-                    }
-                  />
+                  <option key={d.id} value={d.id}>{d.admin_email ?? d.slug}</option>
                 ))}
-                <Opcao
-                  tom="neutro"
-                  ligada={!form.demo_id}
-                  onClick={() => set('demo_id', '')}
-                  titulo={
-                    <span className="flex items-center gap-1.5">
-                      <Monitor className="h-3 w-3 text-foreground/40" /> Criar um sistema novo depois
-                    </span>
-                  }
-                  sub="Nasce vazio, pela ficha do cliente. A amostra apresentada não é aproveitada."
-                />
-                {amostra && (
-                  <p className="text-[11px] text-foreground/45 leading-snug px-1 pt-2">
-                    Ao salvar, o conteúdo de demonstração dessa amostra é apagado — os veículos,
-                    clientes, vendas e funcionários fictícios. Ficam a identidade visual, o site,
-                    o domínio, os cargos, o plano de contas e as etiquetas. O login antigo da
-                    amostra deixa de funcionar.
-                  </p>
-                )}
-                {!amostras.length && (
-                  <p className="text-[11px] text-foreground/40 leading-snug px-1 pt-2">
-                    Não há nenhuma amostra provisionada disponível. O sistema será criado vazio.
-                  </p>
-                )}
-              </div>
+              </select>
+              {amostra && (
+                <p className="text-[11px] text-foreground/45 leading-snug px-1 pt-2.5">
+                  Ao salvar, o conteúdo de demonstração é apagado — veículos, clientes, vendas e
+                  funcionários fictícios. Ficam a identidade visual, o site, o domínio, os cargos,
+                  o plano de contas e as etiquetas. Este login deixa de funcionar.
+                </p>
+              )}
             </Secao>
 
-            <Secao numero="04" titulo="Contrato e canais" descricao="O valor do contrato e o que ele contratou.">
+            <Secao numero="04" titulo="Mensalidade e canais" descricao="O valor combinado e o que ele contratou.">
               <div className="space-y-2.5">
-                <div className="grid sm:grid-cols-3 gap-2.5">
-                  <select
-                    className={campo}
-                    value={form.plan_id}
-                    onChange={(e) => {
-                      const p = planos.find((x) => x.id === e.target.value);
-                      // O plano carrega o preço: digitar de novo abriria espaço
-                      // para vender o mesmo plano por valores diferentes.
-                      setForm((f) => ({
-                        ...f,
-                        plan_id: e.target.value,
-                        plan: p?.name ?? '',
-                        mrr: p && f.recurrence === 'mensal' ? moedaDeNumero(p.monthly_value) : f.mrr,
-                      }));
-                    }}
-                  >
-                    <option value="">Plano…</option>
-                    {planos.map((p) => <option key={p.id} value={p.id}>{p.name} — {brlFull(p.monthly_value)}/mês</option>)}
-                  </select>
-                  <input className={campo} inputMode="numeric" placeholder="Valor do contrato (R$)" value={form.mrr} onChange={(e) => set('mrr', mascaraMoeda(e.target.value))} />
-                  <select className={campo} value={form.recurrence} onChange={(e) => set('recurrence', e.target.value)}>
-                    <option value="mensal">Mensal</option>
-                    <option value="anual">Anual</option>
-                    <option value="unico">Único</option>
-                  </select>
-                </div>
-                {form.mrr && form.recurrence !== 'mensal' && (
-                  <p className="text-[11px] text-foreground/45 px-1">
-                    {form.recurrence === 'anual'
-                      ? `Contrato de ${brlFull(mrrNum)} por ano — entra como ${brlFull(Math.round(mrrNum / 12))} de MRR.`
-                      : 'Pagamento único não gera receita recorrente — o MRR deste cliente fica zerado.'}
-                  </p>
-                )}
+                {/* Um plano só, e a mensalidade é negociada por cliente —
+                    não há o que escolher aqui além do valor. */}
+                <input className={campo} inputMode="numeric" placeholder="Mensalidade (R$)" value={form.mrr} onChange={(e) => set('mrr', mascaraMoeda(e.target.value))} />
                 <Opcao
                   tom="emerald"
-                  ligada={form.gerar_cobranca && form.recurrence === 'mensal'}
-                  disabled={form.recurrence !== 'mensal'}
+                  ligada={form.gerar_cobranca}
                   onClick={() => set('gerar_cobranca', !form.gerar_cobranca)}
                   titulo={<span className="flex items-center gap-1.5"><Link2 className="h-3 w-3" /> Gerar cobrança mensal no Asaas</span>}
-                  sub={
-                    form.recurrence !== 'mensal' ? 'Disponível só para contrato mensal.'
-                    : form.mrr ? `${brlFull(mrrNum)} por mês, todo mês, no Pix, boleto ou cartão.`
-                    : 'Informe o valor acima para gerar.'
-                  }
+                  sub={form.mrr ? `${brlFull(mrrNum)} por mês, todo mês, no Pix, boleto ou cartão.` : 'Informe o valor acima para gerar.'}
                 />
                 <div className="pt-2 space-y-1.5">
                   <p className="text-[11.5px] font-medium text-foreground/70 px-1">Canais contratados</p>
@@ -498,12 +396,8 @@ export default function RegistrarVenda() {
               <p className="text-[10.5px] font-semibold tracking-widest uppercase text-foreground/30 mb-3">Resumo</p>
               <dl className="space-y-2.5 text-[12px]">
                 <div className="flex justify-between gap-3">
-                  <dt className="text-foreground/45">Contrato</dt>
+                  <dt className="text-foreground/45">Mensalidade</dt>
                   <dd className="text-foreground font-medium tabular-nums">{form.mrr ? brlFull(mrrNum) : '—'}</dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-foreground/45">Recorrência</dt>
-                  <dd className="text-foreground capitalize">{form.recurrence}</dd>
                 </div>
                 <div className="flex justify-between gap-3 min-w-0">
                   <dt className="text-foreground/45 shrink-0">Primeiro acesso</dt>

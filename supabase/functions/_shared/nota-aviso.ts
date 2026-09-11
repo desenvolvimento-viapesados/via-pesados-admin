@@ -26,10 +26,10 @@ export type ResultadoAviso =
   | { enviado: true; message_id?: string }
   | { enviado: false; motivo: string; aguardando?: boolean };
 
-/** Já saiu, com sucesso, um envio com este template e esta chave? */
-async function jaSaiu(db: Db, template: string, chaves: string[]): Promise<boolean> {
+/** Já saiu, com sucesso, um envio com um destes templates e esta chave? */
+async function jaSaiu(db: Db, templates: string[], chaves: string[]): Promise<boolean> {
   const { data } = await db.from('wa_envios')
-    .select('id').eq('template', template).in('chave', chaves)
+    .select('id').in('template', templates).in('chave', chaves)
     .not('enviado_em', 'is', null).limit(1);
   return !!data?.length;
 }
@@ -76,7 +76,12 @@ export async function enviarNotaFiscal(
     const primeira = !anteriores?.length;
 
     if (primeira) {
-      if (!(await jaSaiu(db, 'acesso_liberado', [`acesso_liberado:${cli.id}`]))) {
+      /* Dois nomes para o mesmo evento. O aviso de acesso saía como
+         'acesso_liberado', cujo botão tem URL fixa; passou a sair como
+         'acesso_equipe', que carrega o token do primeiro acesso. Clientes
+         avisados antes da troca têm o nome antigo gravado, e derrubá-los
+         aqui seguraria a nota deles para sempre. */
+      if (!(await jaSaiu(db, ['acesso_liberado', 'acesso_equipe'], [`acesso_liberado:${cli.id}`]))) {
         return { enviado: false, motivo: 'sistema ainda não liberado para o lojista', aguardando: true };
       }
     } else {
@@ -84,7 +89,7 @@ export async function enviarNotaFiscal(
       if (!pay) return { enviado: false, motivo: 'nota sem cobrança vinculada', aguardando: true };
       /* O mesmo template sai por dois eventos do Asaas — o que confirma e o
          que recebe. Qualquer um dos dois serve como "já avisamos". */
-      const ok = await jaSaiu(db, 'pagamento_confirmado', [`PAYMENT_RECEIVED:${pay}`, `PAYMENT_CONFIRMED:${pay}`]);
+      const ok = await jaSaiu(db, ['pagamento_confirmado'], [`PAYMENT_RECEIVED:${pay}`, `PAYMENT_CONFIRMED:${pay}`]);
       if (!ok) return { enviado: false, motivo: 'aviso de pagamento ainda não saiu', aguardando: true };
     }
   }

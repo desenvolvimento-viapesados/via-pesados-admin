@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
 
   try {
     const res = await fetch(
-      `https://graph.facebook.com/v21.0/${WABA}/message_templates?fields=name,status,category,language,rejected_reason&limit=100`,
+      `https://graph.facebook.com/v21.0/${WABA}/message_templates?fields=name,status,category,language,rejected_reason,components&limit=100`,
       { headers: { Authorization: `Bearer ${token}` } },
     );
     const dados = await res.json();
@@ -37,7 +37,21 @@ Deno.serve(async (req) => {
       return json(502, { ok: false, erro_meta: dados?.error ?? dados });
     }
 
-    const lista = (dados?.data ?? []) as Array<Record<string, string>>;
+    const lista = (dados?.data ?? []) as Array<Record<string, unknown>>;
+
+    /* Com ?template=<nome>, devolve o conteúdo daquele template em vez do
+       resumo. O corpo aprovado vive só na Meta — não está em migration nem
+       em código — e responder "como está o template?" exigia abrir o painel
+       da Meta e ler à mão. */
+    const url = new URL(req.url);
+    const pedido = url.searchParams.get('template');
+    if (pedido) {
+      const achado = lista.find((t) => t.name === pedido);
+      if (!achado) {
+        return json(404, { erro: `template "${pedido}" não existe`, disponiveis: lista.map((t) => t.name) });
+      }
+      return json(200, { template: achado });
+    }
     const porStatus: Record<string, number> = {};
     for (const t of lista) porStatus[t.status] = (porStatus[t.status] ?? 0) + 1;
 
