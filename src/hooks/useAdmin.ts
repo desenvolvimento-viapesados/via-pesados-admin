@@ -615,6 +615,40 @@ export const provisionCompany = async (
   return data;
 };
 
+/**
+ * A amostra vira o sistema do cliente.
+ *
+ * Ela já tem identidade visual, site, domínio, cargos e plano de contas
+ * montados na apresentação — foi vendo isso que o cliente comprou. O que
+ * não sobrevive é o conteúdo fictício: os 30 veículos, os 50 clientes e os
+ * 13 funcionários que existiam só para a tela não abrir vazia.
+ */
+export const adotarAmostra = async (input: {
+  /** company_id da amostra no projeto do lojista. */
+  company_id: string;
+  company_name: string;
+  company_slug: string;
+  /** Quem recebe o primeiro acesso. O login da amostra deixa de existir. */
+  admin_email: string;
+  admin_password: string;
+  admin_full_name?: string;
+  domains?: string[];
+  city?: string;
+  state?: string;
+  address?: string;
+}): Promise<{ company_id: string; company_slug: string; admin_email: string; limpeza: string }> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sessão expirada');
+  const res = await fetch(`${LOJISTA_FUNCTIONS_URL}/admin-provision`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ action: 'adotar_amostra', ...input }),
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error || 'Erro ao adotar a amostra');
+  return data;
+};
+
 export const updateCompanyBranding = async (input: {
   company_id: string;
   company_name?: string;

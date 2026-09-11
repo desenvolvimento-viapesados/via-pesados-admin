@@ -15,7 +15,6 @@ import { mascaraTelefone, soDigitos, mascaraMoeda, valorDaMoeda } from '@/lib/ma
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/admin/ui';
-import { RegistrarVendaDialog } from './RegistrarVendaDialog';
 
 const PIPELINE: { key: ProspectStage; label: string }[] = [
   { key: 'contato',      label: 'Contato' },
@@ -123,7 +122,6 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
   const navigate = useNavigate();
   const { data: prospects = [], isLoading } = useProspects();
   const update = useUpdateProspect();
-  const [saleFor, setSaleFor] = useState<Prospect | null>(null);
   const [reuniaoPara, setReuniaoPara] = useState<Prospect | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
 
@@ -146,7 +144,7 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
     // cliente provisionado, que é o estado que ninguém consegue explicar
     // depois.
     if (stage === 'vendido') {
-      setSaleFor(p);
+      navigate(`/crm/venda/${p.id}`);
       return;
     }
 
@@ -235,7 +233,6 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
       </div>
 
       <NewProspectDialog open={newOpen} onClose={onCloseNew} />
-      <RegistrarVendaDialog open={!!saleFor} prospect={saleFor} onClose={() => setSaleFor(null)} />
       {reuniaoPara && (
         <AgendarReuniaoDialog
           prospect={reuniaoPara}

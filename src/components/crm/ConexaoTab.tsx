@@ -1,9 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Rocket, ChevronRight, CheckCircle2, Globe, FileText } from 'lucide-react';
 import { useClients, useOnboardingProgress, useProspects, brl, type Prospect } from '@/hooks/useAdmin';
 import { SectionHeader, StatusBadge, EmptyState, Panel, InitialAvatar } from '@/components/admin/ui';
-import { RegistrarVendaDialog } from './RegistrarVendaDialog';
 
 /**
  * Conexão — o fim da esteira: fecha a venda, emite o contrato
@@ -14,7 +13,6 @@ export function ConexaoTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseN
   const { data: clients = [], isLoading } = useClients();
   const { data: prospects = [] } = useProspects();
   const { data: progress = {} } = useOnboardingProgress();
-  const [saleFor, setSaleFor] = useState<Prospect | null>(null);
 
   /** Chegaram na etapa Fechamento e ainda não viraram cliente. */
   const closing = useMemo(() => {
@@ -28,7 +26,14 @@ export function ConexaoTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseN
     .sort((a, b) => (b.activated_at ?? '').localeCompare(a.activated_at ?? ''))
     .slice(0, 5);
 
-  const closeDialog = () => { setSaleFor(null); onCloseNew(); };
+  /* O botão "novo" do cabeçalho do CRM abria o pop-up de venda aqui. Agora a
+     venda é uma página, então a aba só encaminha e devolve o estado ao pai. */
+  useEffect(() => {
+    if (!newOpen) return;
+    onCloseNew();
+    navigate('/crm/venda');
+  }, [newOpen]);
+
   const nothing = closing.length === 0 && connecting.length === 0 && recentlyLive.length === 0;
 
   if (isLoading) {
@@ -58,7 +63,7 @@ export function ConexaoTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseN
                   </p>
                 </div>
                 <button
-                  onClick={() => setSaleFor(p)}
+                  onClick={() => navigate(`/crm/venda/${p.id}`)}
                   className="h-8 px-3 rounded-lg bg-emerald-500/15 text-emerald-500 text-[11.5px] font-semibold hover:bg-emerald-500/25 transition-colors flex items-center gap-1.5 shrink-0"
                 >
                   <FileText className="h-3.5 w-3.5" /> Registrar venda
@@ -146,7 +151,6 @@ export function ConexaoTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseN
         </>
       )}
 
-      <RegistrarVendaDialog open={newOpen || !!saleFor} prospect={saleFor} onClose={closeDialog} />
     </div>
   );
 }

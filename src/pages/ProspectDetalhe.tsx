@@ -13,7 +13,6 @@ import {
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import { StatusBadge } from '@/components/admin/ui';
-import { RegistrarVendaDialog } from '@/components/crm/RegistrarVendaDialog';
 import { AgendarReuniaoDialog } from '@/components/crm/AgendarReuniaoDialog';
 import { DemoDialog } from '@/components/crm/AmostrasTab';
 import { CidadeUF } from '@/components/crm/CidadeUF';
@@ -71,7 +70,6 @@ export default function ProspectDetalhe() {
   const atualizar = useUpdateProspect();
   const criarAtividade = useCreateActivity();
 
-  const [vendaAberta, setVendaAberta] = useState(false);
   const [reuniaoAberta, setReuniaoAberta] = useState(false);
   const [amostraAberta, setAmostraAberta] = useState(false);
   const [perdaAberta, setPerdaAberta] = useState(false);
@@ -210,7 +208,7 @@ export default function ProspectDetalhe() {
               <XCircle className="h-3.5 w-3.5" /> Perdido
             </button>
             <button
-              onClick={() => setVendaAberta(true)}
+              onClick={() => navigate(`/crm/venda/${prospect.id}`)}
               disabled={prospect.stage === 'vendido'}
               className="h-10 rounded-xl bg-emerald-500 text-white text-[12px] font-semibold hover:opacity-90 transition-all disabled:opacity-40 flex items-center justify-center gap-1.5"
             >
@@ -448,7 +446,6 @@ export default function ProspectDetalhe() {
         />
       )}
       <DemoDialog open={amostraAberta} onClose={() => setAmostraAberta(false)} defaultProspectId={prospect.id} />
-      <RegistrarVendaDialog open={vendaAberta} prospect={vendaAberta ? prospect : null} onClose={() => setVendaAberta(false)} />
     </div>
   );
 }

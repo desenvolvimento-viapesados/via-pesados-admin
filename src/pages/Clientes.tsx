@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Building2, ChevronRight, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useClients, useOnboardingProgress, brl, type Client } from '@/hooks/useAdmin';
-import { RegistrarVendaDialog } from '@/components/crm/RegistrarVendaDialog';
 import { StatusBadge, EmptyState, Panel, InitialAvatar } from '@/components/admin/ui';
 
 const inputCls =
@@ -14,13 +13,12 @@ export default function Clientes() {
   const [params, setParams] = useSearchParams();
   const { data: clients = [], isLoading } = useClients();
   const { data: progress = {} } = useOnboardingProgress();
-  const [newOpen, setNewOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'todos' | Client['status']>('todos');
 
   useEffect(() => {
     if (params.get('new') === '1') {
-      setNewOpen(true);
+      navigate('/crm/venda');
       params.delete('new');
       setParams(params, { replace: true });
     }
@@ -56,7 +54,7 @@ export default function Clientes() {
           <p className="text-[12px] text-foreground/40 mt-0.5">Carteira e contas da plataforma</p>
         </div>
         <button
-          onClick={() => setNewOpen(true)}
+          onClick={() => navigate('/crm/venda')}
           className="h-9 px-3.5 rounded-xl bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 transition-all flex items-center gap-1.5"
         >
           <Plus className="h-3.5 w-3.5" /> Cliente
@@ -137,7 +135,6 @@ export default function Clientes() {
         </Panel>
       )}
 
-      <RegistrarVendaDialog open={newOpen} onClose={() => setNewOpen(false)} />
     </div>
   );
 }
