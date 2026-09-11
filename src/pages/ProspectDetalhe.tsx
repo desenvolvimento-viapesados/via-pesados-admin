@@ -16,6 +16,9 @@ import { StatusBadge } from '@/components/admin/ui';
 import { RegistrarVendaDialog } from '@/components/crm/RegistrarVendaDialog';
 import { AgendarReuniaoDialog } from '@/components/crm/AgendarReuniaoDialog';
 import { DemoDialog } from '@/components/crm/AmostrasTab';
+import { CidadeUF } from '@/components/crm/CidadeUF';
+import { CampoMascarado } from '@/components/crm/CampoMascarado';
+import { mascaraTelefone, mascaraMoeda, moedaDeNumero, valorDaMoeda } from '@/lib/mascaras';
 
 const inputCls =
   'w-full h-10 px-3 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50 transition-colors';
@@ -357,11 +360,12 @@ export default function ProspectDetalhe() {
                 onBlur={(e) => salvarCampo('contact_name', e.target.value.trim() || null)}
               />
               <div className="flex items-center gap-2">
-                <input
+                <CampoMascarado
                   className={inputCls}
-                  defaultValue={prospect.whatsapp ?? ''}
+                  valorInicial={mascaraTelefone(prospect.whatsapp)}
+                  mascara={mascaraTelefone}
                   placeholder="WhatsApp"
-                  onBlur={(e) => salvarCampo('whatsapp', e.target.value.trim() || null)}
+                  aoSair={(v) => salvarCampo('whatsapp', v || null)}
                 />
                 {prospect.whatsapp && (
                   <a
@@ -373,33 +377,20 @@ export default function ProspectDetalhe() {
                   </a>
                 )}
               </div>
-              <input
-                className={inputCls}
-                defaultValue={prospect.email ?? ''}
-                placeholder="E-mail"
-                onBlur={(e) => salvarCampo('email', e.target.value.trim() || null)}
+              <CidadeUF
+                uf={prospect.state ?? ''}
+                cidade={prospect.city ?? ''}
+                onChange={({ uf, cidade }) => {
+                  salvarCampo('state', uf || null);
+                  salvarCampo('city', cidade || null);
+                }}
               />
-              <div className="grid grid-cols-[1fr_72px] gap-2.5">
-                <input
-                  className={inputCls}
-                  defaultValue={prospect.city ?? ''}
-                  placeholder="Cidade"
-                  onBlur={(e) => salvarCampo('city', e.target.value.trim() || null)}
-                />
-                <input
-                  className={inputCls}
-                  defaultValue={prospect.state ?? ''}
-                  placeholder="UF"
-                  maxLength={2}
-                  onBlur={(e) => salvarCampo('state', e.target.value.trim().toUpperCase() || null)}
-                />
-              </div>
-              <input
+              <CampoMascarado
                 className={inputCls}
-                type="number"
-                defaultValue={prospect.proposal_value ?? ''}
+                valorInicial={moedaDeNumero(prospect.proposal_value)}
+                mascara={mascaraMoeda}
                 placeholder="Mensalidade proposta (R$)"
-                onBlur={(e) => salvarCampo('proposal_value', e.target.value ? Number(e.target.value) : null)}
+                aoSair={(v) => salvarCampo('proposal_value', valorDaMoeda(v))}
               />
             </div>
           </Cartao>
