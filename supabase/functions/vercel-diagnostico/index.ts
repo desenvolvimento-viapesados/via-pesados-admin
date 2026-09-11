@@ -30,8 +30,23 @@ Deno.serve(async () => {
   const proj = Deno.env.get('VERCEL_PROJECT_ID') ?? '';
   const dominios = proj ? await pegar(`/v9/projects/${proj}/domains${q}`) : { http: 0, dados: null };
 
+  /* Os últimos deploys. Existe porque detectar publicação pelo nome do
+     arquivo do bundle já falhou duas vezes: o padrão muda entre projetos
+     (index- num, main- no outro) e o detector concluía "nada mudou". A
+     API diz o estado sem adivinhação. */
+  const deploys = proj ? await pegar(`/v6/deployments?projectId=${proj}&limit=5${time ? `&teamId=${time}` : ''}`) : { http: 0, dados: null };
+
   return json(200, {
     token: projetos.http === 200 ? 'válido' : 'sem acesso',
+    deploys: deploys.http === 200
+      ? (deploys.dados?.deployments ?? []).map((d: Record<string, any>) => ({
+          estado: d.state ?? d.readyState,
+          criado: d.createdAt ? new Date(d.createdAt).toISOString() : null,
+          alvo: d.target,
+          commit: d.meta?.githubCommitSha?.slice(0, 7),
+          mensagem: String(d.meta?.githubCommitMessage ?? '').split('\n')[0].slice(0, 60),
+        }))
+      : { http: deploys.http },
     escopo: times.http === 403 ? 'projeto (não vê o time — é o esperado)' : 'time',
     projeto_fixado: proj || null,
     dominios_do_projeto: dominios.http === 200
