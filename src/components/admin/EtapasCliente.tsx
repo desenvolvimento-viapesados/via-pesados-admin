@@ -182,7 +182,14 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
   const verificar = async () => {
     if (!limpo) { toast.error('Informe o domínio'); return; }
     setVerificando(true);
-    try { setDiag(await consultar(limpo)); }
+    try {
+      const d = await consultar(limpo);
+      setDiag(d);
+      /* Certificado se resolve sozinho: liga a espera em vez de deixar o
+         operador conferindo de minuto em minuto. */
+      if (d?.passo.codigo === 'certificado') setEmLaco(true);
+      if (d?.passo.codigo === 'pronto') { setEmLaco(false); onDone(); }
+    }
     catch (e) { toast.error((e as Error).message); }
     finally { setVerificando(false); }
   };
@@ -408,11 +415,19 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
               'rounded-xl p-3 text-[11.5px] space-y-1.5 border',
               diag.passo.codigo === 'pronto'
                 ? 'bg-emerald-500/[0.08] border-emerald-500/25 text-emerald-400/90'
+                : diag.passo.codigo === 'certificado'
+                  ? 'bg-primary/[0.06] border-primary/20 text-primary/90'
                 : diag.passo.dono === 'voce'
                   ? 'bg-primary/[0.08] border-primary/25 text-primary'
                   : 'bg-amber-500/[0.08] border-amber-500/25 text-amber-400/90',
             )}>
               <p className="font-semibold">{diag.passo.titulo}</p>
+              {diag.passo.codigo === 'certificado' && (
+                <p className="text-foreground/50">
+                  O DNS está certo e a Vercel já responde pelo endereço. Falta só o certificado
+                  HTTPS, que ela emite sozinha — costuma levar poucos minutos. Não há nada a fazer.
+                </p>
+              )}
               {!registrado && (
                 /* O diagnóstico só falava do lado do cliente. Com o domínio
                    sem registro do nosso lado, o DNS certo não basta — e a

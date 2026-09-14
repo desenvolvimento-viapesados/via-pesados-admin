@@ -109,16 +109,28 @@ Deno.serve(async (req) => {
     /* Se já responde e é a nossa aplicação, o resto é história. O
        x-vercel-id prova que a resposta veio do nosso projeto, e não de uma
        página de estacionamento do registrador. */
-    let servindo = false;
-    let httpStatus: number | null = null;
-    try {
-      const r = await fetch(`https://${d}`, { redirect: 'follow' });
-      httpStatus = r.status;
-      servindo = r.ok && r.headers.has('x-vercel-id');
-    } catch { /* domínio ainda sem TLS ou sem resposta */ }
+    /* HTTP e HTTPS separados. Só testar HTTPS confundia dois estados muito
+       diferentes: "a Vercel não conhece este domínio" e "a Vercel já serve,
+       falta o certificado". O segundo se resolve sozinho em minutos; o
+       primeiro exige ação. Dizer ao operador para adicionar na Vercel um
+       domínio que a Vercel já serve é mandá-lo procurar problema onde não há. */
+    const tenta = async (url: string) => {
+      try {
+        const r = await fetch(url, { redirect: 'follow' });
+        return { status: r.status, vercel: r.headers.has('x-vercel-id'), ok: r.ok };
+      } catch { return null; }
+    };
+    const viaHttps = await tenta(`https://${d}`);
+    const viaHttp = viaHttps?.ok ? null : await tenta(`http://${d}`);
+
+    const servindo = !!(viaHttps?.ok && viaHttps.vercel);
+    const vercelConhece = servindo || !!(viaHttp?.ok && viaHttp.vercel);
+    const httpStatus = viaHttps?.status ?? viaHttp?.status ?? null;
 
     const passo = servindo
       ? { codigo: 'pronto', titulo: 'Domínio conectado e no ar', dono: null }
+      : vercelConhece
+        ? { codigo: 'certificado', titulo: 'Quase lá — a Vercel está emitindo o certificado', dono: null }
       : apontaVercel
         ? { codigo: 'falta_vercel', titulo: 'DNS já aponta certo — falta adicionar o domínio no projeto Vercel', dono: 'voce' }
         : temDns
@@ -132,7 +144,7 @@ Deno.serve(async (req) => {
       dns_provedor: { nome: provedor, nameservers: ns },
       www: { A: wwwA, CNAME: wwwC, ok: wwwOk },
       dns: { A: as, CNAME: cnames, aponta_para_vercel: apontaVercel, zona_no_ar: zonaNoAr },
-      http: { status: httpStatus, servindo_nosso_app: servindo },
+      http: { status: httpStatus, servindo_nosso_app: servindo, vercel_conhece: vercelConhece },
       // O que o cliente precisa configurar, pronto para copiar.
       configurar: { tipo_A: VERCEL_IP, tipo_CNAME: `cname.${VERCEL_CNAME}` },
     });
