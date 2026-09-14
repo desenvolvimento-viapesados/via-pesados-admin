@@ -282,6 +282,26 @@ export default function Onboarding() {
           />
         </div>
 
+        {/* Sem sistema, nenhuma etapa daqui funciona: o domínio publica
+            página de erro, a identidade não tem onde ser aplicada e não há
+            login para liberar. Trava antes de deixar o operador tentar. */}
+        {!client.lojista_company_id && (
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.05] p-5 sm:p-6 mb-4 space-y-3">
+            <p className="text-[13px] font-semibold text-amber-400">Este cliente ainda não tem sistema</p>
+            <p className="text-[12px] text-foreground/55 leading-snug">
+              Nenhuma etapa abaixo funciona sem ele: o domínio publicaria uma página de erro,
+              e não existe login para liberar. Crie o sistema na ficha — se houver amostra
+              apresentada, aproveite ela para o cliente já encontrar a marca dele montada.
+            </p>
+            <button
+              onClick={() => navigate(`/clientes/${client.id}`)}
+              className="h-10 px-4 rounded-xl bg-amber-500 text-black text-[12.5px] font-semibold hover:opacity-90 transition-opacity inline-flex items-center gap-1.5"
+            >
+              Ir para a ficha e criar o sistema <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+
         <div className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.015] dark:bg-white/[0.02] p-5 sm:p-6">
           {noFim ? (
             <div className="space-y-4">

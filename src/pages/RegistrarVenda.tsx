@@ -433,7 +433,10 @@ export default function RegistrarVenda() {
                 </div>
                 <div className="flex justify-between gap-3 min-w-0">
                   <dt className="text-foreground/45 shrink-0">Sistema</dt>
-                  <dd className="text-foreground truncate text-right">
+                  {/* Âmbar quando há amostra disponível e nenhuma foi escolhida:
+                      é quase sempre esquecimento, e o custo é um cliente sem
+                      sistema, que trava o onboarding inteiro depois. */}
+                  <dd className={cn('truncate text-right', amostra ? 'text-foreground' : amostras.length ? 'text-amber-400' : 'text-foreground')}>
                     {amostra ? `amostra de ${amostra.company_name}` : 'novo, vazio'}
                   </dd>
                 </div>
@@ -452,6 +455,13 @@ export default function RegistrarVenda() {
               {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trophy className="h-4 w-4" />}
               {salvando ? 'Fechando…' : 'Registrar venda'}
             </button>
+            {!amostra && amostras.length > 0 && (
+              <p className="text-[11px] text-amber-500/90 leading-snug px-1">
+                Há {amostras.length === 1 ? 'uma amostra provisionada' : `${amostras.length} amostras provisionadas`} e
+                nenhuma foi vinculada. O cliente vai nascer sem sistema, e o onboarding fica parado
+                até você criar um.
+              </p>
+            )}
             <p className="text-[11px] text-foreground/35 leading-snug px-1 flex items-start gap-1.5">
               <FileText className="h-3 w-3 mt-0.5 shrink-0" />
               Cria o cliente, emite o contrato em rascunho e{amostra ? ' transforma a amostra no sistema dele' : ' deixa o sistema para criar depois'}.
