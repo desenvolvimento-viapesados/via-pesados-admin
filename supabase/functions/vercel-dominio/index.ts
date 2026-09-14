@@ -85,15 +85,24 @@ Deno.serve(async (req) => {
        sobe, sem erro em lugar nenhum. */
     const config = async (nome: string) => {
       try {
-        const r = await fetch(`${API}/v9/projects/${projeto}/domains/${nome}/config${q}`, { headers: h });
-        if (!r.ok) return null;
+        /* /v6/domains/{d}/config — o caminho é este. Eu tinha inventado um
+           dentro de /projects/, que devolvia 404 e caía no fallback sem
+           ninguém perceber: exatamente o tipo de falha silenciosa que esta
+           função existe para evitar. */
+        const r = await fetch(`${API}/v6/domains/${nome}/config${q}`, { headers: h });
         const c = await r.json();
+        if (!r.ok) return { erro: c?.error?.message ?? `HTTP ${r.status}` };
+        /* rank=1 é o preferido; a API devolve uma lista ordenada. */
+        const melhor = (lista: unknown) =>
+          Array.isArray(lista)
+            ? (lista.find((x: { rank?: number }) => x?.rank === 1) ?? lista[0])?.value ?? null
+            : null;
         return {
           mal_configurado: c?.misconfigured ?? null,
-          ipv4: c?.recommendedIPv4?.[0]?.value ?? c?.recommendedIPv4 ?? null,
-          cname: c?.recommendedCNAME?.[0]?.value ?? c?.recommendedCNAME ?? null,
+          ipv4: melhor(c?.recommendedIPv4),
+          cname: melhor(c?.recommendedCNAME),
         };
-      } catch { return null; }
+      } catch (e) { return { erro: e instanceof Error ? e.message : 'falha' }; }
     };
 
     if (acao === 'config') {

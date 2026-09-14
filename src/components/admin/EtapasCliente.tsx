@@ -73,6 +73,11 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
      sem erro em lugar nenhum. A constante fica só como rede de segurança
      quando a API não responde. */
   const [alvo, setAlvo] = useState<{ ipv4: string | null; cname: string | null } | null>(null);
+  /* Perguntei e não obtive resposta é diferente de ainda não perguntei. Sem
+     essa distinção o fallback aparece com cara de valor confirmado — que foi
+     exatamente o que aconteceu quando o endpoint estava errado. */
+  const [perguntei, setPerguntei] = useState(false);
+  const [erroVercel, setErroVercel] = useState<string | null>(null);
 
   const perguntarVercel = useCallback(async (clean: string) => {
     try {
@@ -83,8 +88,18 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
         body: JSON.stringify({ dominio: clean, acao: 'config' }),
       });
       const d = await r.json();
-      if (d?.ok) setAlvo({ ipv4: d.raiz?.ipv4 ?? null, cname: d.www?.cname ?? d.raiz?.cname ?? null });
-    } catch { /* fica com o valor de segurança */ }
+      setPerguntei(true);
+      const erro = d?.raiz?.erro ?? d?.www?.erro ?? (d?.ok ? null : (d?.error ?? 'sem resposta'));
+      setErroVercel(erro ?? null);
+      if (d?.ok && (d.raiz?.ipv4 || d.raiz?.cname || d.www?.cname)) {
+        setAlvo({ ipv4: d.raiz?.ipv4 ?? null, cname: d.www?.cname ?? d.raiz?.cname ?? null });
+      } else {
+        setAlvo(null);
+      }
+    } catch (e) {
+      setPerguntei(true);
+      setErroVercel(e instanceof Error ? e.message : 'não consegui falar com a Vercel');
+    }
   }, []);
   const [diag, setDiag] = useState<null | Diagnostico>(null);
 
@@ -296,10 +311,16 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
                 </div>
               </div>
             ))}
-            {!alvo && registrado && (
+            {perguntei && !alvo && (
               <p className="text-amber-500/80 pt-0.5">
-                Não consegui confirmar estes valores com a Vercel agora — são os padrões.
-                Se o domínio não subir com eles, me chame antes de mexer no DNS de novo.
+                Estes são os valores padrão — não consegui confirmar com a Vercel
+                {erroVercel ? ` (${erroVercel})` : ''}. Costumam funcionar, mas se o domínio
+                não subir com eles, o problema pode ser este.
+              </p>
+            )}
+            {alvo && (
+              <p className="text-emerald-400/70 pt-0.5">
+                Valores confirmados com a Vercel agora.
               </p>
             )}
             <p className="text-foreground/35 pt-0.5">
