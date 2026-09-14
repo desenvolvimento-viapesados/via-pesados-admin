@@ -152,6 +152,31 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
             </p>
           </div>
 
+          {/* O caminho, não só o registro. No Registro.br as duas caixas ficam
+              na mesma tela e a errada aparece primeiro: "Alterar servidores
+              DNS" delega o DNS para outro lugar e não é o que queremos. */}
+          <details className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] overflow-hidden">
+            <summary className="px-3 py-2.5 text-[11.5px] font-medium text-foreground/60 cursor-pointer select-none hover:bg-black/[0.03] dark:hover:bg-white/[0.04]">
+              Onde fica isso no Registro.br
+            </summary>
+            <div className="px-3 pb-3 pt-1 space-y-2 text-[11.5px] text-foreground/55 leading-relaxed">
+              <p className="text-amber-500/90">
+                Não use "Alterar servidores DNS". Aquela caixa entrega o DNS do domínio
+                para outro provedor e apaga o resto da configuração dele.
+              </p>
+              <ol className="space-y-1 list-decimal pl-4">
+                <li>Domínios → clique no domínio</li>
+                <li>DNS → <strong className="text-foreground/75">Configurar endereçamento</strong></li>
+                <li>Modo avançado → Confirmar (o domínio fica alguns minutos em "Transição")</li>
+                <li>Nova entrada → Tipo <strong className="text-foreground/75">{ehApex ? 'A' : 'CNAME'}</strong> → cole o valor acima → Adicionar</li>
+              </ol>
+              <p className="text-foreground/35">
+                Em outros registradores o nome muda — procure por "Zona DNS", "Editar DNS"
+                ou "Registros", nunca por "servidores DNS".
+              </p>
+            </div>
+          </details>
+
           <button
             type="button"
             onClick={verificar}
