@@ -113,6 +113,21 @@ Deno.serve(async (req) => {
       } catch (e) { return { erro: e instanceof Error ? e.message : 'falha' }; }
     };
 
+    /* Cutuca a Vercel a verificar o domínio. Ela emite o certificado sozinha
+       depois que o DNS aponta, mas a checagem dela é periódica — e ficar
+       esperando dá um site "Não seguro" em público enquanto isso. Este
+       endpoint força a rodada agora. */
+    if (acao === 'verificar') {
+      const puxar = async (nome: string) => {
+        const r = await fetch(`${API}/v9/projects/${projeto}/domains/${nome}/verify${q}`, {
+          method: 'POST', headers: h,
+        });
+        const d = await r.json();
+        return { nome, ok: r.ok, verificado: d?.verified ?? null, erro: r.ok ? null : (d?.error?.message ?? `HTTP ${r.status}`) };
+      };
+      return json(200, { ok: true, raiz: await puxar(d), www: await puxar(`www.${d}`) });
+    }
+
     if (acao === 'config') {
       return json(200, { ok: true, raiz: await config(d), www: await config(`www.${d}`) });
     }

@@ -101,6 +101,20 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
      recriar o efeito a cada resposta. */
   const alvoRef = useRef<{ ipv4: string[]; cname: string[] } | null>(null);
 
+  /* Pede à Vercel que verifique agora. Ela emite o certificado sozinha, mas
+     a rodada dela é periódica — e enquanto isso o site fica "Não seguro" em
+     público, que é inaceitável num site de loja. */
+  const cutucarCertificado = useCallback(async (clean: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await fetch(`${FUNCTIONS_URL}/vercel-dominio`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token ?? ''}` },
+        body: JSON.stringify({ dominio: clean, acao: 'verificar' }),
+      });
+    } catch { /* a rodada periódica da Vercel ainda pega */ }
+  }, []);
+
   const perguntarVercel = useCallback(async (clean: string) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -172,8 +186,10 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
       try {
         const d = await consultar(limpo);
         setDiag(d);
-        if (d?.passo.codigo === 'pronto') { setEmLaco(false); toast.success('Domínio no ar'); }
+        if (d?.passo.codigo === 'pronto') { setEmLaco(false); toast.success('Domínio no ar, com HTTPS'); onDone(); }
         else if (d?.passo.codigo === 'zona_sem_registro') setEmLaco(false);
+        // Falta só o certificado: pede a verificação a cada rodada.
+        else if (d?.passo.codigo === 'certificado') await cutucarCertificado(limpo);
       } catch { /* tenta de novo no próximo tique */ }
     }, 20000);
     return () => clearInterval(id);
@@ -187,7 +203,7 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
       setDiag(d);
       /* Certificado se resolve sozinho: liga a espera em vez de deixar o
          operador conferindo de minuto em minuto. */
-      if (d?.passo.codigo === 'certificado') setEmLaco(true);
+      if (d?.passo.codigo === 'certificado') { setEmLaco(true); await cutucarCertificado(limpo); }
       if (d?.passo.codigo === 'pronto') { setEmLaco(false); onDone(); }
     }
     catch (e) { toast.error((e as Error).message); }
@@ -225,11 +241,17 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
        erro em lugar nenhum. */
     const clean = normalizarDominio(domain);
     if (!clean) { toast.error('Informe o domínio'); return; }
+    /* Sem sistema, o domínio vira uma página quebrada no ar. Ele passa a
+       apontar para a nossa aplicação, que procura a loja pelo hostname, não
+       acha nenhuma e mostra "Endereço incompleto" para quem visitar. Pior
+       que não funcionar: funciona errado, em público. */
+    if (!client.lojista_company_id) {
+      toast.error('Este cliente ainda não tem sistema. Crie o sistema antes — senão o domínio abre uma página de erro.');
+      return;
+    }
     setLoading(true);
     try {
-      if (client.lojista_company_id) {
-        await updateCompanyBranding({ company_id: client.lojista_company_id, domains: [clean] });
-      }
+      await updateCompanyBranding({ company_id: client.lojista_company_id, domains: [clean] });
       await update.mutateAsync({ id: client.id, domain: clean });
 
       /* Adiciona na Vercel no mesmo clique. Era o passo manual invisível:
@@ -259,6 +281,7 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
          que ainda não funciona. Enquanto isso, a tela reconsulta sozinha. */
       const d = await consultar(limpo).catch(() => null);
       setDiag(d);
+      if (d?.passo.codigo === 'certificado') await cutucarCertificado(limpo);
       if (d?.passo.codigo === 'pronto') onDone();
       /* Só espera quando esperar adianta. Zona no ar sem a entrada não muda
          sozinha — ficar reconsultando daria a impressão de progresso. */
@@ -279,10 +302,17 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
               endereço não abre, porque a Vercel não sabe que o domínio é
               nosso. Estava no rodapé da tela, depois de tudo, e por isso
               parecia opcional. */}
+          {!client.lojista_company_id && (
+            <p className="text-[11.5px] text-amber-500/90 leading-snug px-1">
+              Este cliente ainda não tem sistema. Crie o sistema na ficha antes de conectar o
+              domínio — sem ele, o endereço abre uma página de erro para quem visitar.
+            </p>
+          )}
+
           {!registrado && (
             <button
               onClick={submit}
-              disabled={loading || !limpo.includes('.')}
+              disabled={loading || !limpo.includes('.') || !client.lojista_company_id}
               className="w-full h-11 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}

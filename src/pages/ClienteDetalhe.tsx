@@ -209,6 +209,10 @@ function ProvisionDialog({
           city: client.city ?? undefined,
           state: client.state ?? undefined,
           address: client.address ?? undefined,
+          /* O domínio pode ter sido registrado antes do sistema existir.
+             Sem levá-lo aqui, o endereço continuaria apontando para uma
+             loja que o app não acha — página de erro no ar. */
+          domains: client.domain ? [client.domain] : undefined,
         });
         await update.mutateAsync({ id: client.id, lojista_company_id: r.company_id, admin_email: email.trim() });
         await saveSystemCredential({ client_id: client.id, email: email.trim(), password });
