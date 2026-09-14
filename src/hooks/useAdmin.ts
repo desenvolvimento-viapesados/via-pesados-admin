@@ -109,6 +109,8 @@ export interface Client {
   asaas_subscription_id: string | null;
   asaas_payment_link_id: string | null;
   asaas_payment_link_url: string | null;
+  /** Autentica a página de checkout, que é pública. Gerado por trigger. */
+  checkout_token: string | null;
   contract_signed_at: string | null;
   activated_at: string | null;
   canceled_at: string | null;

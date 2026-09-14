@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { LOJISTA_APP_URL } from '@/integrations/supabase/client';
 import {
   useClient, usePayments, useEscutarPagamentos, useCriarAssinaturaAsaas,
   brlFull, type Payment,
@@ -62,7 +63,18 @@ export default function Cobranca() {
   useEscutarPagamentos(id);
 
   const pago = useMemo(() => pagamentos.find((p) => p.status === 'pago') ?? null, [pagamentos]);
-  const link = client?.asaas_payment_link_url ?? null;
+
+  /* O link que o lojista recebe é o do checkout da Via Pesados — a página
+     com as duas logos, o nome dele e a escolha entre Pix e cartão. O link
+     cru do Asaas continua existindo e é o que cobra todo mês, mas mandar
+     asaas.com/c/xxxx para quem acabou de comprar joga fora a única página
+     da venda que tem a cara do produto. */
+  const link = client?.checkout_token
+    ? `${LOJISTA_APP_URL}/bemvindo/${client.checkout_token}`
+    : null;
+  /* Sem token não há checkout; aí sobra o link do Asaas, que ao menos cobra. */
+  const linkAlternativo = !link ? (client?.asaas_payment_link_url ?? null) : null;
+  const linkFinal = link ?? linkAlternativo;
 
   if (isLoading || !client) {
     return (
@@ -85,9 +97,9 @@ export default function Cobranca() {
     }
   };
 
-  const zap = client.whatsapp
+  const zap = client.whatsapp && linkFinal
     ? `https://wa.me/55${client.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(
-        `Olá! Segue o link para a mensalidade da ${client.company_name}: ${link ?? ''}`,
+        `Olá! Segue o link para ativar o sistema da ${client.company_name}: ${linkFinal}`,
       )}`
     : null;
 
@@ -131,12 +143,12 @@ export default function Cobranca() {
             </span>
             <div className="min-w-0">
               <p className={cn('text-[17px] font-semibold leading-tight', pago ? 'text-emerald-400' : 'text-foreground')}>
-                {pago ? 'Pago' : link ? 'Aguardando pagamento' : 'Sem cobrança criada'}
+                {pago ? 'Pago' : linkFinal ? 'Aguardando pagamento' : 'Sem cobrança criada'}
               </p>
               <p className="text-[12px] text-foreground/45 mt-1">
                 {pago
                   ? `${brlFull(pago.amount)} · ${data(pago.paid_at)}${pago.method ? ` · ${METODO[pago.method] ?? pago.method}` : ''}`
-                  : link
+                  : linkFinal
                     ? `${brlFull(client.mrr ?? 0)} por mês — esta tela avisa sozinha quando entrar.`
                     : 'A venda foi registrada sem gerar a cobrança.'}
               </p>
@@ -145,27 +157,27 @@ export default function Cobranca() {
         </div>
 
         {/* O link */}
-        {link ? (
+        {linkFinal ? (
           <div className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.015] dark:bg-white/[0.02] p-5 sm:p-6 space-y-4">
             <p className="text-[10.5px] font-semibold tracking-[0.18em] uppercase text-foreground/30">
-              Link de pagamento
+              {link ? 'Página de ativação' : 'Link de pagamento'}
             </p>
             <div className="flex items-center gap-2.5 px-3.5 h-12 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1]">
               <QrCode className="h-4 w-4 text-foreground/30 shrink-0" />
-              <span className="text-[12.5px] font-mono text-foreground/80 truncate flex-1" title={link}>
-                {link.replace(/^https?:\/\//, '')}
+              <span className="text-[12.5px] font-mono text-foreground/80 truncate flex-1" title={linkFinal}>
+                {linkFinal.replace(/^https?:\/\//, '')}
               </span>
             </div>
 
             <div className={cn('grid gap-2', zap ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}>
               <button
-                onClick={() => { navigator.clipboard.writeText(link); toast.success('Link copiado'); }}
+                onClick={() => { navigator.clipboard.writeText(linkFinal); toast.success('Link copiado'); }}
                 className="h-11 rounded-xl border border-black/[0.1] dark:border-white/[0.12] text-[12.5px] font-medium text-foreground/75 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-1.5"
               >
                 <Copy className="h-3.5 w-3.5" /> Copiar
               </button>
               <a
-                href={link} target="_blank" rel="noopener noreferrer"
+                href={linkFinal} target="_blank" rel="noopener noreferrer"
                 className="h-11 rounded-xl border border-black/[0.1] dark:border-white/[0.12] text-[12.5px] font-medium text-foreground/75 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-1.5"
               >
                 <ExternalLink className="h-3.5 w-3.5" /> Abrir
@@ -183,8 +195,9 @@ export default function Cobranca() {
             </div>
 
             <p className="text-[11px] text-foreground/35 leading-snug">
-              O Asaas cobra todo mês por este mesmo link e avisa o cliente sozinho.
-              Pix, boleto ou cartão — quem escolhe é ele, na hora de pagar.
+              {link
+                ? 'Abre com a marca dele ao lado da nossa, o valor combinado e a escolha entre Pix e cartão. Depois da primeira vez, o Asaas cobra sozinho todo mês.'
+                : 'Este cliente ainda não tem página de ativação — o link abaixo é o do Asaas, sem a marca dele.'}
             </p>
           </div>
         ) : (
