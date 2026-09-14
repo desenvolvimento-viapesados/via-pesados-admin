@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     const { data: m } = await db.from('team_members').select('is_active').eq('id', user.id).maybeSingle();
     if (!m || m.is_active === false) return json(403, { error: 'acesso negado' });
 
-    const { dominio } = await req.json();
+    const { dominio, acao } = await req.json();
     const d = String(dominio ?? '').trim().toLowerCase()
       .replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/^www\./, '');
     if (!d.includes('.')) return json(400, { error: 'Domínio inválido.' });
@@ -78,6 +78,28 @@ Deno.serve(async (req) => {
       return { nome, ok: true, jaExistia, verificado: st?.verified ?? null, pendencias: st?.verification ?? null };
     };
 
+    /* O que a VERCEL diz que este domínio precisa, em vez de uma constante
+       nossa. 76.76.21.21 é o IP legado: ainda atende, mas a conta já usa
+       alvos por projeto (…vercel-dns-0NN.com) e um número chumbado no
+       código envelhece sem avisar — o sintoma seria um domínio que não
+       sobe, sem erro em lugar nenhum. */
+    const config = async (nome: string) => {
+      try {
+        const r = await fetch(`${API}/v9/projects/${projeto}/domains/${nome}/config${q}`, { headers: h });
+        if (!r.ok) return null;
+        const c = await r.json();
+        return {
+          mal_configurado: c?.misconfigured ?? null,
+          ipv4: c?.recommendedIPv4?.[0]?.value ?? c?.recommendedIPv4 ?? null,
+          cname: c?.recommendedCNAME?.[0]?.value ?? c?.recommendedCNAME ?? null,
+        };
+      } catch { return null; }
+    };
+
+    if (acao === 'config') {
+      return json(200, { ok: true, raiz: await config(d), www: await config(`www.${d}`) });
+    }
+
     const raiz = await adicionar(d);
     if (!raiz.ok) return json(502, { ok: false, estado: 'erro', detalhe: raiz.detalhe });
     // Falhar no www não invalida a raiz, que é a que serve o site.
@@ -89,6 +111,8 @@ Deno.serve(async (req) => {
       verificado: raiz.verificado,
       pendencias: raiz.pendencias,
       www: { ok: www.ok, verificado: www.ok ? www.verificado : null, detalhe: www.ok ? null : www.detalhe },
+      // Os valores que o cliente tem de criar, ditos pela Vercel.
+      config: { raiz: await config(d), www: await config(`www.${d}`) },
     });
   } catch (e) {
     return json(500, { error: e instanceof Error ? e.message : 'Erro' });

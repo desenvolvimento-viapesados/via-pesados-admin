@@ -67,6 +67,25 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
      coloca o domínio na Vercel ficava embaixo de tudo, parecendo o último
      detalhe. Deu no previsível — DNS configurado, domínio nunca registrado. */
   const [registrado, setRegistrado] = useState(!!client.domain);
+  /* Os valores vêm da Vercel, não de constante nossa. 76.76.21.21 é o IP
+     legado: atende, mas a conta já usa alvos por projeto, e número chumbado
+     no código envelhece sem avisar — o sintoma seria domínio que não sobe,
+     sem erro em lugar nenhum. A constante fica só como rede de segurança
+     quando a API não responde. */
+  const [alvo, setAlvo] = useState<{ ipv4: string | null; cname: string | null } | null>(null);
+
+  const perguntarVercel = useCallback(async (clean: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const r = await fetch(`${FUNCTIONS_URL}/vercel-dominio`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token ?? ''}` },
+        body: JSON.stringify({ dominio: clean, acao: 'config' }),
+      });
+      const d = await r.json();
+      if (d?.ok) setAlvo({ ipv4: d.raiz?.ipv4 ?? null, cname: d.www?.cname ?? d.raiz?.cname ?? null });
+    } catch { /* fica com o valor de segurança */ }
+  }, []);
   const [diag, setDiag] = useState<null | Diagnostico>(null);
 
   /* Conectar domínio falha de três jeitos que o cliente descreve igual —
@@ -92,12 +111,17 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
     let vivo = true;
     const id = setTimeout(async () => {
       setVerificando(true);
-      try { const d = await consultar(limpo); if (vivo) setDiag(d); }
+      try {
+        const d = await consultar(limpo);
+        if (vivo) setDiag(d);
+        // Em paralelo: o que a Vercel quer para este domínio.
+        if (vivo) await perguntarVercel(limpo);
+      }
       catch { /* silêncio: é consulta de fundo, não ação do operador */ }
       finally { if (vivo) setVerificando(false); }
     }, 700);
     return () => { vivo = false; clearTimeout(id); };
-  }, [limpo, consultar]);
+  }, [limpo, consultar, perguntarVercel]);
 
   /* Enquanto espera a propagação, reconsulta sozinho. Sem isso o operador
      fica apertando "verificar" de dois em dois minutos. */
@@ -135,9 +159,13 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
      que o painel rejeita é pior do que não mandar valor nenhum, porque a
      pessoa confia e só descobre no erro. */
   const nomeRaiz = provedor === 'Registro.br' ? '' : '@';
+  /* O que a Vercel respondeu; as constantes são a rede de segurança para
+     quando a API não responde, e ficam marcadas como tal na tela. */
+  const ipv4 = alvo?.ipv4 ?? '76.76.21.21';
+  const cname = alvo?.cname ?? 'cname.vercel-dns.com';
   const registros: string[][] = ehApex
-    ? [['A', nomeRaiz, '76.76.21.21'], ['CNAME', 'www', 'cname.vercel-dns.com']]
-    : [['CNAME', limpo.split('.')[0], 'cname.vercel-dns.com']];
+    ? [['A', nomeRaiz, ipv4], ['CNAME', 'www', cname]]
+    : [['CNAME', limpo.split('.')[0], cname]];
 
   const submit = async () => {
     /* www. sai aqui porque a resolução do tenant tira o www do hostname antes
@@ -268,6 +296,12 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
                 </div>
               </div>
             ))}
+            {!alvo && registrado && (
+              <p className="text-amber-500/80 pt-0.5">
+                Não consegui confirmar estes valores com a Vercel agora — são os padrões.
+                Se o domínio não subir com eles, me chame antes de mexer no DNS de novo.
+              </p>
+            )}
             <p className="text-foreground/35 pt-0.5">
               {ehApex
                 ? 'A raiz usa registro A porque a maioria dos registradores não aceita CNAME na raiz. O www usa CNAME — metade das pessoas digita o endereço com ele.'
