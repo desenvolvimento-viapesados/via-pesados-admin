@@ -62,6 +62,11 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
   const [loading, setLoading] = useState(false);
   const [verificando, setVerificando] = useState(false);
   const [emLaco, setEmLaco] = useState(false);
+  /* Do NOSSO lado o domínio existe? Era a metade invisível desta tela: todo
+     o conteúdo falava do que o cliente faz no registrador, e o botão que
+     coloca o domínio na Vercel ficava embaixo de tudo, parecendo o último
+     detalhe. Deu no previsível — DNS configurado, domínio nunca registrado. */
+  const [registrado, setRegistrado] = useState(!!client.domain);
   const [diag, setDiag] = useState<null | Diagnostico>(null);
 
   /* Conectar domínio falha de três jeitos que o cliente descreve igual —
@@ -168,6 +173,7 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
         naVercel = ' — não consegui falar com a Vercel';
       }
 
+      setRegistrado(true);
       toast.success(`Domínio registrado${naVercel}`);
       /* Só conclui a etapa quando o domínio está SERVINDO. Registrado não é
          no ar: falta a propagação, e marcar como feito agora esconderia o
@@ -188,6 +194,29 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
   return (
     <div className="space-y-2.5">
           <input className={inputCls} placeholder="ex: cliente.com.br" value={domain} onChange={(e) => setDomain(e.target.value)} />
+
+          {/* Registrar vem PRIMEIRO. É o que põe o domínio na Vercel e na
+              ficha do cliente — sem isso, o DNS pode estar perfeito e o
+              endereço não abre, porque a Vercel não sabe que o domínio é
+              nosso. Estava no rodapé da tela, depois de tudo, e por isso
+              parecia opcional. */}
+          {!registrado && (
+            <button
+              onClick={submit}
+              disabled={loading || !limpo.includes('.')}
+              className="w-full h-11 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+              Registrar este domínio
+            </button>
+          )}
+
+          {registrado && (
+            <p className="flex items-center gap-1.5 px-1 text-[11.5px] text-emerald-400">
+              <Check className="h-3 w-3 shrink-0" />
+              Registrado no sistema e na Vercel. Falta o cliente criar os registros abaixo.
+            </p>
+          )}
 
           {/* Quem responde pelo DNS, descoberto sozinho. Era a primeira
               pergunta de toda conexão e ninguém tinha como responder sem
@@ -294,6 +323,14 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
                   : 'bg-amber-500/[0.08] border-amber-500/25 text-amber-400/90',
             )}>
               <p className="font-semibold">{diag.passo.titulo}</p>
+              {!registrado && (
+                /* O diagnóstico só falava do lado do cliente. Com o domínio
+                   sem registro do nosso lado, o DNS certo não basta — e a
+                   tela deixava isso invisível. */
+                <p className="text-amber-400/90">
+                  E deste lado: o domínio ainda não foi registrado no sistema. Use o botão acima.
+                </p>
+              )}
               {diag.passo.dono === 'voce' && (
                 <p className="text-foreground/50">
                   O DNS do cliente já está certo. Falta você abrir o projeto na Vercel e
@@ -316,14 +353,19 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
               )}
             </div>
           )}
-          <button
-            onClick={submit}
-            disabled={loading}
-            className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
-          >
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Registrar domínio
-          </button>
+          {registrado && (
+            /* Refazer serve quando o domínio mudou ou a Vercel recusou na
+               primeira vez. Não é o caminho normal, então não tem peso de
+               ação principal. */
+            <button
+              onClick={submit}
+              disabled={loading}
+              className="w-full h-9 rounded-xl text-[12px] font-medium text-foreground/40 hover:text-foreground disabled:opacity-40 flex items-center justify-center gap-2"
+            >
+              {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Registrar de novo
+            </button>
+          )}
     </div>
   );
 }
