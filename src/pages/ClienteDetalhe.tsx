@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Loader2, Check, FileText, CreditCard, Rocket, Globe, Upload,
   Copy, ExternalLink, Phone, Mail, MapPin, Plus, StickyNote,
-  PartyPopper, KeyRound, Repeat, Send, ChevronRight,
+  PartyPopper, KeyRound, Repeat, Send, ChevronRight, ArrowRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -24,6 +24,7 @@ import { UsoDoSistema } from '@/components/admin/UsoDoSistema';
 import { NotasFiscais } from '@/components/admin/NotasFiscais';
 import { useSystemCredential, saveSystemCredential } from '@/hooks/useAdmin';
 import { SectionHeader, StatusBadge, Panel, InitialAvatar } from '@/components/admin/ui';
+import { DomainDialog, BrandingDialog } from '@/components/admin/EtapasCliente';
 import { ImageField, IMG_FIELDS, IMG_KEYS, emptyImgs, type ImgKey } from '@/components/crm/BrandingFields';
 
 const inputCls =
@@ -255,359 +256,7 @@ function ProvisionDialog({
 
 /* ── Dialog: conectar domínio ───────────────────────────────── */
 /** Hostname puro: sem protocolo, sem caminho, sem www e em minúsculas. */
-function normalizarDominio(v: string): string {
-  return String(v ?? '').trim().toLowerCase()
-    .replace(/^https?:\/\//, '')
-    .replace(/\/.*$/, '')
-    .replace(/^www\./, '');
-}
-
-function DomainDialog({
-  client, onDone, onClose,
-}: {
-  client: Client;
-  onDone: () => void;
-  onClose: () => void;
-}) {
-  const update = useUpdateClient();
-  const [domain, setDomain] = useState(client.domain || '');
-  const limpo = normalizarDominio(domain);
-  /* Apex (cliente.com.br) exige registro A: a maioria dos registradores não
-     aceita CNAME na raiz. Subdomínio (loja.cliente.com.br) aceita CNAME, que
-     é melhor porque sobrevive a troca de IP da Vercel. Mostrar os dois sem
-     dizer quando usar cada um é o que gera o suporte de meia hora. */
-  const ehApex = limpo ? limpo.split('.').length <= 3 && !/^(www|loja|app|sistema)\./.test(limpo) : true;
-  const [loading, setLoading] = useState(false);
-  const [verificando, setVerificando] = useState(false);
-  const [diag, setDiag] = useState<null | {
-    passo: { codigo: string; titulo: string; dono: string | null };
-    dns: { A: string[]; CNAME: string[] };
-  }>(null);
-
-  /* Conectar domínio falha de três jeitos que o cliente descreve igual —
-     "não abre". Verificar antes de investigar poupa a meia hora de chute:
-     ou o DNS ainda não aponta (é com ele), ou aponta e falta adicionar no
-     projeto Vercel (é com você), ou já está no ar. */
-  const verificar = async () => {
-    const clean = normalizarDominio(domain);
-    if (!clean) { toast.error('Informe o domínio'); return; }
-    setVerificando(true);
-    setDiag(null);
-    try {
-      const r = await fetch(`${FUNCTIONS_URL}/dominio-verificar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dominio: clean }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d?.error || 'Não foi possível verificar');
-      setDiag(d);
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setVerificando(false);
-    }
-  };
-
-  const submit = async () => {
-    /* www. sai aqui porque a resolução do tenant tira o www do hostname antes
-       de consultar. Guardar 'www.cliente.com.br' faria a busca por
-       'cliente.com.br' nunca casar — e o cliente veria o site genérico, sem
-       erro em lugar nenhum. */
-    const clean = normalizarDominio(domain);
-    if (!clean) { toast.error('Informe o domínio'); return; }
-    setLoading(true);
-    try {
-      if (client.lojista_company_id) {
-        await updateCompanyBranding({ company_id: client.lojista_company_id, domains: [clean] });
-      }
-      await update.mutateAsync({ id: client.id, domain: clean });
-
-      /* Adiciona na Vercel no mesmo clique. Era o passo manual invisível:
-         ninguém lembrava, e o sintoma era igual ao de um DNS errado do
-         cliente. Falhar aqui não desfaz o registro — só avisa que a parte
-         da Vercel ficou para a mão. */
-      let naVercel = '';
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const rv = await fetch(`${FUNCTIONS_URL}/vercel-dominio`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token ?? ''}` },
-          body: JSON.stringify({ dominio: clean }),
-        });
-        const dv = await rv.json();
-        if (dv?.ok) naVercel = dv.estado === 'ja_estava' ? ' (já estava na Vercel)' : ' e adicionado na Vercel';
-        else if (dv?.estado === 'nao_configurado') naVercel = ' — falta adicionar na Vercel à mão';
-        else naVercel = ` — Vercel: ${dv?.detalhe ?? 'não adicionado'}`;
-      } catch {
-        naVercel = ' — não consegui falar com a Vercel';
-      }
-
-      toast.success(`Domínio registrado${naVercel}`);
-      onDone();
-      onClose();
-    } catch (e) {
-      toast.error((e as Error).message || 'Erro ao registrar domínio');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md bg-background border-black/[0.1] dark:border-white/[0.1] rounded-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-[15px] font-semibold">Conectar domínio</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-2.5 pt-1">
-          <input className={inputCls} placeholder="ex: cliente.com.br" value={domain} onChange={(e) => setDomain(e.target.value)} />
-          <div className="rounded-xl bg-black/[0.04] dark:bg-white/[0.04] p-3 text-[11.5px] text-foreground/50 space-y-2">
-            <p className="font-semibold text-foreground/70">
-              O cliente cria este registro no DNS dele:
-            </p>
-            {(ehApex
-              ? [['A', '@', '76.76.21.21']]
-              : [['CNAME', limpo.split('.')[0], 'cname.vercel-dns.com']]
-            ).map(([tipo, host, valor]) => (
-              <div key={tipo} className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-foreground/70 w-16 shrink-0">Tipo</span>
-                  <span className="font-mono text-foreground flex-1">{tipo}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-foreground/70 w-16 shrink-0">Nome</span>
-                  <span className="font-mono text-foreground flex-1">{host}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-foreground/70 w-16 shrink-0">Valor</span>
-                  <span className="font-mono text-foreground flex-1 truncate">{valor}</span>
-                  <button
-                    type="button"
-                    onClick={() => { navigator.clipboard.writeText(valor); toast.success('Valor copiado'); }}
-                    className="h-6 px-2 rounded-md border border-black/[0.1] dark:border-white/[0.12] text-[10.5px] text-foreground/60 hover:bg-black/[0.05] dark:hover:bg-white/[0.08] shrink-0"
-                  >
-                    copiar
-                  </button>
-                </div>
-              </div>
-            ))}
-            <p className="text-foreground/35 pt-0.5">
-              {ehApex
-                ? 'Domínio raiz usa registro A — a maioria dos registradores não aceita CNAME na raiz.'
-                : 'Subdomínio usa CNAME, que continua valendo se a Vercel trocar de IP.'}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={verificar}
-            disabled={verificando}
-            className="w-full h-9 rounded-xl border border-black/[0.1] dark:border-white/[0.12] text-[12px] font-medium text-foreground/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {verificando && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            Verificar em que passo está
-          </button>
-
-          {diag && (
-            <div className={cn(
-              'rounded-xl p-3 text-[11.5px] space-y-1.5 border',
-              diag.passo.codigo === 'pronto'
-                ? 'bg-emerald-500/[0.08] border-emerald-500/25 text-emerald-400/90'
-                : diag.passo.dono === 'voce'
-                  ? 'bg-primary/[0.08] border-primary/25 text-primary'
-                  : 'bg-amber-500/[0.08] border-amber-500/25 text-amber-400/90',
-            )}>
-              <p className="font-semibold">{diag.passo.titulo}</p>
-              {diag.passo.dono === 'voce' && (
-                <p className="text-foreground/50">
-                  O DNS do cliente já está certo. Falta você abrir o projeto na Vercel e
-                  adicionar <span className="font-mono">{domain.trim().toLowerCase()}</span> em Domains.
-                </p>
-              )}
-              {diag.passo.dono === 'cliente' && (
-                <p className="text-foreground/50">
-                  {diag.dns.A.length || diag.dns.CNAME.length
-                    ? <>Hoje aponta para <span className="font-mono">{[...diag.dns.A, ...diag.dns.CNAME].slice(0, 2).join(', ')}</span>. Mande os valores acima para ele.</>
-                    : <>Ou ainda não foi configurado, ou o DNS não propagou — costuma levar de minutos a algumas horas.</>}
-                </p>
-              )}
-            </div>
-          )}
-          <button
-            onClick={submit}
-            disabled={loading}
-            className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
-          >
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Registrar domínio
-          </button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/* ── Identidade visual do cliente ───────────────────────────── */
-function BrandingDialog({
-  client, onDone, onClose,
-}: {
-  client: Client;
-  onDone: () => void;
-  onClose: () => void;
-}) {
-  const update = useUpdateClient();
-  const [files, setFiles] = useState<Record<ImgKey, File | null>>(emptyImgs<File | null>(null));
-  const [previews, setPreviews] = useState<Record<ImgKey, string | null>>({
-    ...emptyImgs<string | null>(null),
-    logo: client.logo_url,
-  });
-  const [saving, setSaving] = useState(false);
-
-  const setImage = (key: ImgKey, file: File | null) => {
-    setPreviews((prev) => ({ ...prev, [key]: file ? URL.createObjectURL(file) : null }));
-    setFiles((prev) => ({ ...prev, [key]: file }));
-  };
-
-  const submit = async () => {
-    if (!client.lojista_company_id) {
-      toast.error('Crie o sistema do cliente antes de aplicar a identidade');
-      return;
-    }
-    if (IMG_KEYS.every((k) => !files[k])) { toast.error('Envie ao menos uma imagem'); return; }
-
-    setSaving(true);
-    try {
-      const base = slugify(client.company_name);
-      const urls: Partial<Record<ImgKey, string>> = {};
-      for (const key of IMG_KEYS) {
-        const file = files[key];
-        if (file) urls[key] = await uploadLogo(file, `client-${base}-${key}`);
-      }
-
-      await updateCompanyBranding({
-        company_id: client.lojista_company_id,
-        logo_url: urls.logo,
-        site_logo_url: urls.site_logo,
-        brand_icon_url: urls.brand_icon,
-        banner_url: urls.banner,
-        favicon_url: urls.favicon,
-      });
-
-      if (urls.logo) await update.mutateAsync({ id: client.id, logo_url: urls.logo });
-
-      toast.success('Identidade aplicada no sistema do cliente');
-      onDone();
-      onClose();
-    } catch (e) {
-      toast.error((e as Error).message || 'Erro ao aplicar identidade');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md bg-background border-black/[0.1] dark:border-white/[0.1] rounded-2xl max-h-[88vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-[15px] font-semibold">Identidade visual</DialogTitle>
-        </DialogHeader>
-        <p className="text-[11.5px] text-foreground/40 -mt-1">
-          Aplica direto no sistema do cliente. Envie só o que tiver — o resto fica como está.
-        </p>
-
-        <div className="space-y-3 pt-1">
-          {IMG_FIELDS.map(({ key, label, hint, ratio }) => (
-            <ImageField
-              key={key}
-              label={label}
-              hint={hint}
-              ratio={ratio}
-              preview={previews[key]}
-              onPick={(f) => setImage(key, f)}
-              onClear={() => setImage(key, null)}
-            />
-          ))}
-
-          <button
-            onClick={submit}
-            disabled={saving}
-            className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            Aplicar no sistema
-          </button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 /* ── Etapa do checklist ─────────────────────────────────────── */
-const TASK_ICONS: Record<string, typeof FileText> = {
-  contrato_gerado: FileText,
-  contrato_assinado: FileText,
-  pagamento_recebido: CreditCard,
-  sistema_criado: Rocket,
-  logo_aplicada: Upload,
-  dominio_conectado: Globe,
-};
-
-function TaskRow({
-  task, client, onAction,
-}: {
-  task: OnboardingTask;
-  client: Client;
-  onAction: (key: string) => void;
-}) {
-  const { member } = useAuth();
-  const toggle = useToggleTask();
-  const Icon = TASK_ICONS[task.task_key];
-  /* 'pagamento_recebido' não entra: quem fecha essa etapa é o webhook do
-     Asaas quando o dinheiro entra, não um clique do operador. */
-  const hasAction = ['contrato_gerado', 'sistema_criado', 'logo_aplicada', 'dominio_conectado'].includes(task.task_key);
-
-  const handleToggle = async () => {
-    if (!member) return;
-    await toggle.mutateAsync({ id: task.id, done: !task.done, userId: member.id });
-  };
-
-  return (
-    <div className={cn('flex items-center gap-3 px-4 py-3', task.done && 'opacity-60')}>
-      <button
-        onClick={handleToggle}
-        className={cn(
-          'h-5 w-5 rounded-md border flex items-center justify-center shrink-0 transition-all',
-          task.done
-            ? 'bg-emerald-500 border-emerald-500'
-            : 'border-black/[0.15] dark:border-white/[0.2] hover:border-primary',
-        )}
-      >
-        {task.done && <Check className="h-3 w-3 text-white" />}
-      </button>
-
-      <div className="min-w-0 flex-1">
-        <p className={cn('text-[13px] font-medium text-foreground', task.done && 'line-through')}>{task.label}</p>
-        {task.done_at && (
-          <p className="text-[10px] text-foreground/35">{new Date(task.done_at).toLocaleDateString('pt-BR')}</p>
-        )}
-      </div>
-
-      {!task.done && hasAction && (
-        <button
-          onClick={() => onAction(task.task_key)}
-          className="h-8 px-3 rounded-lg bg-primary/10 text-primary text-[11.5px] font-semibold hover:bg-primary/20 transition-colors flex items-center gap-1.5 shrink-0"
-        >
-          {Icon && <Icon className="h-3 w-3" />}
-          {task.task_key === 'contrato_gerado' && 'Gerar'}
-          {task.task_key === 'sistema_criado' && 'Criar sistema'}
-          {task.task_key === 'logo_aplicada' && 'Enviar imagens'}
-          {task.task_key === 'dominio_conectado' && 'Conectar'}
-        </button>
-      )}
-    </div>
-  );
-}
-
 /* ── Página ─────────────────────────────────────────────────── */
 export default function ClienteDetalhe() {
   const { id } = useParams();
@@ -670,11 +319,6 @@ export default function ClienteDetalhe() {
     if (task && !task.done && member) {
       await toggle.mutateAsync({ id: task.id, done: true, userId: member.id });
     }
-  };
-
-  const activate = async () => {
-    await update.mutateAsync({ id: client.id, status: 'ativo', activated_at: new Date().toISOString() });
-    toast.success(`${client.company_name} está no ar! 🎉`);
   };
 
   const addNote = async () => {
@@ -765,20 +409,38 @@ export default function ClienteDetalhe() {
                 </div>
               }
             />
+            {/* A lista aqui é registro, não é onde se trabalha. O trabalho
+                acontece em /onboarding, uma etapa por tela — caixinha diz
+                que falta, não diz o que fazer. O que fica é a leitura
+                rápida de onde a conta está. */}
             <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
               {tasks.map((t) => (
-                <TaskRow key={t.id} task={t} client={client} onAction={(key) => {
-                  setDialog(key);
-                }} />
+                <div key={t.id} className={cn('flex items-center gap-3 px-4 py-2.5', t.done && 'opacity-50')}>
+                  <span className={cn(
+                    'h-4 w-4 rounded-md border flex items-center justify-center shrink-0',
+                    t.done ? 'bg-emerald-500 border-emerald-500' : 'border-black/[0.15] dark:border-white/[0.2]',
+                  )}>
+                    {t.done && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
+                  </span>
+                  <p className={cn('text-[12.5px] text-foreground flex-1 min-w-0 truncate', t.done && 'line-through')}>
+                    {t.label}
+                  </p>
+                  {t.done_at && (
+                    <span className="text-[10px] text-foreground/30 tabular-nums shrink-0">
+                      {new Date(t.done_at).toLocaleDateString('pt-BR')}
+                    </span>
+                  )}
+                </div>
               ))}
             </Panel>
 
-            {allDone && client.status === 'onboarding' && (
+            {client.status === 'onboarding' && (
               <button
-                onClick={activate}
-                className="mt-3 w-full h-11 rounded-xl bg-emerald-500 text-white text-[13px] font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                onClick={() => navigate(`/clientes/${client.id}/onboarding`)}
+                className="mt-3 w-full h-11 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2"
               >
-                <PartyPopper className="h-4 w-4" /> Ativar cliente — go-live concluído
+                {allDone ? <PartyPopper className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+                {allDone ? 'Colocar no ar' : 'Continuar o onboarding'}
               </button>
             )}
           </div>
@@ -805,6 +467,27 @@ export default function ClienteDetalhe() {
               <ChevronRight className="h-4 w-4 text-foreground/30 shrink-0" />
             </button>
           </div>
+
+          {/* Sem sistema não há acesso a liberar, e o assistente manda criar
+              aqui. Antes isso vivia como etapa da lista de ações; com a lista
+              virando registro, o botão precisava de um lugar próprio. */}
+          {!client.lojista_company_id && (
+            <div>
+              <SectionHeader title="Sistema" />
+              <Panel className="p-4 space-y-3">
+                <p className="text-[12px] text-foreground/50 leading-snug">
+                  Este cliente ainda não tem sistema. Sem ele não dá para liberar o
+                  primeiro acesso nem aplicar a identidade.
+                </p>
+                <button
+                  onClick={() => setDialog('sistema_criado')}
+                  className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                >
+                  <Rocket className="h-3.5 w-3.5" /> Criar sistema
+                </button>
+              </Panel>
+            </div>
+          )}
 
           {/* Sistema provisionado */}
           {client.lojista_company_id && (

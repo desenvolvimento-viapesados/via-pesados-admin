@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Check, Copy, ExternalLink, Loader2, MessageCircle, QrCode, Repeat,
+  ArrowLeft, ArrowRight, Check, Copy, ExternalLink, Loader2, MessageCircle, QrCode, Repeat,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -226,9 +226,19 @@ export default function Cobranca() {
           </div>
         )}
 
+        {/* Pago é o fim desta tela e o começo da próxima: o que o cliente
+            espera agora é o acesso. */}
+        {pago ? (
+          <button
+            onClick={() => navigate(`/clientes/${client.id}/onboarding`)}
+            className="w-full h-12 mt-4 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2"
+          >
+            Continuar — liberar o acesso <ArrowRight className="h-4 w-4" />
+          </button>
+        ) : null}
         <button
           onClick={() => navigate(`/clientes/${client.id}`)}
-          className="w-full h-11 mt-4 rounded-xl text-[12.5px] font-medium text-foreground/45 hover:text-foreground transition-colors"
+          className="w-full h-11 mt-2 rounded-xl text-[12.5px] font-medium text-foreground/45 hover:text-foreground transition-colors"
         >
           Ir para a ficha do cliente
         </button>
