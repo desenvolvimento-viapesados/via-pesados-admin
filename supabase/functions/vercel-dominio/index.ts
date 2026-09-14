@@ -92,15 +92,23 @@ Deno.serve(async (req) => {
         const r = await fetch(`${API}/v6/domains/${nome}/config${q}`, { headers: h });
         const c = await r.json();
         if (!r.ok) return { erro: c?.error?.message ?? `HTTP ${r.status}` };
-        /* rank=1 é o preferido; a API devolve uma lista ordenada. */
-        const melhor = (lista: unknown) =>
-          Array.isArray(lista)
-            ? (lista.find((x: { rank?: number }) => x?.rank === 1) ?? lista[0])?.value ?? null
-            : null;
+        /* rank=1 é o preferido. O `value` de cada item é uma LISTA — a
+           Vercel devolve mais de um IP para redundância. Tratar como texto
+           colava os endereços um no outro ("216.198.79.164.29.17.1"), que
+           parece um IP e não é. Ponto final no fim do nome também sai: é
+           válido em DNS e alguns painéis recusam. */
+        const valores = (lista: unknown): string[] => {
+          if (!Array.isArray(lista)) return [];
+          const item = lista.find((x: { rank?: number }) => x?.rank === 1) ?? lista[0];
+          const v = (item as { value?: unknown })?.value;
+          return (Array.isArray(v) ? v : v == null ? [] : [v])
+            .map((x) => String(x).trim().replace(/\.$/, ''))
+            .filter(Boolean);
+        };
         return {
           mal_configurado: c?.misconfigured ?? null,
-          ipv4: melhor(c?.recommendedIPv4),
-          cname: melhor(c?.recommendedCNAME),
+          ipv4: valores(c?.recommendedIPv4),
+          cname: valores(c?.recommendedCNAME),
         };
       } catch (e) { return { erro: e instanceof Error ? e.message : 'falha' }; }
     };

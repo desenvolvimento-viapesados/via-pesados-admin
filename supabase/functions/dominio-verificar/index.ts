@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json(405, { error: 'Use POST' });
 
   try {
-    const { dominio } = await req.json();
+    const { dominio, esperado } = await req.json();
     const d = String(dominio ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
     if (!d || !d.includes('.')) return json(400, { error: 'Informe um domínio válido.' });
 
@@ -94,8 +94,16 @@ Deno.serve(async (req) => {
     ]);
     const zonaNoAr = soa.length > 0;
     const provedor = PROVEDORES.find(([re]) => ns.some((n) => re.test(n)))?.[1] ?? null;
-    const wwwOk = wwwA.includes(VERCEL_IP) || wwwC.some((c: string) => c.includes(VERCEL_CNAME));
-    const apontaVercel = as.includes(VERCEL_IP) || cnames.some((c: string) => c.includes(VERCEL_CNAME));
+    /* O que conta como "aponta certo" vem da Vercel, quando o painel manda.
+       O IP legado fica como piso: comparar só com ele diria "aponta para
+       outro lugar" justamente quando o cliente configurasse o valor CERTO —
+       e a Vercel já usa alvos por projeto. */
+    const ipsOk = [VERCEL_IP, ...(Array.isArray(esperado?.ipv4) ? esperado.ipv4.map(String) : [])];
+    const cnamesOk = [VERCEL_CNAME, ...(Array.isArray(esperado?.cname) ? esperado.cname.map(String) : [])];
+    const bate = (achados: string[]) =>
+      achados.some((a) => ipsOk.includes(a) || cnamesOk.some((c) => a.includes(c) || c.includes(a)));
+    const apontaVercel = bate(as) || bate(cnames);
+    const wwwOk = bate(wwwA) || bate(wwwC);
     const temDns = as.length > 0 || cnames.length > 0;
 
     /* Se já responde e é a nossa aplicação, o resto é história. O

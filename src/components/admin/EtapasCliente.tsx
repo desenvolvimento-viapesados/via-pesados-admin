@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, Globe, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -90,12 +90,16 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
      no código envelhece sem avisar — o sintoma seria domínio que não sobe,
      sem erro em lugar nenhum. A constante fica só como rede de segurança
      quando a API não responde. */
-  const [alvo, setAlvo] = useState<{ ipv4: string | null; cname: string | null } | null>(null);
+  const [alvo, setAlvo] = useState<{ ipv4: string[]; cname: string[] } | null>(null);
   /* Perguntei e não obtive resposta é diferente de ainda não perguntei. Sem
      essa distinção o fallback aparece com cara de valor confirmado — que foi
      exatamente o que aconteceu quando o endpoint estava errado. */
   const [perguntei, setPerguntei] = useState(false);
   const [erroVercel, setErroVercel] = useState<string | null>(null);
+
+  /* Ref porque `consultar` é memoizado e não pode depender de `alvo` sem
+     recriar o efeito a cada resposta. */
+  const alvoRef = useRef<{ ipv4: string[]; cname: string[] } | null>(null);
 
   const perguntarVercel = useCallback(async (clean: string) => {
     try {
@@ -109,11 +113,12 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
       setPerguntei(true);
       const erro = d?.raiz?.erro ?? d?.www?.erro ?? (d?.ok ? null : (d?.error ?? 'sem resposta'));
       setErroVercel(erro ?? null);
-      if (d?.ok && (d.raiz?.ipv4 || d.raiz?.cname || d.www?.cname)) {
-        setAlvo({ ipv4: d.raiz?.ipv4 ?? null, cname: d.www?.cname ?? d.raiz?.cname ?? null });
-      } else {
-        setAlvo(null);
-      }
+      const lista = (x: unknown) => (Array.isArray(x) ? x.filter(Boolean).map(String) : []);
+      const ipv4 = lista(d?.raiz?.ipv4);
+      const cname = lista(d?.www?.cname).concat(lista(d?.raiz?.cname));
+      const novo = d?.ok && (ipv4.length || cname.length) ? { ipv4, cname } : null;
+      alvoRef.current = novo;
+      setAlvo(novo);
     } catch (e) {
       setPerguntei(true);
       setErroVercel(e instanceof Error ? e.message : 'não consegui falar com a Vercel');
@@ -126,10 +131,13 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
      ou o DNS ainda não aponta (é com ele), ou aponta e falta adicionar no
      projeto Vercel (é com você), ou já está no ar. */
   const consultar = useCallback(async (clean: string): Promise<Diagnostico | null> => {
+    /* Manda o que a Vercel espera. Sem isso a verificação compararia com o
+       IP legado chumbado e diria "aponta para outro lugar" justamente quando
+       o cliente tivesse configurado o valor CERTO. */
     const r = await fetch(`${FUNCTIONS_URL}/dominio-verificar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dominio: clean }),
+      body: JSON.stringify({ dominio: clean, esperado: alvoRef.current }),
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d?.error || 'Não foi possível verificar');
@@ -194,10 +202,13 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
   const nomeRaiz = provedor === 'Registro.br' ? '' : '@';
   /* O que a Vercel respondeu; as constantes são a rede de segurança para
      quando a API não responde, e ficam marcadas como tal na tela. */
-  const ipv4 = alvo?.ipv4 ?? '76.76.21.21';
-  const cname = alvo?.cname ?? 'cname.vercel-dns.com';
+  const ipv4 = alvo?.ipv4?.length ? alvo.ipv4 : ['76.76.21.21'];
+  const cname = alvo?.cname?.[0] ?? 'cname.vercel-dns.com';
+  /* Um registro por IP. A Vercel devolve mais de um por redundância e diz
+     que usar um só já basta — mas quem lê a tela precisa ver que são dois
+     endereços, não um número comprido. */
   const registros: string[][] = ehApex
-    ? [['A', nomeRaiz, ipv4], ['CNAME', 'www', cname]]
+    ? [...ipv4.map((ip) => ['A', nomeRaiz, ip]), ['CNAME', 'www', cname]]
     : [['CNAME', limpo.split('.')[0], cname]];
 
   const submit = async () => {
@@ -305,7 +316,7 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
               {registros.length > 1 ? 'O cliente cria estes dois registros no DNS dele:' : 'O cliente cria este registro no DNS dele:'}
             </p>
             {registros.map(([tipo, host, valor]) => (
-              <div key={`${tipo}-${host}`} className="space-y-1 pb-1.5 border-b border-black/[0.06] dark:border-white/[0.06] last:border-0 last:pb-0">
+              <div key={`${tipo}-${host}-${valor}`} className="space-y-1 pb-1.5 border-b border-black/[0.06] dark:border-white/[0.06] last:border-0 last:pb-0">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-foreground/70 w-16 shrink-0">Tipo</span>
                   <span className="font-mono text-foreground flex-1">{tipo}</span>
@@ -339,6 +350,12 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
             {alvo && (
               <p className="text-emerald-400/70 pt-0.5">
                 Valores confirmados com a Vercel agora.
+              </p>
+            )}
+            {ehApex && ipv4.length > 1 && (
+              <p className="text-foreground/45 pt-0.5">
+                São {ipv4.length} endereços para a raiz, por redundância. Criar um só já funciona;
+                criar os dois é melhor.
               </p>
             )}
             <p className="text-foreground/35 pt-0.5">
