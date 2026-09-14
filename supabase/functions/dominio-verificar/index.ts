@@ -21,14 +21,16 @@ const json = (s: number, b: unknown) =>
 const VERCEL_IP = '76.76.21.21';
 const VERCEL_CNAME = 'vercel-dns.com';
 
-async function doh(nome: string, tipo: 'A' | 'CNAME') {
+const CODIGO_DNS: Record<string, number> = { A: 1, CNAME: 5, SOA: 6 };
+
+async function doh(nome: string, tipo: 'A' | 'CNAME' | 'SOA') {
   try {
     const r = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(nome)}&type=${tipo}`, {
       headers: { Accept: 'application/dns-json' },
     });
     const d = await r.json();
     return (d?.Answer ?? [])
-      .filter((a: { type: number }) => a.type === (tipo === 'A' ? 1 : 5))
+      .filter((a: { type: number }) => a.type === CODIGO_DNS[tipo])
       .map((a: { data: string }) => String(a.data).replace(/\.$/, ''));
   } catch { return []; }
 }
@@ -80,11 +82,17 @@ Deno.serve(async (req) => {
     /* O www é metade do trabalho e ficava de fora: quem digita o endereço
        na barra digita com www tanto quanto sem. */
     const raiz = d.replace(/^www\./, '');
-    const [as, cnames, wwwA, wwwC, ns] = await Promise.all([
+    /* O SOA separa "ainda não propagou" de "não está lá".
+       Se a zona responde SOA e não responde A, o DNS do domínio já está no
+       ar e simplesmente não tem o registro — esperar não resolve, e mandar
+       esperar é o pior conselho possível nessa hora. */
+    const [as, cnames, wwwA, wwwC, ns, soa] = await Promise.all([
       doh(raiz, 'A'), doh(raiz, 'CNAME'),
       doh(`www.${raiz}`, 'A'), doh(`www.${raiz}`, 'CNAME'),
       nameservers(raiz),
+      doh(raiz, 'SOA'),
     ]);
+    const zonaNoAr = soa.length > 0;
     const provedor = PROVEDORES.find(([re]) => ns.some((n) => re.test(n)))?.[1] ?? null;
     const wwwOk = wwwA.includes(VERCEL_IP) || wwwC.some((c: string) => c.includes(VERCEL_CNAME));
     const apontaVercel = as.includes(VERCEL_IP) || cnames.some((c: string) => c.includes(VERCEL_CNAME));
@@ -107,13 +115,15 @@ Deno.serve(async (req) => {
         ? { codigo: 'falta_vercel', titulo: 'DNS já aponta certo — falta adicionar o domínio no projeto Vercel', dono: 'voce' }
         : temDns
           ? { codigo: 'dns_errado', titulo: 'O domínio aponta para outro lugar', dono: 'cliente' }
-          : { codigo: 'sem_dns', titulo: 'Nenhum registro DNS encontrado ainda', dono: 'cliente' };
+          : zonaNoAr
+            ? { codigo: 'zona_sem_registro', titulo: 'O DNS do domínio está no ar, mas sem o registro', dono: 'cliente' }
+            : { codigo: 'sem_dns', titulo: 'Nenhum registro DNS encontrado ainda', dono: 'cliente' };
 
     return json(200, {
       ok: true, dominio: raiz, passo,
       dns_provedor: { nome: provedor, nameservers: ns },
       www: { A: wwwA, CNAME: wwwC, ok: wwwOk },
-      dns: { A: as, CNAME: cnames, aponta_para_vercel: apontaVercel },
+      dns: { A: as, CNAME: cnames, aponta_para_vercel: apontaVercel, zona_no_ar: zonaNoAr },
       http: { status: httpStatus, servindo_nosso_app: servindo },
       // O que o cliente precisa configurar, pronto para copiar.
       configurar: { tipo_A: VERCEL_IP, tipo_CNAME: `cname.${VERCEL_CNAME}` },

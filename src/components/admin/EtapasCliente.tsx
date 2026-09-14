@@ -103,6 +103,7 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
         const d = await consultar(limpo);
         setDiag(d);
         if (d?.passo.codigo === 'pronto') { setEmLaco(false); toast.success('Domínio no ar'); }
+        else if (d?.passo.codigo === 'zona_sem_registro') setEmLaco(false);
       } catch { /* tenta de novo no próximo tique */ }
     }, 20000);
     return () => clearInterval(id);
@@ -168,7 +169,9 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
       const d = await consultar(limpo).catch(() => null);
       setDiag(d);
       if (d?.passo.codigo === 'pronto') onDone();
-      else setEmLaco(true);
+      /* Só espera quando esperar adianta. Zona no ar sem a entrada não muda
+         sozinha — ficar reconsultando daria a impressão de progresso. */
+      else if (d?.passo.codigo !== 'zona_sem_registro') setEmLaco(true);
     } catch (e) {
       toast.error((e as Error).message || 'Erro ao registrar domínio');
     } finally {
@@ -291,9 +294,16 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
               )}
               {diag.passo.dono === 'cliente' && (
                 <p className="text-foreground/50">
-                  {diag.dns.A.length || diag.dns.CNAME.length
-                    ? <>Hoje aponta para <span className="font-mono">{[...diag.dns.A, ...diag.dns.CNAME].slice(0, 2).join(', ')}</span>. Mande os valores acima para ele.</>
-                    : <>Ou ainda não foi configurado, ou o DNS não propagou — costuma levar de minutos a algumas horas.</>}
+                  {diag.dns.A.length || diag.dns.CNAME.length ? (
+                    <>Hoje aponta para <span className="font-mono">{[...diag.dns.A, ...diag.dns.CNAME].slice(0, 2).join(', ')}</span>. Mande os valores acima para ele.</>
+                  ) : diag.passo.codigo === 'zona_sem_registro' ? (
+                    /* Esperar aqui não resolve, e mandar esperar é o pior
+                       conselho: a zona já responde, só não tem a entrada. */
+                    <>O DNS já está respondendo — <strong className="text-foreground/75">a entrada não foi salva</strong>.
+                      Volte ao painel e confira se ela aparece na lista depois de adicionar. Esperar não vai mudar isso.</>
+                  ) : (
+                    <>Ou ainda não foi configurado, ou o DNS não propagou — costuma levar de minutos a algumas horas.</>
+                  )}
                 </p>
               )}
             </div>
