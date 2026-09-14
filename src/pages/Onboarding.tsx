@@ -39,43 +39,35 @@ type Etapa = {
 /* ── Primeiro acesso ──────────────────────────────────────────── */
 function PrimeiroAcesso({ client, concluir }: { client: Client; concluir: () => void }) {
   const atualizar = useUpdateClient();
-  const [enviando, setEnviando] = useState(false);
-  const [criando, setCriando] = useState(false);
-  const [emailNovo, setEmailNovo] = useState(client.email ?? '');
+  const [email, setEmail] = useState(client.admin_email ?? client.email ?? '');
   const [senha] = useState(genPassword());
+  const [indo, setIndo] = useState(false);
 
-  /* Duas faltas diferentes, que a tela tratava como uma só: sem sistema não
-     há onde criar acesso; com sistema e sem login registrado, falta criar o
-     usuário — e dizer "o sistema não existe" aí é mentira, porque ele está
-     no ar e abrindo. */
   const semSistema = !client.lojista_company_id;
-  const semAcesso = !semSistema && !client.admin_email;
-  const pronto = !semSistema && !semAcesso;
 
-  const criarAcesso = async () => {
-    const email = emailNovo.trim().toLowerCase();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast.error('Informe um e-mail válido'); return; }
-    setCriando(true);
+  /* Uma ação só. Antes eram duas — criar o acesso e depois enviar — e a
+     etapa se chama "Liberar o primeiro acesso", não "preparar para liberar".
+     Quem está aqui quer que o lojista receba o link; que o usuário precise
+     existir antes é problema nosso, não dele. */
+  const liberar = async () => {
+    const alvo = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(alvo)) { toast.error('Informe um e-mail válido'); return; }
+    if (!client.whatsapp) { toast.error('Este cliente não tem WhatsApp cadastrado.'); return; }
+    setIndo(true);
     try {
-      await criarAcessoCliente({
-        company_id: client.lojista_company_id!,
-        admin_email: email,
-        admin_password: senha,
-        admin_full_name: client.contact_name ?? client.company_name,
-      });
-      await saveSystemCredential({ client_id: client.id, email, password: senha });
-      await atualizar.mutateAsync({ id: client.id, admin_email: email });
-      toast.success('Acesso criado — agora dá para enviar o link');
-    } catch (e) {
-      toast.error((e as Error).message || 'Erro ao criar o acesso');
-    } finally {
-      setCriando(false);
-    }
-  };
+      // 1. O usuário, se ainda não existir ou se o e-mail mudou.
+      if (client.admin_email !== alvo) {
+        await criarAcessoCliente({
+          company_id: client.lojista_company_id!,
+          admin_email: alvo,
+          admin_password: senha,
+          admin_full_name: client.contact_name ?? client.company_name,
+        });
+        await saveSystemCredential({ client_id: client.id, email: alvo, password: senha });
+        await atualizar.mutateAsync({ id: client.id, admin_email: alvo });
+      }
 
-  const avisar = async () => {
-    setEnviando(true);
-    try {
+      // 2. O link, no WhatsApp dele.
       const { data: { session } } = await supabase.auth.getSession();
       const r = await fetch(`${FUNCTIONS_URL}/cliente-avisar-acesso`, {
         method: 'POST',
@@ -83,14 +75,14 @@ function PrimeiroAcesso({ client, concluir }: { client: Client; concluir: () => 
         body: JSON.stringify({ client_id: client.id }),
       });
       const d = await r.json();
-      if (!r.ok) throw new Error(d?.error || 'Não foi possível avisar.');
+      if (!r.ok) throw new Error(d?.error || 'Não foi possível enviar.');
       if (d.ok) { toast.success('Link de primeiro acesso enviado no WhatsApp'); concluir(); }
-      else if (d.repetido) { toast.info('Esse aviso já tinha sido enviado.'); concluir(); }
-      else toast.warning(`Não enviado: ${d.motivo}`);
+      else if (d.repetido) { toast.info('Esse link já tinha sido enviado.'); concluir(); }
+      else toast.warning(`Acesso criado, mas o envio falhou: ${d.motivo}`);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
-      setEnviando(false);
+      setIndo(false);
     }
   };
 
@@ -98,47 +90,35 @@ function PrimeiroAcesso({ client, concluir }: { client: Client; concluir: () => 
     <div className="space-y-4">
       <div className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] p-4 space-y-2">
         <Campo rotulo="Vai para" valor={client.whatsapp || '— sem WhatsApp cadastrado'} />
-        <Campo rotulo="Login" valor={client.admin_email || '— ainda não criado'} />
         <Campo rotulo="Sistema" valor={client.domain || LOJISTA_APP_URL.replace('https://', '')} />
       </div>
 
-      {semAcesso && (
-        <div className="rounded-xl border border-primary/25 bg-primary/[0.05] p-4 space-y-3">
-          <p className="text-[12.5px] text-foreground/70 leading-snug">
-            O sistema está no ar, mas ainda não existe um login do lojista — só o de
-            demonstração, que sai quando você criar o de verdade.
-          </p>
-          <input
-            className="w-full h-11 px-3.5 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.12] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50"
-            type="email"
-            placeholder="E-mail de quem recebe o acesso"
-            value={emailNovo}
-            onChange={(e) => setEmailNovo(e.target.value)}
-          />
-          <button
-            onClick={criarAcesso}
-            disabled={criando}
-            className="w-full h-11 rounded-xl bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {criando ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
-            Criar o acesso
-          </button>
-        </div>
-      )}
+      <div className="space-y-1.5">
+        <label className="text-[11px] text-foreground/40 px-1">E-mail de quem recebe o acesso</label>
+        <input
+          className="w-full h-11 px-3.5 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.12] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50"
+          type="email"
+          autoComplete="off"
+          placeholder="nome@empresa.com.br"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+      </div>
 
       <p className="text-[12px] text-foreground/45 leading-snug">
-        Ele recebe um link que vale 24 horas e define a própria senha. Não existe senha
-        para combinar por telefone.
+        Ele recebe um link que vale 24 horas, define a própria senha e cai direto no sistema.
+        Não existe senha para combinar por telefone.
       </p>
 
       <button
-        onClick={avisar}
-        disabled={enviando || !pronto}
+        onClick={liberar}
+        disabled={indo || semSistema}
         className="w-full h-12 rounded-xl bg-emerald-500 text-white text-[13px] font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-2"
       >
-        {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogoWhatsApp className="h-4 w-4" />}
+        {indo ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogoWhatsApp className="h-4 w-4" />}
         Enviar o primeiro acesso
       </button>
+
       {semSistema && (
         <p className="text-[11.5px] text-amber-500/90 leading-snug">
           O sistema deste cliente ainda não existe. Crie o sistema na ficha antes de liberar o acesso.
