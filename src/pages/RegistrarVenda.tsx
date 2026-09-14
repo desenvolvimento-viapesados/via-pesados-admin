@@ -105,7 +105,7 @@ const vazio = {
   mrr: '', canais: [] as string[],
   gerar_cobranca: true,
   acesso_nome: '', acesso_email: '',
-  demo_id: '',
+  sistema_email: '',
   owner_id: '',
 };
 
@@ -160,14 +160,19 @@ export default function RegistrarVenda() {
       mrr: moedaDeNumero(prospect?.proposal_value),
       acesso_nome: prospect?.contact_name ?? '',
       owner_id: prospect?.owner_id ?? member?.id ?? '',
-      demo_id: f.demo_id,
     }));
   }, [prospect?.id, member?.id]);
 
   // O campo é texto mascarado ("1.200,00"): Number() nele daria 1.2, e este
   // número vira a cobrança no Asaas.
   const mrrNum = valorDaMoeda(form.mrr) ?? 0;
-  const amostra = amostras.find((d) => d.id === form.demo_id) ?? null;
+  /* O e-mail digitado tem de casar com o login de uma amostra: é ele que
+     carrega o company_id no projeto do lojista. Comparação sem espaço e sem
+     caixa — ninguém digita e-mail com o mesmo capricho duas vezes. */
+  const alvo = form.sistema_email.trim().toLowerCase();
+  const amostra = alvo
+    ? amostras.find((d) => (d.admin_email ?? '').trim().toLowerCase() === alvo) ?? null
+    : null;
 
   const alternarCanal = (cid: string) =>
     setForm((f) => ({
@@ -340,17 +345,38 @@ export default function RegistrarVenda() {
               titulo="Vincular projeto a"
               descricao="O e-mail do sistema que passa a ser dele. A amostra escolhida vira o sistema real da empresa."
             >
-              <select className={campo} value={form.demo_id} onChange={(e) => set('demo_id', e.target.value)}>
-                <option value="">Criar um sistema novo depois</option>
-                {amostras.map((d) => (
-                  <option key={d.id} value={d.id}>{d.admin_email ?? d.slug}</option>
-                ))}
-              </select>
-              {amostra && (
-                <p className="text-[11px] text-foreground/45 leading-snug px-1 pt-2.5">
-                  Ao salvar, o conteúdo de demonstração é apagado — veículos, clientes, vendas e
-                  funcionários fictícios. Ficam a identidade visual, o site, o domínio, os cargos,
-                  o plano de contas e as etiquetas. Este login deixa de funcionar.
+              {/* Campo aberto, não lista. Quem fecha a venda sabe qual
+                  sistema apresentou; obrigar a achá-lo numa lista é pedir
+                  para reconhecer o que já se sabe. O que a tela deve fazer
+                  é confirmar o que ele escreveu, e é o que a linha abaixo faz. */}
+              <input
+                className={campo}
+                type="email"
+                autoComplete="off"
+                placeholder="E-mail do sistema a vincular"
+                value={form.sistema_email}
+                onChange={(e) => set('sistema_email', e.target.value)}
+              />
+              {!form.sistema_email.trim() ? (
+                <p className="text-[11px] text-foreground/40 leading-snug px-1 pt-2.5">
+                  Em branco, o sistema é criado vazio depois, pela ficha do cliente.
+                </p>
+              ) : amostra ? (
+                <div className="pt-2.5 space-y-1.5">
+                  <p className="text-[11.5px] text-emerald-400 flex items-center gap-1.5">
+                    <Check className="h-3.5 w-3.5 shrink-0" />
+                    {amostra.company_name} — a amostra passa a ser o sistema dele.
+                  </p>
+                  <p className="text-[11px] text-foreground/45 leading-snug">
+                    Ao salvar, o conteúdo de demonstração é apagado — veículos, clientes, vendas e
+                    funcionários fictícios. Ficam a identidade visual, o site, o domínio, os cargos,
+                    o plano de contas e as etiquetas. Este login deixa de funcionar.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-[11.5px] text-amber-500/90 leading-snug px-1 pt-2.5">
+                  Não achei nenhum sistema com esse e-mail. Confira antes de salvar — do jeito que
+                  está, a venda é registrada e o sistema fica para criar depois.
                 </p>
               )}
             </Secao>
