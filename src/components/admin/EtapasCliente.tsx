@@ -37,7 +37,7 @@ const CAMINHOS: Record<string, { passos: string[]; cuidado?: string }> = {
       'Domínios → clique no domínio',
       'DNS → Configurar endereçamento',
       'Modo avançado → Confirmar (o domínio fica alguns minutos em "Transição")',
-      'Nova entrada → escolha o tipo, cole o valor e clique em Adicionar',
+      'Nova entrada → escolha o tipo, DEIXE O NOME VAZIO para a raiz, cole o valor e clique em Adicionar',
     ],
     cuidado: 'Não use "Alterar servidores DNS": aquela caixa entrega o DNS inteiro para outro provedor e derruba o e-mail do domínio junto.',
   },
@@ -123,9 +123,15 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
 
   /* A raiz e o www. Mostrar só a raiz dava um site que abre em
      cliente.com.br e falha em www.cliente.com.br — e o cliente descobre
-     isso depois, digitando do jeito que ele digita. */
+     isso depois, digitando do jeito que ele digita.
+
+     O nome da raiz não é "@" em todo lugar: o Registro.br recusa o arroba
+     com "Nome do record inválido" e espera o campo vazio. Mandar um valor
+     que o painel rejeita é pior do que não mandar valor nenhum, porque a
+     pessoa confia e só descobre no erro. */
+  const nomeRaiz = provedor === 'Registro.br' ? '' : '@';
   const registros: string[][] = ehApex
-    ? [['A', '@', '76.76.21.21'], ['CNAME', 'www', 'cname.vercel-dns.com']]
+    ? [['A', nomeRaiz, '76.76.21.21'], ['CNAME', 'www', 'cname.vercel-dns.com']]
     : [['CNAME', limpo.split('.')[0], 'cname.vercel-dns.com']];
 
   const submit = async () => {
@@ -216,7 +222,9 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-foreground/70 w-16 shrink-0">Nome</span>
-                  <span className="font-mono text-foreground flex-1">{host}</span>
+                  <span className={cn('flex-1', host ? 'font-mono text-foreground' : 'text-foreground/45 italic')}>
+                    {host || 'deixe o campo vazio'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-foreground/70 w-16 shrink-0">Valor</span>
