@@ -574,6 +574,17 @@ export default function ClienteDetalhe() {
                       {avisando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                       Avisar que está pronto
                     </button>
+                    {/* A identidade saiu do onboarding: quando o sistema vem
+                        da amostra ela já chega aplicada, e virava uma tela
+                        pedindo o que já estava lá. Continua alcançável aqui,
+                        para quando houver o que trocar. */}
+                    <button
+                      onClick={() => setDialog('logo_aplicada')}
+                      title="Trocar logo, ícone ou banner no sistema e no site"
+                      className="h-8 px-2.5 rounded-lg border border-black/[0.1] dark:border-white/[0.1] text-[11.5px] font-medium text-foreground/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] flex items-center gap-1.5"
+                    >
+                      <Upload className="h-3 w-3" /> Identidade
+                    </button>
                     <a
                       href={client.domain ? `https://${client.domain}` : LOJISTA_APP_URL}
                       target="_blank"
@@ -703,7 +714,17 @@ export default function ClienteDetalhe() {
 
           {/* Contratos */}
           <div>
-            <SectionHeader title="Contratos" />
+            <SectionHeader
+              title="Contratos"
+              right={
+                <button
+                  onClick={() => setDialog('contrato_gerado')}
+                  className="text-[11px] font-semibold text-primary hover:opacity-70 flex items-center gap-1"
+                >
+                  <Plus className="h-3 w-3" /> Contrato
+                </button>
+              }
+            />
             <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
               {contracts.length === 0 ? (
                 <p className="text-[11.5px] text-foreground/30 text-center py-6">Nenhum contrato</p>

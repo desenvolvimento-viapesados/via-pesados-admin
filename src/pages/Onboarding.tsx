@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, ArrowRight, Check, Globe, Loader2, PartyPopper,
-  Upload, Boxes, GraduationCap,
+  Boxes, GraduationCap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -12,7 +12,7 @@ import {
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase, FUNCTIONS_URL, LOJISTA_APP_URL } from '@/integrations/supabase/client';
-import { CorpoDominio, CorpoIdentidade } from '@/components/admin/EtapasCliente';
+import { CorpoDominio } from '@/components/admin/EtapasCliente';
 
 /** A marca do WhatsApp. Um balão genérico não é o WhatsApp — e o que sai
     daqui é uma mensagem no WhatsApp, não "uma mensagem". */
@@ -102,13 +102,9 @@ function Campo({ rotulo, valor }: { rotulo: string; valor: string }) {
 
 /* ── As etapas ────────────────────────────────────────────────── */
 const ETAPAS: Etapa[] = [
-  {
-    chave: 'logo_aplicada',
-    titulo: 'Identidade visual',
-    resumo: 'Logo, ícone e banner, aplicados direto no sistema e no site dele.',
-    icone: Upload,
-    corpo: ({ client, concluir }) => <CorpoIdentidade client={client} onDone={concluir} />,
-  },
+  /* Identidade não é etapa: o sistema vem da amostra, que o cliente aprovou
+     com a marca dele já aplicada. A tela pedia o que já estava feito. Trocar
+     logo continua possível, pelo painel do sistema na ficha. */
   {
     chave: 'dominio_conectado',
     titulo: 'Domínio',
