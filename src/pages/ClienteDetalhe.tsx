@@ -11,7 +11,7 @@ import {
   useClient, useUpdateClient, useOnboardingTasks, useToggleTask,
   useContracts, useCreateContract, usePayments, useCreatePayment,
   useActivities, useCreateActivity,
-  provisionCompany, updateCompanyBranding, uploadLogo, slugify, genPassword,
+  provisionCompany, adotarAmostra, useDemos, useUpdateDemo, updateCompanyBranding, uploadLogo, slugify, genPassword,
   setCompanyChannels,
   brlFull, brl, type Client, type OnboardingTask,
   usePlans, useCriarAssinaturaAsaas,
@@ -176,15 +176,52 @@ function ProvisionDialog({
   onClose: () => void;
 }) {
   const update = useUpdateClient();
+  const atualizarDemo = useUpdateDemo();
+  const { data: demos = [] } = useDemos();
   const [email, setEmail] = useState(client.email || '');
+  const [amostraEmail, setAmostraEmail] = useState('');
   const [password] = useState(genPassword());
   const [loading, setLoading] = useState(false);
+
+  /* Adotar a amostra deixou de ser exclusividade da venda. Quem fecha a
+     venda sem vincular ficava sem caminho: "Criar sistema" nascia vazio e a
+     amostra que o cliente viu virava lixo. */
+  const alvo = amostraEmail.trim().toLowerCase();
+  const amostra = alvo
+    ? demos.find((d) => d.lojista_company_id && d.status !== 'convertida'
+        && (d.admin_email ?? '').trim().toLowerCase() === alvo) ?? null
+    : null;
 
   const submit = async () => {
     if (!email.trim()) { toast.error('Informe o e-mail do administrador do cliente'); return; }
     setLoading(true);
     try {
       const slug = slugify(client.company_name);
+
+      if (amostra?.lojista_company_id) {
+        const r = await adotarAmostra({
+          company_id: amostra.lojista_company_id,
+          company_name: client.company_name,
+          company_slug: slug,
+          admin_email: email.trim(),
+          admin_password: password,
+          admin_full_name: client.contact_name ?? client.company_name,
+          city: client.city ?? undefined,
+          state: client.state ?? undefined,
+          address: client.address ?? undefined,
+        });
+        await update.mutateAsync({ id: client.id, lojista_company_id: r.company_id, admin_email: email.trim() });
+        await saveSystemCredential({ client_id: client.id, email: email.trim(), password });
+        await atualizarDemo.mutateAsync({ id: amostra.id, status: 'convertida' });
+        if (client.canais?.length) {
+          try { await setCompanyChannels(r.company_id, client.canais); }
+          catch { toast.warning('Sistema pronto, mas os canais não foram aplicados. Ajuste em "Canais liberados".'); }
+        }
+        toast.success('Sistema pronto a partir da amostra');
+        onDone(); onClose();
+        return;
+      }
+
       const { company_id } = await provisionCompany({
         company_name: client.company_name,
         company_slug: slug,
@@ -232,6 +269,26 @@ function ProvisionDialog({
         </p>
         <div className="space-y-2.5 pt-1">
           <input className={inputCls} type="email" placeholder="E-mail do administrador do cliente *" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input
+            className={inputCls}
+            type="email"
+            autoComplete="off"
+            placeholder="E-mail do sistema a aproveitar (opcional)"
+            value={amostraEmail}
+            onChange={(e) => setAmostraEmail(e.target.value)}
+          />
+          {amostraEmail.trim() && (
+            amostra ? (
+              <p className="text-[11.5px] text-emerald-400 leading-snug">
+                {amostra.company_name} — a amostra vira o sistema dele. O conteúdo de
+                demonstração é apagado e a identidade, o site e o domínio ficam.
+              </p>
+            ) : (
+              <p className="text-[11.5px] text-amber-500/90 leading-snug">
+                Não achei amostra com esse e-mail. Do jeito que está, o sistema nasce vazio.
+              </p>
+            )
+          )}
           <div className="flex items-center gap-2 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] px-3 py-2.5">
             <KeyRound className="h-3.5 w-3.5 text-foreground/40 shrink-0" />
             <p className="text-[12.5px] font-mono text-foreground flex-1">{password}</p>
@@ -246,7 +303,7 @@ function ProvisionDialog({
             className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
-            Criar sistema
+            {amostra ? 'Aproveitar a amostra' : 'Criar sistema'}
           </button>
         </div>
       </DialogContent>
