@@ -80,6 +80,10 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
   const [loading, setLoading] = useState(false);
   const [verificando, setVerificando] = useState(false);
   const [emLaco, setEmLaco] = useState(false);
+  /* Quantas rodadas o certificado já levou. Passado um tempo, "aguarde"
+     deixa de ser conselho: a Vercel não vai emitir sozinha e alguém precisa
+     olhar. Dizer "poucos minutos" para sempre é enganar. */
+  const [rodadasCert, setRodadasCert] = useState(0);
   /* Do NOSSO lado o domínio existe? Era a metade invisível desta tela: todo
      o conteúdo falava do que o cliente faz no registrador, e o botão que
      coloca o domínio na Vercel ficava embaixo de tudo, parecendo o último
@@ -189,7 +193,10 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
         if (d?.passo.codigo === 'pronto') { setEmLaco(false); toast.success('Domínio no ar, com HTTPS'); onDone(); }
         else if (d?.passo.codigo === 'zona_sem_registro') setEmLaco(false);
         // Falta só o certificado: pede a verificação a cada rodada.
-        else if (d?.passo.codigo === 'certificado') await cutucarCertificado(limpo);
+        else if (d?.passo.codigo === 'certificado') {
+          setRodadasCert((v) => v + 1);
+          await cutucarCertificado(limpo);
+        }
       } catch { /* tenta de novo no próximo tique */ }
     }, 20000);
     return () => clearInterval(id);
@@ -437,7 +444,11 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
             className="w-full h-9 rounded-xl border border-black/[0.1] dark:border-white/[0.12] text-[12px] font-medium text-foreground/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {(verificando || emLaco) && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {emLaco ? 'Aguardando a propagação — conferindo sozinho' : 'Verificar em que passo está'}
+            {!emLaco
+              ? 'Verificar em que passo está'
+              : diag?.passo.codigo === 'certificado'
+                ? 'Aguardando o certificado — conferindo sozinho'
+                : 'Aguardando a propagação — conferindo sozinho'}
           </button>
 
           {diag && (
@@ -453,10 +464,19 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
             )}>
               <p className="font-semibold">{diag.passo.titulo}</p>
               {diag.passo.codigo === 'certificado' && (
-                <p className="text-foreground/50">
-                  O DNS está certo e a Vercel já responde pelo endereço. Falta só o certificado
-                  HTTPS, que ela emite sozinha — costuma levar poucos minutos. Não há nada a fazer.
-                </p>
+                rodadasCert >= 9 ? (
+                  <p className="text-foreground/60">
+                    Já são mais de 3 minutos pedindo e o certificado não saiu. Isso deixa de ser
+                    espera normal: abra o domínio no painel da Vercel e veja o que ela diz na
+                    aba Domains — costuma ser um registro DNS sobrando ou conflito com outro projeto.
+                  </p>
+                ) : (
+                  <p className="text-foreground/50">
+                    O DNS está certo e a Vercel já responde pelo endereço. Falta só o certificado
+                    HTTPS, que ela emite sozinha — costuma levar poucos minutos. Estou pedindo a
+                    emissão a cada rodada.
+                  </p>
+                )
               )}
               {!registrado && (
                 /* O diagnóstico só falava do lado do cliente. Com o domínio
