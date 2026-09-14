@@ -2,19 +2,19 @@ import { useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Phone, MapPin, MessageCircle, CalendarPlus, MonitorPlay, Trophy,
-  XCircle, Loader2, Clock, Radio, ExternalLink, StickyNote, Send, Copy,
+  XCircle, Loader2, Clock, Radio, ExternalLink, StickyNote, Send, Copy, Pencil, Rocket, Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   useProspects, useUpdateProspect, useChannels, useProspectEvents,
-  useMeetings, useDemos, useActivities, useCreateActivity,
+  useMeetings, useDemos, useUpdateDemo, useActivities, useCreateActivity,
   brl, type Prospect, type ProspectStage, type Demo,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import { StatusBadge } from '@/components/admin/ui';
 import { AgendarReuniaoDialog } from '@/components/crm/AgendarReuniaoDialog';
-import { DemoDialog } from '@/components/crm/AmostrasTab';
+import { DemoDialog, provisionarAmostra } from '@/components/crm/AmostrasTab';
 import { CidadeUF } from '@/components/crm/CidadeUF';
 import { CampoMascarado } from '@/components/crm/CampoMascarado';
 import { mascaraTelefone, mascaraMoeda, moedaDeNumero, valorDaMoeda } from '@/lib/mascaras';
@@ -60,11 +60,34 @@ function Cartao({ titulo, children, acao }: { titulo: string; children: React.Re
    A amostra é o argumento de venda: é o sistema do cliente, com a marca
    dele, no ar. Ficava como uma linha de lista no rodapé da ficha, do
    mesmo tamanho de uma anotação. Sobe para o topo, com o link à mão. */
-function AmostraDestaque({ amostra }: { amostra: Demo }) {
+function AmostraDestaque({ amostra, onEditar }: { amostra: Demo; onEditar: () => void }) {
+  const update = useUpdateDemo();
+  const [subindo, setSubindo] = useState(false);
   const cor = amostra.primary_color || '#E36C0A';
   const logo = amostra.logo_url || amostra.site_logo_url;
   const link = amostra.demo_url;
   const rascunho = amostra.status === 'rascunho';
+
+  const subir = async () => {
+    setSubindo(true);
+    try {
+      await update.mutateAsync(await provisionarAmostra(amostra));
+      toast.success('Sistema da amostra no ar');
+    } catch (e) {
+      toast.error((e as Error).message || 'Erro ao provisionar');
+    } finally {
+      setSubindo(false);
+    }
+  };
+
+  const descartar = async () => {
+    try {
+      await update.mutateAsync({ id: amostra.id, status: 'descartada' });
+      toast.success('Amostra descartada');
+    } catch {
+      toast.error('Erro ao descartar');
+    }
+  };
 
   return (
     <section className="rounded-2xl border border-black/[0.07] dark:border-white/[0.08] overflow-hidden bg-black/[0.015] dark:bg-white/[0.02]">
@@ -95,13 +118,39 @@ function AmostraDestaque({ amostra }: { amostra: Demo }) {
             <p className="text-[15px] font-semibold text-foreground mt-1 truncate">{amostra.company_name}</p>
           </div>
           <StatusBadge status={amostra.status} />
+          {/* Editar a amostra é rotina, não exceção: trocar uma foto errada
+              ou o texto do hero acontece durante a própria apresentação. */}
+          <button
+            onClick={onEditar}
+            title="Editar amostra"
+            className="h-7 w-7 shrink-0 rounded-lg flex items-center justify-center text-foreground/35 hover:text-foreground hover:bg-black/[0.05] dark:hover:bg-white/[0.07] transition-colors"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
         </div>
 
         {rascunho ? (
-          <p className="text-[12px] text-amber-500/90 leading-snug">
-            O sistema desta amostra não subiu, então não há link para apresentar.
-            Abra a aba Amostras e use "Tentar de novo".
-          </p>
+          <div className="space-y-3">
+            <p className="text-[12px] text-amber-500/90 leading-snug">
+              O sistema desta amostra não subiu, então não há link para apresentar.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={descartar}
+                className="h-10 rounded-xl border border-black/[0.1] dark:border-white/[0.12] text-[12px] font-medium text-foreground/50 hover:text-red-400 hover:border-red-400/30 transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Descartar
+              </button>
+              <button
+                onClick={subir}
+                disabled={subindo}
+                className="h-10 rounded-xl bg-primary text-primary-foreground text-[12px] font-semibold hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-1.5"
+              >
+                {subindo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5" />}
+                Tentar de novo
+              </button>
+            </div>
+          </div>
         ) : (
           <div className="space-y-2.5">
             <Campo
@@ -175,6 +224,7 @@ export default function ProspectDetalhe() {
 
   const [reuniaoAberta, setReuniaoAberta] = useState(false);
   const [amostraAberta, setAmostraAberta] = useState(false);
+  const [amostraEditando, setAmostraEditando] = useState<Demo | null>(null);
   const [perdaAberta, setPerdaAberta] = useState(false);
   const [motivoPerda, setMotivoPerda] = useState('');
   const [nota, setNota] = useState('');
@@ -203,7 +253,15 @@ export default function ProspectDetalhe() {
     () => reunioes.filter((r) => r.prospect_id === id).sort((a, b) => b.scheduled_at.localeCompare(a.scheduled_at)),
     [reunioes, id],
   );
-  const minhasAmostras = useMemo(() => amostras.filter((a) => a.prospect_id === id), [amostras, id]);
+  /* Descartada some da ficha: descartar tem de tirar da vista, senão o
+     botão não fez nada visível. A que está no ar vem primeiro — a ordem
+     por data deixava um rascunho quebrado acima da amostra apresentável. */
+  const minhasAmostras = useMemo(
+    () => amostras
+      .filter((a) => a.prospect_id === id && a.status !== 'descartada')
+      .sort((a, b) => Number(a.status === 'rascunho') - Number(b.status === 'rascunho')),
+    [amostras, id],
+  );
   const canal = canais.find((c) => c.id === prospect?.channel_id) ?? null;
 
   if (isLoading) {
@@ -305,7 +363,13 @@ export default function ProspectDetalhe() {
         {/* ── Coluna principal ───────────────────────────────── */}
         <div className="space-y-4 min-w-0">
           {/* A amostra vem antes de tudo: é o que se mostra ao cliente. */}
-          {minhasAmostras.map((a) => <AmostraDestaque key={a.id} amostra={a} />)}
+          {minhasAmostras.map((a) => (
+            <AmostraDestaque
+              key={a.id}
+              amostra={a}
+              onEditar={() => setAmostraEditando(a)}
+            />
+          ))}
 
           {/* Ações */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -534,6 +598,14 @@ export default function ProspectDetalhe() {
         />
       )}
       <DemoDialog open={amostraAberta} onClose={() => setAmostraAberta(false)} defaultProspectId={prospect.id} />
+      {amostraEditando && (
+        <DemoDialog
+          open
+          demo={amostraEditando}
+          onClose={() => setAmostraEditando(null)}
+          defaultProspectId={prospect.id}
+        />
+      )}
     </div>
   );
 }
