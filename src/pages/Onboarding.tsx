@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
-  ArrowLeft, ArrowRight, Check, Globe, Loader2, PartyPopper,
+  ArrowLeft, ArrowRight, Check, Globe, Loader2, PartyPopper, RotateCcw,
   Boxes, GraduationCap, KeyRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -14,6 +14,8 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase, FUNCTIONS_URL, LOJISTA_APP_URL } from '@/integrations/supabase/client';
 import { CorpoDominio, ORDEM_ETAPAS } from '@/components/admin/EtapasCliente';
+import { CampoMascarado } from '@/components/crm/CampoMascarado';
+import { mascaraTelefone, soDigitos } from '@/lib/mascaras';
 
 /** A marca do WhatsApp. Um balão genérico não é o WhatsApp — e o que sai
     daqui é uma mensagem no WhatsApp, não "uma mensagem". */
@@ -30,20 +32,110 @@ type Etapa = {
   resumo: string;
   /** Aceita ícone do lucide e o nosso SVG da marca do WhatsApp. */
   icone: React.ComponentType<{ className?: string }>;
-  /** Conteúdo próprio; quando ausente, a etapa é só marcar como feita. */
-  corpo?: (ctx: { client: Client; concluir: () => void }) => React.ReactNode;
+  /** Conteúdo próprio; quando ausente, a etapa é só marcar como feita.
+      `jaFeito` distingue fazer de refazer — o que já saiu uma vez precisa
+      dizer à função que desta vez é reenvio. */
+  corpo?: (ctx: { client: Client; concluir: () => void; jaFeito: boolean }) => React.ReactNode;
   /** Texto do botão quando a etapa não tem corpo próprio. */
   acao?: string;
 };
 
 /* ── Primeiro acesso ──────────────────────────────────────────── */
-function PrimeiroAcesso({ client, concluir }: { client: Client; concluir: () => void }) {
+
+/** Situação de número que a Meta entrega de verdade. */
+const NUMERO_OK = 'CONNECTED';
+
+type DiagnosticoWa = {
+  corpo?: string;
+  botao?: { texto: string; url: string };
+  numero?: { situacao?: string; telefone?: string; qualidade?: string };
+  carregando: boolean;
+  falhou?: boolean;
+};
+
+/**
+ * O que a Meta sabe: o modelo aprovado e a saúde do nosso número.
+ *
+ * Lido na hora, nunca copiado. O texto do template vive na Meta — uma cópia
+ * aqui passaria a mentir no dia em que alguém editasse o modelo, e a prévia
+ * existe justamente para mostrar o que sai.
+ *
+ * A saúde do número está aqui pelo motivo oposto: quando ele está banido, a
+ * Graph aceita o envio e devolve protocolo, o painel registra sucesso e nada
+ * chega. Sem isto, a tela mente com a melhor das intenções.
+ */
+function useDiagnosticoWa(): DiagnosticoWa {
+  const [d, setD] = useState<DiagnosticoWa>({ carregando: true });
+
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      try {
+        const [t, n] = await Promise.all([
+          fetch(`${FUNCTIONS_URL}/wa-diagnostico?template=acesso_equipe`).then((r) => r.json()),
+          fetch(`${FUNCTIONS_URL}/wa-diagnostico`).then((r) => r.json()),
+        ]);
+        if (!vivo) return;
+        type Comp = { type: string; text?: string; buttons?: { text: string; url: string }[] };
+        const comps: Comp[] = t?.template?.components ?? [];
+        const botao = comps.find((c) => c.type === 'BUTTONS')?.buttons?.[0];
+        setD({
+          carregando: false,
+          corpo: comps.find((c) => c.type === 'BODY')?.text,
+          botao: botao && { texto: botao.text, url: botao.url },
+          numero: n?.numero,
+        });
+      } catch {
+        if (vivo) setD({ carregando: false, falhou: true });
+      }
+    })();
+    return () => { vivo = false; };
+  }, []);
+
+  return d;
+}
+
+/** Prévia da mensagem: o texto aprovado com as variáveis já preenchidas. */
+function PreviaMensagem({ d, nome, empresa }: { d: DiagnosticoWa; nome: string; empresa: string }) {
+  if (d.carregando) {
+    return <div className="h-24 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] animate-pulse" />;
+  }
+  /* Falhar aqui não impede de enviar — a prévia é conferência, não requisito.
+     Mas diz que falhou, em vez de sumir e deixar parecer que não há mensagem. */
+  if (d.falhou || !d.corpo) {
+    return (
+      <p className="text-[11.5px] text-foreground/40 leading-snug px-1">
+        Não consegui ler o modelo aprovado na Meta agora. A mensagem sai assim mesmo.
+      </p>
+    );
+  }
+
+  const texto = d.corpo.replace('{{1}}', nome || '—').replace('{{2}}', empresa || '—');
+
+  return (
+    <div className="rounded-xl bg-[#e7f7d4] dark:bg-[#1f2c23] border border-black/[0.06] dark:border-white/[0.06] overflow-hidden">
+      <p className="px-4 pt-3.5 pb-3 text-[12.5px] text-[#111b21] dark:text-white/85 leading-relaxed whitespace-pre-line">
+        {texto}
+      </p>
+      {d.botao && (
+        <div className="border-t border-black/[0.07] dark:border-white/[0.08] px-4 py-2.5 text-center">
+          <span className="text-[12.5px] font-medium text-[#0a84ff] dark:text-[#53bdeb]">{d.botao.texto}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PrimeiroAcesso({ client, concluir, jaFeito }: { client: Client; concluir: () => void; jaFeito: boolean }) {
   const atualizar = useUpdateClient();
   const [email, setEmail] = useState(client.admin_email ?? client.email ?? '');
+  const [zap, setZap] = useState(client.whatsapp ?? '');
   const [senha] = useState(genPassword());
   const [indo, setIndo] = useState(false);
+  const diag = useDiagnosticoWa();
 
   const semSistema = !client.lojista_company_id;
+  const numeroRuim = Boolean(diag.numero?.situacao && diag.numero.situacao !== NUMERO_OK);
 
   /* Uma ação só. Antes eram duas — criar o acesso e depois enviar — e a
      etapa se chama "Liberar o primeiro acesso", não "preparar para liberar".
@@ -52,9 +144,18 @@ function PrimeiroAcesso({ client, concluir }: { client: Client; concluir: () => 
   const liberar = async () => {
     const alvo = email.trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(alvo)) { toast.error('Informe um e-mail válido'); return; }
-    if (!client.whatsapp) { toast.error('Este cliente não tem WhatsApp cadastrado.'); return; }
+    const digitos = soDigitos(zap);
+    if (digitos.length < 10 || digitos.length > 11) {
+      toast.error('Informe o WhatsApp com DDD.'); return;
+    }
     setIndo(true);
     try {
+      /* O número é o destino: grava antes de mandar, senão a função lê o
+         antigo do banco e a correção feita aqui não vale nada. */
+      if (soDigitos(client.whatsapp) !== digitos) {
+        await atualizar.mutateAsync({ id: client.id, whatsapp: zap });
+      }
+
       // 1. O usuário, se ainda não existir ou se o e-mail mudou.
       if (client.admin_email !== alvo) {
         await criarAcessoCliente({
@@ -72,11 +173,21 @@ function PrimeiroAcesso({ client, concluir }: { client: Client; concluir: () => 
       const r = await fetch(`${FUNCTIONS_URL}/cliente-avisar-acesso`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token ?? ''}` },
-        body: JSON.stringify({ client_id: client.id }),
+        /* Refazendo a etapa, o operador está dizendo que a primeira não
+           chegou. Sem isto a trava de duplicado devolve "já enviado" e a
+           segunda tentativa nunca sai. */
+        body: JSON.stringify({ client_id: client.id, reenviar: jaFeito }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d?.error || 'Não foi possível enviar.');
-      if (d.ok) { toast.success('Link de primeiro acesso enviado no WhatsApp'); concluir(); }
+      if (d.ok) {
+        toast.success(
+          numeroRuim
+            ? 'A Meta aceitou o envio — mas o número está irregular e ela pode não entregar.'
+            : 'Link de primeiro acesso enviado no WhatsApp',
+        );
+        concluir();
+      }
       else if (d.repetido) { toast.info('Esse link já tinha sido enviado.'); concluir(); }
       else toast.warning(`Acesso criado, mas o envio falhou: ${d.motivo}`);
     } catch (e) {
@@ -88,27 +199,67 @@ function PrimeiroAcesso({ client, concluir }: { client: Client; concluir: () => 
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] p-4 space-y-2">
-        <Campo rotulo="Vai para" valor={client.whatsapp || '— sem WhatsApp cadastrado'} />
+      <div className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] p-4">
         <Campo rotulo="Sistema" valor={client.domain || LOJISTA_APP_URL.replace('https://', '')} />
       </div>
 
+      {/* Os dois destinos, lado a lado e editáveis: o número recebe a
+          mensagem, o e-mail vira o login. Errar um deles é entregar o
+          sistema de um cliente na mão de outra pessoa. */}
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className="text-[11px] text-foreground/40 px-1">WhatsApp que recebe a mensagem</label>
+          <CampoMascarado
+            valorInicial={client.whatsapp ?? ''}
+            mascara={mascaraTelefone}
+            aoSair={setZap}
+            placeholder="(00) 00000-0000"
+            className="w-full h-11 px-3.5 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.12] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-[11px] text-foreground/40 px-1">E-mail de quem recebe o acesso</label>
+          <input
+            className="w-full h-11 px-3.5 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.12] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50"
+            type="email"
+            autoComplete="off"
+            placeholder="nome@empresa.com.br"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+      </div>
+
       <div className="space-y-1.5">
-        <label className="text-[11px] text-foreground/40 px-1">E-mail de quem recebe o acesso</label>
-        <input
-          className="w-full h-11 px-3.5 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.12] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50"
-          type="email"
-          autoComplete="off"
-          placeholder="nome@empresa.com.br"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+        <label className="text-[11px] text-foreground/40 px-1">A mensagem que ele recebe</label>
+        <PreviaMensagem
+          d={diag}
+          nome={(client.contact_name ?? '').trim().split(/\s+/)[0]}
+          empresa={client.company_name}
         />
       </div>
 
       <p className="text-[12px] text-foreground/45 leading-snug">
-        Ele recebe um link que vale 24 horas, define a própria senha e cai direto no sistema.
-        Não existe senha para combinar por telefone.
+        O botão abre um link que vale 24 horas: ele define a própria senha e cai direto no
+        sistema. Não existe senha para combinar por telefone.
       </p>
+
+      {/* A Graph aceita o envio e devolve protocolo mesmo com o número
+          irregular — e aí o painel registra sucesso e nada chega. Dizer
+          antes do clique é a diferença entre esperar e ir resolver. */}
+      {numeroRuim && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/[0.06] p-3.5 space-y-1.5">
+          <p className="text-[12.5px] font-semibold text-red-400">
+            O nosso número está em {diag.numero?.situacao} na Meta
+          </p>
+          <p className="text-[11.5px] text-foreground/55 leading-snug">
+            {diag.numero?.telefone ?? 'O número da Via Pesados'} envia, recebe protocolo e a
+            mensagem não é entregue. Enquanto isso não for resolvido no Gerenciador do WhatsApp,
+            reenviar não adianta — combine o acesso por outro caminho.
+          </p>
+        </div>
+      )}
 
       <button
         onClick={liberar}
@@ -116,7 +267,7 @@ function PrimeiroAcesso({ client, concluir }: { client: Client; concluir: () => 
         className="w-full h-12 rounded-xl bg-emerald-500 text-white text-[13px] font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 flex items-center justify-center gap-2"
       >
         {indo ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogoWhatsApp className="h-4 w-4" />}
-        Enviar o primeiro acesso
+        {jaFeito ? 'Reenviar o primeiro acesso' : 'Enviar o primeiro acesso'}
       </button>
 
       {semSistema && (
@@ -171,7 +322,9 @@ const ETAPAS: Etapa[] = [
     titulo: 'Liberar o primeiro acesso',
     resumo: 'Com tudo pronto, manda no WhatsApp o link que abre o sistema pela primeira vez.',
     icone: LogoWhatsApp,
-    corpo: ({ client, concluir }) => <PrimeiroAcesso client={client} concluir={concluir} />,
+    corpo: ({ client, concluir, jaFeito }) => (
+      <PrimeiroAcesso client={client} concluir={concluir} jaFeito={jaFeito} />
+    ),
   },
 ];
 
@@ -209,6 +362,9 @@ export default function Onboarding() {
   const [params, setParams] = useSearchParams();
   const [i, setI] = useState(0);
   const [ativando, setAtivando] = useState(false);
+  /* Qual etapa concluída está aberta de novo. Guarda a chave, não um
+     booleano: assim trocar de passo não deixa a anterior aberta. */
+  const [refazendo, setRefazendo] = useState<string | null>(null);
 
   const feito = useMemo(() => {
     const m: Record<string, OnboardingTask> = {};
@@ -229,6 +385,7 @@ export default function Onboarding() {
   /** Muda de etapa e deixa registrado na URL. */
   const irPara = useCallback((k: number) => {
     setI(k);
+    setRefazendo(null);
     const chave = k >= ETAPAS.length ? 'fim' : ETAPAS[k].chave;
     const p = new URLSearchParams(params);
     p.set('etapa', chave);
@@ -357,21 +514,38 @@ export default function Onboarding() {
                 {client.status === 'ativo' ? 'Cliente já está ativo' : 'Colocar no ar'}
               </button>
             </div>
-          ) : feito[etapa.chave]?.done ? (
+          ) : feito[etapa.chave]?.done && refazendo !== etapa.chave ? (
             <div className="text-center py-3 space-y-3">
               <span className="h-11 w-11 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center mx-auto">
                 <Check className="h-5 w-5" strokeWidth={3} />
               </span>
               <p className="text-[13px] text-foreground/60">Esta etapa já está concluída.</p>
-              <button
-                onClick={() => irPara(i + 1)}
-                className="h-10 px-5 rounded-xl border border-black/[0.1] dark:border-white/[0.12] text-[12.5px] font-medium text-foreground/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors inline-flex items-center gap-1.5"
-              >
-                Próxima etapa <ArrowRight className="h-3.5 w-3.5" />
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  onClick={() => irPara(i + 1)}
+                  className="h-10 px-5 rounded-xl border border-black/[0.1] dark:border-white/[0.12] text-[12.5px] font-medium text-foreground/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors inline-flex items-center gap-1.5"
+                >
+                  Próxima etapa <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+                {/* Concluída não é irreversível: o link de acesso pode não ter
+                    chegado, o domínio pode cair. Antes daqui a etapa feita era
+                    uma porta fechada, e refazer exigia desmarcar a tarefa. */}
+                {etapa.corpo && (
+                  <button
+                    onClick={() => setRefazendo(etapa.chave)}
+                    className="h-10 px-5 rounded-xl text-[12.5px] font-medium text-foreground/45 hover:text-foreground transition-colors inline-flex items-center gap-1.5"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" /> Refazer esta etapa
+                  </button>
+                )}
+              </div>
             </div>
           ) : etapa.corpo ? (
-            etapa.corpo({ client, concluir: () => concluir(etapa.chave) })
+            etapa.corpo({
+              client,
+              concluir: () => { setRefazendo(null); concluir(etapa.chave); },
+              jaFeito: Boolean(feito[etapa.chave]?.done),
+            })
           ) : (
             <button
               onClick={() => concluir(etapa.chave)}
@@ -382,15 +556,23 @@ export default function Onboarding() {
           )}
         </div>
 
-        {/* Pular é explícito: etapa não concluída continua aparecendo em aberto. */}
-        {!noFim && !feito[etapa.chave]?.done && (
+        {/* Pular é explícito: etapa não concluída continua aparecendo em aberto.
+            Refazendo, a saída é fechar de novo sem mexer em nada. */}
+        {!noFim && refazendo === etapa.chave ? (
+          <button
+            onClick={() => setRefazendo(null)}
+            className="w-full h-11 mt-3 rounded-xl text-[12.5px] font-medium text-foreground/40 hover:text-foreground transition-colors"
+          >
+            Deixar como está
+          </button>
+        ) : !noFim && !feito[etapa.chave]?.done ? (
           <button
             onClick={() => irPara(i + 1)}
             className="w-full h-11 mt-3 rounded-xl text-[12.5px] font-medium text-foreground/40 hover:text-foreground transition-colors"
           >
             Deixar para depois
           </button>
-        )}
+        ) : null}
       </div>
     </div>
   );

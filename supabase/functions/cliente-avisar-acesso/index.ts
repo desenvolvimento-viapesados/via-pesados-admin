@@ -11,7 +11,10 @@ import { tentarNotasPendentes } from '../_shared/nota-aviso.ts';
  * montou, não o webhook. Por isso nasce de um botão.
  *
  * Uma vez por cliente: a chave é o id dele, sem data. Um segundo clique não
- * manda a segunda mensagem.
+ * manda a segunda mensagem — a não ser com `reenviar: true`, que é o operador
+ * dizendo "eu sei que já mandei, a primeira não chegou". Aí a chave ganha a
+ * hora e vira um envio novo. A chave sem hora continua existindo, que é a
+ * que o portão da primeira nota consulta.
  */
 const LOJISTA_FUNCTIONS = 'https://ljjkerbczuwmxdbnxfes.supabase.co/functions/v1';
 
@@ -35,7 +38,7 @@ Deno.serve(async (req) => {
       .select('id, is_active').eq('id', user.id).maybeSingle();
     if (!membro || membro.is_active === false) return json(403, { error: 'acesso negado' });
 
-    const { client_id } = await req.json();
+    const { client_id, reenviar } = await req.json();
     if (!client_id) return json(400, { error: 'client_id é obrigatório' });
 
     const { data: c } = await db.from('clients')
@@ -72,9 +75,11 @@ Deno.serve(async (req) => {
       para: c.whatsapp,
       template: 'acesso_equipe',
       client_id: c.id,
-      // A chave continua sendo a de acesso_liberado: é ela que o portão da
-      // primeira nota consulta, e o evento é o mesmo — o acesso saiu.
-      chave: `acesso_liberado:${c.id}`,
+      /* A chave continua sendo a de acesso_liberado: é ela que o portão da
+         primeira nota consulta, e o evento é o mesmo — o acesso saiu. No
+         reenvio ela ganha a hora, senão a trava de duplicado devolveria
+         "já enviado" e a segunda tentativa nunca sairia. */
+      chave: reenviar ? `acesso_liberado:${c.id}:${new Date().toISOString()}` : `acesso_liberado:${c.id}`,
       params: { body: [primeiroNome(c.contact_name), c.company_name], urlSuffix: convite.token },
     });
     /* Acesso liberado é o portão da PRIMEIRA nota. Se ela já foi emitida e
