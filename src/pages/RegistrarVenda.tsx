@@ -264,7 +264,9 @@ export default function RegistrarVenda() {
         toast.success('Venda registrada — contrato emitido em rascunho');
       }
 
-      navigate(`/clientes/${client.id}`);
+      /* A cobrança é o próximo passo real: manda o link e espera. Cair na
+         ficha obrigava a procurar o link no meio de um checklist. */
+      navigate(`/clientes/${client.id}/cobranca`);
     } catch {
       toast.error('Erro ao registrar venda');
       setSalvando(false);

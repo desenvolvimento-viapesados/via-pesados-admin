@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Loader2, Check, FileText, CreditCard, Rocket, Globe, Upload,
   Copy, ExternalLink, Phone, Mail, MapPin, Plus, StickyNote,
-  PartyPopper, KeyRound, Repeat, Send,
+  PartyPopper, KeyRound, Repeat, Send, ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -250,129 +250,6 @@ function ProvisionDialog({
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-/* ── Cobrança recorrente no Asaas ─────────────────────────────── */
-function CobrancaPanel({ client }: { client: Client }) {
-  const { data: planos = [] } = usePlans();
-  const gerar = useCriarAssinaturaAsaas();
-  const update = useUpdateClient();
-  const [tipo, setTipo] = useState('UNDEFINED');
-  const [valor, setValor] = useState(client.mrr ? String(client.mrr) : '');
-
-  const link = client.asaas_payment_link_url;
-
-  const gerarCobranca = async () => {
-    const v = Number(valor);
-    if (!(v > 0)) { toast.error('Informe a mensalidade'); return; }
-    try {
-      const r = await gerar.mutateAsync({ client_id: client.id, valor: v, billing_type: tipo });
-      await navigator.clipboard.writeText(r.url).catch(() => {});
-      toast.success(
-        r.ja_existia
-          ? 'Este cliente já tinha cobrança — link copiado.'
-          : `Cobrança de ${brlFull(r.valor ?? v)}/mês criada — link copiado.`,
-      );
-    } catch (e) {
-      toast.error((e as Error).message || 'Não foi possível gerar a cobrança');
-    }
-  };
-
-  return (
-    <Panel className="p-4 space-y-3">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="min-w-0">
-          <p className="text-[12.5px] font-semibold text-foreground flex items-center gap-1.5">
-            <Repeat className="h-3.5 w-3.5 text-foreground/40" />
-            {client.mrr ? `${brlFull(client.mrr)} por mês` : 'Mensalidade não definida'}
-          </p>
-          <p className="text-[11px] text-foreground/40">
-            {client.plan ? `Plano ${client.plan}` : 'Valor livre, definido na venda'}
-          </p>
-        </div>
-        {link && (
-          <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/12 text-emerald-400 border border-emerald-500/25">
-            cobrança ativa
-          </span>
-        )}
-      </div>
-
-      {link ? (
-        <>
-          <div className="flex items-center gap-2">
-            <input className={cn(inputCls, 'font-mono text-[11.5px]')} value={link} readOnly />
-            <button
-              onClick={() => { navigator.clipboard.writeText(link); toast.success('Link copiado'); }}
-              className="h-10 w-10 shrink-0 rounded-xl border border-black/[0.1] dark:border-white/[0.1] flex items-center justify-center hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
-            >
-              <Copy className="h-3.5 w-3.5 text-foreground/60" />
-            </button>
-            <a
-              href={link} target="_blank" rel="noopener noreferrer"
-              className="h-10 w-10 shrink-0 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          </div>
-          <p className="text-[11px] text-foreground/35">
-            O Asaas cobra o lojista todo mês por este link e avisa ele sozinho. Os pagamentos
-            aparecem em Pagamentos conforme forem entrando.
-          </p>
-        </>
-      ) : (
-        <>
-          <select
-            className={inputCls}
-            value={client.plan_id ?? ''}
-            onChange={async (e) => {
-              const pl = planos.find((x) => x.id === e.target.value);
-              // O plano é sugestão de preço: preenche o campo, não trava o valor.
-              if (pl) setValor(String(pl.monthly_value));
-              await update.mutateAsync({
-                id: client.id,
-                plan_id: e.target.value || null,
-                plan: pl?.name ?? null,
-              });
-            }}
-          >
-            <option value="">Sem plano — valor livre</option>
-            {planos.map((pl) => (
-              <option key={pl.id} value={pl.id}>{pl.name} — {brlFull(pl.monthly_value)}/mês</option>
-            ))}
-          </select>
-
-          <div className="grid grid-cols-[130px_1fr] gap-2.5">
-            <input
-              className={inputCls}
-              type="number"
-              placeholder="R$ / mês"
-              value={valor}
-              onChange={(e) => setValor(e.target.value)}
-            />
-            <select className={inputCls} value={tipo} onChange={(e) => setTipo(e.target.value)}>
-              <option value="UNDEFINED">Cliente escolhe como pagar</option>
-              <option value="PIX">Pix</option>
-              <option value="BOLETO">Boleto</option>
-              <option value="CREDIT_CARD">Cartão de crédito</option>
-            </select>
-          </div>
-
-          <button
-            onClick={gerarCobranca}
-            disabled={gerar.isPending || !(Number(valor) > 0)}
-            className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
-          >
-            {gerar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-3.5 w-3.5" />}
-            Gerar cobrança mensal
-          </button>
-          <p className="text-[11px] text-foreground/35">
-            Gera cobrança real, todo mês. O link é copiado para você mandar ao lojista —
-            ele preenche os próprios dados na primeira vez que abrir.
-          </p>
-        </>
-      )}
-    </Panel>
   );
 }
 
@@ -669,7 +546,7 @@ function BrandingDialog({
 const TASK_ICONS: Record<string, typeof FileText> = {
   contrato_gerado: FileText,
   contrato_assinado: FileText,
-  pagamento_configurado: CreditCard,
+  pagamento_recebido: CreditCard,
   sistema_criado: Rocket,
   logo_aplicada: Upload,
   dominio_conectado: Globe,
@@ -685,7 +562,9 @@ function TaskRow({
   const { member } = useAuth();
   const toggle = useToggleTask();
   const Icon = TASK_ICONS[task.task_key];
-  const hasAction = ['contrato_gerado', 'pagamento_configurado', 'sistema_criado', 'logo_aplicada', 'dominio_conectado'].includes(task.task_key);
+  /* 'pagamento_recebido' não entra: quem fecha essa etapa é o webhook do
+     Asaas quando o dinheiro entra, não um clique do operador. */
+  const hasAction = ['contrato_gerado', 'sistema_criado', 'logo_aplicada', 'dominio_conectado'].includes(task.task_key);
 
   const handleToggle = async () => {
     if (!member) return;
@@ -720,7 +599,6 @@ function TaskRow({
         >
           {Icon && <Icon className="h-3 w-3" />}
           {task.task_key === 'contrato_gerado' && 'Gerar'}
-          {task.task_key === 'pagamento_configurado' && 'Configurar'}
           {task.task_key === 'sistema_criado' && 'Criar sistema'}
           {task.task_key === 'logo_aplicada' && 'Enviar imagens'}
           {task.task_key === 'dominio_conectado' && 'Conectar'}
@@ -905,10 +783,27 @@ export default function ClienteDetalhe() {
             )}
           </div>
 
-          {/* Cobrança recorrente */}
+          {/* Cobrança — o link e o estado vivem na tela própria, que
+              atualiza sozinha quando o pagamento entra. Aqui fica só o
+              resumo e a porta de entrada: repetir o link nos dois lugares
+              fazia parecer que eram duas cobranças diferentes. */}
           <div>
             <SectionHeader title="Cobrança" />
-            <CobrancaPanel client={client} />
+            <button
+              onClick={() => navigate(`/clientes/${client.id}/cobranca`)}
+              className="w-full text-left rounded-2xl border border-black/[0.07] dark:border-white/[0.08] bg-black/[0.03] dark:bg-white/[0.03] p-4 hover:border-black/20 dark:hover:border-white/20 transition-colors flex items-center gap-3"
+            >
+              <Repeat className="h-4 w-4 text-foreground/35 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[12.5px] font-semibold text-foreground">
+                  {client.mrr ? `${brlFull(client.mrr)} por mês` : 'Mensalidade não definida'}
+                </p>
+                <p className="text-[11px] text-foreground/40">
+                  {client.asaas_payment_link_url ? 'Ver link e acompanhar o pagamento' : 'Cobrança ainda não criada'}
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-foreground/30 shrink-0" />
+            </button>
           </div>
 
           {/* Sistema provisionado */}
@@ -1097,9 +992,6 @@ export default function ClienteDetalhe() {
       {/* ── Dialogs de etapa ──────────────────────────────────── */}
       {dialog === 'contrato_gerado' && (
         <ContractDialog client={client} onDone={() => markTask('contrato_gerado')} onClose={() => setDialog(null)} />
-      )}
-      {dialog === 'pagamento_configurado' && (
-        <PaymentDialog client={client} onDone={() => markTask('pagamento_configurado')} onClose={() => setDialog(null)} />
       )}
       {dialog === 'pagamento_extra' && (
         <PaymentDialog client={client} onClose={() => setDialog(null)} />

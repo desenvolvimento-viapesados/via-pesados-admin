@@ -18,6 +18,7 @@ const Equipe         = lazy(() => import('@/pages/Equipe'));
 const Relatorios     = lazy(() => import('@/pages/Relatorios'));
 const ProspectDetalhe= lazy(() => import('@/pages/ProspectDetalhe'));
 const RegistrarVenda = lazy(() => import('@/pages/RegistrarVenda'));
+const Cobranca       = lazy(() => import('@/pages/Cobranca'));
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -77,6 +78,7 @@ const Gate = () => {
           <Route path="/crm/venda"     element={<RegistrarVenda />} />
           <Route path="/clientes"      element={<Clientes />} />
           <Route path="/clientes/:id"  element={<ClienteDetalhe />} />
+          <Route path="/clientes/:id/cobranca" element={<Cobranca />} />
           <Route path="/pagamentos"    element={<Pagamentos />} />
           <Route path="/financeiro"    element={<Financeiro />} />
           <Route path="/tickets"       element={<Tickets />} />

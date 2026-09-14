@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase, LOJISTA_FUNCTIONS_URL } from '@/integrations/supabase/client';
 
@@ -835,6 +835,35 @@ export const useUpdateContract = () => {
 };
 
 /* ═══ Pagamentos ══════════════════════════════════════════════ */
+
+/**
+ * Reage ao pagamento no instante em que ele entra.
+ *
+ * O webhook do Asaas já gravava em `payments`; o que faltava era o aviso
+ * chegar até a tela. Sem isso, "já pagou?" só se responde recarregando a
+ * página — e quem acabou de mandar o link fica apertando F5.
+ */
+export const useEscutarPagamentos = (clientId: string | undefined) => {
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!clientId) return;
+    const canal = supabase
+      .channel(`pagamentos:${clientId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'payments', filter: `client_id=eq.${clientId}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ['payments'] });
+          // A etapa "Primeira mensalidade paga" é fechada por trigger no
+          // banco, então o checklist também mudou.
+          qc.invalidateQueries({ queryKey: ['onboarding'] });
+          qc.invalidateQueries({ queryKey: ['onboarding-progress'] });
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(canal); };
+  }, [clientId, qc]);
+};
 
 export const usePayments = (clientId?: string) =>
   useQuery({
