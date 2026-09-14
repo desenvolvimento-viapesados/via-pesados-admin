@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Globe, Loader2, Upload } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Check, Globe, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
@@ -21,6 +21,28 @@ const inputCls =
  * continua abrindo do jeito que abria.
  */
 
+type Diagnostico = {
+  passo: { codigo: string; titulo: string; dono: string | null };
+  dns: { A: string[]; CNAME: string[] };
+  dns_provedor?: { nome: string | null; nameservers: string[] };
+  www?: { ok: boolean };
+};
+
+/* Caminho no painel do provedor de DNS. Só entra provedor cujo caminho eu
+   conferi — instrução de menu errada custa mais tempo que instrução
+   nenhuma, porque manda a pessoa procurar no lugar errado com confiança. */
+const CAMINHOS: Record<string, { passos: string[]; cuidado?: string }> = {
+  'Registro.br': {
+    passos: [
+      'Domínios → clique no domínio',
+      'DNS → Configurar endereçamento',
+      'Modo avançado → Confirmar (o domínio fica alguns minutos em "Transição")',
+      'Nova entrada → escolha o tipo, cole o valor e clique em Adicionar',
+    ],
+    cuidado: 'Não use "Alterar servidores DNS": aquela caixa entrega o DNS inteiro para outro provedor e derruba o e-mail do domínio junto.',
+  },
+};
+
 function normalizarDominio(v: string): string {
   return String(v ?? '').trim().toLowerCase()
     .replace(/^https?:\/\//, '')
@@ -39,35 +61,71 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
   const ehApex = limpo ? limpo.split('.').length <= 3 && !/^(www|loja|app|sistema)\./.test(limpo) : true;
   const [loading, setLoading] = useState(false);
   const [verificando, setVerificando] = useState(false);
-  const [diag, setDiag] = useState<null | {
-    passo: { codigo: string; titulo: string; dono: string | null };
-    dns: { A: string[]; CNAME: string[] };
-  }>(null);
+  const [emLaco, setEmLaco] = useState(false);
+  const [diag, setDiag] = useState<null | Diagnostico>(null);
 
   /* Conectar domínio falha de três jeitos que o cliente descreve igual —
      "não abre". Verificar antes de investigar poupa a meia hora de chute:
      ou o DNS ainda não aponta (é com ele), ou aponta e falta adicionar no
      projeto Vercel (é com você), ou já está no ar. */
+  const consultar = useCallback(async (clean: string): Promise<Diagnostico | null> => {
+    const r = await fetch(`${FUNCTIONS_URL}/dominio-verificar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dominio: clean }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d?.error || 'Não foi possível verificar');
+    return d as Diagnostico;
+  }, []);
+
+  /* Consulta sozinho quando o domínio para de mudar. Descobrir onde ele
+     está hospedado é a primeira pergunta, e ninguém devia ter de clicar
+     um botão para o sistema responder o que já sabe consultar. */
+  useEffect(() => {
+    if (!limpo || !limpo.includes('.')) { setDiag(null); return; }
+    let vivo = true;
+    const id = setTimeout(async () => {
+      setVerificando(true);
+      try { const d = await consultar(limpo); if (vivo) setDiag(d); }
+      catch { /* silêncio: é consulta de fundo, não ação do operador */ }
+      finally { if (vivo) setVerificando(false); }
+    }, 700);
+    return () => { vivo = false; clearTimeout(id); };
+  }, [limpo, consultar]);
+
+  /* Enquanto espera a propagação, reconsulta sozinho. Sem isso o operador
+     fica apertando "verificar" de dois em dois minutos. */
+  useEffect(() => {
+    if (!emLaco || !limpo) return;
+    const id = setInterval(async () => {
+      try {
+        const d = await consultar(limpo);
+        setDiag(d);
+        if (d?.passo.codigo === 'pronto') { setEmLaco(false); toast.success('Domínio no ar'); }
+      } catch { /* tenta de novo no próximo tique */ }
+    }, 20000);
+    return () => clearInterval(id);
+  }, [emLaco, limpo, consultar]);
+
   const verificar = async () => {
-    const clean = normalizarDominio(domain);
-    if (!clean) { toast.error('Informe o domínio'); return; }
+    if (!limpo) { toast.error('Informe o domínio'); return; }
     setVerificando(true);
-    setDiag(null);
-    try {
-      const r = await fetch(`${FUNCTIONS_URL}/dominio-verificar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dominio: clean }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d?.error || 'Não foi possível verificar');
-      setDiag(d);
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setVerificando(false);
-    }
+    try { setDiag(await consultar(limpo)); }
+    catch (e) { toast.error((e as Error).message); }
+    finally { setVerificando(false); }
   };
+
+  const provedor = diag?.dns_provedor?.nome ?? null;
+  const ns = diag?.dns_provedor?.nameservers ?? [];
+  const caminho = provedor ? CAMINHOS[provedor] : undefined;
+
+  /* A raiz e o www. Mostrar só a raiz dava um site que abre em
+     cliente.com.br e falha em www.cliente.com.br — e o cliente descobre
+     isso depois, digitando do jeito que ele digita. */
+  const registros: string[][] = ehApex
+    ? [['A', '@', '76.76.21.21'], ['CNAME', 'www', 'cname.vercel-dns.com']]
+    : [['CNAME', limpo.split('.')[0], 'cname.vercel-dns.com']];
 
   const submit = async () => {
     /* www. sai aqui porque a resolução do tenant tira o www do hostname antes
@@ -104,7 +162,13 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
       }
 
       toast.success(`Domínio registrado${naVercel}`);
-      onDone();
+      /* Só conclui a etapa quando o domínio está SERVINDO. Registrado não é
+         no ar: falta a propagação, e marcar como feito agora esconderia o
+         que ainda não funciona. Enquanto isso, a tela reconsulta sozinha. */
+      const d = await consultar(limpo).catch(() => null);
+      setDiag(d);
+      if (d?.passo.codigo === 'pronto') onDone();
+      else setEmLaco(true);
     } catch (e) {
       toast.error((e as Error).message || 'Erro ao registrar domínio');
     } finally {
@@ -115,15 +179,34 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
   return (
     <div className="space-y-2.5">
           <input className={inputCls} placeholder="ex: cliente.com.br" value={domain} onChange={(e) => setDomain(e.target.value)} />
+
+          {/* Quem responde pelo DNS, descoberto sozinho. Era a primeira
+              pergunta de toda conexão e ninguém tinha como responder sem
+              abrir o painel do cliente. */}
+          {limpo.includes('.') && (
+            <div className="flex items-center gap-2 px-1 text-[11.5px]">
+              {verificando && !diag ? (
+                <><Loader2 className="h-3 w-3 animate-spin text-foreground/40" />
+                  <span className="text-foreground/40">Procurando onde este domínio está…</span></>
+              ) : provedor ? (
+                <><Check className="h-3 w-3 text-emerald-400 shrink-0" />
+                  <span className="text-foreground/60">
+                    O DNS deste domínio é do <strong className="text-foreground/85">{provedor}</strong>
+                  </span></>
+              ) : diag ? (
+                <span className="text-foreground/40">
+                  {ns.length ? `Servidores de nome: ${ns.join(', ')}` : 'Não consegui identificar o provedor de DNS.'}
+                </span>
+              ) : null}
+            </div>
+          )}
+
           <div className="rounded-xl bg-black/[0.04] dark:bg-white/[0.04] p-3 text-[11.5px] text-foreground/50 space-y-2">
             <p className="font-semibold text-foreground/70">
-              O cliente cria este registro no DNS dele:
+              {registros.length > 1 ? 'O cliente cria estes dois registros no DNS dele:' : 'O cliente cria este registro no DNS dele:'}
             </p>
-            {(ehApex
-              ? [['A', '@', '76.76.21.21']]
-              : [['CNAME', limpo.split('.')[0], 'cname.vercel-dns.com']]
-            ).map(([tipo, host, valor]) => (
-              <div key={tipo} className="space-y-1">
+            {registros.map(([tipo, host, valor]) => (
+              <div key={`${tipo}-${host}`} className="space-y-1 pb-1.5 border-b border-black/[0.06] dark:border-white/[0.06] last:border-0 last:pb-0">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-foreground/70 w-16 shrink-0">Tipo</span>
                   <span className="font-mono text-foreground flex-1">{tipo}</span>
@@ -147,33 +230,36 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
             ))}
             <p className="text-foreground/35 pt-0.5">
               {ehApex
-                ? 'Domínio raiz usa registro A — a maioria dos registradores não aceita CNAME na raiz.'
+                ? 'A raiz usa registro A porque a maioria dos registradores não aceita CNAME na raiz. O www usa CNAME — metade das pessoas digita o endereço com ele.'
                 : 'Subdomínio usa CNAME, que continua valendo se a Vercel trocar de IP.'}
             </p>
           </div>
 
-          {/* O caminho, não só o registro. No Registro.br as duas caixas ficam
-              na mesma tela e a errada aparece primeiro: "Alterar servidores
-              DNS" delega o DNS para outro lugar e não é o que queremos. */}
-          <details className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] overflow-hidden">
+          {/* O caminho, não só o registro. Segue o provedor detectado: no
+              Registro.br as duas caixas ficam na mesma tela e a errada
+              aparece primeiro. Provedor sem caminho conferido recebe a
+              orientação genérica — instrução de menu inventada manda a
+              pessoa procurar no lugar errado com confiança. */}
+          <details open={!!caminho} className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] overflow-hidden">
             <summary className="px-3 py-2.5 text-[11.5px] font-medium text-foreground/60 cursor-pointer select-none hover:bg-black/[0.03] dark:hover:bg-white/[0.04]">
-              Onde fica isso no Registro.br
+              {caminho ? `Onde fica isso no ${provedor}` : 'Onde fica isso no painel do cliente'}
             </summary>
             <div className="px-3 pb-3 pt-1 space-y-2 text-[11.5px] text-foreground/55 leading-relaxed">
-              <p className="text-amber-500/90">
-                Não use "Alterar servidores DNS". Aquela caixa entrega o DNS do domínio
-                para outro provedor e apaga o resto da configuração dele.
-              </p>
-              <ol className="space-y-1 list-decimal pl-4">
-                <li>Domínios → clique no domínio</li>
-                <li>DNS → <strong className="text-foreground/75">Configurar endereçamento</strong></li>
-                <li>Modo avançado → Confirmar (o domínio fica alguns minutos em "Transição")</li>
-                <li>Nova entrada → Tipo <strong className="text-foreground/75">{ehApex ? 'A' : 'CNAME'}</strong> → cole o valor acima → Adicionar</li>
-              </ol>
-              <p className="text-foreground/35">
-                Em outros registradores o nome muda — procure por "Zona DNS", "Editar DNS"
-                ou "Registros", nunca por "servidores DNS".
-              </p>
+              {caminho ? (
+                <>
+                  {caminho.cuidado && <p className="text-amber-500/90">{caminho.cuidado}</p>}
+                  <ol className="space-y-1 list-decimal pl-4">
+                    {caminho.passos.map((x) => <li key={x}>{x}</li>)}
+                  </ol>
+                </>
+              ) : (
+                <p>
+                  Procure por <strong className="text-foreground/75">Zona DNS</strong>,{' '}
+                  <strong className="text-foreground/75">Editar DNS</strong> ou{' '}
+                  <strong className="text-foreground/75">Registros</strong> — nunca por
+                  "servidores DNS", que troca o provedor inteiro e derruba o e-mail do domínio junto.
+                </p>
+              )}
             </div>
           </details>
 
@@ -183,8 +269,8 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
             disabled={verificando}
             className="w-full h-9 rounded-xl border border-black/[0.1] dark:border-white/[0.12] text-[12px] font-medium text-foreground/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {verificando && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            Verificar em que passo está
+            {(verificando || emLaco) && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {emLaco ? 'Aguardando a propagação — conferindo sozinho' : 'Verificar em que passo está'}
           </button>
 
           {diag && (

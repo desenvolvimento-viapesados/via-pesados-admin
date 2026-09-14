@@ -62,24 +62,33 @@ Deno.serve(async (req) => {
       if (!projeto) return json(502, { ok: false, estado: 'projeto_nao_encontrado' });
     }
 
-    const r = await fetch(`${API}/v10/projects/${projeto}/domains${q}`, {
-      method: 'POST', headers: h, body: JSON.stringify({ name: d }),
-    });
-    const dados = await r.json();
+    /* Os dois, sempre. Registrar só a raiz deixava www.cliente.com.br
+       fora do projeto: quem digitasse com www batia em erro da Vercel, e
+       metade das pessoas digita com www. */
+    const adicionar = async (nome: string) => {
+      const r = await fetch(`${API}/v10/projects/${projeto}/domains${q}`, {
+        method: 'POST', headers: h, body: JSON.stringify({ name: nome }),
+      });
+      const dados = await r.json();
+      const jaExistia = r.status === 409 || dados?.error?.code === 'domain_already_in_use';
+      if (!r.ok && !jaExistia) {
+        return { nome, ok: false, detalhe: dados?.error?.message ?? dados };
+      }
+      const st = await (await fetch(`${API}/v9/projects/${projeto}/domains/${nome}${q}`, { headers: h })).json();
+      return { nome, ok: true, jaExistia, verificado: st?.verified ?? null, pendencias: st?.verification ?? null };
+    };
 
-    // Domínio já adicionado não é erro — é o estado que queríamos.
-    const jaExistia = r.status === 409 || dados?.error?.code === 'domain_already_in_use';
-    if (!r.ok && !jaExistia) {
-      return json(502, { ok: false, estado: 'erro', detalhe: dados?.error?.message ?? dados });
-    }
+    const raiz = await adicionar(d);
+    if (!raiz.ok) return json(502, { ok: false, estado: 'erro', detalhe: raiz.detalhe });
+    // Falhar no www não invalida a raiz, que é a que serve o site.
+    const www = await adicionar(`www.${d}`);
 
-    // Confere a verificação: adicionado não é o mesmo que servindo.
-    const st = await (await fetch(`${API}/v9/projects/${projeto}/domains/${d}${q}`, { headers: h })).json();
     return json(200, {
       ok: true,
-      estado: jaExistia ? 'ja_estava' : 'adicionado',
-      verificado: st?.verified ?? null,
-      pendencias: st?.verification ?? null,
+      estado: raiz.jaExistia ? 'ja_estava' : 'adicionado',
+      verificado: raiz.verificado,
+      pendencias: raiz.pendencias,
+      www: { ok: www.ok, verificado: www.ok ? www.verificado : null, detalhe: www.ok ? null : www.detalhe },
     });
   } catch (e) {
     return json(500, { error: e instanceof Error ? e.message : 'Erro' });
