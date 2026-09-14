@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, ArrowRight, Check, Globe, Loader2, PartyPopper,
   Boxes, GraduationCap,
@@ -12,7 +12,7 @@ import {
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase, FUNCTIONS_URL, LOJISTA_APP_URL } from '@/integrations/supabase/client';
-import { CorpoDominio } from '@/components/admin/EtapasCliente';
+import { CorpoDominio, ORDEM_ETAPAS } from '@/components/admin/EtapasCliente';
 
 /** A marca do WhatsApp. Um balão genérico não é o WhatsApp — e o que sai
     daqui é uma mensagem no WhatsApp, não "uma mensagem". */
@@ -138,6 +138,17 @@ const ETAPAS: Etapa[] = [
   },
 ];
 
+/* A ordem aqui tem de ser a mesma da fonte única. Se alguém acrescentar ou
+   reordenar etapa só de um lado, o botão "continuar" da ficha passa a abrir
+   a tela errada — e nada quebra para avisar. */
+if (import.meta.env.DEV) {
+  const daqui = ETAPAS.map((e) => e.chave).join(',');
+  const dela = ORDEM_ETAPAS.join(',');
+  if (daqui !== dela) {
+    console.error(`[onboarding] ETAPAS e ORDEM_ETAPAS divergem:\n  aqui: ${daqui}\n  lá:   ${dela}`);
+  }
+}
+
 /**
  * Onboarding do cliente, uma etapa por tela.
  *
@@ -155,6 +166,10 @@ export default function Onboarding() {
   const { data: tasks = [] } = useOnboardingTasks(id);
   const toggle = useToggleTask();
   const update = useUpdateClient();
+  /* A etapa vive na URL. Sem isso, sair da ficha e voltar sempre recomeçava
+     do primeiro passo — e quem parou no domínio tinha de reencontrar o
+     domínio. Também faz o botão da ficha abrir na tela exata. */
+  const [params, setParams] = useSearchParams();
   const [i, setI] = useState(0);
   const [ativando, setAtivando] = useState(false);
 
@@ -163,6 +178,25 @@ export default function Onboarding() {
     for (const t of tasks) m[t.task_key] = t;
     return m;
   }, [tasks]);
+
+  /* Entrar direto numa etapa: ?etapa=dominio_conectado. Chave desconhecida
+     cai no primeiro passo em vez de numa tela em branco. */
+  useEffect(() => {
+    const chave = params.get('etapa');
+    if (!chave) return;
+    if (chave === 'fim') { setI(ETAPAS.length); return; }
+    const k = ETAPAS.findIndex((e) => e.chave === chave);
+    if (k >= 0) setI(k);
+  }, []);
+
+  /** Muda de etapa e deixa registrado na URL. */
+  const irPara = useCallback((k: number) => {
+    setI(k);
+    const chave = k >= ETAPAS.length ? 'fim' : ETAPAS[k].chave;
+    const p = new URLSearchParams(params);
+    p.set('etapa', chave);
+    setParams(p, { replace: true });
+  }, [params, setParams]);
 
   if (isLoading || !client) {
     return (
@@ -182,7 +216,7 @@ export default function Onboarding() {
     if (t && !t.done && member) {
       await toggle.mutateAsync({ id: t.id, done: true, userId: member.id });
     }
-    setI((v) => v + 1);
+    irPara(i + 1);
   };
 
   const ativar = async () => {
@@ -230,7 +264,7 @@ export default function Onboarding() {
           {ETAPAS.map((e, k) => (
             <button
               key={e.chave}
-              onClick={() => setI(k)}
+              onClick={() => irPara(k)}
               title={e.titulo}
               className={cn(
                 'h-1.5 flex-1 rounded-full transition-colors',
@@ -241,7 +275,7 @@ export default function Onboarding() {
             />
           ))}
           <button
-            onClick={() => setI(total)}
+            onClick={() => irPara(total)}
             title="Colocar no ar"
             className={cn('h-1.5 w-8 rounded-full transition-colors',
               noFim ? 'bg-primary' : 'bg-black/[0.08] dark:bg-white/[0.1] hover:bg-foreground/20')}
@@ -273,7 +307,7 @@ export default function Onboarding() {
               </span>
               <p className="text-[13px] text-foreground/60">Esta etapa já está concluída.</p>
               <button
-                onClick={() => setI((v) => v + 1)}
+                onClick={() => irPara(i + 1)}
                 className="h-10 px-5 rounded-xl border border-black/[0.1] dark:border-white/[0.12] text-[12.5px] font-medium text-foreground/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors inline-flex items-center gap-1.5"
               >
                 Próxima etapa <ArrowRight className="h-3.5 w-3.5" />
@@ -294,7 +328,7 @@ export default function Onboarding() {
         {/* Pular é explícito: etapa não concluída continua aparecendo em aberto. */}
         {!noFim && !feito[etapa.chave]?.done && (
           <button
-            onClick={() => setI((v) => v + 1)}
+            onClick={() => irPara(i + 1)}
             className="w-full h-11 mt-3 rounded-xl text-[12.5px] font-medium text-foreground/40 hover:text-foreground transition-colors"
           >
             Deixar para depois

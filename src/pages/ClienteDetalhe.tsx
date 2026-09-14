@@ -24,7 +24,7 @@ import { UsoDoSistema } from '@/components/admin/UsoDoSistema';
 import { NotasFiscais } from '@/components/admin/NotasFiscais';
 import { useSystemCredential, saveSystemCredential } from '@/hooks/useAdmin';
 import { SectionHeader, StatusBadge, Panel, InitialAvatar } from '@/components/admin/ui';
-import { DomainDialog, BrandingDialog } from '@/components/admin/EtapasCliente';
+import { DomainDialog, BrandingDialog, proximaEtapaAberta } from '@/components/admin/EtapasCliente';
 import { ImageField, IMG_FIELDS, IMG_KEYS, emptyImgs, type ImgKey } from '@/components/crm/BrandingFields';
 
 const inputCls =
@@ -370,6 +370,9 @@ export default function ClienteDetalhe() {
   const doneCount = tasks.filter((t) => t.done).length;
   const pct = tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0;
   const allDone = tasks.length > 0 && doneCount === tasks.length;
+  /* Mandar para o começo obrigava a reencontrar onde parou — e "continuar"
+     que recomeça não é continuar. */
+  const proximaEtapa = proximaEtapaAberta(tasks);
 
   const markTask = async (key: string) => {
     const task = tasks.find((t) => t.task_key === key);
@@ -493,7 +496,7 @@ export default function ClienteDetalhe() {
 
             {client.status === 'onboarding' && (
               <button
-                onClick={() => navigate(`/clientes/${client.id}/onboarding`)}
+                onClick={() => navigate(`/clientes/${client.id}/onboarding?etapa=${proximaEtapa}`)}
                 className="mt-3 w-full h-11 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2"
               >
                 {allDone ? <PartyPopper className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}

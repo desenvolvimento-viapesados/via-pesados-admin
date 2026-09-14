@@ -21,6 +21,24 @@ const inputCls =
  * continua abrindo do jeito que abria.
  */
 
+/**
+ * A ordem das etapas do onboarding, na ordem do assistente.
+ *
+ * Fonte única: a ficha usa para saber em qual etapa o cliente parou, e o
+ * assistente para montar as telas. Duplicado nos dois, divergiria calado —
+ * o botão "continuar" mandaria para a etapa errada sem erro nenhum.
+ */
+export const ORDEM_ETAPAS = [
+  'dominio_conectado',
+  'dados_importados',
+  'treinamento_realizado',
+  'acesso_liberado',
+] as const;
+
+/** Primeira etapa em aberto, ou 'fim' quando todas fecharam. */
+export const proximaEtapaAberta = (tarefas: Array<{ task_key: string; done: boolean }>) =>
+  ORDEM_ETAPAS.find((k) => !tarefas.find((t) => t.task_key === k)?.done) ?? 'fim';
+
 type Diagnostico = {
   passo: { codigo: string; titulo: string; dono: string | null };
   dns: { A: string[]; CNAME: string[] };
