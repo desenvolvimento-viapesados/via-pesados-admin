@@ -651,6 +651,31 @@ export const adotarAmostra = async (input: {
   return data;
 };
 
+/**
+ * Cria o acesso do lojista numa empresa que JÁ existe.
+ *
+ * Adotar a amostra deixa a empresa no ar com o login de demonstração. Sem
+ * este caminho, criar o acesso real exigia provisionar de novo — o que
+ * criaria uma segunda empresa, vazia, e deixaria a do cliente órfã.
+ */
+export const criarAcessoCliente = async (input: {
+  company_id: string;
+  admin_email: string;
+  admin_password: string;
+  admin_full_name?: string;
+}): Promise<{ admin_email: string; acessos_demo_removidos: number }> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sessão expirada');
+  const res = await fetch(`${LOJISTA_FUNCTIONS_URL}/admin-provision`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ action: 'criar_acesso', ...input }),
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error || 'Erro ao criar o acesso');
+  return data;
+};
+
 export const updateCompanyBranding = async (input: {
   company_id: string;
   company_name?: string;

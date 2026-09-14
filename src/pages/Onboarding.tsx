@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, ArrowRight, Check, Globe, Loader2, PartyPopper,
-  Boxes, GraduationCap,
+  Boxes, GraduationCap, KeyRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   useClient, useOnboardingTasks, useToggleTask, useUpdateClient,
+  criarAcessoCliente, saveSystemCredential, genPassword,
   type Client, type OnboardingTask,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,8 +38,40 @@ type Etapa = {
 
 /* ── Primeiro acesso ──────────────────────────────────────────── */
 function PrimeiroAcesso({ client, concluir }: { client: Client; concluir: () => void }) {
+  const atualizar = useUpdateClient();
   const [enviando, setEnviando] = useState(false);
-  const pronto = !!client.lojista_company_id && !!client.admin_email;
+  const [criando, setCriando] = useState(false);
+  const [emailNovo, setEmailNovo] = useState(client.email ?? '');
+  const [senha] = useState(genPassword());
+
+  /* Duas faltas diferentes, que a tela tratava como uma só: sem sistema não
+     há onde criar acesso; com sistema e sem login registrado, falta criar o
+     usuário — e dizer "o sistema não existe" aí é mentira, porque ele está
+     no ar e abrindo. */
+  const semSistema = !client.lojista_company_id;
+  const semAcesso = !semSistema && !client.admin_email;
+  const pronto = !semSistema && !semAcesso;
+
+  const criarAcesso = async () => {
+    const email = emailNovo.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast.error('Informe um e-mail válido'); return; }
+    setCriando(true);
+    try {
+      await criarAcessoCliente({
+        company_id: client.lojista_company_id!,
+        admin_email: email,
+        admin_password: senha,
+        admin_full_name: client.contact_name ?? client.company_name,
+      });
+      await saveSystemCredential({ client_id: client.id, email, password: senha });
+      await atualizar.mutateAsync({ id: client.id, admin_email: email });
+      toast.success('Acesso criado — agora dá para enviar o link');
+    } catch (e) {
+      toast.error((e as Error).message || 'Erro ao criar o acesso');
+    } finally {
+      setCriando(false);
+    }
+  };
 
   const avisar = async () => {
     setEnviando(true);
@@ -65,9 +98,33 @@ function PrimeiroAcesso({ client, concluir }: { client: Client; concluir: () => 
     <div className="space-y-4">
       <div className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] p-4 space-y-2">
         <Campo rotulo="Vai para" valor={client.whatsapp || '— sem WhatsApp cadastrado'} />
-        <Campo rotulo="Login" valor={client.admin_email || '— sistema ainda não criado'} />
+        <Campo rotulo="Login" valor={client.admin_email || '— ainda não criado'} />
         <Campo rotulo="Sistema" valor={client.domain || LOJISTA_APP_URL.replace('https://', '')} />
       </div>
+
+      {semAcesso && (
+        <div className="rounded-xl border border-primary/25 bg-primary/[0.05] p-4 space-y-3">
+          <p className="text-[12.5px] text-foreground/70 leading-snug">
+            O sistema está no ar, mas ainda não existe um login do lojista — só o de
+            demonstração, que sai quando você criar o de verdade.
+          </p>
+          <input
+            className="w-full h-11 px-3.5 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.12] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50"
+            type="email"
+            placeholder="E-mail de quem recebe o acesso"
+            value={emailNovo}
+            onChange={(e) => setEmailNovo(e.target.value)}
+          />
+          <button
+            onClick={criarAcesso}
+            disabled={criando}
+            className="w-full h-11 rounded-xl bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {criando ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+            Criar o acesso
+          </button>
+        </div>
+      )}
 
       <p className="text-[12px] text-foreground/45 leading-snug">
         Ele recebe um link que vale 24 horas e define a própria senha. Não existe senha
@@ -82,7 +139,7 @@ function PrimeiroAcesso({ client, concluir }: { client: Client; concluir: () => 
         {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogoWhatsApp className="h-4 w-4" />}
         Enviar o primeiro acesso
       </button>
-      {!pronto && (
+      {semSistema && (
         <p className="text-[11.5px] text-amber-500/90 leading-snug">
           O sistema deste cliente ainda não existe. Crie o sistema na ficha antes de liberar o acesso.
         </p>
