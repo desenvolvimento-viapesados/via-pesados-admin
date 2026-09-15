@@ -17,13 +17,18 @@ const cors = {
 const json = (s: number, b: unknown) =>
   new Response(JSON.stringify(b, null, 1), { status: s, headers: { ...cors, 'Content-Type': 'application/json' } });
 
-const WABA = '2088077995129091';
+/* O ID da WABA vive no ambiente, nao aqui. Ficou fixo no codigo ate a conta
+   ser desabilitada em 14/09/2026 — e trocar de conta virou cacar a mesma
+   constante em tres funcoes, cada uma podendo ficar para tras e consultar em
+   silencio uma WABA que nao existe mais. */
+const WABA = Deno.env.get('META_WABA_ID');
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
 
   const token = Deno.env.get('META_WABA_TOKEN');
   if (!token) return json(500, { error: 'META_WABA_TOKEN não configurada.' });
+  if (!WABA) return json(500, { error: 'META_WABA_ID não configurada.' });
 
   try {
     const res = await fetch(

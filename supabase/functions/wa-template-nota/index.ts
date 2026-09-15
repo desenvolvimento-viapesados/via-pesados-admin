@@ -21,7 +21,11 @@ const json = (s: number, b: unknown) =>
   new Response(JSON.stringify(b, null, 1), { status: s, headers: { ...cors, 'Content-Type': 'application/json' } });
 
 const GRAPH = 'https://graph.facebook.com/v21.0';
-const WABA = '2088077995129091';
+/* O ID da WABA vive no ambiente, nao aqui. Ficou fixo no codigo ate a conta
+   ser desabilitada em 14/09/2026 — e trocar de conta virou cacar a mesma
+   constante em tres funcoes, cada uma podendo ficar para tras e consultar em
+   silencio uma WABA que nao existe mais. */
+const WABA = Deno.env.get('META_WABA_ID');
 const APP  = '1079683668144375';
 const NOME = 'nota_fiscal_emitida';
 
@@ -34,6 +38,7 @@ Deno.serve(async (req) => {
 
   const token = Deno.env.get('META_WABA_TOKEN');
   if (!token) return json(500, { error: 'META_WABA_TOKEN ausente' });
+  if (!WABA) return json(500, { error: 'META_WABA_ID ausente' });
 
   const bytes = Uint8Array.from(atob(PDF_B64), (c) => c.charCodeAt(0));
 
