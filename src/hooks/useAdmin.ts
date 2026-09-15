@@ -676,6 +676,34 @@ export const criarAcessoCliente = async (input: {
   return data;
 };
 
+/**
+ * Gera o link de primeiro acesso sem mandar nada.
+ *
+ * O caminho normal entrega o link por WhatsApp. Quando o canal está fora —
+ * número banido, conta em análise —, o cliente pagante não pode ficar sem
+ * entrar no sistema por causa disso: o link passa a ser entregue à mão, por
+ * onde o operador conseguir falar com ele.
+ *
+ * Vale 24 horas, como o do disparo. Gerar de novo invalida nada: cada convite
+ * é uma linha, e o primeiro que for usado resolve.
+ */
+export const criarConviteAcesso = async (input: {
+  company_id: string;
+  admin_email: string;
+  admin_full_name?: string;
+}): Promise<{ token: string; url: string }> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sessão expirada');
+  const res = await fetch(`${LOJISTA_FUNCTIONS_URL}/admin-provision`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ action: 'criar_convite', ...input }),
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error || 'Erro ao gerar o link');
+  return data;
+};
+
 export const updateCompanyBranding = async (input: {
   company_id: string;
   company_name?: string;

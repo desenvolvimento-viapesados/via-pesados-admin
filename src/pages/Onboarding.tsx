@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
-  ArrowLeft, ArrowRight, Check, Globe, Loader2, PartyPopper, RotateCcw,
+  ArrowLeft, ArrowRight, Check, Copy, Globe, Loader2, PartyPopper, RotateCcw,
   Boxes, GraduationCap, KeyRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   useClient, useOnboardingTasks, useToggleTask, useUpdateClient,
-  criarAcessoCliente, saveSystemCredential, genPassword,
+  criarAcessoCliente, criarConviteAcesso, saveSystemCredential, genPassword,
   type Client, type OnboardingTask,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
@@ -132,18 +132,80 @@ function PrimeiroAcesso({ client, concluir, jaFeito }: { client: Client; conclui
   const [zap, setZap] = useState(client.whatsapp ?? '');
   const [senha] = useState(genPassword());
   const [indo, setIndo] = useState(false);
+  /* O link gerado fica na tela: a area de transferencia some no primeiro Ctrl+C
+     seguinte, e quem esta entregando por telefone precisa ler em voz alta. */
+  const [link, setLink] = useState<string | null>(null);
   const diag = useDiagnosticoWa();
 
   const semSistema = !client.lojista_company_id;
   const numeroRuim = Boolean(diag.numero?.situacao && diag.numero.situacao !== NUMERO_OK);
+
+  /** O e-mail digitado, validado. Null quando não serve. */
+  const emailValido = () => {
+    const alvo = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(alvo)) { toast.error('Informe um e-mail válido'); return null; }
+    return alvo;
+  };
+
+  /**
+   * Garante que o acesso existe: o usuário no sistema do cliente, a
+   * credencial guardada e o e-mail gravado na ficha.
+   *
+   * Separado do envio porque entregar o link é outra decisão. Quando o
+   * WhatsApp está fora, isto continua valendo — muda só por onde o link vai.
+   */
+  const garantirAcesso = async (alvo: string) => {
+    if (client.admin_email !== alvo) {
+      await criarAcessoCliente({
+        company_id: client.lojista_company_id!,
+        admin_email: alvo,
+        admin_password: senha,
+        admin_full_name: client.contact_name ?? client.company_name,
+      });
+      await saveSystemCredential({ client_id: client.id, email: alvo, password: senha });
+      await atualizar.mutateAsync({ id: client.id, admin_email: alvo });
+    }
+  };
+
+  /** O link na mão do operador, para entregar por onde der. */
+  const copiarLink = async () => {
+    const alvo = emailValido();
+    if (!alvo) return;
+    setIndo(true);
+    try {
+      await garantirAcesso(alvo);
+      const { token } = await criarConviteAcesso({
+        company_id: client.lojista_company_id!,
+        admin_email: alvo,
+        admin_full_name: client.contact_name ?? client.company_name,
+      });
+      /* No domínio do cliente, não no nosso: quem recebe reconhece o próprio
+         endereço, e os dois servem o mesmo sistema. */
+      const base = client.domain ? `https://${client.domain}` : LOJISTA_APP_URL;
+      const url = `${base}/entrar/${token}`;
+      setLink(url);
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success('Link copiado. Vale 24 horas.');
+      } catch {
+        // Sem permissão de área de transferência o link fica na tela para
+        // copiar à mão — melhor que um erro sem saída.
+        toast.info('Link gerado abaixo. Vale 24 horas.');
+      }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setIndo(false);
+    }
+  };
 
   /* Uma ação só. Antes eram duas — criar o acesso e depois enviar — e a
      etapa se chama "Liberar o primeiro acesso", não "preparar para liberar".
      Quem está aqui quer que o lojista receba o link; que o usuário precise
      existir antes é problema nosso, não dele. */
   const liberar = async () => {
-    const alvo = email.trim().toLowerCase();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(alvo)) { toast.error('Informe um e-mail válido'); return; }
+    const alvo = emailValido();
+    if (!alvo) return;
     const digitos = soDigitos(zap);
     if (digitos.length < 10 || digitos.length > 11) {
       toast.error('Informe o WhatsApp com DDD.'); return;
@@ -157,16 +219,7 @@ function PrimeiroAcesso({ client, concluir, jaFeito }: { client: Client; conclui
       }
 
       // 1. O usuário, se ainda não existir ou se o e-mail mudou.
-      if (client.admin_email !== alvo) {
-        await criarAcessoCliente({
-          company_id: client.lojista_company_id!,
-          admin_email: alvo,
-          admin_password: senha,
-          admin_full_name: client.contact_name ?? client.company_name,
-        });
-        await saveSystemCredential({ client_id: client.id, email: alvo, password: senha });
-        await atualizar.mutateAsync({ id: client.id, admin_email: alvo });
-      }
+      await garantirAcesso(alvo);
 
       // 2. O link, no WhatsApp dele.
       const { data: { session } } = await supabase.auth.getSession();
@@ -269,6 +322,31 @@ function PrimeiroAcesso({ client, concluir, jaFeito }: { client: Client; conclui
         {indo ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogoWhatsApp className="h-4 w-4" />}
         {jaFeito ? 'Reenviar o primeiro acesso' : 'Enviar o primeiro acesso'}
       </button>
+
+      {/* A saída quando o canal está fora. Não é o caminho principal — fica
+          abaixo do botão, em tom menor — mas é o que impede um cliente
+          pagante de ficar esperando a Meta para entrar no sistema dele. */}
+      <button
+        onClick={copiarLink}
+        disabled={indo || semSistema}
+        className="w-full h-11 rounded-xl border border-black/[0.1] dark:border-white/[0.12] text-[12.5px] font-medium text-foreground/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+      >
+        <Copy className="h-3.5 w-3.5" /> Copiar link para entregar à mão
+      </button>
+
+      {link && (
+        <div className="rounded-xl border border-black/[0.1] dark:border-white/[0.12] bg-background p-3 space-y-2">
+          <p className="text-[11px] text-foreground/40">Vale 24 horas. Entregue por onde conseguir falar com ele.</p>
+          {/* Input e não <p>: dá para selecionar, arrastar e copiar à mão
+              quando a área de transferência do navegador estiver bloqueada. */}
+          <input
+            readOnly
+            value={link}
+            onFocus={(e) => e.currentTarget.select()}
+            className="w-full h-10 px-3 rounded-lg bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.1] text-[12px] text-foreground/85 font-mono"
+          />
+        </div>
+      )}
 
       {semSistema && (
         <p className="text-[11.5px] text-amber-500/90 leading-snug">
