@@ -629,7 +629,7 @@ export default function ClienteDetalhe() {
             <div>
               <SectionHeader title="Canais liberados" right={<span className="text-[11px] text-foreground/35">define o que ele conecta</span>} />
               <Panel className="p-4">
-                <CanaisDoCliente companyId={client.lojista_company_id} />
+                <CanaisDoCliente companyId={client.lojista_company_id} contratados={client.canais ?? []} />
               </Panel>
             </div>
           )}

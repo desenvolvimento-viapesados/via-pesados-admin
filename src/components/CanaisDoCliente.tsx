@@ -16,7 +16,14 @@ const ROTULOS: Record<string, { nome: string; sub: string }> = {
   facebook:     { nome: 'Facebook, Instagram e WhatsApp', sub: 'Um login libera catálogo, Página e Instagram' },
 };
 
-export function CanaisDoCliente({ companyId }: { companyId: string }) {
+export function CanaisDoCliente({ companyId, contratados = [] }: {
+  companyId: string;
+  /** O que foi marcado na venda. Mora no painel; o que esta tela lê mora no
+      sistema do cliente. São duas cópias, e até aqui nada mostrava quando
+      elas discordavam — a iTruck passou dias com Mercado Livre vendido e
+      nenhum canal ligado, e o lojista entrou sem o convite de conexão. */
+  contratados?: string[];
+}) {
   const [canais, setCanais] = useState<string[]>([]);
   const [disponiveis, setDisponiveis] = useState<string[]>([]);
   const [conectados, setConectados] = useState<string[]>([]);
@@ -47,12 +54,40 @@ export function CanaisDoCliente({ companyId }: { companyId: string }) {
     }
   };
 
+  const faltando = contratados.filter((c) => !canais.includes(c));
+
+  const aplicarContratado = async () => {
+    const proximo = [...new Set([...canais, ...contratados])];
+    setCanais(proximo); setSalvando(true); setErro(null);
+    try { await setCompanyChannels(companyId, proximo); }
+    catch (e) { setCanais(canais); setErro((e as Error).message); }
+    finally { setSalvando(false); }
+  };
+
   if (carregando) {
     return <p className="text-[12px] text-foreground/40 flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> carregando canais…</p>;
   }
 
   return (
     <div className="space-y-2">
+      {faltando.length > 0 && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-3 space-y-2">
+          <p className="text-[12px] text-amber-600 dark:text-amber-400 leading-snug">
+            {faltando.length === 1 ? 'Foi vendido e não está ligado aqui: ' : 'Foram vendidos e não estão ligados aqui: '}
+            <span className="font-semibold">
+              {faltando.map((c) => ROTULOS[c]?.nome ?? c).join(', ')}
+            </span>. O lojista não recebe o convite de conexão enquanto isso.
+          </p>
+          <button
+            type="button"
+            onClick={aplicarContratado}
+            disabled={salvando}
+            className="h-9 px-3.5 rounded-lg bg-amber-500 text-black text-[12px] font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            Aplicar o que foi contratado
+          </button>
+        </div>
+      )}
       {disponiveis.map(id => {
         const ligado = canais.includes(id);
         const emUso = conectados.includes(id);
