@@ -13,6 +13,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/tickets':    'Suporte',
   '/equipe':     'Equipe',
   '/relatorios': 'Relatórios',
+  '/whatsapp':   'WhatsApp',
 };
 
 // Telas que trazem o próprio cabeçalho. Comparação por prefixo porque a

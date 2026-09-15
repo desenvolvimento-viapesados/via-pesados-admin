@@ -20,6 +20,7 @@ const ProspectDetalhe= lazy(() => import('@/pages/ProspectDetalhe'));
 const RegistrarVenda = lazy(() => import('@/pages/RegistrarVenda'));
 const Cobranca       = lazy(() => import('@/pages/Cobranca'));
 const Onboarding     = lazy(() => import('@/pages/Onboarding'));
+const Whatsapp       = lazy(() => import('@/pages/Whatsapp'));
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -86,6 +87,7 @@ const Gate = () => {
           <Route path="/tickets"       element={<Tickets />} />
           <Route path="/equipe"        element={<Equipe />} />
           <Route path="/relatorios"    element={<Relatorios />} />
+          <Route path="/whatsapp"      element={<Whatsapp />} />
 
           {/* rotas antigas — agora vivem dentro do CRM */}
           <Route path="/funil"     element={<Navigate to="/crm?tab=funil" replace />} />
