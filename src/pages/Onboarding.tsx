@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
-  ArrowLeft, ArrowRight, Check, Copy, Globe, Loader2, PartyPopper, RotateCcw,
+  ArrowLeft, ArrowRight, Check, Copy, ExternalLink, Globe, Loader2, PartyPopper, RotateCcw,
   Boxes, GraduationCap, KeyRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -50,7 +50,9 @@ type DiagnosticoWa = {
   botao?: { texto: string; url: string };
   numero?: { situacao?: string; telefone?: string; qualidade?: string };
   carregando: boolean;
-  falhou?: boolean;
+  /** Por que não deu para perguntar. Silêncio aqui é o pior estado: a tela
+      ficaria sem o aviso vermelho e pareceria mais saudável do que está. */
+  falhou?: string;
 };
 
 /**
@@ -79,14 +81,21 @@ function useDiagnosticoWa(): DiagnosticoWa {
         type Comp = { type: string; text?: string; buttons?: { text: string; url: string }[] };
         const comps: Comp[] = t?.template?.components ?? [];
         const botao = comps.find((c) => c.type === 'BUTTONS')?.buttons?.[0];
+
+        /* A Meta responde erro com corpo JSON, então "deu certo" não é ter
+           resposta — é ter o número. Sem esta checagem, conta apagada vira
+           uma tela sem aviso nenhum, que é o contrário do que aconteceu. */
+        const motivo = n?.erro_meta?.message ?? n?.error ?? (n?.numero ? null : 'a Meta não devolveu o número');
+        if (!n?.numero) { setD({ carregando: false, falhou: String(motivo) }); return; }
+
         setD({
           carregando: false,
           corpo: comps.find((c) => c.type === 'BODY')?.text,
           botao: botao && { texto: botao.text, url: botao.url },
-          numero: n?.numero,
+          numero: n.numero,
         });
-      } catch {
-        if (vivo) setD({ carregando: false, falhou: true });
+      } catch (e) {
+        if (vivo) setD({ carregando: false, falhou: (e as Error).message || 'sem resposta' });
       }
     })();
     return () => { vivo = false; };
@@ -105,7 +114,7 @@ function PreviaMensagem({ d, nome, empresa }: { d: DiagnosticoWa; nome: string; 
   if (d.falhou || !d.corpo) {
     return (
       <p className="text-[11.5px] text-foreground/40 leading-snug px-1">
-        Não consegui ler o modelo aprovado na Meta agora. A mensagem sai assim mesmo.
+        Não consegui ler o modelo aprovado na Meta agora.
       </p>
     );
   }
@@ -135,7 +144,22 @@ function PrimeiroAcesso({ client, concluir, jaFeito }: { client: Client; conclui
   /* O link gerado fica na tela: a area de transferencia some no primeiro Ctrl+C
      seguinte, e quem esta entregando por telefone precisa ler em voz alta. */
   const [link, setLink] = useState<string | null>(null);
+  const campoLink = useRef<HTMLInputElement>(null);
   const diag = useDiagnosticoWa();
+
+  /** Copia o que já está na tela. Sem await antes: o gesto ainda vale. */
+  const copiarAgora = async () => {
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success('Link copiado');
+    } catch {
+      /* Navegador recusou a área de transferência. Deixa o texto selecionado
+         e diz o que fazer, em vez de falhar calado. */
+      campoLink.current?.select();
+      toast.info('Selecionei o link — copie com Ctrl+C (ou Cmd+C)');
+    }
+  };
 
   const semSistema = !client.lojista_company_id;
   const numeroRuim = Boolean(diag.numero?.situacao && diag.numero.situacao !== NUMERO_OK);
@@ -184,14 +208,11 @@ function PrimeiroAcesso({ client, concluir, jaFeito }: { client: Client; conclui
       const base = client.domain ? `https://${client.domain}` : LOJISTA_APP_URL;
       const url = `${base}/entrar/${token}`;
       setLink(url);
-      try {
-        await navigator.clipboard.writeText(url);
-        toast.success('Link copiado. Vale 24 horas.');
-      } catch {
-        // Sem permissão de área de transferência o link fica na tela para
-        // copiar à mão — melhor que um erro sem saída.
-        toast.info('Link gerado abaixo. Vale 24 horas.');
-      }
+      /* Sem tentar copiar aqui. A tentativa automática vinha depois de duas
+         idas ao servidor, e o Chrome recusa a área de transferência com o
+         gesto expirado — dizia "copiado" e a área de transferência continuava
+         com o que estava antes. Quem copia é o botão do bloco abaixo. */
+      toast.success('Link gerado abaixo. Vale 24 horas.');
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -301,6 +322,24 @@ function PrimeiroAcesso({ client, concluir, jaFeito }: { client: Client; conclui
       {/* A Graph aceita o envio e devolve protocolo mesmo com o número
           irregular — e aí o painel registra sucesso e nada chega. Dizer
           antes do clique é a diferença entre esperar e ir resolver. */}
+      {/* Não saber é diferente de estar tudo bem, e a tela tem de dizer qual
+          dos dois é. Quando a conta foi apagada, o aviso vermelho sumiu e a
+          tela passou a parecer mais saudável do que estava. */}
+      {diag.falhou && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-3.5 space-y-1.5">
+          <p className="text-[12.5px] font-semibold text-amber-400">
+            Não consegui falar com a Meta
+          </p>
+          <p className="text-[11.5px] text-foreground/55 leading-snug">
+            {diag.falhou}
+          </p>
+          <p className="text-[11.5px] text-foreground/55 leading-snug">
+            Sem isso não dá para saber se a mensagem seria entregue. Entregue o link à mão
+            pelo botão abaixo.
+          </p>
+        </div>
+      )}
+
       {numeroRuim && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/[0.06] p-3.5 space-y-1.5">
           <p className="text-[12.5px] font-semibold text-red-400">
@@ -335,16 +374,40 @@ function PrimeiroAcesso({ client, concluir, jaFeito }: { client: Client; conclui
       </button>
 
       {link && (
-        <div className="rounded-xl border border-black/[0.1] dark:border-white/[0.12] bg-background p-3 space-y-2">
-          <p className="text-[11px] text-foreground/40">Vale 24 horas. Entregue por onde conseguir falar com ele.</p>
+        <div className="rounded-xl border border-primary/35 bg-primary/[0.05] p-3.5 space-y-2.5">
+          <p className="text-[12px] font-semibold text-primary">
+            Link de primeiro acesso · vale 24 horas
+          </p>
           {/* Input e não <p>: dá para selecionar, arrastar e copiar à mão
               quando a área de transferência do navegador estiver bloqueada. */}
           <input
+            ref={campoLink}
             readOnly
             value={link}
             onFocus={(e) => e.currentTarget.select()}
-            className="w-full h-10 px-3 rounded-lg bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.1] text-[12px] text-foreground/85 font-mono"
+            className="w-full h-10 px-3 rounded-lg bg-background border border-black/[0.1] dark:border-white/[0.12] text-[11.5px] text-foreground/85 font-mono"
           />
+          <div className="flex gap-2">
+            {/* Copiar aqui e não lá em cima: este clique é a própria ação, sem
+                nenhuma ida ao servidor antes. O Chrome recusa a área de
+                transferência quando o gesto do usuário já expirou — foi o que
+                fez a primeira versão copiar nada e o operador colar o que já
+                estava na área de transferência, achando que era o link. */}
+            <button
+              onClick={copiarAgora}
+              className="flex-1 h-10 rounded-lg bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 transition-opacity inline-flex items-center justify-center gap-1.5"
+            >
+              <Copy className="h-3.5 w-3.5" /> Copiar
+            </button>
+            <a
+              href={link}
+              target="_blank"
+              rel="noreferrer"
+              className="flex-1 h-10 rounded-lg border border-black/[0.1] dark:border-white/[0.12] text-[12.5px] font-medium text-foreground/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors inline-flex items-center justify-center gap-1.5"
+            >
+              <ExternalLink className="h-3.5 w-3.5" /> Abrir
+            </a>
+          </div>
         </div>
       )}
 
