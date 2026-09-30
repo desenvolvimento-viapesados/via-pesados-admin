@@ -1,5 +1,8 @@
+import { configYCloud, faltaNaYCloud, listarTemplates, ycloudPelaMetade } from '../_shared/ycloud.ts';
+
 /**
- * Estado dos templates, lido pela Graph API com o nosso token.
+ * Estado dos templates, no provedor que estiver ligado.
+ *
  *
  * SÓ LEITURA, de propósito: esta função não manda mensagem nenhuma. Serve
  * para responder duas perguntas sem abrir o Gerenciador da Meta —
@@ -26,8 +29,47 @@ const WABA = Deno.env.get('META_WABA_ID');
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
 
+  /* A YCloud manda quando está configurada: é por onde o número oficial
+     passou a falar depois de a WABA anterior ser desabilitada. */
+  /* Meia configuração não cai para o provedor antigo: avisa. */
+  if (ycloudPelaMetade()) {
+    return json(500, {
+      ok: false,
+      error: 'A YCloud está configurada pela metade — não vou cair no provedor antigo em silêncio.',
+      falta_na_ycloud: faltaNaYCloud(),
+    });
+  }
+
+  const ycloud = configYCloud();
+  if (ycloud) {
+    try {
+      const lista = await listarTemplates(ycloud);
+      const porStatus: Record<string, number> = {};
+      for (const t of lista) porStatus[t.status] = (porStatus[t.status] ?? 0) + 1;
+      return json(200, {
+        ok: true,
+        provedor: 'ycloud',
+        conta: ycloud.waba,
+        numero_ycloud: ycloud.numero,
+        total: lista.length,
+        por_status: porStatus,
+        templates: lista.map((t) => ({ nome: t.name, status: t.status, idioma: t.language })),
+      });
+    } catch (e) {
+      return json(502, {
+        ok: false, provedor: 'ycloud', conta: ycloud.waba,
+        erro: e instanceof Error ? e.message : 'falha ao falar com a YCloud',
+      });
+    }
+  }
+
   const token = Deno.env.get('META_WABA_TOKEN');
-  if (!token) return json(500, { error: 'META_WABA_TOKEN não configurada.' });
+  if (!token) {
+    return json(500, {
+      error: 'Nenhum provedor de WhatsApp configurado.',
+      falta_na_ycloud: faltaNaYCloud(),
+    });
+  }
   if (!WABA) return json(500, { error: 'META_WABA_ID não configurada.' });
 
   try {
@@ -42,7 +84,13 @@ Deno.serve(async (req) => {
       return json(502, { ok: false, erro_meta: dados?.error ?? dados });
     }
 
-    const lista = (dados?.data ?? []) as Array<Record<string, unknown>>;
+    /* Tipado: com Record<string, unknown> cada `t.name` é `unknown`, e o
+       arquivo não passava no `deno check`. */
+    type TemplateDaMeta = {
+      name: string; status: string; category?: string;
+      language?: string; rejected_reason?: string;
+    };
+    const lista = (dados?.data ?? []) as Array<TemplateDaMeta & Record<string, unknown>>;
 
     /* Com ?template=<nome>, devolve o conteúdo daquele template em vez do
        resumo. O corpo aprovado vive só na Meta — não está em migration nem

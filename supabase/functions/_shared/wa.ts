@@ -13,10 +13,20 @@
  *     que é justamente o que derruba a qualidade de um número novo. A trava
  *     é a tabela `wa_envios`, com unique em (template, chave).
  *
- *  3. Sem META_WABA_TOKEN a função fica INERTE de propósito, registrando o
- *     que teria mandado. É o que permite os gatilhos irem para produção
- *     antes do token existir, sem disparar nada por engano.
+ *  3. Sem provedor configurado a função fica INERTE de propósito,
+ *     registrando o que teria mandado. É o que permite os gatilhos irem
+ *     para produção antes das credenciais existirem, sem disparar nada por
+ *     engano.
+ *
+ * DOIS TRANSPORTES, UM COMPORTAMENTO. O número oficial passou a viver na
+ * YCloud, um BSP, depois de a Meta desabilitar a WABA anterior em
+ * 14/09/2026. A YCloud é preferida quando configurada; a Graph continua
+ * aqui porque o caminho direto pode voltar, e apagá-lo custaria mais do
+ * que mantê-lo. O que muda entre os dois é o envelope da requisição — os
+ * `components` do template são idênticos.
  */
+
+import { configYCloud, enviarPorYCloud, ycloudPelaMetade } from './ycloud.ts';
 
 const GRAPH = 'https://graph.facebook.com/v21.0';
 
@@ -91,19 +101,27 @@ export async function enviarTemplate(
   db: { from: (t: string) => any },
   args: { para: string | null; template: string; params?: Params; chave: string; client_id?: string | null },
 ): Promise<Resultado> {
+  const ycloud = configYCloud();
   const token = Deno.env.get('META_WABA_TOKEN');
   const numeroId = Deno.env.get('WA_PHONE_NUMBER_ID');
 
   const para = paraE164(args.para);
   if (!para) return { ok: false, motivo: 'cliente sem WhatsApp utilizável' };
 
-  /* Sem token, sai ANTES de gravar. Gravar aqui queimaria a trava: o evento
-     ficaria marcado como disparado e, quando o token finalmente chegasse, a
-     cobrança daquele mês nunca sairia. Modo inerte tem de ser inerte também
-     no banco. */
-  if (!token || !numeroId) {
+  /* Meia configuração não vira disparo pelo provedor antigo: fica inerte,
+     sem queimar a trava, até alguém completar. */
+  if (!ycloud && ycloudPelaMetade()) {
+    console.log(`[wa inerte] ycloud pela metade — ${args.template} -> ${para}`);
+    return { ok: false, motivo: 'YCloud configurada pela metade', inerte: true };
+  }
+
+  /* Sem provedor, sai ANTES de gravar. Gravar aqui queimaria a trava: o
+     evento ficaria marcado como disparado e, quando as credenciais
+     finalmente chegassem, a cobrança daquele mês nunca sairia. Modo inerte
+     tem de ser inerte também no banco. */
+  if (!ycloud && (!token || !numeroId)) {
     console.log(`[wa inerte] ${args.template} -> ${para}`, JSON.stringify(args.params ?? {}));
-    return { ok: false, motivo: 'META_WABA_TOKEN ausente', inerte: true };
+    return { ok: false, motivo: 'nenhum provedor de WhatsApp configurado', inerte: true };
   }
 
   /* Trava de repetição ANTES de falar com a Meta: se o insert conflitar,
@@ -141,6 +159,24 @@ export async function enviarTemplate(
     });
   }
 
+  /* ── YCloud ──────────────────────────────────────────────────────── */
+  if (ycloud) {
+    try {
+      const { id } = await enviarPorYCloud(ycloud, {
+        para, template: args.template, language: 'pt_BR', componentes,
+      });
+      await db.from('wa_envios').update({ message_id: id, enviado_em: new Date().toISOString() })
+        .eq('template', args.template).eq('chave', args.chave);
+      return { ok: true, message_id: id };
+    } catch (e) {
+      const motivo = e instanceof Error ? e.message : 'falha na YCloud';
+      await db.from('wa_envios').update({ erro: motivo.slice(0, 400) })
+        .eq('template', args.template).eq('chave', args.chave);
+      return { ok: false, motivo };
+    }
+  }
+
+  /* ── Graph, direto na Meta ───────────────────────────────────────── */
   try {
     const res = await fetch(`${GRAPH}/${numeroId}/messages`, {
       method: 'POST',

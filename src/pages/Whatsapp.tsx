@@ -22,6 +22,17 @@ type Diag = {
   ok?: boolean;
   token?: string;
   error?: string;
+  /* Dois transportes possíveis: a YCloud, por onde o número oficial passou
+     a falar, e a Graph direto na Meta. A tela precisa dizer qual está no
+     ar — o mesmo painel verde com o provedor errado esconde exatamente o
+     tipo de falha que já deixou "enviado" sem entrega. */
+  provedor?: 'ycloud' | 'meta';
+  conta?: string;
+  numero_ycloud?: string;
+  erro?: string;
+  falta_na_ycloud?: string[];
+  por_status?: Record<string, number>;
+  templates?: { nome: string; status: string; idioma?: string }[];
   numero?: { telefone?: string; nome?: string; situacao?: string; qualidade?: string; nome_status?: string };
   conta_waba?: { nome?: string; revisao_da_conta?: string; verificacao_do_negocio?: string };
   total?: number;
@@ -29,7 +40,11 @@ type Diag = {
 type Inscricao = { apps_inscritos?: { id?: string; nome?: string }[]; erro?: string };
 type Modelos = {
   waba?: string;
+  provedor?: string;
+  conta?: string;
   error?: string;
+  falta_na_ycloud?: string[];
+  erro?: string;
   na_conta?: { nome: string; status: string }[];
   faltando?: string[];
   resumo?: Record<string, number>;
@@ -89,7 +104,11 @@ export default function Whatsapp() {
     } finally { setOcupado(null); }
   };
 
-  const numeroOk = diag?.numero?.situacao === OK;
+  const naYCloud = diag?.provedor === 'ycloud';
+  /* Na Graph, "operando" é `status: CONNECTED`. A YCloud não devolve esse
+     campo — e inventar um verde a partir do silêncio seria repetir o erro
+     que deixou o painel registrando "enviado" para mensagem não entregue. */
+  const numeroOk = naYCloud ? diag?.ok === true : diag?.numero?.situacao === OK;
   const faltando = mod?.faltando ?? [];
 
   return (
@@ -103,13 +122,30 @@ export default function Whatsapp() {
         <div className="h-[3px] w-14 bg-primary rounded-full mt-5" />
       </header>
 
-      <button
-        onClick={ler}
-        disabled={lendo}
-        className="inline-flex items-center gap-1.5 text-[12.5px] text-foreground/45 hover:text-foreground transition-colors disabled:opacity-40"
-      >
-        <RefreshCw className={`h-3.5 w-3.5 ${lendo ? 'animate-spin' : ''}`} /> Reler da Meta
-      </button>
+      <div className="flex items-center gap-3 flex-wrap">
+        <button
+          onClick={ler}
+          disabled={lendo}
+          className="inline-flex items-center gap-1.5 text-[12.5px] text-foreground/45 hover:text-foreground transition-colors disabled:opacity-40"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${lendo ? 'animate-spin' : ''}`} /> Reler do provedor
+        </button>
+        {diag?.provedor && (
+          <span className="text-[11px] px-2 py-1 rounded-lg bg-primary/10 text-primary font-semibold">
+            {diag.provedor === 'ycloud' ? 'YCloud' : 'Meta (direto)'}
+            {diag.conta && <span className="font-normal opacity-70"> · {diag.conta}</span>}
+          </span>
+        )}
+      </div>
+
+      {/* Sem provedor não há o que diagnosticar, e o que falta é
+          configuração, não erro de código. */}
+      {diag?.falta_na_ycloud?.length ? (
+        <Aviso tom="ruim">
+          Nenhum provedor ligado. Para usar a YCloud, falta configurar no Supabase:{' '}
+          {diag.falta_na_ycloud.join(' · ')}
+        </Aviso>
+      ) : null}
 
       {/* ── Número e conta ─────────────────────────────────────── */}
       <Bloco titulo="Número e conta">
@@ -128,16 +164,27 @@ export default function Whatsapp() {
                 : <ShieldAlert className="h-5 w-5 shrink-0 text-red-400" />}
               <div className="min-w-0">
                 <p className={`text-[13px] font-semibold ${numeroOk ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {numeroOk ? 'Número operando' : `Número em ${diag?.numero?.situacao ?? 'estado desconhecido'}`}
+                  {naYCloud
+                    ? (numeroOk ? 'YCloud respondendo' : 'YCloud não respondeu')
+                    : numeroOk ? 'Número operando' : `Número em ${diag?.numero?.situacao ?? 'estado desconhecido'}`}
                 </p>
                 <p className="text-[11.5px] text-foreground/50 leading-snug mt-0.5">
-                  {numeroOk
-                    ? 'A Meta aceita e entrega as mensagens.'
-                    : 'A Meta aceita o envio e devolve protocolo, mas não entrega. O painel registra sucesso e nada chega.'}
+                  {naYCloud
+                    ? (numeroOk
+                        ? 'A conta responde e os modelos abaixo são os que ela tem. A qualidade do número quem mostra é o painel da YCloud.'
+                        : (diag?.erro ?? 'A YCloud não respondeu — os disparos não vão sair.'))
+                    : numeroOk
+                      ? 'A Meta aceita e entrega as mensagens.'
+                      : 'A Meta aceita o envio e devolve protocolo, mas não entrega. O painel registra sucesso e nada chega.'}
                 </p>
               </div>
             </div>
-            <Linhas itens={[
+            <Linhas itens={naYCloud ? [
+              ['Provedor', 'YCloud'],
+              ['Número que envia', diag?.numero_ycloud],
+              ['Conta (WABA)', diag?.conta],
+              ['Modelos na conta', diag?.total != null ? String(diag.total) : undefined],
+            ] : [
               ['Telefone', diag?.numero?.telefone],
               ['Nome de exibição', diag?.numero?.nome],
               ['Situação do nome', diag?.numero?.nome_status],

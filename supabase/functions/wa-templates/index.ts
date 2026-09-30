@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { MODELOS, type Componente } from './modelos.ts';
+import { configYCloud, faltaNaYCloud, listarTemplates, criarTemplate, ycloudPelaMetade } from '../_shared/ycloud.ts';
 
 /**
  * Recria os modelos aprovados numa WABA nova.
@@ -12,6 +13,15 @@ import { MODELOS, type Componente } from './modelos.ts';
  *
  * Idempotente: modelo que já existe na conta é pulado, não duplicado. Pode
  * rodar de novo depois de uma reprovação isolada sem mexer nos aprovados.
+ *
+ * Funciona nos dois transportes. Na YCloud o cabeçalho de documento fica
+ * mais simples: em vez do handle em duas etapas da Resumable Upload API,
+ * basta a URL pública de um PDF — e a nossa é a do PDF em branco que esta
+ * função guarda no Storage, para não mandar nota fiscal de cliente para a
+ * revisão da Meta.
+ *
+ * NÃO ENVIA MENSAGEM. Criar modelo é escrever na conta; disparo é outra
+ * função, com trava própria.
  */
 
 const GRAPH = 'https://graph.facebook.com/v21.0';
@@ -53,6 +63,37 @@ function pdfEmBranco(): Uint8Array {
 }
 
 /**
+ * A URL pública do PDF de exemplo, para o cabeçalho de documento na
+ * YCloud. Guardado no Storage do painel, e não gerado a cada chamada: a
+ * Meta baixa o arquivo na hora da revisão, e um link que muda a cada
+ * execução reprovaria o modelo depois.
+ */
+type Balde = {
+  from: (b: string) => {
+    getPublicUrl: (p: string) => { data: { publicUrl: string } };
+    upload: (p: string, f: Blob, o: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
+  };
+};
+
+async function urlDoExemplo(db: { storage: Balde }): Promise<string> {
+  const balde = 'logos';           // já existe e é público
+  const caminho = 'wa/exemplo.pdf';
+  const { data: pub } = db.storage.from(balde).getPublicUrl(caminho);
+
+  /* Sobe só se ainda não estiver lá. `upsert: false` devolve erro de
+     duplicado, que aqui é sucesso — o arquivo que interessa já existe. */
+  const { error } = await db.storage.from(balde).upload(
+    caminho,
+    new Blob([pdfEmBranco().buffer as ArrayBuffer], { type: 'application/pdf' }),
+    { contentType: 'application/pdf', upsert: false },
+  );
+  if (error && !/exists|duplicate/i.test(error.message)) {
+    throw new Error(`não consegui guardar o PDF de exemplo: ${error.message}`);
+  }
+  return pub.publicUrl;
+}
+
+/**
  * Sobe o arquivo e devolve o handle que o modelo referencia.
  *
  * É a Resumable Upload API, em duas etapas: abrir a sessão no app e enviar
@@ -72,7 +113,8 @@ async function subirDocumento(token: string, appId: string): Promise<string> {
   const envio = await fetch(`${GRAPH}/${s.id}`, {
     method: 'POST',
     headers: { Authorization: `OAuth ${token}`, file_offset: '0', 'Content-Type': 'application/pdf' },
-    body: arquivo,
+    /* `.buffer` e não o Uint8Array: o tipo de `body` não aceita a view. */
+    body: arquivo.buffer as ArrayBuffer,
   });
   const e = await envio.json();
   if (!envio.ok || !e?.h) throw new Error(`enviar bytes: ${e?.error?.message ?? envio.status}`);
@@ -83,10 +125,23 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
   if (req.method !== 'POST') return json(405, { error: 'Use POST' });
 
+  if (ycloudPelaMetade()) {
+    return json(500, {
+      error: 'A YCloud está configurada pela metade — não vou criar modelo na conta antiga por engano.',
+      falta_na_ycloud: faltaNaYCloud(),
+    });
+  }
+
+  const ycloud = configYCloud();
   const token = Deno.env.get('META_WABA_TOKEN');
   const waba = Deno.env.get('META_WABA_ID');
-  if (!token) return json(500, { error: 'META_WABA_TOKEN ausente' });
-  if (!waba) return json(500, { error: 'META_WABA_ID ausente' });
+  if (!ycloud && !token) {
+    return json(500, {
+      error: 'Nenhum provedor de WhatsApp configurado.',
+      falta_na_ycloud: faltaNaYCloud(),
+    });
+  }
+  if (!ycloud && !waba) return json(500, { error: 'META_WABA_ID ausente' });
 
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
@@ -101,37 +156,53 @@ Deno.serve(async (req) => {
     if (!membro || membro.is_active === false) return json(403, { error: 'acesso negado' });
 
     const { action } = await req.json().catch(() => ({ action: 'listar' }));
+    const provedor = ycloud ? 'ycloud' : 'meta';
+    const conta = ycloud ? ycloud.waba : waba;
 
     // O que a conta já tem. Vale para as duas ações.
-    const r = await fetch(`${GRAPH}/${waba}/message_templates?fields=name,status&limit=200`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const atual = await r.json();
-    if (!r.ok) return json(502, { erro_meta: atual?.error ?? atual, waba });
-    const existentes = new Map<string, string>(
-      ((atual?.data ?? []) as { name: string; status: string }[]).map((t) => [t.name, t.status]),
-    );
+    const existentes = new Map<string, string>();
+    if (ycloud) {
+      try {
+        for (const t of await listarTemplates(ycloud)) existentes.set(t.name, t.status);
+      } catch (e) {
+        return json(502, { provedor, conta, erro: e instanceof Error ? e.message : 'falha ao listar' });
+      }
+    } else {
+      const r = await fetch(`${GRAPH}/${waba}/message_templates?fields=name,status&limit=200`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const atual = await r.json();
+      if (!r.ok) return json(502, { erro_meta: atual?.error ?? atual, waba });
+      for (const t of (atual?.data ?? []) as { name: string; status: string }[]) {
+        existentes.set(t.name, t.status);
+      }
+    }
 
     if (action !== 'criar') {
       return json(200, {
-        waba,
+        provedor,
+        conta,
         na_conta: [...existentes].map(([nome, status]) => ({ nome, status })),
         faltando: MODELOS.filter((m) => !existentes.has(m.name)).map((m) => m.name),
       });
     }
 
-    /* Um handle serve para todos os modelos com cabeçalho de documento — e
-       só é pedido se algum precisar, para não exigir META_APP_ID de quem
-       não usa esse cabeçalho. */
-    let handle: string | null = null;
-    const precisaHandle = MODELOS.some((m) => m.components.some((c) => c.__precisa_handle));
-    let erroHandle: string | null = null;
-    if (precisaHandle) {
-      const appId = Deno.env.get('META_APP_ID');
-      if (!appId) erroHandle = 'META_APP_ID ausente';
-      else {
-        try { handle = await subirDocumento(token, appId); }
-        catch (e) { erroHandle = e instanceof Error ? e.message : 'falha no upload'; }
+    /* O exemplo do cabeçalho de documento. Só é preparado se algum modelo
+       precisar — na Graph é um handle de upload em duas etapas; na YCloud,
+       a URL pública do mesmo PDF em branco. */
+    let exemploDoc: { header_handle: string[] } | { header_url: string[] } | null = null;
+    let erroDoc: string | null = null;
+    if (MODELOS.some((m) => m.components.some((c) => c.__precisa_handle))) {
+      try {
+        if (ycloud) {
+          exemploDoc = { header_url: [await urlDoExemplo(db)] };
+        } else {
+          const appId = Deno.env.get('META_APP_ID');
+          if (!appId) throw new Error('META_APP_ID ausente');
+          exemploDoc = { header_handle: [await subirDocumento(token!, appId)] };
+        }
+      } catch (e) {
+        erroDoc = e instanceof Error ? e.message : 'falha ao preparar o documento de exemplo';
       }
     }
 
@@ -148,8 +219,8 @@ Deno.serve(async (req) => {
       for (const c of m.components) {
         const { __precisa_handle, ...limpo } = c;
         if (__precisa_handle) {
-          if (!handle) { bloqueado = erroHandle ?? 'sem handle de documento'; break; }
-          componentes.push({ ...limpo, example: { header_handle: [handle] } } as Componente);
+          if (!exemploDoc) { bloqueado = erroDoc ?? 'sem exemplo de documento'; break; }
+          componentes.push({ ...limpo, example: exemploDoc } as Componente);
         } else {
           componentes.push(limpo as Componente);
         }
@@ -159,25 +230,40 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const res = await fetch(`${GRAPH}/${waba}/message_templates`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: m.name, language: m.language, category: m.category, components: componentes,
-        }),
-      });
-      const d = await res.json();
-      relatorio.push(
-        res.ok && d?.id
-          ? { nome: m.name, resultado: 'criado', detalhe: d.status ?? 'PENDING' }
-          : { nome: m.name, resultado: 'erro', detalhe: d?.error?.message ?? `HTTP ${res.status}` },
-      );
+      if (ycloud) {
+        try {
+          const d = await criarTemplate(ycloud, {
+            name: m.name, language: m.language, category: m.category, components: componentes,
+          });
+          relatorio.push({ nome: m.name, resultado: 'criado', detalhe: d?.status ?? 'PENDING' });
+        } catch (e) {
+          relatorio.push({ nome: m.name, resultado: 'erro', detalhe: e instanceof Error ? e.message : 'falha' });
+        }
+      } else {
+        const res = await fetch(`${GRAPH}/${waba}/message_templates`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: m.name, language: m.language, category: m.category, components: componentes,
+          }),
+        });
+        const d = await res.json();
+        relatorio.push(
+          res.ok && d?.id
+            ? { nome: m.name, resultado: 'criado', detalhe: d.status ?? 'PENDING' }
+            : { nome: m.name, resultado: 'erro', detalhe: d?.error?.message ?? `HTTP ${res.status}` },
+        );
+      }
     }
 
-    const conta = (r2: string) => relatorio.filter((x) => x.resultado === r2).length;
+    const quantos = (r2: string) => relatorio.filter((x) => x.resultado === r2).length;
     return json(200, {
-      waba,
-      resumo: { criados: conta('criado'), ja_existiam: conta('já existe'), erros: conta('erro'), pulados: conta('pulado') },
+      provedor,
+      conta,
+      resumo: {
+        criados: quantos('criado'), ja_existiam: quantos('já existe'),
+        erros: quantos('erro'), pulados: quantos('pulado'),
+      },
       relatorio,
     });
   } catch (e) {
