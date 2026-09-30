@@ -6,6 +6,10 @@ import { Layout } from '@/components/Layout';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import Login from '@/pages/Login';
+/* Estático de propósito: com `lazy()` o bundler gera o chunk da bancada
+   mesmo em produção, onde a rota nunca renderiza. Import estático dentro
+   de um `if (false)` o Rollup remove inteiro. */
+import DevFicha from '@/pages/DevFicha';
 
 const Home           = lazy(() => import('@/pages/Home'));
 const Crm            = lazy(() => import('@/pages/Crm'));
@@ -21,7 +25,6 @@ const RegistrarVenda = lazy(() => import('@/pages/RegistrarVenda'));
 const Cobranca       = lazy(() => import('@/pages/Cobranca'));
 const Onboarding     = lazy(() => import('@/pages/Onboarding'));
 const Whatsapp       = lazy(() => import('@/pages/Whatsapp'));
-const DevFicha       = lazy(() => import('@/pages/DevFicha'));
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -41,11 +44,7 @@ const Gate = () => {
      `import.meta.env.DEV` é avaliado na compilação — em produção o Vite
      remove o bloco e a rota nem chega no pacote. */
   if (import.meta.env.DEV && window.location.pathname.endsWith('/dev/ficha')) {
-    return (
-      <Suspense fallback={<Loader />}>
-        <DevFicha />
-      </Suspense>
-    );
+    return <DevFicha />;
   }
 
   if (loading) {
