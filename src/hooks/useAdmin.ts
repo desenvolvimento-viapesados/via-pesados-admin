@@ -1413,6 +1413,40 @@ export const fetchCompaniesHealth = async (companyIds: string[]): Promise<SaudeD
   return (data.health ?? []) as SaudeDaEmpresa[];
 };
 
+/**
+ * Pergunta a cada canal se o anúncio ainda existe, e acerta o registro.
+ *
+ * O painel dizia "no ar" porque a linha no banco dizia isso — ninguém
+ * nunca tinha perguntado ao Facebook. Esta chamada só corrige o NOSSO
+ * registro: post publicado não é apagado daqui, isso é decisão do dono da
+ * conta, no sistema dele.
+ */
+export type ResultadoAuditoria = {
+  conferidos: number;
+  corrigidos: number;
+  no_ar_de_vendido: number;
+  itens: { canal: string; veiculo: string; situacao: string }[];
+};
+
+export const auditarAnuncios = async (client: Client): Promise<ResultadoAuditoria> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sessão expirada');
+  const res = await fetch(`${LOJISTA_FUNCTIONS_URL}/client-usage-metrics`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({
+      acao: 'auditar_anuncios',
+      company_id: client.lojista_company_id,
+      client_id: client.id,
+      client_name: client.company_name,
+      purpose: 'auditoria de anúncios',
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error || 'Não consegui conferir os anúncios');
+  return data as ResultadoAuditoria;
+};
+
 export const useCompaniesHealth = (companyIds: string[]) =>
   useQuery({
     queryKey: ['companies-health', [...companyIds].sort().join(',')],

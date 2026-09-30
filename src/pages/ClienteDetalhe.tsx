@@ -5,7 +5,7 @@ import {
   Copy, ExternalLink, Phone, Mail, MapPin, Plus, StickyNote,
   PartyPopper, KeyRound, Repeat, Send, ChevronRight, ArrowRight,
   Hand, Database, MoreHorizontal, Pause, Ban, RotateCcw,
-  Truck, Radio, TrendingUp, Users,
+  Truck, Radio, TrendingUp, Users, ScanSearch,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -16,7 +16,7 @@ import {
   provisionCompany, adotarAmostra, useDemos, useUpdateDemo, updateCompanyBranding, uploadLogo, slugify, genPassword,
   setCompanyChannels,
   brlFull, brl, type Client, type OnboardingTask,
-  usePlans, useCriarAssinaturaAsaas, useClientUsage,
+  usePlans, useCriarAssinaturaAsaas, useClientUsage, auditarAnuncios,
 } from '@/hooks/useAdmin';
 import {
   etapasDoCliente, situacaoDoCliente, progresso, ROTULO_SITUACAO,
@@ -394,6 +394,28 @@ export default function ClienteDetalhe() {
   const [note, setNote] = useState('');
   const [showCreds, setShowCreds] = useState(false);
   const [avisando, setAvisando] = useState(false);
+  const [auditando, setAuditando] = useState(false);
+
+  /* Conferir se o anúncio ainda existe no canal. O painel dizia "no ar"
+     porque a linha no banco dizia isso, e a linha só muda quando alguém
+     publica ou vende pelo sistema — post apagado na mão do Facebook
+     ficava no ar para sempre, aqui dentro. */
+  const conferirAnuncios = async () => {
+    if (!client?.lojista_company_id) return;
+    setAuditando(true);
+    try {
+      const r = await auditarAnuncios(client);
+      const partes = [`${r.conferidos} ${r.conferidos === 1 ? 'anúncio conferido' : 'anúncios conferidos'}`];
+      if (r.corrigidos) partes.push(`${r.corrigidos} já não existia no canal`);
+      if (r.no_ar_de_vendido) partes.push(`${r.no_ar_de_vendido} de veículo vendido segue no ar`);
+      toast[r.no_ar_de_vendido ? 'warning' : 'success'](partes.join(' · '));
+      usoQuery.refetch();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setAuditando(false);
+    }
+  };
 
   /* Aviso manual de que o sistema está no ar. Manual porque pagamento
      confirmado não é loja pronta — falta estoque, marca, canais. Quem sabe
@@ -889,6 +911,15 @@ export default function ClienteDetalhe() {
                     >
                       {avisando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                       Avisar que está pronto
+                    </button>
+                    <button
+                      onClick={conferirAnuncios}
+                      disabled={auditando}
+                      title="Pergunta a cada canal se o anúncio ainda existe e corrige o registro — não apaga nada publicado"
+                      className="h-8 px-2.5 rounded-lg border border-black/[0.1] dark:border-white/[0.1] text-[11.5px] font-medium text-foreground/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {auditando ? <Loader2 className="h-3 w-3 animate-spin" /> : <ScanSearch className="h-3 w-3" />}
+                      Conferir anúncios
                     </button>
                     <button
                       onClick={() => setDialog('logo_aplicada')}
