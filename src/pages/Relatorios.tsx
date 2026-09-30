@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Repeat, Target, Wallet, LifeBuoy, XCircle, Users, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  useClients, useProspects, useMeetings, useDemos, useTickets,
+  useClients, useProspects, useMeetings, useDemos, useTickets, useCompaniesHealth,
   usePayments, useFinTransactions, useTeam, useChannels, useProspectEvents,
 } from '@/hooks/useAdmin';
 import { getDateRangeForPeriod } from '@/utils/periodFilter';
@@ -74,6 +74,15 @@ export default function Relatorios() {
   const { data: demos = [] } = useDemos();
   const { data: tickets = [] } = useTickets();
   const { data: payments = [] } = usePayments();
+  /* A saúde da base instalada, numa chamada só para todas as contas.
+     Mora aqui e não dentro da aba porque a aba é remontada a cada
+     troca de sub-aba — e cada remontagem seria uma leitura do sistema
+     do cliente, registrada no log da LGPD sem ninguém ter pedido. */
+  const companyIds = useMemo(
+    () => clients.map((c) => c.lojista_company_id).filter(Boolean) as string[],
+    [clients],
+  );
+  const { data: saude = [] } = useCompaniesHealth(companyIds);
   const { data: transacoes = [] } = useFinTransactions();
   const { data: team = [] } = useTeam();
   const { data: canais = [] } = useChannels();
@@ -186,6 +195,7 @@ export default function Relatorios() {
         <OperacaoTab
           clients={filtrado.clients} tickets={filtrado.tickets} team={team}
           prospects={filtrado.prospects} meetings={filtrado.meetings}
+          saude={saude} payments={payments}
           periodo={range} label={label}
         />
       )}

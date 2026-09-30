@@ -8,7 +8,9 @@ import {
   LifeBuoy, Clock, CheckCircle2, Flame, Rocket, Timer,
   Users, Gauge, ListChecks, Inbox,
 } from 'lucide-react';
-import type { Client, Ticket, TeamMemberRow, Prospect, Meeting } from '@/hooks/useAdmin';
+import type { Client, Ticket, TeamMemberRow, Prospect, Meeting, Payment, SaudeDaEmpresa } from '@/hooks/useAdmin';
+import { TotaisDaCarteira, ListaDaCarteira } from '@/components/admin/Carteira';
+import { montarCarteira, totaisDaCarteira, ordemDeAtencao } from '@/lib/carteira';
 import {
   GCard, SectionTitle, KpiGrid, Chart, CTip, Empty, RankRow, TintedBlock,
   ZebraTable, Tr, Td, SubTabs, brl, pct,
@@ -22,6 +24,10 @@ interface Props {
   team: TeamMemberRow[];
   prospects: Prospect[];
   meetings: Meeting[];
+  /* A base instalada vem de fora: a saúde é lida do sistema de cada
+     cliente, numa chamada só, e quem faz essa leitura é a página. */
+  saude: SaudeDaEmpresa[];
+  payments: Payment[];
   periodo: { start: string; end: string };
   label: string;
 }
@@ -37,9 +43,21 @@ const PRIO_COR: Record<string, string> = {
   baixa: 'hsl(220,10%,45%)',
 };
 
-export function OperacaoTab({ clients, tickets, team, prospects, meetings, periodo, label }: Props) {
+export function OperacaoTab({ clients, tickets, team, prospects, meetings, saude, payments, periodo, label }: Props) {
   const navigate = useNavigate();
   const [sub, setSub] = useState('Entrega');
+
+  /* ── Base instalada: como as contas no ar estão passando ──────
+     Não respeita o período de propósito. "Quem está sem anúncio hoje" e
+     "quem não entra há um mês" são perguntas do presente; filtrar por
+     trimestre devolveria uma foto velha de um problema que ou já passou
+     ou está piorando agora. */
+  const carteira = useMemo(() => montarCarteira(clients, saude), [clients, saude]);
+  const totaisCarteira = useMemo(() => totaisDaCarteira(carteira, payments), [carteira, payments]);
+  const precisamDeAlguem = useMemo(
+    () => [...carteira].filter((l) => l.alarmes.length > 0).sort(ordemDeAtencao),
+    [carteira],
+  );
 
   const inP = (iso: string | null | undefined) =>
     !!iso && iso.slice(0, 10) >= periodo.start && iso.slice(0, 10) <= periodo.end;
@@ -168,7 +186,30 @@ export function OperacaoTab({ clients, tickets, team, prospects, meetings, perio
 
   return (
     <div className="space-y-6">
-      <SubTabs opcoes={['Entrega', 'Suporte', 'Time']} valor={sub} onChange={setSub} cor="violet" />
+      <SubTabs opcoes={['Entrega', 'Base instalada', 'Suporte', 'Time']} valor={sub} onChange={setSub} cor="violet" />
+
+      {sub === 'Base instalada' && (
+        <div className="space-y-4">
+          <SectionTitle
+            icon={<Gauge className="h-4 w-4" />}
+            title="A base instalada, hoje"
+            sub="Estoque, anúncios e acessos lidos do sistema de cada cliente — situação de agora, não do período escolhido"
+          />
+          <TotaisDaCarteira totais={totaisCarteira} />
+          {precisamDeAlguem.length > 0 ? (
+            <>
+              <SectionTitle
+                icon={<ListChecks className="h-4 w-4" />}
+                title={`${precisamDeAlguem.length} ${precisamDeAlguem.length === 1 ? 'conta precisa' : 'contas precisam'} de alguém`}
+                sub="Em ordem: o mais grave e o mais parado primeiro"
+              />
+              <ListaDaCarteira linhas={precisamDeAlguem} onAbrir={(id) => navigate(`/clientes/${id}`)} />
+            </>
+          ) : (
+            <Empty h={140}>Nenhuma conta com alarme — estoque, anúncios e acessos em dia.</Empty>
+          )}
+        </div>
+      )}
 
       {sub === 'Entrega' && (
         <div className="space-y-6">

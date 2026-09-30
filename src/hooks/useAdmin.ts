@@ -1111,11 +1111,11 @@ export const useCrmCounts = () => {
         prospects.filter((p) => p.stage === 'vendido' && !converted.has(p.id)).length +
         clients.filter((c) => c.status === 'onboarding').length,
       pipeline: active.reduce((s, p) => s + (p.proposal_value ?? 0), 0),
-      // MRR é só o que está ATIVO. Onboarding é contrato assinado que ainda
-      // não entrou no ar — soma ao caixa futuro, não ao recorrente de hoje.
-      // Relatórios usa a mesma definição; as duas telas têm que bater.
-      mrr: clients.filter((c) => c.status === 'ativo')
-        .reduce((s, c) => s + (c.mrr ?? 0), 0),
+      /* MRR saiu daqui de propósito. Somava o `mrr` de quem tinha o
+         rótulo `ativo`, e rótulo é campo que alguém troca à mão: a
+         iTruck pagou em 14/09, seguiu marcada como `onboarding` e a Home
+         anunciou R$ 0 com o dinheiro entrando. A conta agora é uma só, em
+         `lib/mrr.ts`, e pergunta se a fatura foi paga. */
     };
   }, [prospects, meetings, demos, clients]);
 };
@@ -1334,7 +1334,12 @@ export interface SaudeDaEmpresa {
   veiculos: number;
   veiculos_parados_60d: number;
   valor_estoque: number;
-  anuncios_no_ar: number;
+  /* Veículo anunciado, não linha de anúncio: o mesmo caminhão no
+     Facebook, no Instagram, no catálogo e no ML é UM anunciado. Somar as
+     linhas dava 21 onde havia 6. */
+  veiculos_anunciados: number;
+  /** Anúncio no ar de caminhão já vendido — sujeira que alguém tem de tirar. */
+  anuncios_de_vendidos: number;
   canais_ligados: number;
   canais_caidos: number;
   usuarios: number;

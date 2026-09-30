@@ -36,11 +36,16 @@ const Total = ({ icone, label, valor, sub, tom }: {
 export function TotaisDaCarteira({ totais }: { totais: ReturnType<typeof totaisDaCarteira> }) {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-6 gap-2.5">
+      {/* O subtítulo diz de quantas contas o dinheiro vem, e quanto ainda
+          não virou receita — "5 clientes na carteira" ao lado de um MRR
+          que conta 2 deles é a leitura errada esperando para acontecer. */}
       <Total icone={<Wallet className="h-3 w-3" />} label="MRR" valor={brl(totais.mrr)}
-        sub={`${totais.clientes} ${totais.clientes === 1 ? 'cliente' : 'clientes'} na carteira`} />
+        sub={totais.mrrAguardando > 0
+          ? `${totais.contasPagantes} de ${totais.clientes} pagando · ${brl(totais.mrrAguardando)} a ativar`
+          : `${totais.contasPagantes} ${totais.contasPagantes === 1 ? 'conta pagando' : 'contas pagando'}`} />
       <Total icone={<Truck className="h-3 w-3" />} label="Veículos" valor={totais.veiculos}
         sub={`${brl(totais.valorEstoque)} em pátio`} />
-      <Total icone={<Radio className="h-3 w-3" />} label="Anúncios no ar" valor={totais.anunciosNoAr} />
+      <Total icone={<Radio className="h-3 w-3" />} label="Veículos anunciados" valor={totais.veiculosAnunciados} />
       <Total icone={<TrendingUp className="h-3 w-3" />} label="Vendas 30d" valor={totais.vendas30d}
         sub={brl(totais.faturamento30d)} tom="bom" />
       <Total icone={<Users className="h-3 w-3" />} label="Usuários" valor={totais.usuarios}
@@ -112,8 +117,8 @@ export function ListaDaCarteira({
                   </div>
                   <div>
                     <p className={cn('text-[13px] font-semibold tabular-nums',
-                      s && s.veiculos > 0 && s.anuncios_no_ar === 0 ? 'text-red-400' : 'text-foreground')}>
-                      {s ? s.anuncios_no_ar : '—'}
+                      s && s.veiculos > 0 && s.veiculos_anunciados === 0 ? 'text-red-400' : 'text-foreground')}>
+                      {s ? s.veiculos_anunciados : '—'}
                     </p>
                     <p className="text-[9.5px] uppercase tracking-wide text-foreground/30">no ar</p>
                   </div>

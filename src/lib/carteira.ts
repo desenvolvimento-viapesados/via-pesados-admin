@@ -1,5 +1,6 @@
 import type { Client, SaudeDaEmpresa } from '@/hooks/useAdmin';
 import { situacaoDoCliente, etapasDoCliente, type SituacaoCliente } from '@/lib/estadoDoCliente';
+import { mrrDaCarteira, type PagamentoDoMRR } from '@/lib/mrr';
 
 /**
  * A carteira inteira, do jeito que um diretor olha.
@@ -71,8 +72,19 @@ export function alarmesDoCliente(
   }
   /* Ter estoque e nenhum anúncio é o pior caso silencioso: o cliente paga
      e não recebe nada em troca. */
-  if (s.veiculos > 0 && s.anuncios_no_ar === 0) {
+  if (s.veiculos > 0 && s.veiculos_anunciados === 0) {
     a.push({ chave: 'sem_anuncio', texto: 'Estoque sem nenhum anúncio no ar', peso: 'grave' });
+  }
+  /* Caminhão vendido com anúncio vivo faz o lojista receber ligação de
+     algo que não existe mais — e some dentro de qualquer total somado. */
+  if (s.anuncios_de_vendidos > 0) {
+    a.push({
+      chave: 'anuncio_de_vendido',
+      texto: s.anuncios_de_vendidos === 1
+        ? 'Um anúncio de veículo vendido ainda no ar'
+        : `${s.anuncios_de_vendidos} anúncios de veículos vendidos ainda no ar`,
+      peso: 'atencao',
+    });
   }
   if (s.veiculos_parados_60d >= 3) {
     a.push({
@@ -107,7 +119,7 @@ export function montarCarteira(
           ultimo_acesso_em: s.ultimo_acesso_em,
           primeiro_veiculo_em: s.ultimo_veiculo_em,
           tem_canal_ligado: s.canais_ligados > 0,
-          tem_anuncio_no_ar: s.anuncios_no_ar > 0,
+          tem_anuncio_no_ar: s.veiculos_anunciados > 0,
         },
         estoque: { total: s.veiculos },
       } : null,
@@ -122,16 +134,27 @@ export function montarCarteira(
   });
 }
 
-/** Os números que abrem a tela — e a reunião. */
-export function totaisDaCarteira(linhas: LinhaDaCarteira[]) {
+/**
+ * Os números que abrem a tela — e a reunião.
+ *
+ * Os pagamentos entram aqui porque MRR é o que já entrou, não o que foi
+ * assinado: ver `lib/mrr.ts`. Passar a lista é obrigatório de propósito —
+ * com um valor padrão, esquecer de passar daria zero em silêncio, que é
+ * exatamente o defeito que estamos consertando.
+ */
+export function totaisDaCarteira(linhas: LinhaDaCarteira[], pagamentos: PagamentoDoMRR[]) {
   const vivos = linhas.filter((l) => l.cliente.status !== 'cancelado');
   const soma = (f: (l: LinhaDaCarteira) => number) => vivos.reduce((s, l) => s + f(l), 0);
+  const dinheiro = mrrDaCarteira(linhas.map((l) => l.cliente), pagamentos);
   return {
     clientes: vivos.length,
-    mrr: soma((l) => Number(l.cliente.mrr ?? 0)),
+    mrr: dinheiro.mrr,
+    mrrAguardando: dinheiro.aguardando,
+    contasPagantes: dinheiro.contas,
     veiculos: soma((l) => l.saude?.veiculos ?? 0),
     valorEstoque: soma((l) => Number(l.saude?.valor_estoque ?? 0)),
-    anunciosNoAr: soma((l) => l.saude?.anuncios_no_ar ?? 0),
+    veiculosAnunciados: soma((l) => l.saude?.veiculos_anunciados ?? 0),
+    anunciosDeVendidos: soma((l) => l.saude?.anuncios_de_vendidos ?? 0),
     vendas30d: soma((l) => l.saude?.vendas_30d ?? 0),
     faturamento30d: soma((l) => Number(l.saude?.faturamento_30d ?? 0)),
     usuarios: soma((l) => l.saude?.usuarios ?? 0),

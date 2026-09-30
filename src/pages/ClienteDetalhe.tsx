@@ -366,6 +366,12 @@ export default function ClienteDetalhe() {
     }
   };
   const { data: credencial } = useSystemCredential({ clientId: id, enabled: showCreds && isAdmin });
+  /* Fica AQUI, acima do return de carregamento, e não junto do cálculo das
+     etapas lá embaixo. Hook depois de return condicional muda a quantidade
+     de hooks entre um render e o outro — React #310, tela preta, e a ficha
+     do cliente parou de abrir. O `enabled` de dentro já cuida de não
+     chamar nada enquanto o cliente não chegou. */
+  const usoQuery = useClientUsage(client);
 
   if (isLoading || !client) {
     return (
@@ -380,7 +386,6 @@ export default function ClienteDetalhe() {
      acesso enquanto ela publicava caminhão todo dia. Agora a ficha
      pergunta ao sistema do cliente e à cobrança; o que sobra de manual é
      só o treinamento, e a tela diz qual é qual. */
-  const usoQuery = useClientUsage(client);
   const uso = usoQuery.data ?? null;
   const pagou = payments.some((p) => p.status === 'pago');
   const etapas = etapasDoCliente(

@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { alarmesDoCliente, montarCarteira, totaisDaCarteira, ordemDeAtencao } from './carteira';
+import type { PagamentoDoMRR } from './mrr';
+
+/* Quem já pagou: 'a' e 'b'. É o que separa MRR de contrato assinado. */
+const PAGOS: PagamentoDoMRR[] = [
+  { client_id: 'a', status: 'pago' }, { client_id: 'b', status: 'pago' },
+  { client_id: 'c', status: 'pago' },
+];
 import type { Client, SaudeDaEmpresa } from '@/hooks/useAdmin';
 
 const HOJE = new Date('2026-09-30T12:00:00Z').getTime();
@@ -14,7 +21,7 @@ const cliente = (p: Partial<Client> = {}): Client => ({
 const saude = (p: Partial<SaudeDaEmpresa> = {}): SaudeDaEmpresa => ({
   company_id: 'e1', nome: 'Revenda', slug: 'revenda',
   veiculos: 20, veiculos_parados_60d: 0, valor_estoque: 5_000_000,
-  anuncios_no_ar: 40, canais_ligados: 2, canais_caidos: 0,
+  veiculos_anunciados: 14, anuncios_de_vendidos: 0, canais_ligados: 2, canais_caidos: 0,
   usuarios: 4, usuarios_que_nunca_entraram: 0, ultimo_acesso_em: atras(1),
   vendas_30d: 3, faturamento_30d: 900_000, ultima_venda_em: atras(5),
   ultimo_veiculo_em: atras(2), pedidos_abertos: 2, ...p,
@@ -28,7 +35,7 @@ describe('os alarmes que fazem alguém agir hoje', () => {
   /* O pior caso silencioso: o cliente paga a mensalidade e não tem um
      anúncio no ar. Ninguém reclama, e ele cancela no terceiro mês. */
   it('estoque cheio e nenhum anúncio é grave', () => {
-    const a = alarmesDoCliente(cliente(), saude({ anuncios_no_ar: 0 }), HOJE);
+    const a = alarmesDoCliente(cliente(), saude({ veiculos_anunciados: 0 }), HOJE);
     expect(a.find((x) => x.chave === 'sem_anuncio')?.peso).toBe('grave');
   });
 
@@ -71,14 +78,14 @@ describe('a carteira inteira', () => {
     ],
     [
       saude(),
-      saude({ company_id: 'e2', ultimo_acesso_em: atras(45), anuncios_no_ar: 0, veiculos: 12, valor_estoque: 3_000_000 }),
+      saude({ company_id: 'e2', ultimo_acesso_em: atras(45), veiculos_anunciados: 0, veiculos: 12, valor_estoque: 3_000_000 }),
       saude({ company_id: 'e3', veiculos: 1, valor_estoque: 100_000 }),
     ],
     HOJE,
   );
 
   it('soma só quem não cancelou', () => {
-    const t = totaisDaCarteira(linhas());
+    const t = totaisDaCarteira(linhas(), PAGOS);
     expect(t.clientes).toBe(2);
     expect(t.mrr).toBe(1300);
     expect(t.veiculos).toBe(32);
@@ -86,7 +93,7 @@ describe('a carteira inteira', () => {
   });
 
   it('conta as contas que precisam de alguém hoje', () => {
-    const t = totaisDaCarteira(linhas());
+    const t = totaisDaCarteira(linhas(), PAGOS);
     expect(t.comAlarmeGrave).toBe(1);
     expect(t.usando).toBe(1);
     expect(t.sumidos).toBe(1);
@@ -101,6 +108,6 @@ describe('a carteira inteira', () => {
     const l = montarCarteira([cliente({ id: 'x', lojista_company_id: null })], [], HOJE);
     expect(l[0].saude).toBeNull();
     expect(l[0].situacao).toBe('prospecto');
-    expect(totaisDaCarteira(l).veiculos).toBe(0);
+    expect(totaisDaCarteira(l, []).veiculos).toBe(0);
   });
 });

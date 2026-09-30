@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Building2, Search, AlertTriangle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useClients, useCompaniesHealth, brl, type Client } from '@/hooks/useAdmin';
+import { useClients, useCompaniesHealth, usePayments, brl, type Client } from '@/hooks/useAdmin';
 import { EmptyState } from '@/components/admin/ui';
 import { TotaisDaCarteira, ListaDaCarteira } from '@/components/admin/Carteira';
 import { montarCarteira, totaisDaCarteira, ordemDeAtencao } from '@/lib/carteira';
@@ -50,7 +50,8 @@ export default function Clientes() {
     () => montarCarteira(clients, saudeQuery.data ?? []),
     [clients, saudeQuery.data],
   );
-  const totais = useMemo(() => totaisDaCarteira(carteira), [carteira]);
+  const { data: pagamentos = [] } = usePayments();
+  const totais = useMemo(() => totaisDaCarteira(carteira, pagamentos), [carteira, pagamentos]);
 
   const filtradas = useMemo(() => {
     let list = [...carteira];
