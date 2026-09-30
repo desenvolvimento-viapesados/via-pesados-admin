@@ -33,6 +33,20 @@ const NOME_CANAL: Record<string, string> = {
   whatsapp: 'WhatsApp',
 };
 
+/** Uma linha por pessoa, da leitura mais recente para a mais antiga. */
+function porPessoa(log: AccessLogEntry[]) {
+  const mapa = new Map<string, { email: string; vezes: number; ultima: string }>();
+  for (const a of log) {
+    const atual = mapa.get(a.member_email);
+    if (!atual) mapa.set(a.member_email, { email: a.member_email, vezes: 1, ultima: a.created_at });
+    else {
+      atual.vezes += 1;
+      if (a.created_at > atual.ultima) atual.ultima = a.created_at;
+    }
+  }
+  return [...mapa.values()].sort((x, y) => y.ultima.localeCompare(x.ultima));
+}
+
 /** Barra de distribuição — usada para tipo, marca e carroceria. */
 const Distribuicao = ({
   titulo, itens, total,
@@ -415,34 +429,46 @@ export function PainelDeUso({
       </>)}
 
       {ver('lgpd') && (<>
-      {/* ── O que a Via Pesados vê, e o registro de quem viu ──────────
-          A frase é a promessa que o cliente lê. Mudou porque a fronteira
-          mudou: veículo e usuário da conta entram; comprador, não. */}
+      {/* ── Quem da Via Pesados abriu a ficha deste cliente ───────────
+          O título era "Acessos registrados", na mesma aba de "Quem usa a
+          conta" — e as duas listas pareciam a mesma coisa. Uma é o
+          lojista entrando no sistema dele; esta é gente NOSSA lendo os
+          dados dele, que é o que a LGPD manda registrar.
+
+          A lista também vinha crua: dez linhas do mesmo e-mail em dez
+          minutos, uma por vez que a ficha abriu. Agrupada por pessoa, a
+          pergunta que ela responde ("quem da equipe anda olhando esta
+          conta?") fica legível. */}
       <div>
-        <SectionHeader title="Acessos registrados"
-          right={<span className="text-[11px] text-foreground/35">art. 37 · sem edição nem exclusão</span>} />
+        <SectionHeader title="Quem da Via Pesados abriu esta ficha"
+          right={<span className="text-[11px] text-foreground/35">registro da LGPD · não dá para apagar</span>} />
         <Panel className="p-4 space-y-3">
           <p className="text-[11.5px] text-foreground/45 leading-relaxed">
-            A Via Pesados é <span className="text-foreground/70 font-medium">operadora</span> dos dados deste
-            cliente — ele é o controlador. Esta tela lê os números do negócio, o catálogo de veículos e as
-            contas de acesso que a própria Via Pesados provisiona.{' '}
+            Abrir esta ficha lê dados do sistema do cliente, e a lei pede que cada leitura fique
+            registrada — a Via Pesados é <span className="text-foreground/70 font-medium">operadora</span>{' '}
+            desses dados, o dono é ele. Atravessam os números do negócio, o catálogo de veículos e as
+            contas de acesso que a própria Via Pesados provisiona;{' '}
             <span className="text-foreground/70 font-medium">
-              Comprador, lead, conversa e telefone não atravessam
-            </span>{' '}
-            — nem nos pedidos de veículo, que vêm só como contagem e categoria. Cada leitura fica
-            registrada com o e-mail de quem leu e a data, sem edição nem exclusão.
+              comprador, lead, conversa e telefone não
+            </span>.
           </p>
-          <div className="divide-y divide-black/[0.05] dark:divide-white/[0.05] -mx-4 border-t border-black/[0.05] dark:border-white/[0.05]">
-            {log.slice(0, 10).map((a) => (
-              <div key={a.id} className="px-4 py-2 flex items-center gap-3 text-[12px]">
-                <p className="text-foreground/70 flex-1 truncate">{a.member_email}</p>
-                <p className="text-foreground/35 shrink-0 hidden sm:block">{a.purpose}</p>
-                <p className="text-foreground/35 tabular-nums shrink-0">
-                  {new Date(a.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                </p>
-              </div>
-            ))}
-          </div>
+          {log.length === 0 ? (
+            <p className="text-[12px] text-foreground/35">Ninguém abriu esta ficha ainda.</p>
+          ) : (
+            <div className="divide-y divide-black/[0.05] dark:divide-white/[0.05] -mx-4 border-t border-black/[0.05] dark:border-white/[0.05]">
+              {porPessoa(log).map((q) => (
+                <div key={q.email} className="px-4 py-2 flex items-center gap-3 text-[12px]">
+                  <p className="text-foreground/70 flex-1 truncate">{q.email}</p>
+                  <p className="text-foreground/35 shrink-0 tabular-nums">
+                    {q.vezes} {q.vezes === 1 ? 'leitura' : 'leituras'}
+                  </p>
+                  <p className="text-foreground/35 tabular-nums shrink-0 w-28 text-right">
+                    última {new Date(q.ultima).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </Panel>
       </div>
       </>)}
