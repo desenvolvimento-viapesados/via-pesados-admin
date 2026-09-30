@@ -33,6 +33,8 @@ type Diag = {
   falta_na_ycloud?: string[];
   por_status?: Record<string, number>;
   templates?: { nome: string; status: string; idioma?: string }[];
+  webhooks?: { id: string; url: string; situacao: string; eventos: string[] }[] | null;
+  erro_webhooks?: string | null;
   numero?: { telefone?: string; nome?: string; situacao?: string; qualidade?: string; nome_status?: string };
   conta_waba?: { nome?: string; revisao_da_conta?: string; verificacao_do_negocio?: string };
   total?: number;
@@ -197,19 +199,72 @@ export default function Whatsapp() {
         )}
       </Bloco>
 
-      {/* ── Webhook ────────────────────────────────────────────── */}
-      <Bloco titulo="Inscrição no app">
-        <p className="text-[12px] text-foreground/45 leading-snug">
-          São dois passos que parecem um: o webhook diz para onde mandar, a inscrição diz de quem.
-          Sem a inscrição, o webhook fica verde e nenhuma mensagem chega.
-        </p>
-        {lendo && !insc ? <Esqueleto /> : (insc?.apps_inscritos?.length ?? 0) > 0 ? (
-          <Aviso tom="bom">Inscrita em {insc!.apps_inscritos!.map((a) => a.nome || a.id).join(', ')}</Aviso>
-        ) : (
-          <Aviso tom="ruim">{insc?.erro ?? 'Nenhum app inscrito nesta conta.'}</Aviso>
-        )}
-        <Botao onClick={inscrever} carregando={ocupado === 'webhook'}>Inscrever esta conta no app</Botao>
-      </Bloco>
+      {/* ── Para onde os eventos chegam ─────────────────────────
+          Com BSP a entrega é configurada na YCloud, e a "inscrição no app"
+          da Graph não existe neste caminho. O bloco continuava perguntando
+          à Meta por uma WABA desabilitada e pintava de vermelho um erro
+          que não era erro — ruído que ensina a ignorar a tela. */}
+      {naYCloud ? (
+        <Bloco titulo="Entrega de eventos">
+          <p className="text-[12px] text-foreground/45 leading-snug">
+            É por aqui que chegam a resposta do cliente e a mudança de status de um modelo.
+            Na YCloud isso é um endpoint de webhook, configurado lá, não na Meta.
+          </p>
+          {lendo && !diag ? <Esqueleto /> : diag?.erro_webhooks ? (
+            <Aviso tom="ruim">{diag.erro_webhooks}</Aviso>
+          ) : (diag?.webhooks?.length ?? 0) === 0 ? (
+            <Aviso tom="ruim">
+              Nenhum endpoint configurado na YCloud — resposta de cliente e mudança de status de
+              modelo não chegam a lugar nenhum. Falta também o outro lado: quem recebe aqui
+              (<code className="text-[11px] opacity-80">wa-receber</code>) entende os formatos da
+              Evolution e da Meta, ainda não o da YCloud. Apontar o webhook agora faria os eventos
+              chegarem e serem descartados em silêncio — as duas pontas precisam ser feitas juntas.
+            </Aviso>
+          ) : (
+            <div className="space-y-1.5">
+              {diag!.webhooks!.map((w) => (
+                <div key={w.id} className="rounded-xl border border-black/[0.08] dark:border-white/[0.08] px-3.5 py-2.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-md ${
+                      w.situacao === 'active' ? 'bg-emerald-500/12 text-emerald-400'
+                        : w.situacao === 'pending' ? 'bg-amber-500/12 text-amber-500'
+                        : 'bg-red-500/12 text-red-400'
+                    }`}>
+                      {w.situacao === 'active' ? 'ativo'
+                        : w.situacao === 'pending' ? 'com falhas' : w.situacao}
+                    </span>
+                    <span className="text-[12px] text-foreground/70 break-all">{w.url}</span>
+                  </div>
+                  {w.eventos.length > 0 && (
+                    <p className="text-[10.5px] text-foreground/35 mt-1">{w.eventos.join(' · ')}</p>
+                  )}
+                </div>
+              ))}
+              {/* `pending` na YCloud quer dizer que ela desistiu de entregar
+                  depois de falhar seguidas vezes — parece brando e não é. */}
+              {diag!.webhooks!.some((w) => w.situacao === 'pending') && (
+                <Aviso tom="ruim">
+                  Endpoint em falha: a YCloud tentou entregar e desistiu. Enquanto estiver assim,
+                  nada chega.
+                </Aviso>
+              )}
+            </div>
+          )}
+        </Bloco>
+      ) : (
+        <Bloco titulo="Inscrição no app">
+          <p className="text-[12px] text-foreground/45 leading-snug">
+            São dois passos que parecem um: o webhook diz para onde mandar, a inscrição diz de quem.
+            Sem a inscrição, o webhook fica verde e nenhuma mensagem chega.
+          </p>
+          {lendo && !insc ? <Esqueleto /> : (insc?.apps_inscritos?.length ?? 0) > 0 ? (
+            <Aviso tom="bom">Inscrita em {insc!.apps_inscritos!.map((a) => a.nome || a.id).join(', ')}</Aviso>
+          ) : (
+            <Aviso tom="ruim">{insc?.erro ?? 'Nenhum app inscrito nesta conta.'}</Aviso>
+          )}
+          <Botao onClick={inscrever} carregando={ocupado === 'webhook'}>Inscrever esta conta no app</Botao>
+        </Bloco>
+      )}
 
       {/* ── Modelos ────────────────────────────────────────────── */}
       <Bloco titulo="Modelos de mensagem">

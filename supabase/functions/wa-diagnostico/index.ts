@@ -1,4 +1,6 @@
-import { configYCloud, faltaNaYCloud, listarTemplates, ycloudPelaMetade } from '../_shared/ycloud.ts';
+import {
+  configYCloud, faltaNaYCloud, listarTemplates, listarWebhooks, ycloudPelaMetade,
+} from '../_shared/ycloud.ts';
 
 /**
  * Estado dos templates, no provedor que estiver ligado.
@@ -46,6 +48,20 @@ Deno.serve(async (req) => {
       const lista = await listarTemplates(ycloud);
       const porStatus: Record<string, number> = {};
       for (const t of lista) porStatus[t.status] = (porStatus[t.status] ?? 0) + 1;
+
+      /* Falhar aqui não pode esconder os templates: o endereço de entrega
+         é outra pergunta, e a resposta "não sei" é melhor que a tela
+         inteira em branco. */
+      let webhooks: unknown = null;
+      let erroWebhooks: string | null = null;
+      try {
+        webhooks = (await listarWebhooks(ycloud)).map((w) => ({
+          id: w.id, url: w.url, situacao: w.status, eventos: w.enabledEvents ?? [],
+        }));
+      } catch (e) {
+        erroWebhooks = e instanceof Error ? e.message : 'não consegui ler os webhooks';
+      }
+
       return json(200, {
         ok: true,
         provedor: 'ycloud',
@@ -54,6 +70,8 @@ Deno.serve(async (req) => {
         total: lista.length,
         por_status: porStatus,
         templates: lista.map((t) => ({ nome: t.name, status: t.status, idioma: t.language })),
+        webhooks,
+        erro_webhooks: erroWebhooks,
       });
     } catch (e) {
       return json(502, {

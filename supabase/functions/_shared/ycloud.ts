@@ -91,6 +91,27 @@ export async function listarTemplates(cfg: Config): Promise<TemplateNaConta[]> {
   return todos;
 }
 
+export type WebhookYCloud = {
+  id: string;
+  url: string;
+  status: string;
+  enabledEvents?: string[];
+  description?: string;
+};
+
+/**
+ * Para onde a YCloud manda os eventos.
+ *
+ * Com BSP, a entrega de eventos é configurada na YCloud, não na Meta —
+ * a "inscrição no app" da Graph não existe neste caminho. Sem um endpoint
+ * ativo aqui, resposta de cliente e mudança de status de template não
+ * chegam, e o painel não tem como saber que não chegaram.
+ */
+export async function listarWebhooks(cfg: Config): Promise<WebhookYCloud[]> {
+  const d = await chamar(cfg, '/webhookEndpoints?page=1&limit=100');
+  return (d?.items ?? d?.data ?? []) as WebhookYCloud[];
+}
+
 export async function criarTemplate(
   cfg: Config, m: { name: string; language: string; category: string; components: unknown[] },
 ) {
