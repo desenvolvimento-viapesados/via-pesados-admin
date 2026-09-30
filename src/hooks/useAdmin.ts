@@ -1263,10 +1263,35 @@ export const useCreateFinCategory = () => {
    Só agregados. A edge function valida o membro da equipe e registra o
    acesso antes de devolver qualquer número. */
 
+export interface Acesso {
+  nome: string;
+  email: string | null;
+  funcao: string;
+  administrador: boolean;
+  ultimo_acesso: string | null;
+  criado_em: string;
+  nunca_entrou: boolean;
+}
+
+export interface VeiculoDoCliente {
+  id: string;
+  marca: string | null;
+  modelo: string | null;
+  ano: string | null;
+  tipo: string | null;
+  preco: number | null;
+  situacao: string | null;
+  interno: string | null;
+  criado_em: string;
+  mexido_em: string;
+  no_site: boolean;
+  canais: string[];
+}
+
 export interface ClientUsage {
   company_id: string;
   gerado_em: string;
-  estoque: { total: number; disponiveis: number; vendidos: number; valor_tabela: number };
+  estoque: { total: number; disponiveis: number; vendidos: number; valor_tabela: number; parados_60d: number };
   por_tipo: { tipo: string; total: number }[];
   por_marca: { marca: string; total: number }[];
   por_carroceria: { carroceria: string; total: number }[];
@@ -1274,8 +1299,52 @@ export interface ClientUsage {
   vendas: { total: number; faturamento: number; lucro: number; ticket_medio: number; ultima_venda: string | null };
   vendas_por_mes: { mes: string; total: number; faturamento: number; lucro: number }[];
   vendas_por_tipo: { tipo: string; total: number; faturamento: number }[];
-  uso: { usuarios: number; contatos: number; leads: number; conversas: number; instancias_wa: number };
+  uso: {
+    usuarios: number; contatos: number; leads: number; conversas: number;
+    instancias_wa: number; pedidos: number; pedidos_abertos: number;
+  };
   atividade: { ultimo_produto_em: string | null; ultima_venda_em: string | null; ultima_conversa_em: string | null };
+  acessos: Acesso[];
+  veiculos: VeiculoDoCliente[];
+  canais: {
+    conexoes: { canal: string; ativo: boolean; conta: string | null; expira: string | null }[];
+    anuncios: { canal: string; situacao: string; total: number }[];
+  };
+  pedidos_por_categoria: { categoria: string; total: number }[];
+  /* As datas que provam em que pé o cliente está. É delas que sai a
+     etapa na ficha — antes isso dependia de alguém marcar uma caixa. */
+  marcos: {
+    ja_acessou: boolean;
+    nunca_entraram: number;
+    ultimo_acesso_em: string | null;
+    conta_criada_em: string | null;
+    primeiro_veiculo_em: string | null;
+    primeira_publicacao_em: string | null;
+    primeira_venda_em: string | null;
+    tem_canal_ligado: boolean;
+    tem_anuncio_no_ar: boolean;
+  };
+}
+
+/** Uma linha por cliente, para a visão de empresa. */
+export interface SaudeDaEmpresa {
+  company_id: string;
+  nome: string;
+  slug: string;
+  veiculos: number;
+  veiculos_parados_60d: number;
+  valor_estoque: number;
+  anuncios_no_ar: number;
+  canais_ligados: number;
+  canais_caidos: number;
+  usuarios: number;
+  usuarios_que_nunca_entraram: number;
+  ultimo_acesso_em: string | null;
+  vendas_30d: number;
+  faturamento_30d: number;
+  ultima_venda_em: string | null;
+  ultimo_veiculo_em: string | null;
+  pedidos_abertos: number;
 }
 
 export const fetchClientUsage = async (input: {
@@ -1295,6 +1364,57 @@ export const fetchClientUsage = async (input: {
   if (!res.ok || data.error) throw new Error(data.error || 'Erro ao consultar uso do cliente');
   return data.metrics as ClientUsage;
 };
+
+/**
+ * A ficha do cliente, lida ao abrir a tela.
+ *
+ * Era um botão: a pessoa entrava na ficha, via um convite para "consultar
+ * uso do sistema" e, na maioria das vezes, não clicava — o painel tinha o
+ * dado e mostrava um botão. Agora carrega junto com a tela; o registro de
+ * acesso continua sendo gravado do outro lado, que é o que a LGPD pede.
+ *
+ * `enabled` porque cliente sem sistema não tem o que consultar.
+ */
+export const useClientUsage = (client: Pick<Client, 'id' | 'company_name' | 'lojista_company_id'> | null | undefined) =>
+  useQuery({
+    queryKey: ['client-usage', client?.lojista_company_id],
+    enabled: !!client?.lojista_company_id,
+    staleTime: 60_000,
+    queryFn: () => fetchClientUsage({
+      company_id: client!.lojista_company_id!,
+      client_id: client!.id,
+      client_name: client!.company_name,
+      purpose: 'ficha do cliente',
+    }),
+  });
+
+/**
+ * A saúde de todos os clientes, numa chamada.
+ *
+ * Chamar a ficha por cliente custaria, com mil contas, mil catálogos de
+ * trezentos veículos. A RPC do outro lado devolve só o que cabe numa
+ * linha de tabela.
+ */
+export const fetchCompaniesHealth = async (companyIds: string[]): Promise<SaudeDaEmpresa[]> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sessão expirada');
+  const res = await fetch(`${LOJISTA_FUNCTIONS_URL}/client-usage-metrics`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ company_ids: companyIds, purpose: 'visão de empresa' }),
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error || 'Erro ao ler a saúde dos clientes');
+  return (data.health ?? []) as SaudeDaEmpresa[];
+};
+
+export const useCompaniesHealth = (companyIds: string[]) =>
+  useQuery({
+    queryKey: ['companies-health', [...companyIds].sort().join(',')],
+    enabled: companyIds.length > 0,
+    staleTime: 60_000,
+    queryFn: () => fetchCompaniesHealth(companyIds),
+  });
 
 export interface AccessLogEntry {
   id: string;

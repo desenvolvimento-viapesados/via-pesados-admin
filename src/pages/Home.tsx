@@ -7,7 +7,9 @@ import {
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCrmCounts, useTickets, brl } from '@/hooks/useAdmin';
+import { useCrmCounts, useTickets, useClients, useCompaniesHealth, brl } from '@/hooks/useAdmin';
+import { montarCarteira, totaisDaCarteira } from '@/lib/carteira';
+import { useMemo } from 'react';
 import { InitialAvatar } from '@/components/admin/ui';
 import { LOJISTA_APP_URL } from '@/integrations/supabase/client';
 import viaPesadosLogoLight from '@/assets/via-pesados-icon-color.png';
@@ -69,6 +71,18 @@ export default function Home() {
   })();
 
   const counts = useCrmCounts();
+
+  /* A base instalada, ao lado do funil. O painel abria mostrando só o
+     pipeline — o que ainda vai entrar — e nada sobre quem já paga: a
+     carteira inteira ficava a dois cliques, e o cliente que parou de
+     usar não aparecia em tela nenhuma até cancelar. */
+  const { data: clientes = [] } = useClients();
+  const companyIds = useMemo(
+    () => clientes.map((c) => c.lojista_company_id).filter(Boolean) as string[],
+    [clientes],
+  );
+  const { data: saude = [] } = useCompaniesHealth(companyIds);
+  const carteira = useMemo(() => totaisDaCarteira(montarCarteira(clientes, saude)), [clientes, saude]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -183,6 +197,53 @@ export default function Home() {
             </div>
           </button>
 
+        </div>
+
+        {/* ── A base instalada ──────────────────────────────── */}
+        <div>
+          <button
+            onClick={() => navigate(carteira.comAlarmeGrave ? '/clientes?f=atencao' : '/clientes')}
+            className={cn(
+              'group w-full rounded-2xl overflow-hidden border transition-all duration-200 text-left',
+              'border-black/[0.07] dark:border-white/[0.08] bg-black/[0.03] dark:bg-white/[0.03]',
+              'hover:bg-black/[0.06] dark:hover:bg-white/[0.06] hover:border-black/[0.13] dark:hover:border-white/[0.14]',
+              'hover:shadow-xl hover:shadow-black/10 dark:hover:shadow-black/30',
+            )}
+          >
+            <div className="px-6 pt-6 pb-5 flex items-center gap-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-[18px] sm:text-[20px] font-bold text-foreground tracking-tight leading-tight">
+                  Clientes no ar
+                </p>
+                <p className="text-[12px] text-foreground/45 mt-0.5 font-light">
+                  {carteira.comAlarmeGrave > 0
+                    ? `${carteira.comAlarmeGrave} ${carteira.comAlarmeGrave === 1 ? 'conta precisa' : 'contas precisam'} de alguém hoje`
+                    : 'Nenhuma conta pedindo socorro — estoque, anúncios e acessos em dia'}
+                </p>
+              </div>
+              <div className="text-right shrink-0 hidden sm:block">
+                <p className="text-[10px] text-foreground/35">Em pátio</p>
+                <p className="text-[17px] font-bold text-foreground tabular-nums leading-tight">
+                  {brl(carteira.valorEstoque)}
+                </p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-foreground/20 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+            </div>
+
+            <div className="grid grid-cols-4 border-t border-black/[0.06] dark:border-white/[0.06] divide-x divide-black/[0.06] dark:divide-white/[0.06]">
+              {[
+                { label: 'Usando', value: carteira.usando, tom: 'text-emerald-500' },
+                { label: 'Implantando', value: carteira.implantando, tom: 'text-foreground' },
+                { label: 'Sumiram', value: carteira.sumidos, tom: carteira.sumidos ? 'text-amber-500' : 'text-foreground' },
+                { label: 'Anúncios no ar', value: carteira.anunciosNoAr, tom: 'text-foreground' },
+              ].map(({ label, value, tom }) => (
+                <div key={label} className="px-3 py-2.5 text-center">
+                  <p className={cn('text-[17px] font-bold tabular-nums leading-none', tom)}>{value}</p>
+                  <p className="text-[10px] text-foreground/35 mt-1 leading-none">{label}</p>
+                </div>
+              ))}
+            </div>
+          </button>
         </div>
 
         {/* ── Módulos ────────────────────────────────────────── */}

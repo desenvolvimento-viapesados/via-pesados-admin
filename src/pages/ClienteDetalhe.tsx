@@ -4,6 +4,7 @@ import {
   Loader2, Check, FileText, CreditCard, Rocket, Globe, Upload,
   Copy, ExternalLink, Phone, Mail, MapPin, Plus, StickyNote,
   PartyPopper, KeyRound, Repeat, Send, ChevronRight, ArrowRight,
+  AlertTriangle, Hand, Database,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -14,8 +15,11 @@ import {
   provisionCompany, adotarAmostra, useDemos, useUpdateDemo, updateCompanyBranding, uploadLogo, slugify, genPassword,
   setCompanyChannels,
   brlFull, brl, type Client, type OnboardingTask,
-  usePlans, useCriarAssinaturaAsaas,
+  usePlans, useCriarAssinaturaAsaas, useClientUsage,
 } from '@/hooks/useAdmin';
+import {
+  etapasDoCliente, situacaoDoCliente, progresso, ROTULO_SITUACAO,
+} from '@/lib/estadoDoCliente';
 import { useAuth } from '@/contexts/AuthContext';
 import { LOJISTA_APP_URL, supabase, FUNCTIONS_URL } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -371,9 +375,39 @@ export default function ClienteDetalhe() {
     );
   }
 
-  const doneCount = tasks.filter((t) => t.done).length;
-  const pct = tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0;
-  const allDone = tasks.length > 0 && doneCount === tasks.length;
+  /* ── Em que pé o cliente está, lido dos fatos ──────────────────────
+     O checklist marcado à mão dizia que a iTruck aguardava primeiro
+     acesso enquanto ela publicava caminhão todo dia. Agora a ficha
+     pergunta ao sistema do cliente e à cobrança; o que sobra de manual é
+     só o treinamento, e a tela diz qual é qual. */
+  const usoQuery = useClientUsage(client);
+  const uso = usoQuery.data ?? null;
+  const pagou = payments.some((p) => p.status === 'pago');
+  const etapas = etapasDoCliente(
+    {
+      lojista_company_id: client?.lojista_company_id,
+      domain: client?.domain,
+      contract_signed_at: client?.contract_signed_at,
+      asaas_payment_link_url: client?.asaas_payment_link_url,
+      pagou,
+      tarefas: tasks,
+    },
+    usoQuery.isPending ? null : (uso as never),
+  );
+  const { feitas: doneCount, total: totalEtapas } = progresso(etapas);
+  const pct = totalEtapas ? Math.round((doneCount / totalEtapas) * 100) : 0;
+  const allDone = doneCount === totalEtapas;
+  const situacao = situacaoDoCliente(etapas, uso?.marcos?.ultimo_acesso_em);
+  const rotuloSituacao = ROTULO_SITUACAO[situacao];
+  /* O status comercial continua sendo escolha de gente — cancelado e
+     pausado são decisão, não fato. O que muda é que a ficha avisa quando
+     ele contradiz o que o sistema mostra. */
+  const statusDesencontrado =
+    client?.status === 'onboarding' && situacao === 'usando'
+      ? 'Está marcado como onboarding, mas já anuncia e entrou esta semana.'
+      : client?.status === 'ativo' && situacao === 'parado'
+        ? 'Está marcado como ativo, mas ninguém entra há mais de um mês.'
+        : null;
   /* Mandar para o começo obrigava a reencontrar onde parou — e "continuar"
      que recomeça não é continuar. */
   const proximaEtapa = proximaEtapaAberta(tasks);
@@ -440,23 +474,56 @@ export default function ClienteDetalhe() {
         </div>
       </div>
 
-      {/* Status pills */}
-      <div className="flex gap-1.5 flex-wrap">
-        {(['onboarding', 'ativo', 'inadimplente', 'pausado', 'cancelado'] as const).map((s) => (
-          <button
-            key={s}
-            onClick={() => setStatus(s)}
-            className={cn(
-              'h-8 px-3 rounded-lg text-[11.5px] font-medium transition-colors capitalize',
-              client.status === s
-                ? 'bg-primary/15 text-primary border border-primary/30'
-                : 'border border-black/[0.08] dark:border-white/[0.08] text-foreground/40 hover:bg-black/[0.04] dark:hover:bg-white/[0.05]',
-            )}
-          >
-            {s}
-          </button>
-        ))}
+      {/* ── Como o cliente está de verdade ───────────────────────────
+          A situação não se escolhe: sai do último acesso e do que está no
+          ar. O status comercial ao lado continua sendo decisão de gente —
+          cancelado e pausado são vontade, não fato —, e a ficha reclama
+          quando os dois discordam. */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className={cn(
+          'inline-flex items-center gap-2 h-8 px-3 rounded-lg text-[12px] font-semibold border',
+          rotuloSituacao.tom === 'bom' && 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25',
+          rotuloSituacao.tom === 'atencao' && 'bg-amber-500/10 text-amber-500 border-amber-500/25',
+          rotuloSituacao.tom === 'ruim' && 'bg-red-500/10 text-red-400 border-red-500/25',
+          rotuloSituacao.tom === 'neutro' && 'bg-black/[0.04] dark:bg-white/[0.05] text-foreground/50 border-transparent',
+        )}>
+          <span className={cn('h-1.5 w-1.5 rounded-full',
+            rotuloSituacao.tom === 'bom' ? 'bg-emerald-500'
+              : rotuloSituacao.tom === 'atencao' ? 'bg-amber-500'
+              : rotuloSituacao.tom === 'ruim' ? 'bg-red-400' : 'bg-foreground/30')} />
+          {rotuloSituacao.texto}
+          {uso?.marcos?.ultimo_acesso_em && (
+            <span className="font-normal opacity-70">
+              · entrou {new Date(uso.marcos.ultimo_acesso_em).toLocaleDateString('pt-BR')}
+            </span>
+          )}
+        </span>
+
+        <div className="flex gap-1.5 flex-wrap">
+          {(['onboarding', 'ativo', 'inadimplente', 'pausado', 'cancelado'] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatus(s)}
+              title="Situação comercial — decisão da equipe"
+              className={cn(
+                'h-8 px-3 rounded-lg text-[11.5px] font-medium transition-colors capitalize',
+                client.status === s
+                  ? 'bg-primary/15 text-primary border border-primary/30'
+                  : 'border border-black/[0.08] dark:border-white/[0.08] text-foreground/40 hover:bg-black/[0.04] dark:hover:bg-white/[0.05]',
+              )}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {statusDesencontrado && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-3.5 py-2.5">
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+          <p className="text-[12px] text-foreground/70 leading-snug">{statusDesencontrado}</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 items-start">
 
@@ -466,36 +533,52 @@ export default function ClienteDetalhe() {
           {/* Checklist */}
           <div>
             <SectionHeader
-              title={`Conexão · ${doneCount}/${tasks.length}`}
+              title={`Conexão · ${doneCount}/${totalEtapas}`}
               right={
                 <div className="w-28 h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
                   <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
                 </div>
               }
             />
-            {/* A lista aqui é registro, não é onde se trabalha. O trabalho
-                acontece em /onboarding, uma etapa por tela — caixinha diz
-                que falta, não diz o que fazer. O que fica é a leitura
-                rápida de onde a conta está. */}
+            {/* Cada linha diz o que o painel VIU, não só sim ou não. O
+                ícone separa o que veio do banco do que alguém marcou à
+                mão: misturar as duas origens sem avisar é o que fazia o
+                checklist inteiro parecer igualmente confiável. */}
             <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
-              {tasks.map((t) => (
-                <div key={t.id} className={cn('flex items-center gap-3 px-4 py-2.5', t.done && 'opacity-50')}>
+              {etapas.map((e) => (
+                <div key={e.chave} className="flex items-center gap-3 px-4 py-2.5">
                   <span className={cn(
                     'h-4 w-4 rounded-md border flex items-center justify-center shrink-0',
-                    t.done ? 'bg-emerald-500 border-emerald-500' : 'border-black/[0.15] dark:border-white/[0.2]',
+                    e.feito ? 'bg-emerald-500 border-emerald-500' : 'border-black/[0.15] dark:border-white/[0.2]',
                   )}>
-                    {t.done && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
+                    {e.feito && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
                   </span>
-                  <p className={cn('text-[12.5px] text-foreground flex-1 min-w-0 truncate', t.done && 'line-through')}>
-                    {t.label}
-                  </p>
-                  {t.done_at && (
-                    <span className="text-[10px] text-foreground/30 tabular-nums shrink-0">
-                      {new Date(t.done_at).toLocaleDateString('pt-BR')}
-                    </span>
-                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className={cn('text-[12.5px] text-foreground truncate', !e.feito && 'text-foreground/55')}>
+                      {e.titulo}
+                    </p>
+                    <p className="text-[10.5px] text-foreground/35 truncate">{e.porque}</p>
+                  </div>
+                  <span
+                    title={e.origem === 'sistema' ? 'Lido do sistema do cliente'
+                      : e.origem === 'painel' ? 'O painel já sabia' : 'Marcado pela equipe'}
+                    className="shrink-0 text-foreground/25"
+                  >
+                    {e.origem === 'mao' ? <Hand className="h-3 w-3" /> : <Database className="h-3 w-3" />}
+                  </span>
                 </div>
               ))}
+              {usoQuery.isPending && client.lojista_company_id && (
+                <div className="flex items-center gap-2 px-4 py-2 text-[11px] text-foreground/35">
+                  <Loader2 className="h-3 w-3 animate-spin" /> lendo o sistema do cliente…
+                </div>
+              )}
+              {usoQuery.isError && (
+                <div className="flex items-center gap-2 px-4 py-2 text-[11px] text-amber-500">
+                  <AlertTriangle className="h-3 w-3" /> não consegui ler o sistema do cliente — as etapas
+                  que dependem dele ficaram em aberto
+                </div>
+              )}
             </Panel>
 
             {client.status === 'onboarding' && (
