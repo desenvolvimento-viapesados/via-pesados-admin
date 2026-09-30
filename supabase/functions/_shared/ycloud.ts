@@ -135,3 +135,59 @@ export async function enviarPorYCloud(
   });
   return { id: String(d?.id ?? d?.wamid ?? '') };
 }
+
+/**
+ * Os eventos que nos interessam, e só eles.
+ *
+ * A YCloud entrega mais de trinta tipos. Assinar o que não se trata enche
+ * o log de ruído e esconde o que importa — e cada evento a mais é um
+ * caminho a mais para um POST inesperado derrubar a função.
+ */
+export const EVENTOS = [
+  'whatsapp.inbound_message.received',  // o cliente respondeu
+  'whatsapp.message.updated',           // entregue, lida, falhou
+  'whatsapp.template.reviewed',         // a Meta aprovou ou reprovou um modelo
+];
+
+export type WebhookCriado = WebhookYCloud & { secret?: string };
+
+/**
+ * Cria o endpoint e devolve o segredo.
+ *
+ * O `secret` vem UMA vez, nesta resposta, e não há endpoint que o repita.
+ * Quem chama tem de gravá-lo no mesmo passo — perdê-lo obriga a apagar o
+ * endpoint e criar outro.
+ */
+export async function criarWebhook(
+  cfg: Config, url: string, descricao = 'Via Pesados · admin',
+): Promise<WebhookCriado> {
+  return await chamar(cfg, '/webhookEndpoints', 'POST', {
+    url,
+    description: descricao,
+    enabledEvents: EVENTOS,
+    status: 'active',
+  }) as WebhookCriado;
+}
+
+export async function apagarWebhook(cfg: Config, id: string): Promise<void> {
+  await chamar(cfg, `/webhookEndpoints/${encodeURIComponent(id)}`, 'DELETE');
+}
+
+/**
+ * Texto livre — a resposta de quem está atendendo a conversa.
+ *
+ * Fora da janela de 24 horas a Meta recusa, e a recusa volta como erro da
+ * chamada; quem chama traduz. O envelope é o mesmo do template, mudando
+ * só o `type`.
+ */
+export async function enviarTextoPorYCloud(
+  cfg: Config, args: { para: string; texto: string },
+): Promise<{ id: string }> {
+  const d = await chamar(cfg, '/whatsapp/messages/sendDirectly', 'POST', {
+    from: cfg.numero,
+    to: args.para,
+    type: 'text',
+    text: { body: args.texto },
+  });
+  return { id: String(d?.id ?? d?.wamid ?? '') };
+}

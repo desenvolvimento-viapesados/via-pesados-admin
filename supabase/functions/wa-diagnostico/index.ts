@@ -1,3 +1,4 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
   configYCloud, faltaNaYCloud, listarTemplates, listarWebhooks, ycloudPelaMetade,
 } from '../_shared/ycloud.ts';
@@ -62,11 +63,27 @@ Deno.serve(async (req) => {
         erroWebhooks = e instanceof Error ? e.message : 'não consegui ler os webhooks';
       }
 
+      /* Endpoint na YCloud e segredo aqui são metades da mesma coisa: com
+         o endpoint sozinho, o evento chega e é descartado por não ter como
+         validar a assinatura. A tela precisa das duas para dizer a
+         verdade. O segredo em si nunca sai — só se ele existe. */
+      const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      const { data: wh } = await db.from('wa_webhook')
+        .select('endpoint_id, url, eventos, segredo').eq('provedor', 'ycloud').maybeSingle();
+      const listados = Array.isArray(webhooks) ? webhooks as Array<{ id: string }> : [];
+
       return json(200, {
         ok: true,
         provedor: 'ycloud',
         conta: ycloud.waba,
         numero_ycloud: ycloud.numero,
+        entrega: {
+          endpoint_id: wh?.endpoint_id ?? null,
+          url: wh?.url ?? null,
+          eventos: wh?.eventos ?? [],
+          segredo_guardado: !!wh?.segredo,
+          combinando: !!wh?.endpoint_id && listados.some((w) => w.id === wh.endpoint_id),
+        },
         total: lista.length,
         por_status: porStatus,
         templates: lista.map((t) => ({ nome: t.name, status: t.status, idioma: t.language })),

@@ -1,5 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { evolution, criarInstancia, garantirWebhook, paraEnvio } from '../_shared/evolution.ts';
+import { apagarWebhook, configYCloud, criarWebhook, enviarTextoPorYCloud, EVENTOS, listarWebhooks }
+  from '../_shared/ycloud.ts';
 
 /**
  * O que a tela de WhatsApp precisa fazer do lado do servidor.
@@ -9,6 +11,7 @@ import { evolution, criarInstancia, garantirWebhook, paraEnvio } from '../_share
  *   estado     consulta a conexão e atualiza a linha
  *   nova       cadastra o número de alguém da equipe
  *   ler        zera o contador de não lidas
+ *   ligar_eventos  aponta o webhook da YCloud para cá e guarda o segredo
  *
  * Envio é o único ponto onde as duas origens divergem de verdade, e a
  * divergência não é técnica, é de regra: pela Evolution mandamos texto livre
@@ -128,7 +131,24 @@ Deno.serve(async (req) => {
          existiu. O ramo da Meta era código morto: TODO envio caía no
          Evolution, com instância nula, e o número oficial recebia sem nunca
          responder. Escrito assim, origem nova erra para o lado certo. */
-      if (inst.origem !== 'evolution') {
+      if (inst.origem === 'ycloud') {
+        const cfg = configYCloud();
+        if (!cfg) return json(500, { error: 'A YCloud não está configurada neste ambiente.' });
+        try {
+          const d = await enviarTextoPorYCloud(cfg, { para: conversa.telefone, texto });
+          providerId = d.id || null;
+        } catch (e) {
+          /* A regra das 24h é da Meta e chega aqui como recusa do BSP.
+             Dizer isso em português evita a pergunta "por que não enviou?". */
+          const msg = e instanceof Error ? e.message : 'A YCloud recusou o envio.';
+          const foraDaJanela = /24|re-?engagement|outside|session/i.test(msg);
+          return json(400, {
+            error: foraDaJanela
+              ? 'Passaram 24h desde a última mensagem dele. Nesse número só dá para retomar com um template aprovado.'
+              : msg,
+          });
+        }
+      } else if (inst.origem !== 'evolution') {
         const token = Deno.env.get('META_WABA_TOKEN');
         if (!token) return json(500, { error: 'META_WABA_TOKEN ausente' });
         const r = await fetch(`${GRAPH}/${inst.cloud_phone_number_id}/messages`, {
@@ -178,6 +198,59 @@ Deno.serve(async (req) => {
       }).eq('id', conversa.id);
 
       return json(200, { ok: true, provider_message_id: providerId });
+    }
+
+    /* ── ligar a entrega de eventos da YCloud ────────────────────── */
+    if (acao === 'ligar_eventos') {
+      const cfg = configYCloud();
+      if (!cfg) return json(400, { error: 'A YCloud não está configurada neste ambiente.' });
+
+      const destino = `${Deno.env.get('SUPABASE_URL')}/functions/v1/wa-receber?origem=ycloud`;
+      const { data: guardado } = await db.from('wa_webhook')
+        .select('endpoint_id, url').eq('provedor', 'ycloud').maybeSingle();
+
+      const existentes = await listarWebhooks(cfg);
+      const mesmo = existentes.find((w) => w.url === destino);
+
+      /* Se já existe endpoint para esta URL mas o segredo dele não está
+         guardado, não há como validar assinatura nenhuma: a YCloud mostra
+         o segredo uma única vez, na criação. Apagar e recriar é o único
+         caminho — e o que se apaga é um endpoint nosso, para a nossa
+         própria URL. */
+      if (mesmo && guardado?.endpoint_id === mesmo.id) {
+        return json(200, { ok: true, ja_ligado: true, endpoint: mesmo.id });
+      }
+      if (mesmo) await apagarWebhook(cfg, mesmo.id);
+
+      const criado = await criarWebhook(cfg, destino);
+      if (!criado?.secret) {
+        return json(502, { error: 'A YCloud criou o endpoint sem devolver o segredo. Sem ele nada pode ser validado.' });
+      }
+      await db.from('wa_webhook').upsert({
+        provedor: 'ycloud',
+        endpoint_id: criado.id,
+        url: destino,
+        segredo: criado.secret,
+        eventos: criado.enabledEvents ?? [],
+        atualizado_em: new Date().toISOString(),
+      }, { onConflict: 'provedor' });
+
+      /* A caixa do número oficial. Sem instância, mensagem que chega não
+         tem onde cair — e o webhook ficaria verde sem nada aparecer. */
+      const { data: tem } = await db.from('wa_instancias')
+        .select('id').eq('telefone', cfg.numero).maybeSingle();
+      if (!tem) {
+        await db.from('wa_instancias').insert({
+          nome: 'Via Pesados · Oficial (YCloud)', telefone: cfg.numero,
+          origem: 'ycloud', is_active: true, connection_state: 'open',
+          connected_at: new Date().toISOString(),
+        });
+      }
+
+      /* A YCloud pode aceitar a criação e ignorar a lista de eventos. Sem
+         esta conferência, o painel diria "ligado" e nada chegaria. */
+      const faltando = EVENTOS.filter((e) => !(criado.enabledEvents ?? []).includes(e));
+      return json(200, { ok: true, endpoint: criado.id, eventos: criado.enabledEvents ?? [], faltando });
     }
 
     return json(400, { error: 'ação desconhecida' });

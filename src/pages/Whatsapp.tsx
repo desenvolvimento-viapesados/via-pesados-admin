@@ -35,6 +35,13 @@ type Diag = {
   templates?: { nome: string; status: string; idioma?: string }[];
   webhooks?: { id: string; url: string; situacao: string; eventos: string[] }[] | null;
   erro_webhooks?: string | null;
+  /* O endpoint existe lá E o segredo está aqui? São metades da mesma
+     coisa: com uma só, o evento chega e é descartado sem que ninguém
+     veja. `combinando` é o que a tela pode chamar de ligado. */
+  entrega?: {
+    endpoint_id: string | null; url: string | null; eventos: string[];
+    segredo_guardado: boolean; combinando: boolean;
+  };
   numero?: { telefone?: string; nome?: string; situacao?: string; qualidade?: string; nome_status?: string };
   conta_waba?: { nome?: string; revisao_da_conta?: string; verificacao_do_negocio?: string };
   total?: number;
@@ -89,6 +96,19 @@ export default function Whatsapp() {
       const d = await fetch(`${FUNCTIONS_URL}/wa-inscricao`, { method: 'POST' }).then((r) => r.json());
       if (d?.ok) { toast.success('Conta inscrita no app'); await ler(); }
       else toast.error(d?.erro?.message ?? d?.error ?? 'Não consegui inscrever');
+    } finally { setOcupado(null); }
+  };
+
+  const ligarEventos = async () => {
+    setOcupado('eventos');
+    try {
+      const d = await chamar('wa-acao', { acao: 'ligar_eventos' });
+      if (d?.error) { toast.error(d.error); return; }
+      if (d?.ja_ligado) toast.success('A entrega já estava ligada.');
+      else if (d?.faltando?.length) {
+        toast.warning(`Ligado, mas a YCloud não assinou: ${d.faltando.join(' · ')}`);
+      } else toast.success('Entrega de eventos ligada.');
+      await ler();
     } finally { setOcupado(null); }
   };
 
@@ -215,10 +235,7 @@ export default function Whatsapp() {
           ) : (diag?.webhooks?.length ?? 0) === 0 ? (
             <Aviso tom="ruim">
               Nenhum endpoint configurado na YCloud — resposta de cliente e mudança de status de
-              modelo não chegam a lugar nenhum. Falta também o outro lado: quem recebe aqui
-              (<code className="text-[11px] opacity-80">wa-receber</code>) entende os formatos da
-              Evolution e da Meta, ainda não o da YCloud. Apontar o webhook agora faria os eventos
-              chegarem e serem descartados em silêncio — as duas pontas precisam ser feitas juntas.
+              modelo não chegam a lugar nenhum.
             </Aviso>
           ) : (
             <div className="space-y-1.5">
@@ -249,6 +266,29 @@ export default function Whatsapp() {
                 </Aviso>
               )}
             </div>
+          )}
+
+          {/* O segredo é a outra metade. A YCloud o mostra uma única vez,
+              na criação do endpoint: sem ele guardado aqui, o evento chega
+              e é descartado, porque não há como provar que veio dela. */}
+          {!lendo && diag?.entrega && (
+            diag.entrega.combinando ? (
+              <Aviso tom="bom">
+                Ligado: o endpoint está na YCloud e o segredo que assina cada evento está guardado
+                aqui. Resposta de cliente cai na caixa do número oficial.
+              </Aviso>
+            ) : (diag?.webhooks?.length ?? 0) > 0 ? (
+              <Aviso tom="ruim">
+                Existe endpoint na YCloud, mas o segredo dele não está guardado aqui — o evento
+                chega e é descartado, porque não dá para provar que veio dela. Religar apaga esse
+                endpoint e cria outro, guardando o segredo no mesmo passo.
+              </Aviso>
+            ) : null
+          )}
+          {!diag?.entrega?.combinando && (
+            <Botao onClick={ligarEventos} carregando={ocupado === 'eventos'}>
+              {(diag?.webhooks?.length ?? 0) > 0 ? 'Religar a entrega de eventos' : 'Ligar a entrega de eventos'}
+            </Botao>
           )}
         </Bloco>
       ) : (
