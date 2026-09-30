@@ -140,8 +140,8 @@ Deno.serve(async (req) => {
 
     // Acha o cliente: primeiro pelo externalReference (que gravamos como o
     // nosso id), depois pelo id do cadastro no Asaas.
-    const CAMPOS = 'id, contact_name, company_name, whatsapp, checkout_token, status';
-    let cliente: { id: string; contact_name: string | null; company_name: string | null; whatsapp: string | null; checkout_token: string | null; status: string | null } | null = null;
+    const CAMPOS = 'id, contact_name, company_name, whatsapp, checkout_token, status, activated_at';
+    let cliente: { id: string; contact_name: string | null; company_name: string | null; whatsapp: string | null; checkout_token: string | null; status: string | null; activated_at: string | null } | null = null;
     const ref = String(p.externalReference ?? '').trim();
     if (/^[0-9a-f-]{36}$/i.test(ref)) {
       const { data } = await db.from('clients').select(CAMPOS).eq('id', ref).maybeSingle();
@@ -176,20 +176,31 @@ Deno.serve(async (req) => {
     const { error } = await db.from('payments').upsert(linha, { onConflict: 'asaas_payment_id' });
     if (error) throw error;
 
-    /* Pagou, é cliente ativo — sem depender de alguém trocar o rótulo.
+    /* O rótulo do cliente segue a fatura, sem ninguém clicar em nada.
        A iTruck pagou a primeira mensalidade em 14/09, seguiu marcada como
        `onboarding` por duas semanas e o painel anunciou R$ 0 de MRR com o
-       dinheiro entrando. `activated_at` é carimbado uma vez só: é dele que
-       Relatórios tira coorte, tempo de ativação e churn. Cancelado e
-       pausado continuam sendo decisão de gente, e não são tocados aqui. */
-    let ativou = false;
-    if (status === 'pago' && cliente && cliente.status === 'onboarding') {
-      const { error: erroStatus } = await db.from('clients').update({
-        status: 'ativo',
-        activated_at: linha.paid_at ?? new Date().toISOString(),
-      }).eq('id', clientId).eq('status', 'onboarding');
-      if (erroStatus) console.error('asaas-webhook ativação:', erroStatus);
-      else ativou = true;
+       dinheiro entrando — e "inadimplente" era um botão que alguém tinha
+       de lembrar de apertar, com o Asaas sabendo a resposta no dia do
+       vencimento. Cancelado e pausado continuam sendo decisão de gente:
+       são vontade, não fato, e por isso nunca são tocados aqui.
+
+       `activated_at` é carimbado uma vez só — é dele que Relatórios tira
+       coorte, tempo de ativação e churn. */
+    let virou: string | null = null;
+    if (cliente && cliente.status !== 'cancelado' && cliente.status !== 'pausado') {
+      const alvo = status === 'pago' ? 'ativo'
+        : status === 'atrasado' && cliente.status === 'ativo' ? 'inadimplente'
+        : null;
+      if (alvo && alvo !== cliente.status) {
+        const { error: erroStatus } = await db.from('clients').update({
+          status: alvo,
+          ...(alvo === 'ativo' && !cliente.activated_at
+            ? { activated_at: linha.paid_at ?? new Date().toISOString() }
+            : {}),
+        }).eq('id', clientId).eq('status', cliente.status);
+        if (erroStatus) console.error('asaas-webhook status:', erroStatus);
+        else virou = alvo;
+      }
     }
 
     /* Aviso no WhatsApp — DEPOIS de gravar, e sempre dentro de try. O banco
@@ -223,7 +234,7 @@ Deno.serve(async (req) => {
       catch (e) { notas = { erro: e instanceof Error ? e.message : 'falha' }; }
     }
 
-    return json(200, { ok: true, evento, status, client_id: clientId, ativou, aviso, notas });
+    return json(200, { ok: true, evento, status, client_id: clientId, virou, aviso, notas });
   } catch (err) {
     console.error('asaas-webhook:', err);
     /* Erro do PostgREST não é `Error`: é objeto com message/code/details, e

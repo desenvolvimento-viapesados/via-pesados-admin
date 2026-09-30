@@ -79,7 +79,7 @@ const Distribuicao = ({
  * lado da ponte, que é o que o art. 37 pede. O que mudou foi o número de
  * cliques, não a auditoria.
  */
-export function UsoDoSistema({ client }: { client: Client }) {
+export function UsoDoSistema({ client, mostrar }: { client: Client; mostrar?: SecaoDeUso[] }) {
   const { data: log = [] } = useAccessLog(client.id);
   const q = useClientUsage(client);
 
@@ -119,7 +119,10 @@ export function UsoDoSistema({ client }: { client: Client }) {
     );
   }
 
-  return <PainelDeUso uso={q.data} log={log} recarregando={q.isFetching} onRecarregar={() => q.refetch()} />;
+  return (
+    <PainelDeUso uso={q.data} log={log} mostrar={mostrar}
+      recarregando={q.isFetching} onRecarregar={() => q.refetch()} />
+  );
 }
 
 /**
@@ -130,14 +133,29 @@ export function UsoDoSistema({ client }: { client: Client }) {
  * não conseguir abrir a minha própria interface. `/dev/ficha` renderiza
  * este componente com dados de exemplo.
  */
+/**
+ * Que pedaços deste painel aparecem.
+ *
+ * Tudo junto eram nove blocos do mesmo tamanho, um debaixo do outro,
+ * dentro de uma ficha que já tinha outros oito — dezessete quadros sem
+ * hierarquia nenhuma, e o usuário não conseguia ler a conta. Agora a
+ * ficha escolhe o que mostrar em cada aba.
+ */
+export type SecaoDeUso =
+  | 'estoque' | 'canais' | 'pessoas' | 'frota' | 'vendas'
+  | 'veiculos' | 'plataforma' | 'atividade' | 'lgpd';
+
 export function PainelDeUso({
-  uso, log, recarregando, onRecarregar,
+  uso, log, recarregando, onRecarregar, mostrar,
 }: {
   uso: ClientUsage;
   log: AccessLogEntry[];
   recarregando?: boolean;
   onRecarregar?: () => void;
+  /** Sem lista, mostra tudo — é como `/dev/ficha` vê a tela inteira. */
+  mostrar?: SecaoDeUso[];
 }) {
+  const ver = (s: SecaoDeUso) => !mostrar || mostrar.includes(s);
   const q = { isFetching: !!recarregando, refetch: onRecarregar ?? (() => {}) };
   const {
     estoque, por_tipo, por_marca, por_carroceria, site, vendas,
@@ -161,6 +179,7 @@ export function PainelDeUso({
         </button>
       </div>
 
+      {ver('estoque') && (<>
       {/* ── Estoque ── */}
       <div>
         <SectionHeader title="Estoque" />
@@ -174,7 +193,9 @@ export function PainelDeUso({
             accent={estoque.parados_60d > 0 ? 'text-amber-500' : 'text-foreground'} />
         </div>
       </div>
+      </>)}
 
+      {ver('canais') && (<>
       {/* ── Canais: o que está ligado e o que está no ar ── */}
       <div>
         <SectionHeader title="Canais"
@@ -218,7 +239,9 @@ export function PainelDeUso({
           })}
         </Panel>
       </div>
+      </>)}
 
+      {ver('pessoas') && (<>
       {/* ── Quem usa a conta ──────────────────────────────────────────
           Conta com um usuário ativo de cinco é churn em formação, e isso
           não aparece em contagem nenhuma. */}
@@ -252,7 +275,9 @@ export function PainelDeUso({
           ))}
         </Panel>
       </div>
+      </>)}
 
+      {ver('frota') && (<>
       {/* ── Mistura da frota ── */}
       <div className="grid md:grid-cols-2 gap-3">
         <Distribuicao titulo="Por tipo de veículo"
@@ -263,7 +288,9 @@ export function PainelDeUso({
 
       <Distribuicao titulo="Por marca"
         itens={por_marca.map((m) => ({ rotulo: m.marca, valor: m.total }))} total={estoque.total} />
+      </>)}
 
+      {ver('vendas') && (<>
       {/* ── Vendas ── */}
       <div>
         <SectionHeader title="Vendas" right={<span className="text-[11px] text-foreground/35">histórico completo</span>} />
@@ -277,7 +304,10 @@ export function PainelDeUso({
         </div>
       </div>
 
-      {vendas_por_mes.length > 0 && (
+      {/* Com um mês só, o "gráfico" é uma barra ocupando a largura
+          inteira embaixo de um eixo de doze meses — desenho que diz
+          menos que o número que já está logo acima. */}
+      {vendas_por_mes.length > 1 && (
         <div>
           <SectionHeader title="Faturamento por mês" right={<span className="text-[11px] text-foreground/35">12 meses</span>} />
           <Panel className="p-4">
@@ -303,7 +333,9 @@ export function PainelDeUso({
           itens={vendas_por_tipo.map((t) => ({ rotulo: t.tipo, valor: t.total }))}
           total={vendas.total} />
       )}
+      </>)}
 
+      {ver('veiculos') && (<>
       {/* ── O estoque, veículo a veículo ──────────────────────────────
           É o que responde "qual caminhão está parado" — pergunta que
           contagem nenhuma responde. */}
@@ -339,7 +371,9 @@ export function PainelDeUso({
           })}
         </Panel>
       </div>
+      </>)}
 
+      {ver('plataforma') && (<>
       {/* ── Uso da plataforma ── */}
       <div>
         <SectionHeader title="Uso da plataforma" right={<span className="text-[11px] text-foreground/35">volume, não conteúdo</span>} />
@@ -352,7 +386,9 @@ export function PainelDeUso({
           <Kpi label="WhatsApp" value={uso.uso.instancias_wa} sub="instâncias" />
         </div>
       </div>
+      </>)}
 
+      {ver('atividade') && (<>
       {/* ── Sinal de vida ── */}
       <div>
         <SectionHeader title="Última atividade" right={<span className="text-[11px] text-foreground/35">sinal de vida da conta</span>} />
@@ -376,7 +412,9 @@ export function PainelDeUso({
           })}
         </Panel>
       </div>
+      </>)}
 
+      {ver('lgpd') && (<>
       {/* ── O que a Via Pesados vê, e o registro de quem viu ──────────
           A frase é a promessa que o cliente lê. Mudou porque a fronteira
           mudou: veículo e usuário da conta entram; comprador, não. */}
@@ -407,6 +445,8 @@ export function PainelDeUso({
           </div>
         </Panel>
       </div>
+      </>)}
+
     </div>
   );
 }

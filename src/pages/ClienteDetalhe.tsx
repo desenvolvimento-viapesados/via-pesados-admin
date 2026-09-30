@@ -4,7 +4,8 @@ import {
   Loader2, Check, FileText, CreditCard, Rocket, Globe, Upload,
   Copy, ExternalLink, Phone, Mail, MapPin, Plus, StickyNote,
   PartyPopper, KeyRound, Repeat, Send, ChevronRight, ArrowRight,
-  AlertTriangle, Hand, Database,
+  Hand, Database, MoreHorizontal, Pause, Ban, RotateCcw,
+  Truck, Radio, TrendingUp, Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -20,6 +21,7 @@ import {
 import {
   etapasDoCliente, situacaoDoCliente, progresso, ROTULO_SITUACAO,
 } from '@/lib/estadoDoCliente';
+import { situacaoFinanceira, pendenciasDoCliente } from '@/lib/fichaDoCliente';
 import { useAuth } from '@/contexts/AuthContext';
 import { LOJISTA_APP_URL, supabase, FUNCTIONS_URL } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -37,6 +39,55 @@ const inputCls =
 const copyText = (text: string, label: string) => {
   navigator.clipboard.writeText(text);
   toast.success(`${label} copiado`);
+};
+
+const ABAS = ['Resumo', 'Financeiro', 'Sistema', 'Pessoas'] as const;
+type Aba = typeof ABAS[number];
+
+const TOM_SELO: Record<string, string> = {
+  bom: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25',
+  atencao: 'bg-amber-500/10 text-amber-500 border-amber-500/25',
+  ruim: 'bg-red-500/10 text-red-400 border-red-500/25',
+  neutro: 'bg-black/[0.04] dark:bg-white/[0.05] text-foreground/50 border-transparent',
+};
+
+/** Um fato sobre a conta, com a cor do fato. Nunca um botão: não se escolhe. */
+const Selo = ({ tom, texto, detalhe }: { tom: string; texto: string; detalhe?: string }) => (
+  <span className={cn('inline-flex items-center gap-2 h-8 px-3 rounded-lg text-[12px] font-semibold border',
+    TOM_SELO[tom] ?? TOM_SELO.neutro)}>
+    <span className={cn('h-1.5 w-1.5 rounded-full',
+      tom === 'bom' ? 'bg-emerald-500' : tom === 'atencao' ? 'bg-amber-500'
+        : tom === 'ruim' ? 'bg-red-400' : 'bg-foreground/30')} />
+    {texto}
+    {detalhe && <span className="font-normal opacity-70">· {detalhe}</span>}
+  </span>
+);
+
+/** Um dos quatro números que abrem a ficha. */
+const Resposta = ({ icone, label, valor, sub, tom }: {
+  icone: React.ReactNode; label: string; valor: string | number; sub?: string;
+  tom?: 'bom' | 'atencao' | 'ruim';
+}) => (
+  <Panel className="p-3.5">
+    <div className="flex items-center gap-1.5 text-foreground/35">
+      {icone}
+      <p className="text-[10px] font-semibold tracking-widest uppercase">{label}</p>
+    </div>
+    <p className={cn('text-[19px] font-bold tabular-nums mt-1.5 capitalize',
+      tom === 'bom' && 'text-emerald-500', tom === 'atencao' && 'text-amber-500',
+      tom === 'ruim' && 'text-red-400')}>
+      {valor}
+    </p>
+    {sub && <p className="text-[10.5px] text-foreground/35 mt-0.5">{sub}</p>}
+  </Panel>
+);
+
+const quandoFoi = (iso: string) => {
+  const d = Math.round((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (d <= 0) return 'hoje';
+  if (d === 1) return 'ontem';
+  if (d < 30) return `há ${d} dias`;
+  return new Date(iso).toLocaleDateString('pt-BR');
 };
 
 /* ── Dialog: gerar contrato ─────────────────────────────────── */
@@ -338,6 +389,8 @@ export default function ClienteDetalhe() {
   const createActivity = useCreateActivity();
 
   const [dialog, setDialog] = useState<string | null>(null);
+  const [aba, setAba] = useState<Aba>('Resumo');
+  const [menu, setMenu] = useState(false);
   const [note, setNote] = useState('');
   const [showCreds, setShowCreds] = useState(false);
   const [avisando, setAvisando] = useState(false);
@@ -399,20 +452,16 @@ export default function ClienteDetalhe() {
     },
     usoQuery.isPending ? null : (uso as never),
   );
+  const etapasAbertas = etapas.filter((e) => !e.feito);
   const { feitas: doneCount, total: totalEtapas } = progresso(etapas);
   const pct = totalEtapas ? Math.round((doneCount / totalEtapas) * 100) : 0;
   const allDone = doneCount === totalEtapas;
   const situacao = situacaoDoCliente(etapas, uso?.marcos?.ultimo_acesso_em);
   const rotuloSituacao = ROTULO_SITUACAO[situacao];
-  /* O status comercial continua sendo escolha de gente — cancelado e
-     pausado são decisão, não fato. O que muda é que a ficha avisa quando
-     ele contradiz o que o sistema mostra. */
-  const statusDesencontrado =
-    client?.status === 'onboarding' && situacao === 'usando'
-      ? 'Está marcado como onboarding, mas já anuncia e entrou esta semana.'
-      : client?.status === 'ativo' && situacao === 'parado'
-        ? 'Está marcado como ativo, mas ninguém entra há mais de um mês.'
-        : null;
+  /* Dinheiro e pendências saem dos fatos, não de caixa marcada: a fatura
+     vencida é do Asaas, o canal caído é do sistema do cliente. */
+  const financeiro = situacaoFinanceira(payments);
+  const pendencias = pendenciasDoCliente(client, uso, financeiro);
   /* Mandar para o começo obrigava a reencontrar onde parou — e "continuar"
      que recomeça não é continuar. */
   const proximaEtapa = proximaEtapaAberta(tasks);
@@ -450,15 +499,20 @@ export default function ClienteDetalhe() {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
 
-      {/* ── Header do cliente ─────────────────────────────────── */}
+      {/* ── Quem é, quanto paga, como está ───────────────────────────
+          Três respostas antes de qualquer clique: está usando? está
+          pagando? preciso fazer algo? A ficha antiga empilhava dezessete
+          quadros do mesmo tamanho e não respondia nenhuma delas. */}
       <div className="flex items-start gap-4 flex-wrap">
         <InitialAvatar name={client.company_name} src={client.logo_url} size="lg" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-[22px] font-bold tracking-tight text-foreground">{client.company_name}</h1>
-            <StatusBadge status={client.status} />
+            {(client.status === 'cancelado' || client.status === 'pausado') && (
+              <StatusBadge status={client.status} />
+            )}
           </div>
           <div className="flex items-center gap-3 mt-1 text-[11.5px] text-foreground/45 flex-wrap">
             {client.contact_name && <span>{client.contact_name}</span>}
@@ -473,262 +527,202 @@ export default function ClienteDetalhe() {
             )}
           </div>
         </div>
-        <div className="text-right shrink-0">
-          <p className="text-[24px] font-bold text-foreground tabular-nums leading-tight">{brl(client.mrr)}</p>
-          <p className="text-[10.5px] text-foreground/35">{client.plan ? `${client.plan} · mensal` : 'mensalidade'}</p>
-        </div>
-      </div>
-
-      {/* ── Como o cliente está de verdade ───────────────────────────
-          A situação não se escolhe: sai do último acesso e do que está no
-          ar. O status comercial ao lado continua sendo decisão de gente —
-          cancelado e pausado são vontade, não fato —, e a ficha reclama
-          quando os dois discordam. */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <span className={cn(
-          'inline-flex items-center gap-2 h-8 px-3 rounded-lg text-[12px] font-semibold border',
-          rotuloSituacao.tom === 'bom' && 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25',
-          rotuloSituacao.tom === 'atencao' && 'bg-amber-500/10 text-amber-500 border-amber-500/25',
-          rotuloSituacao.tom === 'ruim' && 'bg-red-500/10 text-red-400 border-red-500/25',
-          rotuloSituacao.tom === 'neutro' && 'bg-black/[0.04] dark:bg-white/[0.05] text-foreground/50 border-transparent',
-        )}>
-          <span className={cn('h-1.5 w-1.5 rounded-full',
-            rotuloSituacao.tom === 'bom' ? 'bg-emerald-500'
-              : rotuloSituacao.tom === 'atencao' ? 'bg-amber-500'
-              : rotuloSituacao.tom === 'ruim' ? 'bg-red-400' : 'bg-foreground/30')} />
-          {rotuloSituacao.texto}
-          {uso?.marcos?.ultimo_acesso_em && (
-            <span className="font-normal opacity-70">
-              · entrou {new Date(uso.marcos.ultimo_acesso_em).toLocaleDateString('pt-BR')}
-            </span>
-          )}
-        </span>
-
-        <div className="flex gap-1.5 flex-wrap">
-          {(['onboarding', 'ativo', 'inadimplente', 'pausado', 'cancelado'] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setStatus(s)}
-              title="Situação comercial — decisão da equipe"
-              className={cn(
-                'h-8 px-3 rounded-lg text-[11.5px] font-medium transition-colors capitalize',
-                client.status === s
-                  ? 'bg-primary/15 text-primary border border-primary/30'
-                  : 'border border-black/[0.08] dark:border-white/[0.08] text-foreground/40 hover:bg-black/[0.04] dark:hover:bg-white/[0.05]',
-              )}
+        <div className="flex items-start gap-2 shrink-0">
+          <div className="text-right">
+            <p className="text-[24px] font-bold text-foreground tabular-nums leading-tight">{brl(client.mrr)}</p>
+            <p className="text-[10.5px] text-foreground/35">por mês</p>
+          </div>
+          {client.lojista_company_id && (
+            <a
+              href={client.domain ? `https://${client.domain}` : LOJISTA_APP_URL}
+              target="_blank" rel="noopener noreferrer"
+              className="h-8 px-2.5 rounded-lg bg-primary/10 text-primary text-[11.5px] font-semibold hover:bg-primary/20 flex items-center gap-1.5"
             >
-              {s}
+              <ExternalLink className="h-3 w-3" /> Abrir
+            </a>
+          )}
+          {/* Pausar e cancelar continuam sendo escolha de gente — são
+              vontade, não fato. Saíram da fileira de cinco botões, onde
+              estavam do lado de "inadimplente", que o Asaas sabe sozinho. */}
+          <div className="relative">
+            <button
+              onClick={() => setMenu((v) => !v)}
+              className="h-8 w-8 rounded-lg border border-black/[0.1] dark:border-white/[0.1] text-foreground/45 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] flex items-center justify-center"
+            >
+              <MoreHorizontal className="h-4 w-4" />
             </button>
-          ))}
+            {menu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMenu(false)} />
+                <div className="absolute right-0 top-9 z-20 w-52 rounded-xl border border-black/[0.08] dark:border-white/[0.1] bg-background shadow-xl overflow-hidden">
+                  {(client.status === 'pausado' || client.status === 'cancelado') ? (
+                    <button onClick={() => { setStatus('ativo'); setMenu(false); }}
+                      className="w-full px-3.5 py-2.5 text-left text-[12.5px] text-foreground/75 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] flex items-center gap-2">
+                      <RotateCcw className="h-3.5 w-3.5" /> Reativar conta
+                    </button>
+                  ) : (
+                    <>
+                      <button onClick={() => { setStatus('pausado'); setMenu(false); }}
+                        className="w-full px-3.5 py-2.5 text-left text-[12.5px] text-foreground/75 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] flex items-center gap-2">
+                        <Pause className="h-3.5 w-3.5" /> Pausar conta
+                      </button>
+                      <button onClick={() => { setStatus('cancelado'); setMenu(false); }}
+                        className="w-full px-3.5 py-2.5 text-left text-[12.5px] text-red-400 hover:bg-red-500/10 flex items-center gap-2">
+                        <Ban className="h-3.5 w-3.5" /> Cancelar conta
+                      </button>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
-      {statusDesencontrado && (
-        <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-3.5 py-2.5">
-          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
-          <p className="text-[12px] text-foreground/70 leading-snug">{statusDesencontrado}</p>
+      {/* Os dois selos que respondem "como está esta conta": o uso vem do
+          sistema do cliente, o dinheiro vem da fatura. Nenhum dos dois se
+          escolhe clicando. */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Selo tom={rotuloSituacao.tom} texto={rotuloSituacao.texto}
+          detalhe={uso?.marcos?.ultimo_acesso_em
+            ? `entrou ${quandoFoi(uso.marcos.ultimo_acesso_em)}` : undefined} />
+        <Selo
+          tom={financeiro.estado === 'atrasado' ? 'ruim'
+            : financeiro.estado === 'em_dia' ? 'bom'
+            : financeiro.estado === 'sem_cobranca' ? 'neutro' : 'atencao'}
+          texto={financeiro.texto}
+          detalhe={financeiro.estado === 'atrasado' ? brlFull(financeiro.valorEmAberto) : undefined}
+        />
+        {usoQuery.isPending && client.lojista_company_id && (
+          <span className="text-[11px] text-foreground/35 flex items-center gap-1.5">
+            <Loader2 className="h-3 w-3 animate-spin" /> lendo o sistema do cliente…
+          </span>
+        )}
+      </div>
+
+      {/* ── O que precisa de alguém, hoje ─────────────────────────── */}
+      {pendencias.length > 0 && (
+        <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
+          {pendencias.map((p) => (
+            <div key={p.chave} className="px-4 py-2.5 flex items-center gap-3">
+              <span className={cn('h-1.5 w-1.5 rounded-full shrink-0',
+                p.peso === 'grave' ? 'bg-red-400' : 'bg-amber-500')} />
+              <p className="text-[12.5px] text-foreground/80 flex-1 min-w-0">{p.texto}</p>
+              {p.acao && <p className="text-[11px] text-foreground/35 shrink-0">{p.acao}</p>}
+            </div>
+          ))}
+        </Panel>
+      )}
+
+      {/* ── Os quatro números da conta ───────────────────────────── */}
+      {uso && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+          <Resposta icone={<Truck className="h-3 w-3" />} label="Estoque"
+            valor={`${uso.estoque.disponiveis}`}
+            sub={`${uso.estoque.disponiveis > 0
+              ? `${brl(uso.estoque.valor_tabela)} em pátio` : 'pátio vazio'}`} />
+          <Resposta icone={<Radio className="h-3 w-3" />} label="Anunciando"
+            valor={uso.marcos.tem_anuncio_no_ar ? 'sim' : 'não'}
+            tom={uso.estoque.disponiveis > 0 && !uso.marcos.tem_anuncio_no_ar ? 'ruim' : 'bom'}
+            sub={`${uso.canais.conexoes.filter((c) => c.ativo).length} ${uso.canais.conexoes.filter((c) => c.ativo).length === 1 ? 'canal ligado' : 'canais ligados'}`} />
+          <Resposta icone={<TrendingUp className="h-3 w-3" />} label="Vendas"
+            valor={uso.vendas.total} sub={uso.vendas.total ? brl(uso.vendas.faturamento) : 'nenhuma ainda'} />
+          <Resposta icone={<Users className="h-3 w-3" />} label="Pessoas"
+            valor={uso.uso.usuarios}
+            tom={uso.marcos.nunca_entraram > 0 ? 'atencao' : undefined}
+            sub={uso.marcos.nunca_entraram > 0
+              ? `${uso.marcos.nunca_entraram} nunca entrou` : 'todas já entraram'} />
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 items-start">
-
-        {/* ── Coluna principal: conexão ───────────────────────── */}
-        <div className="flex flex-col gap-6">
-
-          {/* Checklist */}
-          <div>
-            <SectionHeader
-              title={`Conexão · ${doneCount}/${totalEtapas}`}
-              right={
-                <div className="w-28 h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
-                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
-                </div>
-              }
-            />
-            {/* Cada linha diz o que o painel VIU, não só sim ou não. O
-                ícone separa o que veio do banco do que alguém marcou à
-                mão: misturar as duas origens sem avisar é o que fazia o
-                checklist inteiro parecer igualmente confiável. */}
-            <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
-              {etapas.map((e) => (
-                <div key={e.chave} className="flex items-center gap-3 px-4 py-2.5">
-                  <span className={cn(
-                    'h-4 w-4 rounded-md border flex items-center justify-center shrink-0',
-                    e.feito ? 'bg-emerald-500 border-emerald-500' : 'border-black/[0.15] dark:border-white/[0.2]',
-                  )}>
-                    {e.feito && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className={cn('text-[12.5px] text-foreground truncate', !e.feito && 'text-foreground/55')}>
-                      {e.titulo}
-                    </p>
-                    <p className="text-[10.5px] text-foreground/35 truncate">{e.porque}</p>
-                  </div>
-                  <span
-                    title={e.origem === 'sistema' ? 'Lido do sistema do cliente'
-                      : e.origem === 'painel' ? 'O painel já sabia' : 'Marcado pela equipe'}
-                    className="shrink-0 text-foreground/25"
-                  >
-                    {e.origem === 'mao' ? <Hand className="h-3 w-3" /> : <Database className="h-3 w-3" />}
-                  </span>
-                </div>
-              ))}
-              {usoQuery.isPending && client.lojista_company_id && (
-                <div className="flex items-center gap-2 px-4 py-2 text-[11px] text-foreground/35">
-                  <Loader2 className="h-3 w-3 animate-spin" /> lendo o sistema do cliente…
-                </div>
-              )}
-              {usoQuery.isError && (
-                <div className="flex items-center gap-2 px-4 py-2 text-[11px] text-amber-500">
-                  <AlertTriangle className="h-3 w-3" /> não consegui ler o sistema do cliente — as etapas
-                  que dependem dele ficaram em aberto
-                </div>
-              )}
-            </Panel>
-
-            {client.status === 'onboarding' && (
-              <button
-                onClick={() => navigate(`/clientes/${client.id}/onboarding?etapa=${proximaEtapa}`)}
-                className="mt-3 w-full h-11 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2"
-              >
-                {allDone ? <PartyPopper className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
-                {allDone ? 'Colocar no ar' : 'Continuar o onboarding'}
-              </button>
+      {/* ── Abas ─────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-1 border-b border-black/[0.07] dark:border-white/[0.07]">
+        {ABAS.map((a) => (
+          <button
+            key={a}
+            onClick={() => setAba(a)}
+            className={cn(
+              'h-9 px-3.5 text-[12.5px] font-medium transition-colors relative -mb-px border-b-2',
+              aba === a
+                ? 'text-foreground border-primary'
+                : 'text-foreground/40 border-transparent hover:text-foreground/70',
             )}
-          </div>
+          >
+            {a}
+            {a === 'Financeiro' && financeiro.estado === 'atrasado' && (
+              <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-red-400 align-middle" />
+            )}
+          </button>
+        ))}
+      </div>
 
-          {/* Cobrança — o link e o estado vivem na tela própria, que
-              atualiza sozinha quando o pagamento entra. Aqui fica só o
-              resumo e a porta de entrada: repetir o link nos dois lugares
-              fazia parecer que eram duas cobranças diferentes. */}
-          <div>
-            <SectionHeader title="Cobrança" />
-            <button
-              onClick={() => navigate(`/clientes/${client.id}/cobranca`)}
-              className="w-full text-left rounded-2xl border border-black/[0.07] dark:border-white/[0.08] bg-black/[0.03] dark:bg-white/[0.03] p-4 hover:border-black/20 dark:hover:border-white/20 transition-colors flex items-center gap-3"
-            >
-              <Repeat className="h-4 w-4 text-foreground/35 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-[12.5px] font-semibold text-foreground">
-                  {client.mrr ? `${brlFull(client.mrr)} por mês` : 'Mensalidade não definida'}
-                </p>
-                <p className="text-[11px] text-foreground/40">
-                  {client.asaas_payment_link_url ? 'Ver link e acompanhar o pagamento' : 'Cobrança ainda não criada'}
-                </p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-foreground/30 shrink-0" />
-            </button>
-          </div>
-
-          {/* Sem sistema não há acesso a liberar, e o assistente manda criar
-              aqui. Antes isso vivia como etapa da lista de ações; com a lista
-              virando registro, o botão precisava de um lugar próprio. */}
-          {!client.lojista_company_id && (
+      {/* ── Resumo ───────────────────────────────────────────────── */}
+      {aba === 'Resumo' && (
+        <div className="flex flex-col gap-5">
+          {/* Só o que FALTA. A lista com as nove etapas, oito delas
+              verdes, ocupava meia tela para dizer "está tudo certo". */}
+          {etapasAbertas.length > 0 ? (
             <div>
-              <SectionHeader title="Sistema" />
-              <Panel className="p-4 space-y-3">
-                <p className="text-[12px] text-foreground/50 leading-snug">
-                  Este cliente ainda não tem sistema. Sem ele não dá para liberar o
-                  primeiro acesso nem aplicar a identidade.
-                </p>
+              <SectionHeader
+                title={`Falta ligar · ${doneCount}/${totalEtapas}`}
+                right={
+                  <div className="w-28 h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                }
+              />
+              <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
+                {etapasAbertas.map((e) => (
+                  <div key={e.chave} className="flex items-center gap-3 px-4 py-2.5">
+                    <span className="h-4 w-4 rounded-md border border-black/[0.15] dark:border-white/[0.2] shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[12.5px] text-foreground/70">{e.titulo}</p>
+                      <p className="text-[10.5px] text-foreground/35 truncate">{e.porque}</p>
+                    </div>
+                    <span
+                      title={e.origem === 'mao' ? 'Depende de alguém marcar' : 'O painel descobre sozinho'}
+                      className="shrink-0 text-foreground/25"
+                    >
+                      {e.origem === 'mao' ? <Hand className="h-3 w-3" /> : <Database className="h-3 w-3" />}
+                    </span>
+                  </div>
+                ))}
+              </Panel>
+              {client.status === 'onboarding' && (
                 <button
-                  onClick={() => setDialog('sistema_criado')}
-                  className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                  onClick={() => navigate(`/clientes/${client.id}/onboarding?etapa=${proximaEtapa}`)}
+                  className="mt-3 w-full h-11 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2"
                 >
-                  <Rocket className="h-3.5 w-3.5" /> Criar sistema
+                  {allDone ? <PartyPopper className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+                  {allDone ? 'Colocar no ar' : 'Continuar o onboarding'}
                 </button>
-              </Panel>
+              )}
             </div>
+          ) : (
+            <Panel className="px-4 py-3 flex items-center gap-2.5">
+              <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" strokeWidth={3} />
+              <p className="text-[12.5px] text-foreground/65">
+                Conta completa: contrato, cobrança, sistema, domínio, canal e anúncio — tudo ligado.
+              </p>
+            </Panel>
           )}
 
-          {/* Sistema provisionado */}
-          {client.lojista_company_id && (
-            <div>
-              <SectionHeader title="Sistema" />
-              <Panel className="p-4 space-y-2.5">
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div className="min-w-0">
-                    <p className="text-[12.5px] font-semibold text-foreground">Sistema Via Pesados</p>
-                    <p className="text-[11px] text-foreground/40 truncate">
-                      {client.domain || LOJISTA_APP_URL.replace('https://', '')}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => setShowCreds((v) => !v)}
-                      className="h-8 px-2.5 rounded-lg border border-black/[0.1] dark:border-white/[0.1] text-[11.5px] font-medium text-foreground/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] flex items-center gap-1.5"
-                    >
-                      <KeyRound className="h-3 w-3" /> Acesso
-                    </button>
-                    <button
-                      onClick={avisarAcesso}
-                      disabled={avisando}
-                      title="Manda ao lojista, no WhatsApp, que o sistema está no ar"
-                      className="h-8 px-2.5 rounded-lg border border-primary/40 text-[11.5px] font-medium text-primary hover:bg-primary/10 disabled:opacity-50 flex items-center gap-1.5"
-                    >
-                      {avisando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                      Avisar que está pronto
-                    </button>
-                    {/* A identidade saiu do onboarding: quando o sistema vem
-                        da amostra ela já chega aplicada, e virava uma tela
-                        pedindo o que já estava lá. Continua alcançável aqui,
-                        para quando houver o que trocar. */}
-                    <button
-                      onClick={() => setDialog('logo_aplicada')}
-                      title="Trocar logo, ícone ou banner no sistema e no site"
-                      className="h-8 px-2.5 rounded-lg border border-black/[0.1] dark:border-white/[0.1] text-[11.5px] font-medium text-foreground/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] flex items-center gap-1.5"
-                    >
-                      <Upload className="h-3 w-3" /> Identidade
-                    </button>
-                    <a
-                      href={client.domain ? `https://${client.domain}` : LOJISTA_APP_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="h-8 px-2.5 rounded-lg bg-primary/10 text-primary text-[11.5px] font-semibold hover:bg-primary/20 flex items-center gap-1.5"
-                    >
-                      <ExternalLink className="h-3 w-3" /> Abrir
-                    </a>
-                  </div>
-                </div>
-                {showCreds && (
-                  <div className="rounded-xl bg-black/[0.04] dark:bg-white/[0.04] p-3 space-y-1.5 text-[11.5px]">
-                    {client.admin_email && (
-                      <button onClick={() => copyText(client.admin_email!, 'E-mail')} className="flex items-center gap-1.5 text-foreground/70 hover:text-foreground">
-                        <Copy className="h-3 w-3" /> {client.admin_email}
-                      </button>
-                    )}
-                    {credencial?.password ? (
-                      <button onClick={() => copyText(credencial.password, 'Senha')} className="flex items-center gap-1.5 text-foreground/70 hover:text-foreground">
-                        <Copy className="h-3 w-3" /> {credencial.password}
-                      </button>
-                    ) : (
-                      <p className="text-foreground/35">
-                        {isAdmin ? 'Sem senha guardada para este cliente.' : 'A senha do sistema fica restrita a administradores.'}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </Panel>
-            </div>
+          {!client.lojista_company_id && (
+            <Panel className="p-4 space-y-3">
+              <p className="text-[12px] text-foreground/50 leading-snug">
+                Este cliente ainda não tem sistema. Sem ele não dá para liberar o
+                primeiro acesso nem aplicar a identidade.
+              </p>
+              <button
+                onClick={() => setDialog('sistema_criado')}
+                className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2"
+              >
+                <Rocket className="h-3.5 w-3.5" /> Criar sistema
+              </button>
+            </Panel>
           )}
 
-          {/* Canais que o cliente trabalha */}
-          {client.lojista_company_id && (
-            <div>
-              <SectionHeader title="Canais liberados" right={<span className="text-[11px] text-foreground/35">define o que ele conecta</span>} />
-              <Panel className="p-4">
-                <CanaisDoCliente companyId={client.lojista_company_id} contratados={client.canais ?? []} />
-              </Panel>
-            </div>
-          )}
-
-          {/* Uso do sistema — agregado, com registro de acesso */}
-          {client.lojista_company_id && (
-            <div>
-              <SectionHeader title="Uso do sistema" right={<span className="text-[11px] text-foreground/35">agregado · LGPD</span>} />
-              <UsoDoSistema client={client} />
-            </div>
-          )}
+          {client.lojista_company_id && <UsoDoSistema client={client} mostrar={['atividade']} />}
 
           {/* Notas */}
           <div>
@@ -765,85 +759,192 @@ export default function ClienteDetalhe() {
             )}
           </div>
         </div>
+      )}
 
-        {/* ── Coluna lateral ──────────────────────────────────── */}
-        <div className="flex flex-col gap-6">
+      {/* ── Financeiro ───────────────────────────────────────────── */}
+      {aba === 'Financeiro' && (
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start">
+          <div className="flex flex-col gap-5">
+            <button
+              onClick={() => navigate(`/clientes/${client.id}/cobranca`)}
+              className="w-full text-left rounded-2xl border border-black/[0.07] dark:border-white/[0.08] bg-black/[0.03] dark:bg-white/[0.03] p-4 hover:border-black/20 dark:hover:border-white/20 transition-colors flex items-center gap-3"
+            >
+              <Repeat className="h-4 w-4 text-foreground/35 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[12.5px] font-semibold text-foreground">
+                  {client.mrr ? `${brlFull(client.mrr)} por mês` : 'Mensalidade não definida'}
+                </p>
+                <p className="text-[11px] text-foreground/40">
+                  {client.asaas_payment_link_url ? 'Ver link e acompanhar o pagamento' : 'Cobrança ainda não criada'}
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-foreground/30 shrink-0" />
+            </button>
 
-          {/* Pagamentos */}
-          <div>
-            <SectionHeader
-              title="Pagamentos"
-              right={
-                <button
-                  onClick={() => setDialog('pagamento_extra')}
-                  className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1"
-                >
-                  <Plus className="h-3 w-3" /> Cobrança
-                </button>
-              }
-            />
-            <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
-              {payments.length === 0 ? (
-                <p className="text-[11.5px] text-foreground/30 text-center py-6">Nenhuma cobrança</p>
-              ) : (
-                payments.slice(0, 8).map((p) => (
-                  <div key={p.id} className="px-3.5 py-2.5 flex items-center gap-2.5">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[12px] font-medium text-foreground truncate">{p.description}</p>
-                      <p className="text-[10.5px] text-foreground/35">
-                        Venc. {new Date(p.due_date + 'T12:00:00').toLocaleDateString('pt-BR')}
-                      </p>
+            <div>
+              <SectionHeader
+                title="Pagamentos"
+                right={
+                  <button
+                    onClick={() => setDialog('pagamento_extra')}
+                    className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1"
+                  >
+                    <Plus className="h-3 w-3" /> Cobrança
+                  </button>
+                }
+              />
+              <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
+                {payments.length === 0 ? (
+                  <p className="text-[11.5px] text-foreground/30 text-center py-6">Nenhuma cobrança</p>
+                ) : (
+                  payments.slice(0, 12).map((p) => (
+                    <div key={p.id} className="px-3.5 py-2.5 flex items-center gap-2.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] font-medium text-foreground truncate">{p.description}</p>
+                        <p className="text-[10.5px] text-foreground/35">
+                          Venc. {new Date(p.due_date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                          {p.paid_at && ` · pago em ${new Date(p.paid_at).toLocaleDateString('pt-BR')}`}
+                        </p>
+                      </div>
+                      <p className="text-[12px] font-bold text-foreground tabular-nums">{brlFull(p.amount)}</p>
+                      <StatusBadge status={p.status} />
                     </div>
-                    <p className="text-[12px] font-bold text-foreground tabular-nums">{brlFull(p.amount)}</p>
-                    <StatusBadge status={p.status} />
-                  </div>
-                ))
-              )}
-            </Panel>
+                  ))
+                )}
+              </Panel>
+            </div>
           </div>
 
-          {/* Notas fiscais — logo abaixo de Pagamentos porque é a mesma
-              história: a cobrança sai, a nota sai atrás. Ver as duas juntas
-              é o que denuncia a nota que não veio. */}
-          <NotasFiscais clientId={id} />
-
-          {/* Contratos */}
-          <div>
-            <SectionHeader
-              title="Contratos"
-              right={
-                <button
-                  onClick={() => setDialog('contrato_gerado')}
-                  className="text-[11px] font-semibold text-primary hover:opacity-70 flex items-center gap-1"
-                >
-                  <Plus className="h-3 w-3" /> Contrato
-                </button>
-              }
-            />
-            <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
-              {contracts.length === 0 ? (
-                <p className="text-[11.5px] text-foreground/30 text-center py-6">Nenhum contrato</p>
-              ) : (
-                contracts.map((c) => (
-                  <div key={c.id} className="px-3.5 py-2.5 flex items-center gap-2.5">
-                    <FileText className="h-3.5 w-3.5 text-foreground/30 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[12px] font-medium text-foreground truncate">{c.title}</p>
-                      <p className="text-[10.5px] text-foreground/35">{brlFull(c.value)} · {c.recurrence}</p>
+          <div className="flex flex-col gap-5">
+            <NotasFiscais clientId={id} />
+            <div>
+              <SectionHeader
+                title="Contratos"
+                right={
+                  <button
+                    onClick={() => setDialog('contrato_gerado')}
+                    className="text-[11px] font-semibold text-primary hover:opacity-70 flex items-center gap-1"
+                  >
+                    <Plus className="h-3 w-3" /> Contrato
+                  </button>
+                }
+              />
+              <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
+                {contracts.length === 0 ? (
+                  <p className="text-[11.5px] text-foreground/30 text-center py-6">Nenhum contrato</p>
+                ) : (
+                  contracts.map((c) => (
+                    <div key={c.id} className="px-3.5 py-2.5 flex items-center gap-2.5">
+                      <FileText className="h-3.5 w-3.5 text-foreground/30 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] font-medium text-foreground truncate">{c.title}</p>
+                        <p className="text-[10.5px] text-foreground/35">{brlFull(c.value)} · {c.recurrence}</p>
+                      </div>
+                      {c.file_url && (
+                        <a href={c.file_url} target="_blank" rel="noopener noreferrer" className="text-foreground/30 hover:text-primary">
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      )}
+                      <StatusBadge status={c.status} />
                     </div>
-                    {c.file_url && (
-                      <a href={c.file_url} target="_blank" rel="noopener noreferrer" className="text-foreground/30 hover:text-primary">
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    )}
-                    <StatusBadge status={c.status} />
-                  </div>
-                ))
-              )}
-            </Panel>
+                  ))
+                )}
+              </Panel>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ── Sistema ──────────────────────────────────────────────── */}
+      {aba === 'Sistema' && (
+        <div className="flex flex-col gap-5">
+          {!client.lojista_company_id ? (
+            <Panel className="p-5">
+              <p className="text-[12.5px] text-foreground/45">
+                Sistema ainda não provisionado — crie o sistema no Resumo para acompanhar o uso.
+              </p>
+            </Panel>
+          ) : (
+            <>
+              <Panel className="p-4 space-y-2.5">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="min-w-0">
+                    <p className="text-[12.5px] font-semibold text-foreground">
+                      {client.domain || LOJISTA_APP_URL.replace('https://', '')}
+                    </p>
+                    <p className="text-[11px] text-foreground/40">endereço do sistema deste cliente</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      onClick={() => setShowCreds((v) => !v)}
+                      className="h-8 px-2.5 rounded-lg border border-black/[0.1] dark:border-white/[0.1] text-[11.5px] font-medium text-foreground/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] flex items-center gap-1.5"
+                    >
+                      <KeyRound className="h-3 w-3" /> Acesso
+                    </button>
+                    <button
+                      onClick={avisarAcesso}
+                      disabled={avisando}
+                      title="Manda ao lojista, no WhatsApp, que o sistema está no ar"
+                      className="h-8 px-2.5 rounded-lg border border-primary/40 text-[11.5px] font-medium text-primary hover:bg-primary/10 disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {avisando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                      Avisar que está pronto
+                    </button>
+                    <button
+                      onClick={() => setDialog('logo_aplicada')}
+                      title="Trocar logo, ícone ou banner no sistema e no site"
+                      className="h-8 px-2.5 rounded-lg border border-black/[0.1] dark:border-white/[0.1] text-[11.5px] font-medium text-foreground/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] flex items-center gap-1.5"
+                    >
+                      <Upload className="h-3 w-3" /> Identidade
+                    </button>
+                  </div>
+                </div>
+                {showCreds && (
+                  <div className="rounded-xl bg-black/[0.04] dark:bg-white/[0.04] p-3 space-y-1.5 text-[11.5px]">
+                    {client.admin_email && (
+                      <button onClick={() => copyText(client.admin_email!, 'E-mail')} className="flex items-center gap-1.5 text-foreground/70 hover:text-foreground">
+                        <Copy className="h-3 w-3" /> {client.admin_email}
+                      </button>
+                    )}
+                    {credencial?.password ? (
+                      <button onClick={() => copyText(credencial.password, 'Senha')} className="flex items-center gap-1.5 text-foreground/70 hover:text-foreground">
+                        <Copy className="h-3 w-3" /> {credencial.password}
+                      </button>
+                    ) : (
+                      <p className="text-foreground/35">
+                        {isAdmin ? 'Sem senha guardada para este cliente.' : 'A senha do sistema fica restrita a administradores.'}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </Panel>
+
+              <div>
+                <SectionHeader title="Canais liberados" right={<span className="text-[11px] text-foreground/35">define o que ele conecta</span>} />
+                <Panel className="p-4">
+                  <CanaisDoCliente companyId={client.lojista_company_id} contratados={client.canais ?? []} />
+                </Panel>
+              </div>
+
+              <UsoDoSistema client={client}
+                mostrar={['estoque', 'canais', 'vendas', 'frota', 'veiculos', 'plataforma']} />
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Pessoas ──────────────────────────────────────────────── */}
+      {aba === 'Pessoas' && (
+        client.lojista_company_id ? (
+          <UsoDoSistema client={client} mostrar={['pessoas', 'lgpd']} />
+        ) : (
+          <Panel className="p-5">
+            <p className="text-[12.5px] text-foreground/45">
+              Sem sistema provisionado não há contas de acesso para mostrar.
+            </p>
+          </Panel>
+        )
+      )}
 
       {/* ── Dialogs de etapa ──────────────────────────────────── */}
       {dialog === 'contrato_gerado' && (
