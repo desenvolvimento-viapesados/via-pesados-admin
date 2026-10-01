@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { cicloDaData } from '@/lib/okr';
+import { cicloDaData, rotuloDoPeriodo } from '@/lib/okr';
 import type { ChaveMetrica } from '@/lib/metricas';
 
 /**
@@ -11,7 +11,7 @@ import type { ChaveMetrica } from '@/lib/metricas';
  * do período e, se ele não existe, nasce com as datas certas.
  */
 
-export type TipoDeCiclo = 'mes' | 'trimestre' | 'ano' | 'cinco_anos';
+export type TipoDeCiclo = 'mes' | 'trimestre' | 'ano' | 'cinco_anos' | 'livre';
 
 export interface Ciclo {
   id: string; tipo: TipoDeCiclo; rotulo: string;
@@ -26,7 +26,13 @@ export interface Objetivo {
 }
 
 export interface KRRow {
-  id: string; objetivo_id: string; titulo: string;
+  id: string;
+  /* A meta pertence ao CICLO. O objetivo é agrupador opcional: existe
+     quando se quer OKR de verdade, com um objetivo qualitativo em cima
+     de dois a quatro números. */
+  ciclo_id: string;
+  objetivo_id: string | null;
+  titulo: string;
   unidade: 'numero' | 'moeda' | 'percentual' | 'marco';
   partida: number; alvo: number;
   fonte: 'manual' | ChaveMetrica;
@@ -45,12 +51,21 @@ export interface NSM {
   unidade: 'numero' | 'moeda' | 'percentual'; meta_ano: number | null;
 }
 
-/** O ciclo daquele tipo que contém hoje — criando se ainda não existir. */
-export const useCiclo = (tipo: TipoDeCiclo) =>
+/**
+ * O ciclo em que se está trabalhando — criado sob demanda.
+ *
+ * Com `livre`, as datas vêm de fora: "de outubro até dezembro do ano que
+ * vem" não é mês, nem trimestre, nem ano, e era justamente a meta que
+ * ninguém conseguia escrever aqui.
+ */
+export const useCiclo = (tipo: TipoDeCiclo, livre?: { inicio: string; fim: string }) =>
   useQuery({
-    queryKey: ['metas', 'ciclo', tipo],
+    queryKey: ['metas', 'ciclo', tipo, livre?.inicio ?? '', livre?.fim ?? ''],
+    enabled: tipo !== 'livre' || !!(livre?.inicio && livre?.fim),
     queryFn: async (): Promise<Ciclo> => {
-      const alvo = cicloDaData(tipo);
+      const alvo = tipo === 'livre'
+        ? { tipo, rotulo: rotuloDoPeriodo(livre!.inicio, livre!.fim), inicio: livre!.inicio, fim: livre!.fim }
+        : cicloDaData(tipo);
       const { data } = await supabase.from('metas_ciclos').select('*')
         .eq('tipo', tipo).eq('inicio', alvo.inicio).eq('fim', alvo.fim).maybeSingle();
       if (data) return data as Ciclo;
@@ -86,13 +101,14 @@ export const useObjetivos = (cicloId: string | undefined) =>
   });
 
 /** Todos os KRs do ciclo numa consulta — um por objetivo seria N+1. */
-export const useKRs = (objetivoIds: string[]) =>
+/** Todas as metas do ciclo — as soltas e as que estão sob um objetivo. */
+export const useKRs = (cicloId: string | undefined) =>
   useQuery({
-    queryKey: ['metas', 'krs', [...objetivoIds].sort().join(',')],
-    enabled: objetivoIds.length > 0,
+    queryKey: ['metas', 'krs', cicloId],
+    enabled: !!cicloId,
     queryFn: async () => {
       const { data, error } = await supabase.from('metas_kr').select('*')
-        .in('objetivo_id', objetivoIds).order('ordem').order('created_at');
+        .eq('ciclo_id', cicloId!).order('ordem').order('created_at');
       if (error) throw error;
       return (data ?? []) as KRRow[];
     },
@@ -219,8 +235,8 @@ export const useApagarObjetivo = () => {
 export const useSalvarKR = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (kr: Partial<KRRow> & { objetivo_id: string; titulo: string; alvo: number }) => {
-      const { id, ...resto } = kr as Partial<KRRow> & { objetivo_id: string };
+    mutationFn: async (kr: Partial<KRRow> & { ciclo_id: string; titulo: string; alvo: number }) => {
+      const { id, ...resto } = kr as Partial<KRRow> & { ciclo_id: string };
       if (id) {
         const { error } = await supabase.from('metas_kr')
           .update({ ...resto, updated_at: new Date().toISOString() }).eq('id', id);

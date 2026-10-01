@@ -144,6 +144,15 @@ export function formatarValor(valor: number | null | undefined, unidade: Unidade
 
 /* ── Os ciclos ───────────────────────────────────────────────────────── */
 
+/** "out/2026 → dez/2027", que é como se fala de um prazo que não é mês nem ano. */
+export function rotuloDoPeriodo(inicio: string, fim: string): string {
+  const curto = (iso: string) => {
+    const d = new Date(`${iso.slice(0, 10)}T12:00:00`);
+    return d.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', '');
+  };
+  return `${curto(inicio)} → ${curto(fim)}`;
+}
+
 const DOIS = (n: number) => String(n).padStart(2, '0');
 
 /** O trimestre, o ano e os cinco anos em que uma data cai. */

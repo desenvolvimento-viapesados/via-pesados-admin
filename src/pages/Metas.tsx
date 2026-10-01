@@ -46,7 +46,22 @@ const HORIZONTES: { tipo: TipoDeCiclo; rotulo: string; sub: string }[] = [
   { tipo: 'trimestre', rotulo: 'Trimestre', sub: 'o OKR — objetivo curto com número' },
   { tipo: 'ano', rotulo: 'Ano', sub: 'o pedaço do caminho que cabe num ano' },
   { tipo: 'cinco_anos', rotulo: '5 anos', sub: 'onde se quer chegar — serve para dizer não' },
+  { tipo: 'livre', rotulo: 'Período', sub: 'de quando até quando você escolher' },
 ];
+
+/* As metas que esta empresa escreve de verdade. O catálogo inteiro
+   continua ali embaixo, mas quem abre a tela para dizer "quero X de MRR
+   até dezembro" não devia ter que procurar numa lista de vinte. */
+const ATALHOS: ChaveMetrica[] = [
+  'mrr', 'clientes_pagando', 'novos_clientes', 'recebido', 'vendas_base', 'caixa_liquido',
+];
+
+const hojeISO = () => new Date().toISOString().slice(0, 10);
+const daquiAMeses = (n: number) => {
+  const d = new Date();
+  d.setMonth(d.getMonth() + n);
+  return d.toISOString().slice(0, 10);
+};
 
 const TOM_BARRA: Record<Saude, string> = {
   sem_medida: 'bg-foreground/20',
@@ -66,13 +81,14 @@ export default function Metas() {
   const { member } = useAuth();
   const [horizonte, setHorizonte] = useState<TipoDeCiclo>('trimestre');
   const [dialogObjetivo, setDialogObjetivo] = useState<Partial<Objetivo> | null>(null);
-  const [dialogKR, setDialogKR] = useState<(Partial<KRRow> & { objetivo_id: string }) | null>(null);
+  const [dialogKR, setDialogKR] = useState<(Partial<KRRow> & { ciclo_id: string }) | null>(null);
   const [dialogCheckin, setDialogCheckin] = useState<KRRow | null>(null);
   const [editandoNSM, setEditandoNSM] = useState(false);
 
-  const ciclo = useCiclo(horizonte);
+  const [livre, setLivre] = useState({ inicio: hojeISO(), fim: daquiAMeses(12) });
+  const ciclo = useCiclo(horizonte, livre);
   const objetivos = useObjetivos(ciclo.data?.id);
-  const krs = useKRs((objetivos.data ?? []).map((o) => o.id));
+  const krs = useKRs(ciclo.data?.id);
   const checkins = useCheckins((krs.data ?? []).map((k) => k.id));
   const nsm = useNSM();
   const serie = useSerieNSM();
@@ -123,7 +139,10 @@ export default function Metas() {
   const tempo = ciclo.data ? fracaoDoTempo(ciclo.data) : 0;
   const porObjetivo = useMemo(() => {
     const mapa = new Map<string, KRRow[]>();
-    for (const k of krs.data ?? []) mapa.set(k.objetivo_id, [...(mapa.get(k.objetivo_id) ?? []), k]);
+    for (const k of krs.data ?? []) {
+      if (!k.objetivo_id) continue;
+      mapa.set(k.objetivo_id, [...(mapa.get(k.objetivo_id) ?? []), k]);
+    }
     return mapa;
   }, [krs.data]);
 
@@ -138,6 +157,79 @@ export default function Metas() {
   }) : null;
 
   const ultimoCheckin = (krId: string) => (checkins.data ?? []).find((c) => c.kr_id === krId);
+  /* As metas que não estão sob objetivo nenhum: a lista principal. */
+  const soltas = comValor((krs.data ?? []).filter((k) => !k.objetivo_id));
+
+  /* A linha de uma meta. A mesma, solta no período ou dentro de um
+     objetivo — eram dois blocos iguais, e dois blocos iguais divergem. */
+  const linhaDaMeta = (kr: KRRow & { atual: number | null }) => {
+    const p = progressoDoKr(kr);
+    const s = saudeDoKr(p, tempo);
+    const prev = previsaoFinal(kr, tempo);
+    const ck = ultimoCheckin(kr.id);
+    const def = kr.fonte !== 'manual' ? METRICAS[kr.fonte as ChaveMetrica] : null;
+    return (
+      <div key={kr.id} className="px-4 py-3">
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[12.5px] text-foreground/85 leading-snug">{kr.titulo}</p>
+            <div className="flex items-center gap-2 mt-1 text-[10.5px] flex-wrap">
+              <span className="tabular-nums text-foreground/60">
+                {formatarValor(kr.atual, kr.unidade)}
+                <span className="text-foreground/30"> de </span>
+                {formatarValor(kr.alvo, kr.unidade)}
+                {kr.partida !== 0 && (
+                  <span className="text-foreground/30"> · partiu de {formatarValor(kr.partida, kr.unidade)}</span>
+                )}
+              </span>
+              <span className={cn('font-medium', TOM_TEXTO[ROTULO_SAUDE[s].tom])}>
+                {ROTULO_SAUDE[s].texto}
+              </span>
+              {superou(kr) && <span className="text-emerald-500 font-medium">superou</span>}
+              {prev !== null && (
+                <span className="text-foreground/35">
+                  no ritmo de hoje, termina em {formatarValor(prev, kr.unidade)}
+                </span>
+              )}
+              <span className="text-foreground/25">
+                {def ? `automático · ${def.rotulo}` : 'manual'}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={() => setDialogCheckin(kr)}
+              title="Check-in"
+              className="h-7 px-2 rounded-lg text-[11px] font-medium text-foreground/50 hover:text-foreground hover:bg-black/[0.05] dark:hover:bg-white/[0.06]">
+              Check-in
+            </button>
+            <button onClick={() => setDialogKR({ ...kr })}
+              className="h-7 w-7 rounded-lg text-foreground/30 hover:text-foreground hover:bg-black/[0.05] dark:hover:bg-white/[0.06] flex items-center justify-center">
+              <Pencil className="h-3 w-3" />
+            </button>
+            <button onClick={() => { if (confirm('Apagar este resultado-chave?')) apagarKR.mutate(kr.id); }}
+              className="h-7 w-7 rounded-lg text-foreground/30 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center">
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-2 h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden relative">
+          <div className={cn('h-full rounded-full transition-all', TOM_BARRA[s])}
+            style={{ width: `${(p ?? 0) * 100}%` }} />
+          {/* Onde o ritmo deveria estar hoje. */}
+          <div className="absolute top-[-3px] h-[12px] w-px bg-foreground/40"
+            style={{ left: `${tempo * 100}%` }} title="ritmo esperado hoje" />
+        </div>
+
+        {ck?.comentario && (
+          <p className="text-[11px] text-foreground/40 mt-1.5">
+            “{ck.comentario}” · {new Date(ck.created_at).toLocaleDateString('pt-BR')}
+            {ck.autor_nome ? ` · ${ck.autor_nome}` : ''}
+          </p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -233,6 +325,25 @@ export default function Metas() {
         ))}
       </div>
 
+      {horizonte === 'livre' && (
+        <Panel className="p-4 flex items-end gap-3 flex-wrap">
+          <div className="space-y-1.5">
+            <Label className="text-[11px] text-foreground/45">De</Label>
+            <Input type="date" className="h-10 rounded-xl w-[160px]" value={livre.inicio}
+              onChange={(e) => setLivre((l) => ({ ...l, inicio: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-[11px] text-foreground/45">Até</Label>
+            <Input type="date" className="h-10 rounded-xl w-[160px]" value={livre.fim}
+              onChange={(e) => setLivre((l) => ({ ...l, fim: e.target.value }))} />
+          </div>
+          <p className="text-[11.5px] text-foreground/40 pb-2.5">
+            Cada par de datas é um quadro próprio: as metas que você escrever aqui ficam guardadas
+            neste período e voltam quando você escolher as mesmas datas.
+          </p>
+        </Panel>
+      )}
+
       {ciclo.isPending ? (
         <Panel className="p-6 flex items-center gap-2 text-[13px] text-foreground/45">
           <Loader2 className="h-4 w-4 animate-spin" /> abrindo o ciclo…
@@ -271,6 +382,34 @@ export default function Metas() {
           </div>
 
           {/* ── Objetivos ─────────────────────────────────────── */}
+          {/* ── As metas do período ───────────────────────────── */}
+          <div>
+            <SectionHeader
+              title="Metas do período"
+              right={
+                <button
+                  onClick={() => setDialogKR({ ciclo_id: ciclo.data!.id, unidade: 'numero', direcao: 'subir', fonte: 'manual', partida: 0 })}
+                  className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1">
+                  <Plus className="h-3 w-3" /> Meta
+                </button>
+              }
+            />
+            {soltas.length === 0 ? (
+              <Panel className="p-6">
+                <p className="text-[13px] text-foreground/55 leading-relaxed">
+                  Nenhuma meta neste período. Uma meta é uma frase com número e prazo — "MRR de
+                  R$ 10.000 até dezembro" —, e quase sempre o número já está no painel: escolha a
+                  métrica e ela se mede sozinha daqui para frente.
+                </p>
+              </Panel>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {soltas.map(linhaDaMeta)}
+              </div>
+            )}
+          </div>
+
+          {/* ── OKR, para quem quer agrupar ───────────────────── */}
           <div>
             <SectionHeader
               title="Objetivos"
@@ -283,11 +422,11 @@ export default function Metas() {
               }
             />
             {(objetivos.data ?? []).length === 0 ? (
-              <Panel className="p-6">
-                <p className="text-[13px] text-foreground/55 leading-relaxed">
-                  Nenhum objetivo neste ciclo. Um bom objetivo é curto, qualitativo e incomoda —
-                  "ser referência em pesados no Vale do Aço" — e vem com dois a quatro
-                  resultados-chave em número, que dizem como saber que chegou lá.
+              <Panel className="p-5">
+                <p className="text-[12.5px] text-foreground/45 leading-relaxed">
+                  Opcional. Quando várias metas servem à mesma ideia — "ser a escolha óbvia de quem
+                  vende pesado no Vale do Aço" —, um objetivo as agrupa e mostra o progresso do
+                  conjunto. Para uma meta solta de MRR, não é preciso.
                 </p>
               </Panel>
             ) : (
@@ -330,76 +469,9 @@ export default function Metas() {
                       </div>
 
                       <div className="border-t border-black/[0.05] dark:border-white/[0.05] divide-y divide-black/[0.05] dark:divide-white/[0.05]">
-                        {lista.map((kr) => {
-                          const p = progressoDoKr(kr);
-                          const s = saudeDoKr(p, tempo);
-                          const prev = previsaoFinal(kr, tempo);
-                          const ck = ultimoCheckin(kr.id);
-                          const def = kr.fonte !== 'manual' ? METRICAS[kr.fonte as ChaveMetrica] : null;
-                          return (
-                            <div key={kr.id} className="px-4 py-3">
-                              <div className="flex items-start gap-3">
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-[12.5px] text-foreground/85 leading-snug">{kr.titulo}</p>
-                                  <div className="flex items-center gap-2 mt-1 text-[10.5px] flex-wrap">
-                                    <span className="tabular-nums text-foreground/60">
-                                      {formatarValor(kr.atual, kr.unidade)}
-                                      <span className="text-foreground/30"> de </span>
-                                      {formatarValor(kr.alvo, kr.unidade)}
-                                      {kr.partida !== 0 && (
-                                        <span className="text-foreground/30"> · partiu de {formatarValor(kr.partida, kr.unidade)}</span>
-                                      )}
-                                    </span>
-                                    <span className={cn('font-medium', TOM_TEXTO[ROTULO_SAUDE[s].tom])}>
-                                      {ROTULO_SAUDE[s].texto}
-                                    </span>
-                                    {superou(kr) && <span className="text-emerald-500 font-medium">superou</span>}
-                                    {prev !== null && (
-                                      <span className="text-foreground/35">
-                                        no ritmo de hoje, termina em {formatarValor(prev, kr.unidade)}
-                                      </span>
-                                    )}
-                                    <span className="text-foreground/25">
-                                      {def ? `automático · ${def.rotulo}` : 'manual'}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <button onClick={() => setDialogCheckin(kr)}
-                                    title="Check-in"
-                                    className="h-7 px-2 rounded-lg text-[11px] font-medium text-foreground/50 hover:text-foreground hover:bg-black/[0.05] dark:hover:bg-white/[0.06]">
-                                    Check-in
-                                  </button>
-                                  <button onClick={() => setDialogKR({ ...kr })}
-                                    className="h-7 w-7 rounded-lg text-foreground/30 hover:text-foreground hover:bg-black/[0.05] dark:hover:bg-white/[0.06] flex items-center justify-center">
-                                    <Pencil className="h-3 w-3" />
-                                  </button>
-                                  <button onClick={() => { if (confirm('Apagar este resultado-chave?')) apagarKR.mutate(kr.id); }}
-                                    className="h-7 w-7 rounded-lg text-foreground/30 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center">
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
-                                </div>
-                              </div>
-
-                              <div className="mt-2 h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden relative">
-                                <div className={cn('h-full rounded-full transition-all', TOM_BARRA[s])}
-                                  style={{ width: `${(p ?? 0) * 100}%` }} />
-                                {/* Onde o ritmo deveria estar hoje. */}
-                                <div className="absolute top-[-3px] h-[12px] w-px bg-foreground/40"
-                                  style={{ left: `${tempo * 100}%` }} title="ritmo esperado hoje" />
-                              </div>
-
-                              {ck?.comentario && (
-                                <p className="text-[11px] text-foreground/40 mt-1.5">
-                                  “{ck.comentario}” · {new Date(ck.created_at).toLocaleDateString('pt-BR')}
-                                  {ck.autor_nome ? ` · ${ck.autor_nome}` : ''}
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })}
+                        {lista.map(linhaDaMeta)}
                         <button
-                          onClick={() => setDialogKR({ objetivo_id: o.id, unidade: 'numero', direcao: 'subir', fonte: 'manual', partida: 0 })}
+                          onClick={() => setDialogKR({ ciclo_id: ciclo.data!.id, objetivo_id: o.id, unidade: 'numero', direcao: 'subir', fonte: 'manual', partida: 0 })}
                           className="w-full px-4 py-2.5 text-left text-[11.5px] text-primary hover:bg-primary/5 flex items-center gap-1.5">
                           <Plus className="h-3 w-3" /> Resultado-chave
                         </button>
@@ -430,6 +502,7 @@ export default function Metas() {
       {dialogKR && (
         <DialogKR
           valor={dialogKR}
+          valorDe={(c) => (periodo.inicio ? valorDaMetrica(c, dados, periodo) : null)}
           onFechar={() => setDialogKR(null)}
           onSalvar={async (v) => {
             await salvarKR.mutateAsync(v as never);
@@ -555,14 +628,38 @@ function DialogObjetivo({ valor, equipe, onFechar, onSalvar }: {
   );
 }
 
-function DialogKR({ valor, onFechar, onSalvar }: {
-  valor: Partial<KRRow> & { objetivo_id: string };
+function DialogKR({ valor, valorDe, onFechar, onSalvar }: {
+  valor: Partial<KRRow> & { ciclo_id: string };
+  /** O valor de agora da métrica — vira a partida da meta. */
+  valorDe: (c: ChaveMetrica) => number | null;
   onFechar: () => void;
-  onSalvar: (v: Partial<KRRow> & { objetivo_id: string }) => Promise<void>;
+  onSalvar: (v: Partial<KRRow> & { ciclo_id: string }) => Promise<void>;
 }) {
   const [v, setV] = useState(valor);
   const [salvando, setSalvando] = useState(false);
+  const [verTodas, setVerTodas] = useState(false);
   const def = v.fonte && v.fonte !== 'manual' ? METRICAS[v.fonte as ChaveMetrica] : null;
+
+  /* Escolher a métrica responde quase tudo: unidade, direção, a partida
+     (que é onde se está HOJE) e até o nome da meta. O que sobra para
+     digitar é o alvo — que é a única coisa que o sistema não tem como
+     saber. */
+  const escolherFonte = (f: 'manual' | ChaveMetrica) => {
+    if (f === 'manual') {
+      setV({ ...v, fonte: 'manual', partida: 0 });
+      return;
+    }
+    const d = METRICAS[f];
+    const agora = valorDe(f);
+    setV({
+      ...v,
+      fonte: f,
+      unidade: d.unidade as never,
+      direcao: (d.menorEMelhor ? 'descer' : 'subir') as never,
+      partida: agora ?? 0,
+      titulo: v.titulo?.trim() ? v.titulo : d.rotulo,
+    });
+  };
   return (
     <Dialog open onOpenChange={onFechar}>
       <DialogContent className="max-w-lg">
@@ -576,23 +673,39 @@ function DialogKR({ valor, onFechar, onSalvar }: {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[12px]">De onde vem o número</Label>
-            <select className={cn(campo, 'w-full border border-black/[0.1] dark:border-white/[0.1] bg-background px-3 text-[13px]')}
-              value={v.fonte ?? 'manual'}
-              onChange={(e) => {
-                const f = e.target.value;
-                const d = f !== 'manual' ? METRICAS[f as ChaveMetrica] : null;
-                setV({
-                  ...v, fonte: f as never,
-                  unidade: (d?.unidade ?? v.unidade ?? 'numero') as never,
-                  direcao: (d?.menorEMelhor ? 'descer' : 'subir') as never,
-                });
-              }}>
-              <option value="manual">Manual — alguém informa no check-in</option>
-              {CHAVES_DE_METRICA.map((c) => (
-                <option key={c} value={c}>{METRICAS[c].rotulo} (automático)</option>
+            <Label className="text-[12px]">O que medir</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {ATALHOS.map((c) => (
+                <button key={c} type="button" onClick={() => escolherFonte(c)}
+                  className={cn('px-3 py-2.5 rounded-xl border-2 text-left text-[12px] font-medium transition-all',
+                    v.fonte === c ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/40')}>
+                  {METRICAS[c].rotulo}
+                  <span className="block text-[10px] font-normal text-foreground/35 tabular-nums">
+                    hoje: {formatarValor(valorDe(c), METRICAS[c].unidade as never)}
+                  </span>
+                </button>
               ))}
-            </select>
+              <button type="button" onClick={() => escolherFonte('manual')}
+                className={cn('px-3 py-2.5 rounded-xl border-2 text-left text-[12px] font-medium transition-all',
+                  (v.fonte ?? 'manual') === 'manual' ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/40')}>
+                Outra coisa
+                <span className="block text-[10px] font-normal text-foreground/35">eu informo no check-in</span>
+              </button>
+            </div>
+            <button type="button" onClick={() => setVerTodas((x) => !x)}
+              className="text-[11px] text-foreground/40 hover:text-foreground underline">
+              {verTodas ? 'esconder a lista completa' : 'ver todas as métricas do painel'}
+            </button>
+            {verTodas && (
+              <select className={cn(campo, 'w-full border border-black/[0.1] dark:border-white/[0.1] bg-background px-3 text-[13px]')}
+                value={v.fonte ?? 'manual'}
+                onChange={(e) => escolherFonte(e.target.value as never)}>
+                <option value="manual">Manual — alguém informa no check-in</option>
+                {CHAVES_DE_METRICA.map((c) => (
+                  <option key={c} value={c}>{METRICAS[c].rotulo} (automático)</option>
+                ))}
+              </select>
+            )}
             <p className="text-[11px] text-foreground/35 leading-snug">
               {def
                 ? `${def.explica} ${def.natureza === 'fluxo' ? 'Conta só o que acontecer dentro do ciclo.' : 'É o número de hoje, não do período.'}${def.daBase ? ' Lê o sistema dos clientes — cada leitura fica registrada.' : ''}`
