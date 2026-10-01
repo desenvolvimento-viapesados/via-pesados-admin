@@ -212,6 +212,7 @@ export default function Metas() {
               <span className="text-foreground/25">
                 {def ? `automático · ${def.rotulo}` : 'manual'}
               </span>
+              {kr.pai_id && <span className="text-foreground/25">parte de uma meta maior</span>}
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
