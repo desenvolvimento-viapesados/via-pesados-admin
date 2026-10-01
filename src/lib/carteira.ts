@@ -75,17 +75,12 @@ export function alarmesDoCliente(
   if (s.veiculos > 0 && s.veiculos_anunciados === 0) {
     a.push({ chave: 'sem_anuncio', texto: 'Estoque sem nenhum anúncio no ar', peso: 'grave' });
   }
-  /* Caminhão vendido com anúncio vivo faz o lojista receber ligação de
-     algo que não existe mais — e some dentro de qualquer total somado. */
-  if (s.anuncios_de_vendidos > 0) {
-    a.push({
-      chave: 'anuncio_de_vendido',
-      texto: s.anuncios_de_vendidos === 1
-        ? 'Um anúncio de veículo vendido ainda no ar'
-        : `${s.anuncios_de_vendidos} anúncios de veículos vendidos ainda no ar`,
-      peso: 'atencao',
-    });
-  }
+  /* Aqui havia um alarme de "anúncio de veículo vendido ainda no ar". Ele
+     saiu porque a frase era mais forte do que o dado: o que o banco sabe
+     é que a LINHA ficou marcada como ativa, não que o post esteja
+     visível. Os dois casos da iTruck eram registro velho — o post do
+     Facebook abria em "conteúdo não disponível". Dizer "no ar" sobre o
+     que não se conferiu ensina a desconfiar do painel inteiro. */
   if (s.veiculos_parados_60d >= 3) {
     a.push({
       chave: 'estoque_parado',
@@ -154,7 +149,6 @@ export function totaisDaCarteira(linhas: LinhaDaCarteira[], pagamentos: Pagament
     veiculos: soma((l) => l.saude?.veiculos ?? 0),
     valorEstoque: soma((l) => Number(l.saude?.valor_estoque ?? 0)),
     veiculosAnunciados: soma((l) => l.saude?.veiculos_anunciados ?? 0),
-    anunciosDeVendidos: soma((l) => l.saude?.anuncios_de_vendidos ?? 0),
     vendas30d: soma((l) => l.saude?.vendas_30d ?? 0),
     faturamento30d: soma((l) => Number(l.saude?.faturamento_30d ?? 0)),
     usuarios: soma((l) => l.saude?.usuarios ?? 0),

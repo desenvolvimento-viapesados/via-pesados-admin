@@ -1338,8 +1338,6 @@ export interface SaudeDaEmpresa {
      Facebook, no Instagram, no catálogo e no ML é UM anunciado. Somar as
      linhas dava 21 onde havia 6. */
   veiculos_anunciados: number;
-  /** Anúncio no ar de caminhão já vendido — sujeira que alguém tem de tirar. */
-  anuncios_de_vendidos: number;
   canais_ligados: number;
   canais_caidos: number;
   usuarios: number;

@@ -21,7 +21,7 @@ const cliente = (p: Partial<Client> = {}): Client => ({
 const saude = (p: Partial<SaudeDaEmpresa> = {}): SaudeDaEmpresa => ({
   company_id: 'e1', nome: 'Revenda', slug: 'revenda',
   veiculos: 20, veiculos_parados_60d: 0, valor_estoque: 5_000_000,
-  veiculos_anunciados: 14, anuncios_de_vendidos: 0, canais_ligados: 2, canais_caidos: 0,
+  veiculos_anunciados: 14, canais_ligados: 2, canais_caidos: 0,
   usuarios: 4, usuarios_que_nunca_entraram: 0, ultimo_acesso_em: atras(1),
   vendas_30d: 3, faturamento_30d: 900_000, ultima_venda_em: atras(5),
   ultimo_veiculo_em: atras(2), pedidos_abertos: 2, ...p,

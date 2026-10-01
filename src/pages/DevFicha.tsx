@@ -28,15 +28,15 @@ const PAGAMENTOS = [
 
 const SAUDE: SaudeDaEmpresa[] = [
   { company_id: 'e1', nome: 'Revenda Exemplo', slug: 'revenda', veiculos: 28, veiculos_parados_60d: 5,
-    valor_estoque: 9_480_000, veiculos_anunciados: 24, anuncios_de_vendidos: 2, canais_ligados: 1, canais_caidos: 1, usuarios: 5,
+    valor_estoque: 9_480_000, veiculos_anunciados: 24, canais_ligados: 1, canais_caidos: 1, usuarios: 5,
     usuarios_que_nunca_entraram: 1, ultimo_acesso_em: atras(0), vendas_30d: 4, faturamento_30d: 2_000_000,
     ultima_venda_em: atras(3).slice(0, 10), ultimo_veiculo_em: atras(2), pedidos_abertos: 6 },
   { company_id: 'e2', nome: 'Pátio Norte', slug: 'patio-norte', veiculos: 41, veiculos_parados_60d: 12,
-    valor_estoque: 13_900_000, veiculos_anunciados: 0, anuncios_de_vendidos: 0, canais_ligados: 0, canais_caidos: 0, usuarios: 7,
+    valor_estoque: 13_900_000, veiculos_anunciados: 0, canais_ligados: 0, canais_caidos: 0, usuarios: 7,
     usuarios_que_nunca_entraram: 4, ultimo_acesso_em: atras(12), vendas_30d: 0, faturamento_30d: 0,
     ultima_venda_em: atras(80).slice(0, 10), ultimo_veiculo_em: atras(70), pedidos_abertos: 0 },
   { company_id: 'e3', nome: 'TransSul', slug: 'transsul', veiculos: 9, veiculos_parados_60d: 1,
-    valor_estoque: 2_100_000, veiculos_anunciados: 7, anuncios_de_vendidos: 0, canais_ligados: 2, canais_caidos: 0, usuarios: 3,
+    valor_estoque: 2_100_000, veiculos_anunciados: 7, canais_ligados: 2, canais_caidos: 0, usuarios: 3,
     usuarios_que_nunca_entraram: 0, ultimo_acesso_em: atras(48), vendas_30d: 1, faturamento_30d: 310_000,
     ultima_venda_em: atras(20).slice(0, 10), ultimo_veiculo_em: atras(40), pedidos_abertos: 2 },
 ];
