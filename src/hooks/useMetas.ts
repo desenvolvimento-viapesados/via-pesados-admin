@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cicloDaData, rotuloDoPeriodo } from '@/lib/okr';
+import { pedacosDe, sugerirDesdobramento } from '@/lib/cascata';
+import { METRICAS, type Natureza } from '@/lib/metricas';
 import type { ChaveMetrica } from '@/lib/metricas';
 
 /**
@@ -38,6 +40,8 @@ export interface KRRow {
   fonte: 'manual' | ChaveMetrica;
   valor_manual: number | null;
   direcao: 'subir' | 'descer'; ordem: number;
+  /** A meta do ciclo maior que esta desdobra. */
+  pai_id: string | null;
 }
 
 export interface Checkin {
@@ -113,6 +117,69 @@ export const useKRs = (cicloId: string | undefined) =>
       return (data ?? []) as KRRow[];
     },
   });
+
+/** As metas que desdobram estas — vivem em outros ciclos, então vêm à parte. */
+export const useFilhos = (paiIds: string[]) =>
+  useQuery({
+    queryKey: ['metas', 'filhos', [...paiIds].sort().join(',')],
+    enabled: paiIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('metas_kr')
+        .select('*, ciclo:metas_ciclos(inicio, fim, rotulo, tipo)')
+        .in('pai_id', paiIds);
+      if (error) throw error;
+      return (data ?? []) as (KRRow & { ciclo: Pick<Ciclo, 'inicio' | 'fim' | 'rotulo' | 'tipo'> })[];
+    },
+  });
+
+/**
+ * Quebra uma meta nos pedaços do período — meses dentro do trimestre,
+ * trimestres dentro do ano.
+ *
+ * Os ciclos filhos nascem aqui se ainda não existirem: pedir que alguém
+ * "abra outubro" antes de desdobrar o trimestre seria burocracia.
+ */
+export const useDesdobrar = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ kr, ciclo }: { kr: KRRow; ciclo: Ciclo }) => {
+      const natureza: Natureza = kr.fonte !== 'manual'
+        ? METRICAS[kr.fonte as keyof typeof METRICAS].natureza
+        : 'fluxo';
+      const pedacos = pedacosDe(ciclo.inicio, ciclo.fim, ciclo.tipo);
+      if (!pedacos.length) return 0;
+      const alvos = sugerirDesdobramento(natureza, Number(kr.partida), Number(kr.alvo), pedacos);
+
+      let anterior = Number(kr.partida);
+      for (let i = 0; i < pedacos.length; i++) {
+        const p = pedacos[i];
+        const { data: achado } = await supabase.from('metas_ciclos').select('id')
+          .eq('tipo', p.tipo).eq('inicio', p.inicio).eq('fim', p.fim).maybeSingle();
+        let cicloId = achado?.id as string | undefined;
+        if (!cicloId) {
+          const { data: novo, error } = await supabase.from('metas_ciclos')
+            .insert({ tipo: p.tipo, rotulo: p.rotulo, inicio: p.inicio, fim: p.fim })
+            .select('id').single();
+          if (error) throw error;
+          cicloId = novo.id as string;
+        }
+        /* Em fluxo cada pedaço começa do zero — o que entrou em novembro
+           não carrega o que entrou em outubro. Em estoque, começa onde o
+           pedaço anterior prometeu parar. */
+        const partida = natureza === 'fluxo' ? 0 : anterior;
+        const { error: erroKr } = await supabase.from('metas_kr').insert({
+          ciclo_id: cicloId, objetivo_id: null, pai_id: kr.id,
+          titulo: kr.titulo, unidade: kr.unidade, fonte: kr.fonte,
+          direcao: kr.direcao, partida, alvo: alvos[i], ordem: i,
+        });
+        if (erroKr) throw erroKr;
+        anterior = alvos[i];
+      }
+      return pedacos.length;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['metas'] }),
+  });
+};
 
 export const useCheckins = (krIds: string[]) =>
   useQuery({

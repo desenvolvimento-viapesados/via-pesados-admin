@@ -18,8 +18,10 @@ import {
   useCiclo, useObjetivos, useKRs, useCheckins, useNSM, useSerieNSM,
   useGravarPontoNSM, useSalvarNSM, useSalvarCiclo, useCriarObjetivo,
   useSalvarObjetivo, useApagarObjetivo, useSalvarKR, useApagarKR, useCheckin,
+  useFilhos, useDesdobrar,
   type TipoDeCiclo, type Objetivo, type KRRow,
 } from '@/hooks/useMetas';
+import { conferirCascata } from '@/lib/cascata';
 import {
   METRICAS, CHAVES_DE_METRICA, valorDaMetrica, type ChaveMetrica,
 } from '@/lib/metricas';
@@ -116,6 +118,8 @@ export default function Metas() {
   );
   const { data: saude = [] } = useCompaniesHealth(companyIds);
 
+  const filhos = useFilhos((krs.data ?? []).map((k) => k.id));
+  const desdobrar = useDesdobrar();
   const gravarPonto = useGravarPontoNSM();
   const salvarNSM = useSalvarNSM();
   const salvarCiclo = useSalvarCiclo();
@@ -147,18 +151,25 @@ export default function Metas() {
   }, [krs.data]);
 
   const comValor = (lista: KRRow[]) => lista.map((k) => ({ ...k, atual: valorDoKr(k) }));
-  const resumo = resumoDoCiclo(
-    (objetivos.data ?? []).map((o) => ({ krs: comValor(porObjetivo.get(o.id) ?? []) })),
-    tempo,
-  );
+  /* As metas que não estão sob objetivo nenhum: a lista principal. */
+  const soltas = comValor((krs.data ?? []).filter((k) => !k.objetivo_id));
+  /* O resumo conta TODAS as metas do período — as soltas e as agrupadas.
+     Contar só as de objetivo mostrava "0 resultados-chave" com meta na
+     tela logo abaixo. */
+  const resumo = {
+    ...resumoDoCiclo(
+      [...(objetivos.data ?? []).map((o) => ({ krs: comValor(porObjetivo.get(o.id) ?? []) })),
+       { krs: soltas }],
+      tempo,
+    ),
+    objetivos: (objetivos.data ?? []).length,
+  };
 
   const valorNSM = nsm.data ? valorDaMetrica(nsm.data.metrica, dados, {
     inicio: `${new Date().getFullYear()}-01-01`, fim: `${new Date().getFullYear()}-12-31`,
   }) : null;
 
   const ultimoCheckin = (krId: string) => (checkins.data ?? []).find((c) => c.kr_id === krId);
-  /* As metas que não estão sob objetivo nenhum: a lista principal. */
-  const soltas = comValor((krs.data ?? []).filter((k) => !k.objetivo_id));
 
   /* A linha de uma meta. A mesma, solta no período ou dentro de um
      objetivo — eram dois blocos iguais, e dois blocos iguais divergem. */
@@ -168,6 +179,13 @@ export default function Metas() {
     const prev = previsaoFinal(kr, tempo);
     const ck = ultimoCheckin(kr.id);
     const def = kr.fonte !== 'manual' ? METRICAS[kr.fonte as ChaveMetrica] : null;
+    /* O desdobramento desta meta nos pedaços do período, e se ele fecha.
+       Em fluxo as partes somam; em estoque, o último degrau é que vale. */
+    const meus = (filhos.data ?? []).filter((x) => x.pai_id === kr.id);
+    const confere = meus.length
+      ? conferirCascata(def?.natureza ?? 'fluxo', Number(kr.alvo),
+          meus.map((x) => ({ id: x.id, inicio: x.ciclo?.inicio ?? '', fim: x.ciclo?.fim ?? '', alvo: Number(x.alvo) })))
+      : null;
     return (
       <div key={kr.id} className="px-4 py-3">
         <div className="flex items-start gap-3">
@@ -197,6 +215,17 @@ export default function Metas() {
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            {!kr.pai_id && !meus.length && horizonte !== 'mes' && ciclo.data && (
+              <button
+                onClick={() => desdobrar.mutateAsync({ kr, ciclo: ciclo.data! })
+                  .then((n) => toast.success(`Dividida em ${n} ${n === 1 ? 'parte' : 'partes'}`))
+                  .catch((e) => toast.error((e as Error).message))}
+                disabled={desdobrar.isPending}
+                title="Dividir nos meses (ou trimestres) deste período"
+                className="h-7 px-2 rounded-lg text-[11px] font-medium text-primary/80 hover:text-primary hover:bg-primary/10 disabled:opacity-50">
+                Desdobrar
+              </button>
+            )}
             <button onClick={() => setDialogCheckin(kr)}
               title="Check-in"
               className="h-7 px-2 rounded-lg text-[11px] font-medium text-foreground/50 hover:text-foreground hover:bg-black/[0.05] dark:hover:bg-white/[0.06]">
@@ -220,6 +249,24 @@ export default function Metas() {
           <div className="absolute top-[-3px] h-[12px] w-px bg-foreground/40"
             style={{ left: `${tempo * 100}%` }} title="ritmo esperado hoje" />
         </div>
+
+        {/* O desdobramento, e se as partes fecham com o todo. */}
+        {confere && (
+          <div className="mt-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] px-3 py-2">
+            <p className={cn('text-[11px] font-medium',
+              confere.bate ? 'text-emerald-500' : 'text-amber-500')}>
+              {confere.texto}
+              {def?.natureza === 'estoque' && confere.bate && ' Em MRR e afins não se soma: o que vale é onde se quer estar no fim.'}
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+              {[...meus].sort((a, b) => (a.ciclo?.inicio ?? '').localeCompare(b.ciclo?.inicio ?? '')).map((x) => (
+                <span key={x.id} className="text-[10.5px] text-foreground/45 tabular-nums">
+                  {x.ciclo?.rotulo}: <span className="text-foreground/70">{formatarValor(Number(x.alvo), kr.unidade)}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {ck?.comentario && (
           <p className="text-[11px] text-foreground/40 mt-1.5">
@@ -325,6 +372,15 @@ export default function Metas() {
         ))}
       </div>
 
+      {/* Cada horizonte é um quadro próprio, e isso não estava dito em
+          lugar nenhum: a pessoa trocava de aba e via o mesmo vazio sem
+          entender que ali se escrevem OUTRAS metas. */}
+      <p className="text-[12px] text-foreground/45 -mt-3">
+        Cada horizonte tem as suas metas. Escreva a do prazo maior primeiro e use
+        <span className="text-foreground/70"> desdobrar</span> para dividi-la nos meses — o
+        sistema confere se as partes fecham com o todo.
+      </p>
+
       {horizonte === 'livre' && (
         <Panel className="p-4 flex items-end gap-3 flex-wrap">
           <div className="space-y-1.5">
@@ -354,7 +410,10 @@ export default function Metas() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
             <Painel titulo={ciclo.data!.rotulo} valor={pct(resumo.progresso)}
               sub={`${Math.round(tempo * 100)}% do tempo corrido`} />
-            <Painel titulo="Objetivos" valor={resumo.objetivos} sub={`${resumo.krs} resultados-chave`} />
+            <Painel titulo="Metas" valor={resumo.krs}
+              sub={resumo.objetivos
+                ? `${resumo.objetivos} ${resumo.objetivos === 1 ? 'objetivo' : 'objetivos'}`
+                : 'sem objetivo agrupando'} />
             <Painel titulo="Em risco" valor={resumo.emRisco}
               tom={resumo.emRisco > 0 ? 'ruim' : undefined}
               sub={resumo.emRisco ? 'precisam de decisão' : 'nenhum'} />
