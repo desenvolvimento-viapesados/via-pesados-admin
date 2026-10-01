@@ -76,6 +76,12 @@ export default function Whatsapp() {
   const [mod, setMod] = useState<Modelos | null>(null);
   const [lendo, setLendo] = useState(true);
   const [ocupado, setOcupado] = useState<string | null>(null);
+  /* O disparo de teste. O número fica vazio de propósito: mensagem de
+     teste chega no telefone de alguém, e o padrão nunca deve ser o
+     telefone de um cliente. */
+  const [testeNumero, setTesteNumero] = useState('');
+  const [testeModelo, setTesteModelo] = useState('');
+  const [testeResultado, setTesteResultado] = useState<string | null>(null);
 
   const ler = useCallback(async () => {
     setLendo(true);
@@ -109,6 +115,24 @@ export default function Whatsapp() {
         toast.warning(`Ligado, mas a YCloud não assinou: ${d.faltando.join(' · ')}`);
       } else toast.success('Entrega de eventos ligada.');
       await ler();
+    } finally { setOcupado(null); }
+  };
+
+  const dispararTeste = async () => {
+    setOcupado('teste');
+    setTesteResultado(null);
+    try {
+      const d = await chamar('wa-acao', {
+        acao: 'testar_template', template: testeModelo, telefone: testeNumero,
+      });
+      if (d?.error) { toast.error(d.error); setTesteResultado(d.error); return; }
+      if (d?.ok) {
+        toast.success('Saiu. Confira o aparelho.');
+        setTesteResultado(`Enviado — id ${d.message_id}`);
+      } else {
+        toast.error(d?.motivo ?? 'Não saiu');
+        setTesteResultado(d?.motivo ?? 'Não saiu');
+      }
     } finally { setOcupado(null); }
   };
 
@@ -303,6 +327,53 @@ export default function Whatsapp() {
             <Aviso tom="ruim">{insc?.erro ?? 'Nenhum app inscrito nesta conta.'}</Aviso>
           )}
           <Botao onClick={inscrever} carregando={ocupado === 'webhook'}>Inscrever esta conta no app</Botao>
+        </Bloco>
+      )}
+
+      {/* ── Disparo de teste ───────────────────────────────────────
+          O caminho inteiro — modelo aprovado, parâmetros, envelope da
+          YCloud, número no ar — só se prova mandando uma. Vai com os
+          exemplos do próprio modelo e com chave única, então não queima
+          a trava de nenhum evento de verdade. */}
+      {naYCloud && (
+        <Bloco titulo="Disparo de teste">
+          <p className="text-[12px] text-foreground/45 leading-snug">
+            Manda um modelo aprovado para o número que você escolher, com os valores de exemplo que
+            a Meta leu na aprovação. É mensagem de verdade: use o seu próprio telefone.
+          </p>
+          <div className="flex items-end gap-2 flex-wrap">
+            <div className="space-y-1">
+              <p className="text-[11px] text-foreground/45">Número com DDD</p>
+              <input
+                value={testeNumero}
+                onChange={(e) => setTesteNumero(e.target.value)}
+                placeholder="27999999999"
+                className="h-10 w-[180px] px-3 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1] text-[13px] outline-none focus:border-primary/50"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-[11px] text-foreground/45">Modelo</p>
+              <select
+                value={testeModelo}
+                onChange={(e) => setTesteModelo(e.target.value)}
+                className="h-10 w-[240px] px-3 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1] text-[13px] outline-none focus:border-primary/50"
+              >
+                <option value="">escolha…</option>
+                {(diag?.templates ?? []).filter((t) => t.status === 'APPROVED').map((t) => (
+                  <option key={t.nome} value={t.nome}>{t.nome}</option>
+                ))}
+              </select>
+            </div>
+            <div className="w-[150px]">
+              <Botao onClick={dispararTeste} carregando={ocupado === 'teste'}
+                desabilitado={!testeNumero.trim() || !testeModelo}>
+                Enviar teste
+              </Botao>
+            </div>
+          </div>
+          {testeResultado && (
+            <Aviso tom={testeResultado.startsWith('Enviado') ? 'bom' : 'ruim'}>{testeResultado}</Aviso>
+          )}
         </Bloco>
       )}
 

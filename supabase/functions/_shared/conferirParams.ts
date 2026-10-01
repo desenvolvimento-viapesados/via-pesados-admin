@@ -72,3 +72,43 @@ export function conferirParams(template: string, p: ParamsConferidos = {}): stri
 
   return erros;
 }
+
+/**
+ * Os parâmetros de EXEMPLO do próprio modelo aprovado.
+ *
+ * Toda submissão à Meta leva exemplos — foi com eles que o revisor leu o
+ * texto. Para um disparo de teste, são a melhor escolha possível: saem
+ * exatamente no formato que a Meta aprovou, e ninguém precisa inventar
+ * valor que depois não bate com a conferência.
+ */
+export function exemploDoModelo(template: string): ParamsConferidos | null {
+  const modelo = MODELOS.find((m) => m.name === template);
+  if (!modelo) return null;
+  const p: ParamsConferidos = {};
+  for (const c of modelo.components as Record<string, unknown>[]) {
+    const ex = c.example as Record<string, unknown> | undefined;
+    if (c.type === 'BODY') {
+      p.body = ((ex?.body_text as string[][] | undefined)?.[0] ?? []).map(String);
+    }
+    if (c.type === 'HEADER') {
+      if (c.format === 'TEXT') p.header = ((ex?.header_text as string[] | undefined) ?? []).map(String);
+      if (c.format === 'DOCUMENT') {
+        const link = (ex?.header_url as string[] | undefined)?.[0]
+          ?? (ex?.header_handle as string[] | undefined)?.[0];
+        if (link) p.documento = { link, filename: 'Exemplo — Via Pesados.pdf' };
+      }
+    }
+    if (c.type === 'BUTTONS') {
+      const b = (c.buttons as { type: string; url?: string; example?: string[] }[] | undefined) ?? [];
+      const dinamico = b.find((x) => x.type === 'URL' && (x.url ?? '').includes('{{1}}'));
+      if (dinamico) {
+        /* O exemplo do botão é a URL inteira; o que vai no disparo é só o
+           sufixo — o resto a Meta monta a partir do modelo. */
+        const inteira = dinamico.example?.[0] ?? '';
+        const base = (dinamico.url ?? '').replace('{{1}}', '');
+        p.urlSuffix = (inteira.startsWith(base) ? inteira.slice(base.length) : 'exemplo') || 'exemplo';
+      }
+    }
+  }
+  return p;
+}

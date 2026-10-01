@@ -2,6 +2,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { evolution, criarInstancia, garantirWebhook, paraEnvio } from '../_shared/evolution.ts';
 import { apagarWebhook, configYCloud, criarWebhook, enviarTextoPorYCloud, EVENTOS, listarWebhooks }
   from '../_shared/ycloud.ts';
+import { enviarTemplate } from '../_shared/wa.ts';
+import { exemploDoModelo } from '../_shared/conferirParams.ts';
 
 /**
  * O que a tela de WhatsApp precisa fazer do lado do servidor.
@@ -36,7 +38,7 @@ Deno.serve(async (req) => {
     const { data: { user } } = await db.auth.getUser(auth);
     if (!user) return json(401, { error: 'não autenticado' });
     const { data: membro } = await db.from('team_members')
-      .select('id, full_name, is_active').eq('id', user.id).maybeSingle();
+      .select('id, full_name, is_active, email').eq('id', user.id).maybeSingle();
     if (!membro || membro.is_active === false) return json(403, { error: 'acesso negado' });
 
     const corpo = await req.json();
@@ -198,6 +200,32 @@ Deno.serve(async (req) => {
       }).eq('id', conversa.id);
 
       return json(200, { ok: true, provider_message_id: providerId });
+    }
+
+    /* ── disparo de teste ────────────────────────────────────────
+       O caminho inteiro — modelo aprovado, parâmetros de exemplo,
+       envelope da YCloud, número no ar — só se prova mandando. Vai com
+       os exemplos do PRÓPRIO modelo, que é o texto que a Meta leu e
+       aprovou, e com chave única: teste não queima a trava de nenhum
+       evento de verdade. */
+    if (acao === 'testar_template') {
+      const template = String(corpo.template ?? '').trim();
+      const telefone = String(corpo.telefone ?? '').trim();
+      if (!template || !telefone) return json(400, { error: 'Informe o modelo e o número' });
+
+      const params = exemploDoModelo(template);
+      if (!params) return json(400, { error: `Não conheço o modelo "${template}"` });
+
+      const r = await enviarTemplate(db, {
+        para: telefone,
+        template,
+        chave: `teste:${template}:${Date.now()}`,
+        params,
+      });
+      /* Quem mandou e para onde fica no log: disparo de teste é mensagem
+         de verdade no telefone de alguém. */
+      console.log(`[wa teste] ${membro.email ?? membro.id} -> ${telefone} (${template}):`, JSON.stringify(r));
+      return json(200, { ...r, enviou: r.ok, params });
     }
 
     /* ── ligar a entrega de eventos da YCloud ────────────────────── */
