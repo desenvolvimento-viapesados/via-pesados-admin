@@ -1,8 +1,8 @@
 import { type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Users, DollarSign, CreditCard, MessageSquare, MessageCircle, BarChart3, ChevronRight,
-  UserCheck, LogOut, Sun, Moon, ExternalLink,
+  Users, DollarSign, CreditCard, MessageSquare, BarChart3, ChevronRight,
+  UserCheck, LogOut, Sun, Moon, ExternalLink, Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
@@ -215,8 +215,8 @@ export default function Home() {
             <ModuleTile label="Financeiro" description="Entradas, saídas e vencimentos"     icon={<DollarSign />}    onClick={() => navigate('/financeiro')} />
             <ModuleTile label="Suporte"    description="Tickets dos clientes"     icon={<MessageSquare />} onClick={() => navigate('/tickets')} badge={openTickets} />
             <ModuleTile label="Relatórios" description="Recorrência, funil e caixa"  icon={<BarChart3 />}     onClick={() => navigate('/relatorios')} />
+            <ModuleTile label="Metas"      description="Norte, OKR e horizonte"   icon={<Target />}        onClick={() => navigate('/metas')} />
             <ModuleTile label="Equipe"     description="Membros e acessos"        icon={<UserCheck />}     onClick={() => navigate('/equipe')} />
-            <ModuleTile label="WhatsApp"   description="Conta, número e modelos"  icon={<MessageCircle />} onClick={() => navigate('/whatsapp')} />
           </div>
         </div>
       </main>
