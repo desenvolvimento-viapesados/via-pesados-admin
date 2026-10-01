@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { MODELOS, type Componente } from './modelos.ts';
+import { MODELOS, type Componente } from '../_shared/modelos.ts';
 import { configYCloud, faltaNaYCloud, listarTemplates, criarTemplate, ycloudPelaMetade } from '../_shared/ycloud.ts';
 
 /**

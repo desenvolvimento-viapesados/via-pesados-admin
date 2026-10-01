@@ -27,6 +27,7 @@
  */
 
 import { configYCloud, enviarPorYCloud, ycloudPelaMetade } from './ycloud.ts';
+import { conferirParams } from './conferirParams.ts';
 
 const GRAPH = 'https://graph.facebook.com/v21.0';
 
@@ -122,6 +123,16 @@ export async function enviarTemplate(
   if (!ycloud && (!token || !numeroId)) {
     console.log(`[wa inerte] ${args.template} -> ${para}`, JSON.stringify(args.params ?? {}));
     return { ok: false, motivo: 'nenhum provedor de WhatsApp configurado', inerte: true };
+  }
+
+  /* A conferência vem ANTES da trava, e é de propósito: parâmetro a menos
+     é recusa da Meta, e queimar a chave aqui faria aquele evento nunca
+     mais sair. Com o erro devolvido e a chave livre, corrigir o gatilho
+     e reenviar continua possível. */
+  const problemas = conferirParams(args.template, args.params ?? {});
+  if (problemas.length) {
+    console.error(`[wa] ${args.template} não bate com o modelo aprovado: ${problemas.join('; ')}`);
+    return { ok: false, motivo: `${args.template}: ${problemas.join('; ')}` };
   }
 
   /* Trava de repetição ANTES de falar com a Meta: se o insert conflitar,
