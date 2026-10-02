@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
-  configYCloud, faltaNaYCloud, listarTemplates, listarWebhooks, ycloudPelaMetade,
+  configYCloud, faltaNaYCloud, listarTemplates, listarWebhooks, listarNumeros, lerPerfil, ycloudPelaMetade,
 } from '../_shared/ycloud.ts';
 
 /**
@@ -50,6 +50,44 @@ Deno.serve(async (req) => {
       const porStatus: Record<string, number> = {};
       for (const t of lista) porStatus[t.status] = (porStatus[t.status] ?? 0) + 1;
 
+      /* O número como a Meta o vê. Falhar aqui não esconde o resto: é
+         pergunta separada, e "não sei" é melhor que tela em branco. */
+      let numero: unknown = null;
+      let erroNumero: string | null = null;
+      try {
+        const nums = await listarNumeros(ycloud);
+        const n = nums.find((x) => (x.phoneNumber ?? '').replace(/\D/g, '').endsWith(ycloud.numero.replace(/\D/g, '')))
+          ?? nums[0] ?? null;
+        numero = n && {
+          telefone: n.phoneNumber,
+          nome_exibicao: n.verifiedName ?? n.displayName ?? null,
+          /* APPROVED é o que faz quem recebe ler "Via Pesados" no lugar
+             do número. Sem isso, a mensagem chega como desconhecido. */
+          nome_status: n.nameStatus ?? null,
+          qualidade: n.qualityRating ?? null,
+          limite: n.messagingLimit ?? null,
+          situacao: n.status ?? null,
+          selo_oficial: n.isOfficialBusinessAccount ?? null,
+        };
+      } catch (e) {
+        erroNumero = e instanceof Error ? e.message : 'não consegui ler o número';
+      }
+
+      /* O perfil é o que o cliente lê quando toca no nome da conversa. */
+      let perfil: unknown = null;
+      try {
+        const pf = await lerPerfil(ycloud);
+        perfil = {
+          descricao: pf.description ?? null,
+          sobre: pf.about ?? null,
+          endereco: pf.address ?? null,
+          email: pf.email ?? null,
+          sites: pf.websites ?? [],
+          foto: pf.profilePictureUrl ?? null,
+          categoria: pf.vertical ?? null,
+        };
+      } catch { /* perfil é extra: falhar aqui não esconde o resto */ }
+
       /* Falhar aqui não pode esconder os templates: o endereço de entrega
          é outra pergunta, e a resposta "não sei" é melhor que a tela
          inteira em branco. */
@@ -77,6 +115,9 @@ Deno.serve(async (req) => {
         provedor: 'ycloud',
         conta: ycloud.waba,
         numero_ycloud: ycloud.numero,
+        numero,
+        perfil,
+        erro_numero: erroNumero,
         entrega: {
           endpoint_id: wh?.endpoint_id ?? null,
           url: wh?.url ?? null,

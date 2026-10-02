@@ -42,7 +42,16 @@ type Diag = {
     endpoint_id: string | null; url: string | null; eventos: string[];
     segredo_guardado: boolean; combinando: boolean;
   };
-  numero?: { telefone?: string; nome?: string; situacao?: string; qualidade?: string; nome_status?: string };
+  numero?: {
+    telefone?: string; nome?: string; situacao?: string; qualidade?: string; nome_status?: string;
+    /* O caminho YCloud devolve o número como a Meta o vê — é aqui que se
+       responde "por que a mensagem chegou como número desconhecido". */
+    nome_exibicao?: string | null; limite?: string | null; selo_oficial?: boolean | null;
+  };
+  perfil?: {
+    descricao?: string | null; sobre?: string | null; endereco?: string | null;
+    email?: string | null; sites?: string[]; foto?: string | null; categoria?: string | null;
+  } | null;
   conta_waba?: { nome?: string; revisao_da_conta?: string; verificacao_do_negocio?: string };
   total?: number;
 };
@@ -227,9 +236,17 @@ export default function Whatsapp() {
             </div>
             <Linhas itens={naYCloud ? [
               ['Provedor', 'YCloud'],
-              ['Número que envia', diag?.numero_ycloud],
+              ['Número que envia', diag?.numero?.telefone ?? diag?.numero_ycloud],
+              ['Nome de exibição', diag?.numero?.nome_exibicao ?? undefined],
+              ['Situação do nome', diag?.numero?.nome_status ?? undefined],
+              ['Qualidade', diag?.numero?.qualidade ?? undefined],
+              ['Limite por dia', diag?.numero?.limite?.replace('TIER_', '') ?? undefined],
+              ['Selo de conta oficial', diag?.numero
+                ? (diag.numero.selo_oficial ? 'sim' : 'não — quem recebe vê o número, não o nome')
+                : undefined],
               ['Conta (WABA)', diag?.conta],
               ['Modelos na conta', diag?.total != null ? String(diag.total) : undefined],
+              ['Perfil', diag?.perfil?.descricao ?? undefined],
             ] : [
               ['Telefone', diag?.numero?.telefone],
               ['Nome de exibição', diag?.numero?.nome],

@@ -191,3 +191,56 @@ export async function enviarTextoPorYCloud(
   });
   return { id: String(d?.id ?? d?.wamid ?? '') };
 }
+
+export type NumeroYCloud = {
+  id?: string;
+  phoneNumber?: string;
+  verifiedName?: string;
+  displayName?: string;
+  nameStatus?: string;
+  qualityRating?: string;
+  messagingLimit?: string;
+  status?: string;
+  codeVerificationStatus?: string;
+  isOfficialBusinessAccount?: boolean;
+};
+
+/**
+ * O número como a Meta o vê.
+ *
+ * É aqui que mora a resposta para "a mensagem chegou como número
+ * desconhecido": quem recebe só lê o nome do negócio quando o
+ * `nameStatus` do número está aprovado. Qualidade e limite vêm junto
+ * porque são as outras duas coisas que decidem se a mensagem sai.
+ */
+export async function listarNumeros(cfg: Config): Promise<NumeroYCloud[]> {
+  const d = await chamar(cfg, `/whatsapp/phoneNumbers?filterWabaId=${encodeURIComponent(cfg.waba)}&limit=50`);
+  return (d?.items ?? d?.data ?? []) as NumeroYCloud[];
+}
+
+export type PerfilDoNumero = {
+  about?: string; address?: string; description?: string; email?: string;
+  websites?: string[]; profilePictureUrl?: string; vertical?: string;
+  verifiedName?: string; nameStatus?: string;
+};
+
+/**
+ * O perfil que o cliente vê ao tocar no nome da conversa.
+ *
+ * Foto, descrição, site e categoria. Nada disso muda o nome que aparece
+ * no topo — isso é o `nameStatus` do número —, mas é o que diferencia
+ * "empresa de verdade" de "número solto" para quem recebeu a primeira
+ * mensagem e foi conferir quem está falando.
+ */
+export async function lerPerfil(cfg: Config): Promise<PerfilDoNumero> {
+  const tel = cfg.numero.startsWith('+') ? cfg.numero : `+${cfg.numero}`;
+  return await chamar(cfg, `/whatsapp/phoneNumbers/${encodeURIComponent(cfg.waba)}/${encodeURIComponent(tel)}/profile`) as PerfilDoNumero;
+}
+
+export async function salvarPerfil(cfg: Config, perfil: PerfilDoNumero): Promise<PerfilDoNumero> {
+  const tel = cfg.numero.startsWith('+') ? cfg.numero : `+${cfg.numero}`;
+  return await chamar(
+    cfg, `/whatsapp/phoneNumbers/${encodeURIComponent(cfg.waba)}/${encodeURIComponent(tel)}/profile`,
+    'POST', perfil,
+  ) as PerfilDoNumero;
+}
