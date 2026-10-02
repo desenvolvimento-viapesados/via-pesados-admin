@@ -254,6 +254,30 @@
   .nota-vendeu { margin-top: 18px; color: var(--cinza); font-size: .95rem; }
   .nota-vendeu strong { color: var(--claro); }
 
+  /* ── a conta do tempo: como é hoje × como fica ──────────────────────── */
+  .antes-depois { margin-top: 54px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .coluna-tempo {
+    background: var(--cartao); border: 1px solid var(--linha);
+    border-radius: var(--raio); padding: 24px clamp(18px, 2.4vw, 28px);
+  }
+  .coluna-tempo.agora { background: #0b1710; border-color: #25d36630; }
+  .coluna-tempo .rotulo {
+    display: block; font-size: .72rem; font-weight: 800; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--cinza-escuro); margin-bottom: 16px;
+  }
+  .coluna-tempo.agora .rotulo { color: #7CFFB4; }
+  .coluna-tempo ul { list-style: none; display: grid; gap: 11px; }
+  .coluna-tempo li { display: flex; gap: 11px; align-items: flex-start; color: var(--cinza); font-size: .97rem; line-height: 1.45; }
+  .coluna-tempo li::before { content: "✕"; flex: none; font-weight: 800; color: #7a4f4f; line-height: 1.4; }
+  .coluna-tempo.agora li { color: var(--claro); }
+  .coluna-tempo.agora li::before { content: "✓"; color: var(--zap); }
+  .conta-tempo {
+    margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--linha);
+    font-size: .95rem; color: var(--cinza);
+  }
+  .conta-tempo b { color: var(--claro); }
+  .coluna-tempo.agora .conta-tempo b { color: #7CFFB4; }
+
   /* ── FONE ───────────────────────────────────────────────────────────── */
   .trecho-fone { background: linear-gradient(180deg, var(--fundo), #0A100D 30%, #0A120E 70%, var(--fundo)); }
   .palco-fone { height: 330vh; position: relative; }
@@ -471,6 +495,7 @@
   }
   @media (max-width: 560px) {
     .grade, .numeros, .beneficios-site { grid-template-columns: 1fr; }
+    .antes-depois { grid-template-columns: 1fr; }
     .etapa { font-size: .84rem; padding: 9px 15px; }
   }
 
@@ -592,6 +617,31 @@
         </div>
         <p class="nota-vendeu">E quando vender? <strong>O sistema tira o anúncio de todos os canais sozinho.</strong> Ninguém liga por caminhão que já saiu.</p>
         <p class="nota-vendeu">Quem aparece primeiro vende primeiro: <strong>o caminhão que entrou hoje no pátio está anunciado hoje</strong> — não na semana que vem, quando alguém tiver tempo.</p>
+      </div>
+    </div>
+
+    <div class="antes-depois">
+      <div class="coluna-tempo rev">
+        <span class="rotulo">Como é hoje, na sua loja</span>
+        <ul>
+          <li>Cinco aplicativos abertos, um de cada vez</li>
+          <li>A mesma descrição digitada cinco vezes</li>
+          <li>Foto cortada e redimensionada na mão para cada canal</li>
+          <li>Mudou o preço? Mudar nos cinco</li>
+          <li>Vendeu? Despublicar um por um — e ainda atender ligação de caminhão que já saiu</li>
+        </ul>
+        <p class="conta-tempo">Um pátio de 30 caminhões: <b>quase dois dias de trabalho</b> só publicando anúncio.</p>
+      </div>
+      <div class="coluna-tempo agora rev d1">
+        <span class="rotulo">Com o Via Pesados</span>
+        <ul>
+          <li>Uma ficha só — e os cinco canais de uma vez</li>
+          <li>As fotos já saem editadas, no tamanho de cada canal</li>
+          <li>O cliente recebe a ficha inteira no WhatsApp, montada daquele veículo</li>
+          <li>Mudou o preço? Muda em todos sozinho</li>
+          <li>Vendeu? Sai de todos sozinho, no mesmo instante</li>
+        </ul>
+        <p class="conta-tempo">Os mesmos 30 caminhões: <b>no ar na mesma manhã</b> — e o vendedor atendendo cliente.</p>
       </div>
     </div>
   </div>
