@@ -17,7 +17,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
 <link rel="preload" as="image" href="/conheca/img/via-icon-white.png" />
-<link rel="preload" as="image" href="/conheca/img/scania-card.jpg" />
 <style>
   /* ── fundações — a estética do sistema Via Pesados ───────────────────── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -155,25 +154,9 @@
   .etapa.agora b { background: var(--laranja); color: #1d0c00; }
   .tracinho { width: clamp(16px, 4vw, 46px); height: 2px; background: #ffffff14; align-self: center; }
 
-  .palco-canais {
-    display: grid; grid-template-columns: minmax(270px, 360px) 1fr;
-    gap: clamp(20px, 4vw, 56px); align-items: center; margin-top: 30px;
-  }
+  .palco-canais { margin-top: 26px; }
 
-  /* o cartão do veículo, como aparece no estoque */
-  .cartao-veiculo {
-    background: var(--cartao); border: 1px solid var(--linha); border-radius: var(--raio);
-    overflow: hidden; position: relative;
-    box-shadow: 0 50px 100px -40px rgba(0,0,0,.9), 0 0 70px -30px rgba(255,110,0,.35);
-  }
-  .cartao-veiculo .foto { aspect-ratio: 16/10; overflow: hidden; }
-  .cartao-veiculo .foto img { width: 100%; height: 100%; object-fit: cover; object-position: center 42%; }
-  .cartao-veiculo .info { padding: 16px 16px 18px; }
-  .cartao-veiculo h3 { font-size: 1.1rem; }
-  .cartao-veiculo .meta { color: var(--cinza); font-size: .84rem; margin-top: 3px; }
-  .cartao-veiculo .preco { color: var(--laranja); font-weight: 800; font-size: 1.28rem; margin-top: 9px; font-variant-numeric: tabular-nums; }
-
-  .caixa-botao { position: relative; margin-top: 15px; }
+  .caixa-botao { position: relative; width: min(344px, 84vw); margin: 26px auto 0; }
   .botao-anunciar {
     width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
     background: var(--laranja); color: #1d0c00;
@@ -192,19 +175,20 @@
     0%   { opacity: .95; transform: scale(1); }
     100% { opacity: 0;   transform: scale(1.35); }
   }
-  /* o cursor que vai até o botão — dá o "quem faz" da cena */
+  /* o cursor sai de fora e para no meio do botão, seja qual for a largura */
   .cursor {
     position: absolute; z-index: 8; width: 26px; height: 26px;
-    right: 5%; bottom: 3%; opacity: 0;
+    left: 50%; top: 50%; margin: -13px 0 0 -13px; opacity: 0;
+    transform: translate(188px, 84px);
     transition: transform .95s cubic-bezier(.3,.9,.3,1), opacity .35s ease;
     filter: drop-shadow(0 3px 8px #000);
   }
   .cursor.aparece { opacity: 1; }
-  .cursor.mira { transform: translate(-78px, -34px); }
-  .cursor.clicou { transform: translate(-78px, -30px) scale(.86); }
+  .cursor.mira { transform: translate(7px, 9px); }
+  .cursor.clicou { transform: translate(7px, 9px) scale(.84); }
 
   /* ── a órbita: o Via Pesados no centro, os canais em volta ─────────── */
-  .orbita { --raio: 36.54%; --disco: 62px; position: relative; width: min(540px, 100%); aspect-ratio: 1; margin: 30px auto 6px; }
+  .orbita { --raio: 36.54%; --disco: 68px; position: relative; width: min(620px, 100%); aspect-ratio: 1; margin: 18px auto 0; }
   .orbita .raios { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
   .anel { fill: none; stroke: #ffffff10; stroke-width: 1.5; stroke-dasharray: 2 11; }
   .trilho { stroke: #ffffff14; stroke-width: 2; stroke-linecap: round; transition: stroke .5s ease; }
@@ -489,7 +473,7 @@
   /* itens de grid têm min-width:auto por padrão e são estourados por
      conteúdo de largura intrínseca (o vídeo, os prints). min-width:0 é o
      que impede a barra de rolagem horizontal. */
-  .palco-video > *, .palco-canais > *, .pergunta > *, .linha-venda > *,
+  .palco-video > *, .pergunta > *, .linha-venda > *,
   .trio > *, .grade > *, .numeros > *, .beneficios-site > * { min-width: 0; }
 
   /* ── responsivo ─────────────────────────────────────────────────────── */
@@ -499,10 +483,7 @@
     .grade { grid-template-columns: 1fr 1fr; }
     .numeros { grid-template-columns: 1fr 1fr; }
     .beneficios-site { grid-template-columns: 1fr 1fr; }
-    .palco-canais { grid-template-columns: 1fr; }
-    .cartao-veiculo { max-width: 400px; margin-inline: auto; }
-    .orbita { --disco: 56px; }
-    .cartao-veiculo { margin-bottom: 6px; }
+    .orbita { --disco: 58px; }
     .site-flutuante { position: static; width: 100%; margin-top: 14px; transform: none; }
     .etiqueta-flutuante { position: static; max-width: none; margin-top: 14px; }
     .tracinho { display: none; }
@@ -563,9 +544,9 @@
 <section class="secao multicanal" id="canais">
   <div class="wrap">
     <div class="centrado">
-      <p class="olho rev">Conectado com todos os canais</p>
-      <h2 class="rev d1">Um clique. E o caminhão está <span class="acento">em cinco lugares</span>.</h2>
-      <p class="conversa rev d2">Mercado Livre, Facebook, Instagram, WhatsApp e o site da sua loja — <strong>todos ligados de uma vez</strong>, sem integrador e sem ninguém de TI. Hoje são cinco aplicativos e a mesma descrição escrita cinco vezes; aqui é <strong>apertar um botão na ficha do veículo</strong>, com as fotos já editadas.</p>
+      <p class="olho rev">Todos os canais de venda</p>
+      <h2 class="rev d1">O único sistema de pesados <span class="acento">ligado em todos os seus canais</span>.</h2>
+      <p class="conversa rev d2">Mercado Livre, Facebook, Instagram, WhatsApp e o site da sua loja: todos ligados de uma vez, <strong>sem integrador e sem ninguém de TI</strong>. O sistema cuida dos cinco por você — preço, fotos e estoque sempre iguais em todo lugar. E o mais importante: <strong>põe o caminhão no ar nos cinco com um botão só</strong>, para o seu tempo ir para onde dá dinheiro, que é vender.</p>
 
       <div class="etapas rev d3" id="etapas">
         <span class="etapa" data-etapa="1"><b>1</b> Você aperta o botão</span>
@@ -577,21 +558,7 @@
     </div>
 
     <div class="palco-canais" id="palco-canais">
-      <div class="cartao-veiculo rev">
-        <div class="foto"><img src="/conheca/img/scania-card.jpg" alt="Scania S 540 no pátio da loja" /></div>
-        <div class="info">
-          <h3>SCANIA S 540 6x4</h3>
-          <p class="meta">2022/2022 · Cavalo · 244.000 km</p>
-          <p class="preco">R$ 701.000</p>
-          <div class="caixa-botao">
-            <button class="botao-anunciar" id="botao-anunciar" type="button" tabindex="-1" aria-hidden="true">⚡ Anunciar em todos os canais</button>
-            <span class="onda" id="onda"></span>
-          </div>
-        </div>
-        <svg class="cursor" id="cursor" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2.5 19 12l-6.2 1.3L9.9 19 5 2.5Z" fill="#fff" stroke="#000" stroke-width="1.2" stroke-linejoin="round"/></svg>
-      </div>
-
-      <div class="orbita rev d1" id="orbita">
+      <div class="orbita rev" id="orbita">
         <svg class="raios" viewBox="0 0 520 520" aria-hidden="true">
           <circle class="anel" cx="260" cy="260" r="190" />
         <g class="raio" data-raio="0">
@@ -646,6 +613,12 @@
         <span class="nome">Site da sua loja<small>página do veículo</small></span>
         <span class="chip-no-ar">✓ NO AR</span>
       </div>
+      </div>
+
+      <div class="caixa-botao rev d1">
+        <button class="botao-anunciar" id="botao-anunciar" type="button" tabindex="-1" aria-hidden="true">⚡ Anunciar em todos os canais</button>
+        <span class="onda" id="onda"></span>
+        <svg class="cursor" id="cursor" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2.5 19 12l-6.2 1.3L9.9 19 5 2.5Z" fill="#fff" stroke="#000" stroke-width="1.2" stroke-linejoin="round"/></svg>
       </div>
     </div>
 
@@ -767,7 +740,7 @@
         <img src="/conheca/img/site.jpg" alt="Página inicial do site da loja, com a marca do lojista" />
       </div>
       <div class="site-flutuante"><img src="/conheca/img/site-veiculo.jpg" alt="Página do Scania S 540 no site da loja" /></div>
-      <div class="etiqueta-flutuante"><b>O mesmo Scania de agora há pouco.</b> Você apertou um botão lá em cima — a página dele já estava assim.</div>
+      <div class="etiqueta-flutuante"><b>Página criada sozinha.</b> Aquele mesmo botão lá em cima — e o caminhão já estava assim no seu site, sem ninguém montar nada.</div>
     </div>
 
     <div class="beneficios-site">
