@@ -225,37 +225,6 @@
   .frase-forte s { color: var(--cinza-escuro); text-decoration-color: #ff6e0088; text-decoration-thickness: .08em; }
   .frase-forte b { color: var(--laranja); }
 
-  /* ── o confronto, linha a linha ─────────────────────────────────────── */
-  .duelo { margin-top: clamp(46px, 7vw, 76px); display: grid; gap: 9px; }
-  .duelo-topo {
-    display: grid; grid-template-columns: 1fr 46px 1fr; gap: 12px;
-    font-size: .71rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
-  }
-  .duelo-topo .rotulo-velho { color: var(--cinza-escuro); padding-left: 2px; }
-  .duelo-topo .rotulo-novo { grid-column: 3; color: #7CFFB4; padding-left: 2px; }
-  .duelo-linha { display: grid; grid-template-columns: 1fr 46px 1fr; gap: 12px; align-items: stretch; }
-  .duelo-linha .lado {
-    display: grid; align-content: center; gap: 3px;
-    border-radius: 15px; padding: 15px clamp(15px, 1.9vw, 22px);
-    border: 1px solid var(--linha); background: #101012;
-  }
-  .duelo-linha .lado b { font-size: clamp(.98rem, 1.5vw, 1.12rem); font-weight: 800; letter-spacing: -.015em; }
-  .duelo-linha .lado span { font-size: .85rem; color: var(--cinza-escuro); line-height: 1.35; }
-  .duelo-linha .velho b { color: #8e8a92; }
-  .duelo-linha .novo {
-    background: linear-gradient(135deg, #0d1b13, #0b1510 60%);
-    border-color: #25d36638; box-shadow: inset 0 0 40px -22px rgba(37,211,102,.6);
-  }
-  .duelo-linha .novo b { color: #8BFFBE; }
-  .duelo-linha .novo span { color: #7f9c8a; }
-  .duelo-linha .seta {
-    align-self: center; text-align: center; color: var(--laranja);
-    font-size: 1.2rem; font-weight: 800; line-height: 1;
-  }
-  .duelo-conta {
-    margin-top: 22px; text-align: center; color: var(--cinza); font-size: 1rem;
-  }
-  .duelo-conta b { color: var(--claro); }
 
   /* ── FONE ───────────────────────────────────────────────────────────── */
   .trecho-fone { background: linear-gradient(180deg, var(--fundo), #0A100D 30%, #0A120E 70%, var(--fundo)); }
@@ -325,6 +294,44 @@
   .legenda-topo { margin-top: 22px; text-align: center; color: var(--cinza); font-size: 1rem; }
   .legenda-topo b { color: var(--claro); }
 
+  /* ── cada loja com a sua marca ──────────────────────────────────────── */
+  .personalizacao { margin-top: clamp(56px, 8vw, 90px); }
+  .frase-forte.menor { font-size: clamp(1.35rem, 3.1vw, 2.1rem); max-width: 24ch; margin-top: 0; }
+  .centrado-estreito { max-width: 58ch; margin: 16px auto 0; text-align: center; }
+  .marcas-lojas {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+    gap: 14px; margin-top: 38px;
+  }
+  .marca-loja {
+    display: flex; align-items: center; gap: 12px;
+    background: #111113; border: 1px solid var(--linha); border-radius: 16px;
+    padding: 13px 20px 13px 14px;
+    transform: rotate(var(--giro, 0deg)) translateY(var(--sobe, 0));
+    box-shadow: 0 26px 50px -30px #000;
+    transition: transform .35s cubic-bezier(.2,.9,.3,1), border-color .35s ease;
+  }
+  .marca-loja:hover { transform: rotate(0deg) translateY(0) scale(1.03); border-color: #ffffff2e; }
+  .marca-loja .emblema {
+    width: 44px; height: 44px; border-radius: 13px; flex: none;
+    display: grid; place-content: center; color: #fff;
+    background: linear-gradient(140deg, var(--c1, #333), var(--c2, #666));
+    box-shadow: inset 0 1px 0 #ffffff40;
+  }
+  .marca-loja .emblema svg { width: 23px; height: auto; }
+  .marca-loja .emblema b { font-size: 1.3rem; font-weight: 800; line-height: 1; }
+  .marca-loja .nome-loja {
+    font-weight: 800; font-size: .98rem; line-height: 1.1; letter-spacing: -.015em; white-space: nowrap;
+  }
+  .marca-loja .nome-loja small {
+    display: block; font-weight: 600; font-size: .72rem; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--cinza-escuro); margin-top: 3px;
+  }
+  .marca-loja.vazia { background: transparent; border-style: dashed; border-color: #ff6e0055; }
+  .marca-loja.vazia .emblema { background: #ff6e001f; border: 1px dashed #ff6e0070; color: var(--laranja); box-shadow: none; }
+  .marca-loja.vazia .nome-loja { color: var(--laranja-claro); }
+  .marca-loja.vazia .nome-loja small { color: #ff8a2b99; }
+  .nota-exemplo { margin-top: 22px; text-align: center; color: var(--cinza-escuro); font-size: .78rem; }
+
   /* ── vídeo real do CRM ──────────────────────────────────────────────── */
   .palco-video { display: grid; grid-template-columns: 1.45fr 1fr; gap: clamp(28px, 4vw, 60px); align-items: start; margin-top: 46px; }
   .selo-real {
@@ -376,6 +383,28 @@
   .beneficio { border: 1px solid var(--linha); background: var(--cartao); border-radius: 16px; padding: 20px; }
   .beneficio b { display: block; font-size: .98rem; margin-bottom: 5px; }
   .beneficio span { color: var(--cinza); font-size: .86rem; line-height: 1.45; display: block; }
+
+  /* a mesma base, a cara de cada loja */
+  .cada-loja {
+    display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+    gap: 10px 26px; margin-top: clamp(66px, 9vh, 100px);
+  }
+  .selos-marca { display: flex; }
+  .selo-marca {
+    width: 46px; height: 46px; border-radius: 14px; display: grid; place-content: center;
+    color: #fff; background: linear-gradient(140deg, var(--c1, #333), var(--c2, #666));
+    border: 2px solid var(--fundo); margin-right: -12px;
+    box-shadow: inset 0 1px 0 #ffffff40, 0 14px 30px -16px #000;
+  }
+  .selo-marca svg { width: 23px; height: auto; }
+  .selo-marca.vazio {
+    background: #16110c; border: 2px dashed #ff6e0070; color: var(--laranja);
+    box-shadow: none; margin-right: 0;
+  }
+  .selo-marca.vazio b { font-size: 1.25rem; font-weight: 800; line-height: 1; }
+  .cada-loja p { color: var(--cinza); font-size: .97rem; max-width: 54ch; }
+  .cada-loja p b { color: var(--claro); }
+  .cada-loja p small { display: block; color: var(--cinza-escuro); font-size: .76rem; margin-top: 4px; }
 
   /* ── relatórios ─────────────────────────────────────────────────────── */
   .fundo-relat { background: linear-gradient(180deg, var(--fundo), #100B06 35%, #0C0906 75%, var(--fundo)); }
@@ -474,13 +503,9 @@
   }
   @media (max-width: 560px) {
     .grade, .numeros, .beneficios-site { grid-template-columns: 1fr; }
-    .duelo-topo { display: none; }
-    .duelo { gap: 16px; }
-    .duelo-linha { grid-template-columns: 1fr; gap: 6px; }
-    /* girar o elemento esticaria a caixa de 16px para a largura da coluna;
-       aqui a seta só troca de glifo */
-    .duelo-linha .seta { font-size: 0; line-height: 0; }
-    .duelo-linha .seta::before { content: "↓"; font-size: 1.05rem; line-height: 1; }
+    /* no telefone o caos vira fila: rotação some e os cartões enchem a linha */
+    .marca-loja { transform: none; width: 100%; max-width: 300px; }
+    .marcas-lojas { gap: 10px; }
     /* no telefone o círculo encolhe, e cada canal fica só com o nome */
     .orbita { width: min(360px, 100%); --disco: 50px; }
     .satelite .nome { font-size: .78rem; }
@@ -545,6 +570,38 @@
       <span>Ponto eletrônico</span><span>Site da loja</span>
     </div>
     <p class="legenda-topo rev d2">Tudo numa tela só. <b>Sem trocar de sistema, sem planilha ao lado.</b></p>
+
+    <div class="personalizacao">
+      <p class="frase-forte menor rev">Personalizado para <b>a sua empresa</b>.</p>
+      <p class="conversa centrado-estreito rev d1">O painel, os anúncios e o site saem com a <strong>sua marca, suas cores e o seu telefone</strong>. Quem compra de você vê a sua loja — a Via Pesados fica nos bastidores.</p>
+      <div class="marcas-lojas rev d2">
+        <div class="marca-loja" style="--c1: #2f6bff; --c2: #36b6ff; --giro: -3deg; --sobe: 6px;">
+          <span class="emblema"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
+          <span class="nome-loja">Rota Norte<small>Caminhões</small></span>
+        </div>
+        <div class="marca-loja" style="--c1: #13a66b; --c2: #49d99a; --giro: 2.2deg; --sobe: -8px;">
+          <span class="emblema"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
+          <span class="nome-loja">Pampa<small>Diesel</small></span>
+        </div>
+        <div class="marca-loja" style="--c1: #e0452f; --c2: #ff8a4c; --giro: -1.6deg; --sobe: 10px;">
+          <span class="emblema"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
+          <span class="nome-loja">Vale<small>Pesados</small></span>
+        </div>
+        <div class="marca-loja" style="--c1: #7c4dff; --c2: #b18cff; --giro: 3deg; --sobe: -4px;">
+          <span class="emblema"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
+          <span class="nome-loja">Serra Grande<small>Caminhões</small></span>
+        </div>
+        <div class="marca-loja" style="--c1: #d4a017; --c2: #ffd36b; --giro: -2.4deg; --sobe: 8px;">
+          <span class="emblema"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
+          <span class="nome-loja">Porto Seco<small>Implementos</small></span>
+        </div>
+        <div class="marca-loja vazia" style="--giro: 1.8deg; --sobe: 4px;">
+          <span class="emblema"><b>+</b></span>
+          <span class="nome-loja">A sua loja<small>aqui</small></span>
+        </div>
+      </div>
+      <p class="nota-exemplo rev d3">Marcas acima são exemplos de personalização.</p>
+    </div>
   </div>
 </section>
 
@@ -627,38 +684,6 @@
 
     <p class="frase-forte rev">O que levava <s>uma hora</s>, agora é <b>um clique</b>.</p>
 
-    <div class="duelo">
-      <div class="duelo-topo rev">
-        <span class="rotulo-velho">Como é hoje, na sua loja</span>
-        <span class="rotulo-novo">Com o Via Pesados</span>
-      </div>
-      <div class="duelo-linha rev">
-        <div class="lado velho"><b>5 aplicativos</b><span>abertos um por um, toda vez</span></div>
-        <span class="seta" aria-hidden="true">→</span>
-        <div class="lado novo"><b>1 tela</b><span>e os cinco canais de uma vez</span></div>
-      </div>
-      <div class="duelo-linha rev">
-        <div class="lado velho"><b>A mesma descrição 5×</b><span>digitada do zero em cada canal</span></div>
-        <span class="seta" aria-hidden="true">→</span>
-        <div class="lado novo"><b>Escreve uma vez</b><span>o sistema leva para todos</span></div>
-      </div>
-      <div class="duelo-linha rev">
-        <div class="lado velho"><b>Foto cortada na mão</b><span>redimensionada canal por canal</span></div>
-        <span class="seta" aria-hidden="true">→</span>
-        <div class="lado novo"><b>Foto já pronta</b><span>no tamanho certo de cada um</span></div>
-      </div>
-      <div class="duelo-linha rev">
-        <div class="lado velho"><b>Meia hora</b><span>por caminhão que entra no pátio</span></div>
-        <span class="seta" aria-hidden="true">→</span>
-        <div class="lado novo"><b>Um clique</b><span>e o vendedor volta a atender</span></div>
-      </div>
-      <div class="duelo-linha rev">
-        <div class="lado velho"><b>Vendeu? Tira um a um</b><span>e ainda atende ligação de caminhão vendido</span></div>
-        <span class="seta" aria-hidden="true">→</span>
-        <div class="lado novo"><b>Vendeu? Some de todos</b><span>no mesmo instante, sozinho</span></div>
-      </div>
-      <p class="duelo-conta rev">Num pátio de 30 caminhões, são <b>quase dois dias de trabalho por mês</b> que voltam para a sua equipe vender.</p>
-    </div>
   </div>
 </section>
 
@@ -667,8 +692,8 @@
   <div class="palco-fone" id="palco-fone">
     <div class="cola">
       <div class="titulo-fone">
-        <h2>Role a página. <span class="acento">É isto que o seu cliente recebe.</span></h2>
-        <p class="conversa">Um clique do vendedor — e o caminhão inteiro chega assim.</p>
+        <h2>O seu estoque inteiro no <span class="acento">WhatsApp de cada vendedor</span>.</h2>
+        <p class="conversa">Sempre atualizado, sem ninguém atualizar nada. O vendedor abre a conversa, escolhe o caminhão e <strong>manda todas as fotos, a ficha completa e o preço de agora</strong> — em um clique. Role a página: é exatamente isto que o cliente recebe.</p>
       </div>
       <div class="cena-fone">
         <div class="anel"></div>
@@ -733,8 +758,8 @@
 <!-- SITE PRÓPRIO — logo abaixo do fluxo -->
 <section class="secao" id="site">
   <div class="wrap">
-    <p class="olho rev">A sua vitrine, trabalhando sozinha</p>
-    <h2 class="rev d1">E o link leva para <span class="acento">um site desse nível</span>.</h2>
+    <p class="olho rev">E tem mais</p>
+    <h2 class="rev d1">A sua empresa ganha um site <span class="acento">no padrão mais alto do mercado</span>.</h2>
     <p class="conversa rev d2">Todo anúncio que o sistema dispara termina no site da sua loja — <strong>com a sua marca, as suas cores e o seu WhatsApp</strong>. Cada caminhão ganha página própria, galeria, ficha técnica, simulador de financiamento e botão de conversa. De madrugada, no domingo e no feriado, <strong>o cliente simula a parcela sozinho e chega no WhatsApp do vendedor já sabendo o que quer</strong>. E você não paga um site à parte: ele já vem no sistema.</p>
 
     <div class="palco-site rev">
@@ -747,6 +772,18 @@
       </div>
       <div class="site-flutuante"><img src="/conheca/img/site-veiculo.jpg" alt="Página do Scania S 540 no site da loja" /></div>
       <div class="etiqueta-flutuante"><b>Página criada sozinha.</b> Aquele mesmo botão lá em cima — e o caminhão já estava assim no seu site, sem ninguém montar nada.</div>
+    </div>
+
+    <div class="cada-loja rev">
+      <div class="selos-marca">
+        <span class="selo-marca" style="--c1: #2f6bff; --c2: #36b6ff;" title="Rota Norte Caminhões" aria-label="Rota Norte Caminhões"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
+        <span class="selo-marca" style="--c1: #13a66b; --c2: #49d99a;" title="Pampa Diesel" aria-label="Pampa Diesel"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
+        <span class="selo-marca" style="--c1: #e0452f; --c2: #ff8a4c;" title="Vale Pesados" aria-label="Vale Pesados"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
+        <span class="selo-marca" style="--c1: #7c4dff; --c2: #b18cff;" title="Serra Grande Caminhões" aria-label="Serra Grande Caminhões"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
+        <span class="selo-marca" style="--c1: #d4a017; --c2: #ffd36b;" title="Porto Seco Implementos" aria-label="Porto Seco Implementos"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
+        <span class="selo-marca vazio" aria-label="A sua loja"><b>+</b></span>
+      </div>
+      <p>Um site por loja, <b>cada um com a sua marca, suas cores e o seu domínio</b> — nenhum cliente seu vê a Via Pesados. <small>Marcas ilustrativas.</small></p>
     </div>
 
     <div class="beneficios-site">
