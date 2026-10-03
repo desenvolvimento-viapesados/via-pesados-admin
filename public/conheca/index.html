@@ -155,7 +155,7 @@
   /* ── a órbita: o Via Pesados no centro, os canais em volta ─────────── */
   .orbita { --raio: 36.54%; --disco: 68px; position: relative; width: min(620px, 100%); aspect-ratio: 1; margin: 18px auto 0; }
   .orbita .raios { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-  .anel { fill: none; stroke: #ffffff10; stroke-width: 1.5; stroke-dasharray: 2 11; }
+  .anel-orbita { fill: none; stroke: #ffffff10; stroke-width: 1.5; stroke-dasharray: 2 11; }
   .trilho { stroke: #ffffff14; stroke-width: 2; stroke-linecap: round; transition: stroke .5s ease; }
   .raio.no-ar .trilho { stroke: #25d36640; }
   .pulso {
@@ -229,8 +229,13 @@
   /* ── FONE ───────────────────────────────────────────────────────────── */
   .trecho-fone { background: linear-gradient(180deg, var(--fundo), #0A100D 30%, #0A120E 70%, var(--fundo)); }
   .palco-fone { height: 330vh; position: relative; }
-  .cola { position: sticky; top: 0; height: 100vh; height: 100svh; display: grid; place-items: center; overflow: clip; }
-  .cena-fone { position: relative; display: grid; place-items: center; width: 100%; }
+  .cola {
+    position: sticky; top: 0; height: 100vh; height: 100svh; overflow: clip;
+    display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+    align-items: center; justify-items: center;
+    padding: clamp(64px, 8.5vh, 94px) 0 18px;
+  }
+  .cena-fone { position: relative; display: grid; place-items: center; width: 100%; height: 100%; }
   .anel {
     position: absolute; width: min(72vw, 540px); aspect-ratio: 1; border-radius: 50%;
     border: 1px solid #25d36622;
@@ -239,7 +244,9 @@
   }
   @keyframes respira { 0%,100% { transform: scale(1); opacity: .8; } 50% { transform: scale(1.08); opacity: 1; } }
   .iphone {
-    position: relative; width: min(64vw, 306px);
+    /* o aparelho tem ~2,1x a própria largura: amarrar a largura ao vh é o
+       que o faz caber na faixa que sobra abaixo do título */
+    position: relative; width: min(64vw, 306px, 27vh);
     border-radius: 48px; padding: 11px;
     background: linear-gradient(160deg, #38383c, #131315 30%, #232327);
     box-shadow: 0 60px 130px -30px rgba(0,0,0,.95), 0 0 110px -40px rgba(37,211,102,.4), inset 0 0 0 2px #000;
@@ -260,10 +267,10 @@
   }
   .balao-info.no-ar { opacity: 1; transform: none; }
   .balao-info b { color: var(--zap); }
-  .titulo-fone { position: absolute; top: clamp(70px, 9vh, 100px); left: 0; right: 0; text-align: center; padding-inline: 6vw; z-index: 6; }
+  .titulo-fone { text-align: center; padding-inline: 6vw; z-index: 6; }
   .titulo-fone h2 { margin-inline: auto; }
   .titulo-fone .conversa { margin: 6px auto 0; }
-  .dica-rolar { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); color: var(--cinza-escuro); font-size: .78rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; display: flex; gap: 8px; align-items: center; }
+  .dica-rolar { color: var(--cinza-escuro); font-size: .78rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; display: flex; gap: 8px; align-items: center; }
   .dica-rolar::after { content: "↓"; animation: desce 1.4s ease-in-out infinite; }
   @keyframes desce { 50% { transform: translateY(5px); } }
 
@@ -298,38 +305,36 @@
   .personalizacao { margin-top: clamp(56px, 8vw, 90px); }
   .frase-forte.menor { font-size: clamp(1.35rem, 3.1vw, 2.1rem); max-width: 24ch; margin-top: 0; }
   .centrado-estreito { max-width: 58ch; margin: 16px auto 0; text-align: center; }
-  .marcas-lojas {
-    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
-    gap: 14px; margin-top: 38px;
-  }
-  .marca-loja {
-    display: flex; align-items: center; gap: 12px;
-    background: #111113; border: 1px solid var(--linha); border-radius: 16px;
-    padding: 13px 20px 13px 14px;
+  /* o mesmo sistema, a cara de cada loja: a barra do print é cortada e
+     cada painel ganha o cabeçalho da sua marca */
+  .paineis-lojas { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(14px, 1.8vw, 22px); margin-top: 40px; }
+  .painel-loja {
+    border: 1px solid var(--linha); border-radius: 18px; overflow: hidden; background: #0d0d0f;
     transform: rotate(var(--giro, 0deg)) translateY(var(--sobe, 0));
-    box-shadow: 0 26px 50px -30px #000;
-    transition: transform .35s cubic-bezier(.2,.9,.3,1), border-color .35s ease;
+    box-shadow: 0 44px 80px -42px #000, 0 0 60px -40px var(--c1, #000);
+    transition: transform .4s cubic-bezier(.2,.9,.3,1), border-color .4s ease;
   }
-  .marca-loja:hover { transform: rotate(0deg) translateY(0) scale(1.03); border-color: #ffffff2e; }
-  .marca-loja .emblema {
-    width: 44px; height: 44px; border-radius: 13px; flex: none;
+  .painel-loja:hover { transform: rotate(0deg) translateY(-6px) scale(1.025); border-color: #ffffff2b; }
+  .barra-loja {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px; background: #131315; border-bottom: 1px solid var(--linha);
+  }
+  .barra-loja .emblema {
+    width: 32px; height: 32px; border-radius: 10px; flex: none;
     display: grid; place-content: center; color: #fff;
     background: linear-gradient(140deg, var(--c1, #333), var(--c2, #666));
     box-shadow: inset 0 1px 0 #ffffff40;
   }
-  .marca-loja .emblema svg { width: 23px; height: auto; }
-  .marca-loja .emblema b { font-size: 1.3rem; font-weight: 800; line-height: 1; }
-  .marca-loja .nome-loja {
-    font-weight: 800; font-size: .98rem; line-height: 1.1; letter-spacing: -.015em; white-space: nowrap;
+  .barra-loja .emblema svg { width: 18px; height: auto; }
+  .barra-loja .nome-loja { font-weight: 800; font-size: .86rem; line-height: 1.05; letter-spacing: -.01em; }
+  .barra-loja .nome-loja small {
+    display: block; font-weight: 600; font-size: .63rem; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--cinza-escuro); margin-top: 2px;
   }
-  .marca-loja .nome-loja small {
-    display: block; font-weight: 600; font-size: .72rem; letter-spacing: .09em;
-    text-transform: uppercase; color: var(--cinza-escuro); margin-top: 3px;
-  }
-  .marca-loja.vazia { background: transparent; border-style: dashed; border-color: #ff6e0055; }
-  .marca-loja.vazia .emblema { background: #ff6e001f; border: 1px dashed #ff6e0070; color: var(--laranja); box-shadow: none; }
-  .marca-loja.vazia .nome-loja { color: var(--laranja-claro); }
-  .marca-loja.vazia .nome-loja small { color: #ff8a2b99; }
+  /* 115px dos 1250 do print são a barra original, com o logo: ficam de fora */
+  .tela-loja { aspect-ratio: 2000 / 1135; overflow: hidden; }
+  .tela-loja img { width: 100%; height: 100%; object-fit: cover; object-position: center bottom; }
+
   .nota-exemplo { margin-top: 22px; text-align: center; color: var(--cinza-escuro); font-size: .78rem; }
 
   /* ── vídeo real do CRM ──────────────────────────────────────────────── */
@@ -383,28 +388,6 @@
   .beneficio { border: 1px solid var(--linha); background: var(--cartao); border-radius: 16px; padding: 20px; }
   .beneficio b { display: block; font-size: .98rem; margin-bottom: 5px; }
   .beneficio span { color: var(--cinza); font-size: .86rem; line-height: 1.45; display: block; }
-
-  /* a mesma base, a cara de cada loja */
-  .cada-loja {
-    display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
-    gap: 10px 26px; margin-top: clamp(66px, 9vh, 100px);
-  }
-  .selos-marca { display: flex; }
-  .selo-marca {
-    width: 46px; height: 46px; border-radius: 14px; display: grid; place-content: center;
-    color: #fff; background: linear-gradient(140deg, var(--c1, #333), var(--c2, #666));
-    border: 2px solid var(--fundo); margin-right: -12px;
-    box-shadow: inset 0 1px 0 #ffffff40, 0 14px 30px -16px #000;
-  }
-  .selo-marca svg { width: 23px; height: auto; }
-  .selo-marca.vazio {
-    background: #16110c; border: 2px dashed #ff6e0070; color: var(--laranja);
-    box-shadow: none; margin-right: 0;
-  }
-  .selo-marca.vazio b { font-size: 1.25rem; font-weight: 800; line-height: 1; }
-  .cada-loja p { color: var(--cinza); font-size: .97rem; max-width: 54ch; }
-  .cada-loja p b { color: var(--claro); }
-  .cada-loja p small { display: block; color: var(--cinza-escuro); font-size: .76rem; margin-top: 4px; }
 
   /* ── relatórios ─────────────────────────────────────────────────────── */
   .fundo-relat { background: linear-gradient(180deg, var(--fundo), #100B06 35%, #0C0906 75%, var(--fundo)); }
@@ -503,9 +486,9 @@
   }
   @media (max-width: 560px) {
     .grade, .numeros, .beneficios-site { grid-template-columns: 1fr; }
-    /* no telefone o caos vira fila: rotação some e os cartões enchem a linha */
-    .marca-loja { transform: none; width: 100%; max-width: 300px; }
-    .marcas-lojas { gap: 10px; }
+    /* no telefone o caos vira pilha: rotação some e um painel por linha */
+    .paineis-lojas { grid-template-columns: 1fr; }
+    .painel-loja { transform: none; }
     /* no telefone o círculo encolhe, e cada canal fica só com o nome */
     .orbita { width: min(360px, 100%); --disco: 50px; }
     .satelite .nome { font-size: .78rem; }
@@ -574,33 +557,30 @@
     <div class="personalizacao">
       <p class="frase-forte menor rev">Personalizado para <b>a sua empresa</b>.</p>
       <p class="conversa centrado-estreito rev d1">O painel, os anúncios e o site saem com a <strong>sua marca, suas cores e o seu telefone</strong>. Quem compra de você vê a sua loja — a Via Pesados fica nos bastidores.</p>
-      <div class="marcas-lojas rev d2">
-        <div class="marca-loja" style="--c1: #2f6bff; --c2: #36b6ff; --giro: -3deg; --sobe: 6px;">
-          <span class="emblema"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
-          <span class="nome-loja">Rota Norte<small>Caminhões</small></span>
-        </div>
-        <div class="marca-loja" style="--c1: #13a66b; --c2: #49d99a; --giro: 2.2deg; --sobe: -8px;">
-          <span class="emblema"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
-          <span class="nome-loja">Pampa<small>Diesel</small></span>
-        </div>
-        <div class="marca-loja" style="--c1: #e0452f; --c2: #ff8a4c; --giro: -1.6deg; --sobe: 10px;">
-          <span class="emblema"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
-          <span class="nome-loja">Vale<small>Pesados</small></span>
-        </div>
-        <div class="marca-loja" style="--c1: #7c4dff; --c2: #b18cff; --giro: 3deg; --sobe: -4px;">
-          <span class="emblema"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
-          <span class="nome-loja">Serra Grande<small>Caminhões</small></span>
-        </div>
-        <div class="marca-loja" style="--c1: #d4a017; --c2: #ffd36b; --giro: -2.4deg; --sobe: 8px;">
-          <span class="emblema"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
-          <span class="nome-loja">Porto Seco<small>Implementos</small></span>
-        </div>
-        <div class="marca-loja vazia" style="--giro: 1.8deg; --sobe: 4px;">
-          <span class="emblema"><b>+</b></span>
-          <span class="nome-loja">A sua loja<small>aqui</small></span>
-        </div>
+      <div class="paineis-lojas rev d2">
+        <figure class="painel-loja" style="--c1: #2f6bff; --c2: #36b6ff; --giro: -2deg; --sobe: 14px;">
+          <figcaption class="barra-loja">
+            <span class="emblema"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
+            <span class="nome-loja">Rota Norte<small>Caminhões</small></span>
+          </figcaption>
+          <div class="tela-loja"><img src="/conheca/img/gestao.jpg" loading="lazy" alt="Estoque da loja no painel" /></div>
+        </figure>
+        <figure class="painel-loja" style="--c1: #13a66b; --c2: #49d99a; --giro: 1.4deg; --sobe: -10px;">
+          <figcaption class="barra-loja">
+            <span class="emblema"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
+            <span class="nome-loja">Pampa<small>Diesel</small></span>
+          </figcaption>
+          <div class="tela-loja"><img src="/conheca/img/relatorios.jpg" loading="lazy" alt="Relatórios da loja no painel" /></div>
+        </figure>
+        <figure class="painel-loja" style="--c1: #e0452f; --c2: #ff8a4c; --giro: -1.2deg; --sobe: 8px;">
+          <figcaption class="barra-loja">
+            <span class="emblema"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
+            <span class="nome-loja">Vale<small>Pesados</small></span>
+          </figcaption>
+          <div class="tela-loja"><img src="/conheca/img/clientes.jpg" loading="lazy" alt="Clientes da loja no painel" /></div>
+        </figure>
       </div>
-      <p class="nota-exemplo rev d3">Marcas acima são exemplos de personalização.</p>
+      <p class="nota-exemplo rev d3">O mesmo sistema, a cara de cada loja. Marcas acima são exemplos.</p>
     </div>
   </div>
 </section>
@@ -625,7 +605,7 @@
     <div class="palco-canais" id="palco-canais">
       <div class="orbita rev" id="orbita">
         <svg class="raios" viewBox="0 0 520 520" aria-hidden="true">
-          <circle class="anel" cx="260" cy="260" r="190" />
+          <circle class="anel-orbita" cx="260" cy="260" r="190" />
         <g class="raio" data-raio="0">
           <line class="trilho" x1="260.0" y1="194.0" x2="260.0" y2="108.0" />
           <line class="pulso"  x1="260.0" y1="194.0" x2="260.0" y2="108.0" />
@@ -693,7 +673,7 @@
     <div class="cola">
       <div class="titulo-fone">
         <h2>O seu estoque inteiro no <span class="acento">WhatsApp de cada vendedor</span>.</h2>
-        <p class="conversa">Sempre atualizado, sem ninguém atualizar nada. O vendedor abre a conversa, escolhe o caminhão e <strong>manda todas as fotos, a ficha completa e o preço de agora</strong> — em um clique. Role a página: é exatamente isto que o cliente recebe.</p>
+        <p class="conversa">Um clique — e o cliente recebe tudo.</p>
       </div>
       <div class="cena-fone">
         <div class="anel"></div>
@@ -704,10 +684,10 @@
             <canvas id="tela-fone" width="500" height="1014" aria-label="Gravação real do WhatsApp do cliente recebendo o anúncio"></canvas>
           </div>
         </div>
-        <div class="balao-info" data-passo="0" style="top: 18%; left: max(4vw, calc(50% - 330px));">Gravado do <b>celular do cliente</b> — de verdade.</div>
-        <div class="balao-info" data-passo="1" style="top: 38%; right: max(4vw, calc(50% - 330px));">Ficha completa, <b>sem digitar nada</b>.</div>
-        <div class="balao-info" data-passo="2" style="top: 58%; left: max(4vw, calc(50% - 340px));"><b>12 fotos</b> do caminhão, na ordem certa.</div>
-        <div class="balao-info" data-passo="3" style="top: 76%; right: max(4vw, calc(50% - 340px));">E o link puxa para o <b>site da sua loja</b>.</div>
+        <div class="balao-info" data-passo="0" style="top: 18%; left: max(4vw, calc(50% - 330px));">Gravação real, <b>no celular do cliente</b>.</div>
+        <div class="balao-info" data-passo="1" style="top: 38%; right: max(4vw, calc(50% - 330px));">A ficha inteira — <b>ninguém digitou nada</b>.</div>
+        <div class="balao-info" data-passo="2" style="top: 58%; left: max(4vw, calc(50% - 340px));"><b>12 fotos</b> na ordem certa, já editadas.</div>
+        <div class="balao-info" data-passo="3" style="top: 76%; right: max(4vw, calc(50% - 340px));">Preço de agora e <b>o link do seu site</b>.</div>
       </div>
       <p class="dica-rolar">Continue rolando</p>
     </div>
@@ -772,18 +752,6 @@
       </div>
       <div class="site-flutuante"><img src="/conheca/img/site-veiculo.jpg" alt="Página do Scania S 540 no site da loja" /></div>
       <div class="etiqueta-flutuante"><b>Página criada sozinha.</b> Aquele mesmo botão lá em cima — e o caminhão já estava assim no seu site, sem ninguém montar nada.</div>
-    </div>
-
-    <div class="cada-loja rev">
-      <div class="selos-marca">
-        <span class="selo-marca" style="--c1: #2f6bff; --c2: #36b6ff;" title="Rota Norte Caminhões" aria-label="Rota Norte Caminhões"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
-        <span class="selo-marca" style="--c1: #13a66b; --c2: #49d99a;" title="Pampa Diesel" aria-label="Pampa Diesel"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
-        <span class="selo-marca" style="--c1: #e0452f; --c2: #ff8a4c;" title="Vale Pesados" aria-label="Vale Pesados"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
-        <span class="selo-marca" style="--c1: #7c4dff; --c2: #b18cff;" title="Serra Grande Caminhões" aria-label="Serra Grande Caminhões"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
-        <span class="selo-marca" style="--c1: #d4a017; --c2: #ffd36b;" title="Porto Seco Implementos" aria-label="Porto Seco Implementos"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
-        <span class="selo-marca vazio" aria-label="A sua loja"><b>+</b></span>
-      </div>
-      <p>Um site por loja, <b>cada um com a sua marca, suas cores e o seu domínio</b> — nenhum cliente seu vê a Via Pesados. <small>Marcas ilustrativas.</small></p>
     </div>
 
     <div class="beneficios-site">
