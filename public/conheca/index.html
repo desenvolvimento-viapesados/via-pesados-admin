@@ -62,6 +62,10 @@
     border-bottom: 1px solid var(--linha);
   }
   .topo img { height: 44px; width: auto; }
+  /* duas marcas na mesma tela competem: a do topo só entra quando a do
+     herói sai de vista */
+  .topo .marca-topo { opacity: 0; transform: translateY(-6px); pointer-events: none; transition: opacity .3s ease, transform .3s ease; }
+  .topo.rolou .marca-topo { opacity: 1; transform: none; pointer-events: auto; }
 
   /* ── botão WhatsApp ─────────────────────────────────────────────────── */
   .btn-zap {
@@ -87,7 +91,7 @@
   /* ── herói ──────────────────────────────────────────────────────────── */
   .heroi {
     position: relative; z-index: 2;
-    padding: clamp(120px, 16vh, 170px) 0 clamp(40px, 6vh, 70px);
+    padding: clamp(118px, 15vh, 162px) 0 clamp(46px, 7vh, 76px);
     background:
       radial-gradient(1100px 520px at 50% -14%, rgba(255,110,0,.07), transparent 62%),
       var(--fundo);
@@ -305,6 +309,22 @@
   .navegador .bola:nth-child(1) { background: #ff5f57; } .navegador .bola:nth-child(2) { background: #febc2e; } .navegador .bola:nth-child(3) { background: #28c840; }
   .navegador .url { flex: 1; text-align: center; font-size: .74rem; color: var(--cinza); background: #0a0a0c; border-radius: 7px; padding: 5px 12px; margin-inline: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+  /* ── a tela do sistema, logo abaixo do herói ────────────────────────── */
+  .vitrine-topo { position: relative; z-index: 3; padding-bottom: clamp(50px, 8vh, 90px); }
+  .moldura-topo { max-width: 1020px; margin-inline: auto; }
+  .moldura-topo .navegador { box-shadow: 0 70px 130px -45px rgba(0,0,0,.95), 0 0 110px -40px rgba(255,110,0,.22); }
+  .modulos-topo {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+    max-width: 840px; margin: 30px auto 0;
+  }
+  .modulos-topo span {
+    font-size: .8rem; font-weight: 600; color: var(--cinza);
+    border: 1px solid var(--linha); background: #101012;
+    padding: 7px 14px; border-radius: 999px; white-space: nowrap;
+  }
+  .legenda-topo { margin-top: 22px; text-align: center; color: var(--cinza); font-size: 1rem; }
+  .legenda-topo b { color: var(--claro); }
+
   /* ── vídeo real do CRM ──────────────────────────────────────────────── */
   .palco-video { display: grid; grid-template-columns: 1.45fr 1fr; gap: clamp(28px, 4vw, 60px); align-items: start; margin-top: 46px; }
   .selo-real {
@@ -484,8 +504,8 @@
 </head>
 <body>
 
-<header class="topo">
-  <a href="#inicio" aria-label="Via Pesados"><img src="/conheca/img/via-icon-white.png" alt="Via Pesados" /></a>
+<header class="topo" id="topo">
+  <a class="marca-topo" href="#inicio" aria-label="Via Pesados"><img src="/conheca/img/via-icon-white.png" alt="Via Pesados" /></a>
   <a class="btn-zap mini" href="https://wa.me/5533997075272?text=Ol%C3%A1!%20Vi%20a%20p%C3%A1gina%20do%20Via%20Pesados%20e%20quero%20marcar%20uma%20demonstra%C3%A7%C3%A3o." target="_blank" rel="noopener">
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
     Marcar demonstração
@@ -504,6 +524,27 @@
         Quero ver funcionando
       </a>
     </div>
+  </div>
+</section>
+
+<!-- O SISTEMA, LOGO DE CARA -->
+<section class="vitrine-topo" id="vitrine">
+  <div class="wrap">
+    <div class="moldura-topo rev">
+      <div class="navegador">
+        <div class="barra">
+          <span class="bola"></span><span class="bola"></span><span class="bola"></span>
+          <span class="url">viapesados.com.br — o painel da sua loja</span>
+        </div>
+        <img src="/conheca/img/sistema.jpg" alt="Painel inicial do Via Pesados, com os módulos da loja" />
+      </div>
+    </div>
+    <div class="modulos-topo rev d1">
+      <span>Estoque</span><span>Vendas</span><span>Clientes</span><span>Anúncios</span>
+      <span>WhatsApp</span><span>Financeiro</span><span>Relatórios</span><span>Equipe</span>
+      <span>Ponto eletrônico</span><span>Site da loja</span>
+    </div>
+    <p class="legenda-topo rev d2">Tudo numa tela só. <b>Sem trocar de sistema, sem planilha ao lado.</b></p>
   </div>
 </section>
 
@@ -843,7 +884,7 @@
     <p class="conversa rev d2">Nada aqui é desenho de designer. <strong>Toda imagem desta página é tela real do Via Pesados</strong> — o mesmo sistema que você recebe no primeiro dia.</p>
 
     <div class="grade">
-      <figure class="cartao-tela rev"><img src="/conheca/img/sistema.jpg" loading="lazy" alt="" /><figcaption>Início <small>tudo a um clique</small></figcaption></figure>
+      <figure class="cartao-tela rev"><img src="/conheca/img/financeiro.jpg" loading="lazy" alt="" /><figcaption>Financeiro <small>a receber, a pagar e o resultado</small></figcaption></figure>
       <figure class="cartao-tela rev d1"><img src="/conheca/img/gestao.jpg" loading="lazy" alt="" /><figcaption>Estoque <small>consignação, custo e oferta</small></figcaption></figure>
       <figure class="cartao-tela rev d2"><img src="/conheca/img/site.jpg" loading="lazy" alt="" /><figcaption>Site próprio <small>com a sua marca</small></figcaption></figure>
       <figure class="cartao-tela rev"><img src="/conheca/img/clientes.jpg" loading="lazy" alt="" /><figcaption>Clientes <small>com etiquetas automáticas</small></figcaption></figure>
@@ -883,6 +924,14 @@
 <script>
 (() => {
   const reduzido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* a marca do topo entra quando a do herói sai da tela */
+  const barraTopo = document.getElementById('topo');
+  const heroi = document.getElementById('inicio');
+  new IntersectionObserver(
+    es => es.forEach(e => barraTopo.classList.toggle('rolou', !e.isIntersecting)),
+    { threshold: 0, rootMargin: '-72px 0px 0px 0px' }
+  ).observe(heroi);
 
   /* revelação no scroll */
   const io = new IntersectionObserver(es => {
