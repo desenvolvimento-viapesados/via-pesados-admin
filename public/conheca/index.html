@@ -156,37 +156,6 @@
 
   .palco-canais { margin-top: 26px; }
 
-  .caixa-botao { position: relative; width: min(344px, 84vw); margin: 26px auto 0; }
-  .botao-anunciar {
-    width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
-    background: var(--laranja); color: #1d0c00;
-    font-weight: 800; font-size: 1rem; font-family: inherit;
-    border: 0; border-radius: 14px; padding: 15px; cursor: default;
-    transition: transform .12s ease, filter .12s ease;
-  }
-  .botao-anunciar.apertado { transform: scale(.955); filter: brightness(.86); }
-  /* a onda que sai do clique — deixa claro que o botão FOI apertado */
-  .onda {
-    position: absolute; inset: 0; border-radius: 14px; pointer-events: none;
-    border: 2px solid var(--laranja); opacity: 0;
-  }
-  .onda.bate { animation: onda .85s cubic-bezier(.2,.7,.3,1) forwards; }
-  @keyframes onda {
-    0%   { opacity: .95; transform: scale(1); }
-    100% { opacity: 0;   transform: scale(1.35); }
-  }
-  /* o cursor sai de fora e para no meio do botão, seja qual for a largura */
-  .cursor {
-    position: absolute; z-index: 8; width: 26px; height: 26px;
-    left: 50%; top: 50%; margin: -13px 0 0 -13px; opacity: 0;
-    transform: translate(188px, 84px);
-    transition: transform .95s cubic-bezier(.3,.9,.3,1), opacity .35s ease;
-    filter: drop-shadow(0 3px 8px #000);
-  }
-  .cursor.aparece { opacity: 1; }
-  .cursor.mira { transform: translate(7px, 9px); }
-  .cursor.clicou { transform: translate(7px, 9px) scale(.84); }
-
   /* ── a órbita: o Via Pesados no centro, os canais em volta ─────────── */
   .orbita { --raio: 36.54%; --disco: 68px; position: relative; width: min(620px, 100%); aspect-ratio: 1; margin: 18px auto 0; }
   .orbita .raios { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
@@ -251,44 +220,46 @@
   }
   .satelite.no-ar .chip-no-ar { opacity: 1; transform: scale(1); }
 
-  .placar {
-    margin: 30px auto 0; max-width: 820px;
-    display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap;
-    color: var(--cinza); font-size: .95rem; text-align: center;
-    opacity: 0; transform: translateY(10px); transition: all .5s ease;
+  /* ── o fecho da cena: uma frase, grande ─────────────────────────────── */
+  .frase-forte {
+    margin: 34px auto 0; max-width: 20ch; text-align: center;
+    font-size: clamp(1.55rem, 4vw, 2.6rem); font-weight: 800;
+    letter-spacing: -.025em; line-height: 1.18; text-wrap: balance; color: var(--claro);
   }
-  .placar.no-ar { opacity: 1; transform: none; }
-  .placar b { color: var(--claro); }
-  .placar .selo-tempo {
-    font-weight: 800; color: #7CFFB4; background: #12351f;
-    border: 1px solid #25d36640; padding: 6px 13px; border-radius: 999px; font-size: .84rem;
-  }
-  .nota-vendeu { margin: 16px auto 0; max-width: 760px; text-align: center; color: var(--cinza); font-size: .95rem; }
-  .nota-vendeu strong { color: var(--claro); }
+  .frase-forte s { color: var(--cinza-escuro); text-decoration-color: #ff6e0088; text-decoration-thickness: .08em; }
+  .frase-forte b { color: var(--laranja); }
 
-  /* ── a conta do tempo: como é hoje × como fica ──────────────────────── */
-  .antes-depois { margin-top: 54px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .coluna-tempo {
-    background: var(--cartao); border: 1px solid var(--linha);
-    border-radius: var(--raio); padding: 24px clamp(18px, 2.4vw, 28px);
+  /* ── o confronto, linha a linha ─────────────────────────────────────── */
+  .duelo { margin-top: clamp(46px, 7vw, 76px); display: grid; gap: 9px; }
+  .duelo-topo {
+    display: grid; grid-template-columns: 1fr 46px 1fr; gap: 12px;
+    font-size: .71rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
   }
-  .coluna-tempo.agora { background: #0b1710; border-color: #25d36630; }
-  .coluna-tempo .rotulo {
-    display: block; font-size: .72rem; font-weight: 800; letter-spacing: .1em;
-    text-transform: uppercase; color: var(--cinza-escuro); margin-bottom: 16px;
+  .duelo-topo .rotulo-velho { color: var(--cinza-escuro); padding-left: 2px; }
+  .duelo-topo .rotulo-novo { grid-column: 3; color: #7CFFB4; padding-left: 2px; }
+  .duelo-linha { display: grid; grid-template-columns: 1fr 46px 1fr; gap: 12px; align-items: stretch; }
+  .duelo-linha .lado {
+    display: grid; align-content: center; gap: 3px;
+    border-radius: 15px; padding: 15px clamp(15px, 1.9vw, 22px);
+    border: 1px solid var(--linha); background: #101012;
   }
-  .coluna-tempo.agora .rotulo { color: #7CFFB4; }
-  .coluna-tempo ul { list-style: none; display: grid; gap: 11px; }
-  .coluna-tempo li { display: flex; gap: 11px; align-items: flex-start; color: var(--cinza); font-size: .97rem; line-height: 1.45; }
-  .coluna-tempo li::before { content: "✕"; flex: none; font-weight: 800; color: #7a4f4f; line-height: 1.4; }
-  .coluna-tempo.agora li { color: var(--claro); }
-  .coluna-tempo.agora li::before { content: "✓"; color: var(--zap); }
-  .conta-tempo {
-    margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--linha);
-    font-size: .95rem; color: var(--cinza);
+  .duelo-linha .lado b { font-size: clamp(.98rem, 1.5vw, 1.12rem); font-weight: 800; letter-spacing: -.015em; }
+  .duelo-linha .lado span { font-size: .85rem; color: var(--cinza-escuro); line-height: 1.35; }
+  .duelo-linha .velho b { color: #8e8a92; }
+  .duelo-linha .novo {
+    background: linear-gradient(135deg, #0d1b13, #0b1510 60%);
+    border-color: #25d36638; box-shadow: inset 0 0 40px -22px rgba(37,211,102,.6);
   }
-  .conta-tempo b { color: var(--claro); }
-  .coluna-tempo.agora .conta-tempo b { color: #7CFFB4; }
+  .duelo-linha .novo b { color: #8BFFBE; }
+  .duelo-linha .novo span { color: #7f9c8a; }
+  .duelo-linha .seta {
+    align-self: center; text-align: center; color: var(--laranja);
+    font-size: 1.2rem; font-weight: 800; line-height: 1;
+  }
+  .duelo-conta {
+    margin-top: 22px; text-align: center; color: var(--cinza); font-size: 1rem;
+  }
+  .duelo-conta b { color: var(--claro); }
 
   /* ── FONE ───────────────────────────────────────────────────────────── */
   .trecho-fone { background: linear-gradient(180deg, var(--fundo), #0A100D 30%, #0A120E 70%, var(--fundo)); }
@@ -491,7 +462,13 @@
   }
   @media (max-width: 560px) {
     .grade, .numeros, .beneficios-site { grid-template-columns: 1fr; }
-    .antes-depois { grid-template-columns: 1fr; }
+    .duelo-topo { display: none; }
+    .duelo { gap: 16px; }
+    .duelo-linha { grid-template-columns: 1fr; gap: 6px; }
+    /* girar o elemento esticaria a caixa de 16px para a largura da coluna;
+       aqui a seta só troca de glifo */
+    .duelo-linha .seta { font-size: 0; line-height: 0; }
+    .duelo-linha .seta::before { content: "↓"; font-size: 1.05rem; line-height: 1; }
     /* no telefone o círculo encolhe, e cada canal fica só com o nome */
     .orbita { width: min(360px, 100%); --disco: 50px; }
     .satelite .nome { font-size: .78rem; }
@@ -507,7 +484,7 @@
     .rev { opacity: 1; transform: none; }
     .palco-fone { height: auto; }
     .cola { position: static; height: auto; padding: 60px 0; }
-    .chip-no-ar, .placar { opacity: 1; transform: none; }
+    .chip-no-ar { opacity: 1; transform: none; }
     .pulso { opacity: 0; }
     .etapa { color: var(--claro); }
   }
@@ -549,11 +526,11 @@
       <p class="conversa rev d2">Mercado Livre, Facebook, Instagram, WhatsApp e o site da sua loja: todos ligados de uma vez, <strong>sem integrador e sem ninguém de TI</strong>. O sistema cuida dos cinco por você — preço, fotos e estoque sempre iguais em todo lugar. E o mais importante: <strong>põe o caminhão no ar nos cinco com um botão só</strong>, para o seu tempo ir para onde dá dinheiro, que é vender.</p>
 
       <div class="etapas rev d3" id="etapas">
-        <span class="etapa" data-etapa="1"><b>1</b> Você aperta o botão</span>
+        <span class="etapa" data-etapa="1"><b>1</b> Um clique na ficha</span>
         <span class="tracinho"></span>
         <span class="etapa" data-etapa="2"><b>2</b> O sistema publica</span>
         <span class="tracinho"></span>
-        <span class="etapa" data-etapa="3"><b>3</b> Está no ar em todo canal</span>
+        <span class="etapa" data-etapa="3"><b>3</b> No ar em todos os canais</span>
       </div>
     </div>
 
@@ -615,43 +592,41 @@
       </div>
       </div>
 
-      <div class="caixa-botao rev d1">
-        <button class="botao-anunciar" id="botao-anunciar" type="button" tabindex="-1" aria-hidden="true">⚡ Anunciar em todos os canais</button>
-        <span class="onda" id="onda"></span>
-        <svg class="cursor" id="cursor" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2.5 19 12l-6.2 1.3L9.9 19 5 2.5Z" fill="#fff" stroke="#000" stroke-width="1.2" stroke-linejoin="round"/></svg>
-      </div>
     </div>
 
-    <div class="placar" id="placar">
-      <span class="selo-tempo">5 canais · 1 clique</span>
-      <span>Meia hora por caminhão, toda vez que entra um no pátio. Agora é <b>um clique</b> — feito enquanto você atende o próximo cliente.</span>
-    </div>
-    <p class="nota-vendeu">E quando vender? <strong>O sistema tira o anúncio de todos os canais sozinho.</strong> Ninguém liga por caminhão que já saiu.</p>
-    <p class="nota-vendeu">Quem aparece primeiro vende primeiro: <strong>o caminhão que entrou hoje no pátio está anunciado hoje</strong> — não na semana que vem, quando alguém tiver tempo.</p>
+    <p class="frase-forte rev">O que levava <s>uma hora</s>, agora é <b>um clique</b>.</p>
 
-    <div class="antes-depois">
-      <div class="coluna-tempo rev">
-        <span class="rotulo">Como é hoje, na sua loja</span>
-        <ul>
-          <li>Cinco aplicativos abertos, um de cada vez</li>
-          <li>A mesma descrição digitada cinco vezes</li>
-          <li>Foto cortada e redimensionada na mão para cada canal</li>
-          <li>Mudou o preço? Mudar nos cinco</li>
-          <li>Vendeu? Despublicar um por um — e ainda atender ligação de caminhão que já saiu</li>
-        </ul>
-        <p class="conta-tempo">Um pátio de 30 caminhões: <b>quase dois dias de trabalho</b> só publicando anúncio.</p>
+    <div class="duelo">
+      <div class="duelo-topo rev">
+        <span class="rotulo-velho">Como é hoje, na sua loja</span>
+        <span class="rotulo-novo">Com o Via Pesados</span>
       </div>
-      <div class="coluna-tempo agora rev d1">
-        <span class="rotulo">Com o Via Pesados</span>
-        <ul>
-          <li>Uma ficha só — e os cinco canais de uma vez</li>
-          <li>As fotos já saem editadas, no tamanho de cada canal</li>
-          <li>O cliente recebe a ficha inteira no WhatsApp, montada daquele veículo</li>
-          <li>Mudou o preço? Muda em todos sozinho</li>
-          <li>Vendeu? Sai de todos sozinho, no mesmo instante</li>
-        </ul>
-        <p class="conta-tempo">Os mesmos 30 caminhões: <b>no ar na mesma manhã</b> — e o vendedor atendendo cliente.</p>
+      <div class="duelo-linha rev">
+        <div class="lado velho"><b>5 aplicativos</b><span>abertos um por um, toda vez</span></div>
+        <span class="seta" aria-hidden="true">→</span>
+        <div class="lado novo"><b>1 tela</b><span>e os cinco canais de uma vez</span></div>
       </div>
+      <div class="duelo-linha rev">
+        <div class="lado velho"><b>A mesma descrição 5×</b><span>digitada do zero em cada canal</span></div>
+        <span class="seta" aria-hidden="true">→</span>
+        <div class="lado novo"><b>Escreve uma vez</b><span>o sistema leva para todos</span></div>
+      </div>
+      <div class="duelo-linha rev">
+        <div class="lado velho"><b>Foto cortada na mão</b><span>redimensionada canal por canal</span></div>
+        <span class="seta" aria-hidden="true">→</span>
+        <div class="lado novo"><b>Foto já pronta</b><span>no tamanho certo de cada um</span></div>
+      </div>
+      <div class="duelo-linha rev">
+        <div class="lado velho"><b>Meia hora</b><span>por caminhão que entra no pátio</span></div>
+        <span class="seta" aria-hidden="true">→</span>
+        <div class="lado novo"><b>Um clique</b><span>e o vendedor volta a atender</span></div>
+      </div>
+      <div class="duelo-linha rev">
+        <div class="lado velho"><b>Vendeu? Tira um a um</b><span>e ainda atende ligação de caminhão vendido</span></div>
+        <span class="seta" aria-hidden="true">→</span>
+        <div class="lado novo"><b>Vendeu? Some de todos</b><span>no mesmo instante, sozinho</span></div>
+      </div>
+      <p class="duelo-conta rev">Num pátio de 30 caminhões, são <b>quase dois dias de trabalho por mês</b> que voltam para a sua equipe vender.</p>
     </div>
   </div>
 </section>
@@ -926,46 +901,36 @@
   document.querySelectorAll('.rev').forEach(el => io.observe(el));
 
   /* ── a cena do clique único ────────────────────────────────────────────
-     Um roteiro explícito, em vez de animações soltas em laço: o cursor
-     chega, o botão afunda, os pulsos saem e cada canal acende na ordem.
+     Um roteiro explícito, em vez de animações soltas em laço: o núcleo
+     pulsa, os cinco pulsos saem para fora e cada canal acende na ordem.
      Assim dá para entender o que está acontecendo sem ninguém explicar. */
-  const cursor  = document.getElementById('cursor');
-  const botao   = document.getElementById('botao-anunciar');
-  const onda    = document.getElementById('onda');
   const nucleo  = document.getElementById('nucleo');
   const sats    = [...document.querySelectorAll('#orbita .satelite')];
   const raios   = [...document.querySelectorAll('#orbita .raio')];
   const etapas  = [...document.querySelectorAll('#etapas .etapa')];
-  const placar  = document.getElementById('placar');
   const palco   = document.getElementById('palco-canais');
 
   const marcaEtapa = n => etapas.forEach(e => e.classList.toggle('agora', +e.dataset.etapa === n));
   const limpa = () => {
-    cursor.classList.remove('aparece', 'mira', 'clicou');
-    onda.classList.remove('bate');
     nucleo.classList.remove('bate');
     sats.forEach(x => x.classList.remove('disparou', 'no-ar'));
     raios.forEach(x => x.classList.remove('disparou', 'no-ar'));
-    placar.classList.remove('no-ar');
     marcaEtapa(0);
   };
 
+  const SAIDA = 1120, PASSO = 130, VOO = 700;
   const roteiro = [
     [   0, limpa],
-    [ 250, () => cursor.classList.add('aparece')],
-    [ 400, () => { cursor.classList.add('mira'); marcaEtapa(1); }],
-    [1450, () => { cursor.classList.add('clicou'); botao.classList.add('apertado'); }],
-    [1620, () => { botao.classList.remove('apertado'); onda.classList.add('bate'); nucleo.classList.add('bate'); marcaEtapa(2); }],
-    [2400, () => nucleo.classList.remove('bate')],
-    [1750, () => cursor.classList.remove('clicou')],
-    [2100, () => cursor.classList.remove('aparece', 'mira')],
+    [ 340, () => marcaEtapa(1)],
+    [ 940, () => { nucleo.classList.add('bate'); marcaEtapa(2); }],
+    [1740, () => nucleo.classList.remove('bate')],
   ];
   sats.forEach((sat, k) => {
-    const sai = 1780 + k * 130, chega = sai + 700;
+    const sai = SAIDA + k * PASSO, chega = sai + VOO;
     roteiro.push([sai,   () => { raios[k].classList.add('disparou'); sat.classList.add('disparou'); }]);
     roteiro.push([chega, () => { raios[k].classList.add('no-ar');    sat.classList.add('no-ar');    }]);
   });
-  roteiro.push([1780 + (sats.length - 1) * 130 + 700 + 260, () => { marcaEtapa(3); placar.classList.add('no-ar'); }]);
+  roteiro.push([SAIDA + (sats.length - 1) * PASSO + VOO + 280, () => marcaEtapa(3)]);
 
   let relogios = [], ciclo = null;
   const roda = () => {
@@ -977,12 +942,11 @@
   if (reduzido) {
     sats.forEach(x => x.classList.add('no-ar'));
     raios.forEach(x => x.classList.add('no-ar'));
-    placar.classList.add('no-ar');
     marcaEtapa(3);
   } else {
     /* só anima enquanto a seção está à vista */
     new IntersectionObserver(es => es.forEach(e => {
-      if (e.isIntersecting) { if (!ciclo) { roda(); ciclo = setInterval(roda, 7200); } }
+      if (e.isIntersecting) { if (!ciclo) { roda(); ciclo = setInterval(roda, 6200); } }
       else paraTudo();
     }), { threshold: .28 }).observe(palco);
   }
