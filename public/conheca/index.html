@@ -203,46 +203,74 @@
   .cursor.mira { transform: translate(-78px, -34px); }
   .cursor.clicou { transform: translate(-78px, -30px) scale(.86); }
 
-  /* fios e canais */
-  .canais-fila { display: grid; gap: 11px; }
-  .canal-linha { display: flex; align-items: center; }
-  .fio { flex: 1; height: 2px; background: #ffffff12; position: relative; min-width: 34px; border-radius: 2px; overflow: visible; }
-  .fio i {
-    position: absolute; top: 50%; left: 0; translate: 0 -50%;
-    width: 10px; height: 10px; border-radius: 50%;
-    background: var(--laranja); box-shadow: 0 0 14px 3px rgba(255,110,0,.75);
-    opacity: 0;
+  /* ── a órbita: o Via Pesados no centro, os canais em volta ─────────── */
+  .orbita { --raio: 36.54%; --disco: 62px; position: relative; width: min(540px, 100%); aspect-ratio: 1; margin: 30px auto 6px; }
+  .orbita .raios { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .anel { fill: none; stroke: #ffffff10; stroke-width: 1.5; stroke-dasharray: 2 11; }
+  .trilho { stroke: #ffffff14; stroke-width: 2; stroke-linecap: round; transition: stroke .5s ease; }
+  .raio.no-ar .trilho { stroke: #25d36640; }
+  .pulso {
+    stroke: var(--laranja); stroke-width: 3.5; stroke-linecap: round;
+    stroke-dasharray: 20 400; stroke-dashoffset: 20; opacity: 0;
+    filter: drop-shadow(0 0 7px rgba(255,110,0,.85));
   }
-  .canal-linha.disparou .fio i { animation: viaja .85s cubic-bezier(.4,0,.5,1) forwards; }
-  @keyframes viaja {
-    0%   { left: 0; opacity: 0; }
-    12%  { opacity: 1; }
-    88%  { opacity: 1; }
-    100% { left: calc(100% - 10px); opacity: 0; }
-  }
-  .canal-linha.disparou .fio { background: linear-gradient(90deg, #ff6e0055, #ffffff12); }
+  .raio.disparou .pulso { stroke-dashoffset: -86; opacity: 1; transition: stroke-dashoffset .68s cubic-bezier(.45,0,.55,1); }
+  .raio.no-ar .pulso { opacity: 0; transition: opacity .2s ease; }
 
-  .no-canal {
-    display: flex; align-items: center; gap: 14px;
-    background: var(--cartao); border: 1px solid var(--linha); border-radius: 16px;
-    padding: 12px 16px; min-width: min(320px, 62vw);
-    transition: border-color .4s ease, background .4s ease, transform .4s cubic-bezier(.2,.8,.2,1);
+  .nucleo {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: clamp(108px, 24%, 136px); aspect-ratio: 1; border-radius: 50%; z-index: 3;
+    display: grid; place-content: center; justify-items: center; gap: 7px;
+    background: radial-gradient(circle at 50% 32%, #24150a, #0d0c0e 72%);
+    border: 1px solid #ff6e0038;
+    box-shadow: 0 0 70px -14px rgba(255,110,0,.42), inset 0 0 34px -16px rgba(255,110,0,.7);
   }
-  .canal-linha.no-ar .no-canal { border-color: #25d36655; background: #0e1712; }
-  .no-canal img, .no-canal svg { width: 27px; height: 27px; object-fit: contain; flex: none; }
-  .no-canal .nome { font-weight: 700; font-size: .97rem; }
-  .no-canal .nome small { display: block; font-weight: 500; color: var(--cinza-escuro); font-size: .75rem; }
+  .nucleo img { width: clamp(46px, 10vw, 60px); }
+  .nucleo span {
+    font-size: .58rem; font-weight: 800; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--cinza-escuro); text-align: center;
+  }
+  .nucleo::after {
+    content: ""; position: absolute; inset: -5px; border-radius: 50%;
+    border: 2px solid var(--laranja); opacity: 0; pointer-events: none;
+  }
+  .nucleo.bate::after { animation: halo .95s cubic-bezier(.2,.7,.3,1); }
+  @keyframes halo {
+    0%   { opacity: .9; transform: scale(1); }
+    100% { opacity: 0;  transform: scale(1.55); }
+  }
+
+  .satelite {
+    position: absolute; z-index: 2;
+    left: calc(50% + var(--cx) * var(--raio));
+    top:  calc(50% + var(--cy) * var(--raio));
+    transform: translate(-50%, calc(var(--disco) / -2));
+    width: clamp(92px, 28%, 166px);
+    display: grid; justify-items: center; gap: 8px; text-align: center;
+  }
+  .satelite .disco {
+    width: var(--disco); aspect-ratio: 1; border-radius: 50%;
+    background: var(--cartao); border: 1px solid var(--linha);
+    display: grid; place-content: center;
+    transition: border-color .45s ease, background .45s ease, transform .45s cubic-bezier(.2,.9,.3,1);
+  }
+  .satelite .disco img, .satelite .disco svg { width: clamp(25px, 5.4vw, 29px); height: auto; object-fit: contain; }
+  .satelite.disparou .disco { border-color: #ff6e0070; }
+  .satelite.no-ar .disco { border-color: #25d36670; background: #0e1712; transform: scale(1.07); }
+  .satelite .nome { font-weight: 700; font-size: .87rem; line-height: 1.25; }
+  .satelite .nome small { display: block; font-weight: 500; color: var(--cinza-escuro); font-size: .72rem; margin-top: 2px; }
   .chip-no-ar {
-    margin-left: auto; font-size: .71rem; font-weight: 800; letter-spacing: .06em;
+    font-size: .66rem; font-weight: 800; letter-spacing: .06em;
     color: #7CFFB4; background: #12351f; border: 1px solid #25d36640;
-    padding: 5px 11px; border-radius: 999px; white-space: nowrap;
+    padding: 4px 10px; border-radius: 999px; white-space: nowrap;
     opacity: 0; transform: scale(.8); transition: opacity .3s ease, transform .3s cubic-bezier(.2,1.5,.4,1);
   }
-  .canal-linha.no-ar .chip-no-ar { opacity: 1; transform: scale(1); }
+  .satelite.no-ar .chip-no-ar { opacity: 1; transform: scale(1); }
 
   .placar {
-    margin-top: 24px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-    color: var(--cinza); font-size: .95rem;
+    margin: 30px auto 0; max-width: 820px;
+    display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap;
+    color: var(--cinza); font-size: .95rem; text-align: center;
     opacity: 0; transform: translateY(10px); transition: all .5s ease;
   }
   .placar.no-ar { opacity: 1; transform: none; }
@@ -251,7 +279,7 @@
     font-weight: 800; color: #7CFFB4; background: #12351f;
     border: 1px solid #25d36640; padding: 6px 13px; border-radius: 999px; font-size: .84rem;
   }
-  .nota-vendeu { margin-top: 18px; color: var(--cinza); font-size: .95rem; }
+  .nota-vendeu { margin: 16px auto 0; max-width: 760px; text-align: center; color: var(--cinza); font-size: .95rem; }
   .nota-vendeu strong { color: var(--claro); }
 
   /* ── a conta do tempo: como é hoje × como fica ──────────────────────── */
@@ -473,20 +501,7 @@
     .beneficios-site { grid-template-columns: 1fr 1fr; }
     .palco-canais { grid-template-columns: 1fr; }
     .cartao-veiculo { max-width: 400px; margin-inline: auto; }
-    /* no celular não há espaço para os fios: o sinal chega pela própria
-       borda do cartão, que acende de laranja e assenta em verde */
-    .fio { display: none; }
-    .no-canal {
-      flex: 1; min-width: 0 !important; width: 100%;
-      padding: 13px 15px; gap: 12px;
-      border-left: 3px solid var(--linha);
-      transition: border-left-color .35s ease, border-color .4s ease, background .4s ease;
-    }
-    .canal-linha.disparou .no-canal { border-left-color: var(--laranja); }
-    .canal-linha.no-ar .no-canal { border-left-color: var(--zap); }
-    .no-canal .nome { font-size: .92rem; }
-    .no-canal .nome small { font-size: .72rem; }
-    .chip-no-ar { font-size: .64rem; padding: 4px 9px; }
+    .orbita { --disco: 56px; }
     .cartao-veiculo { margin-bottom: 6px; }
     .site-flutuante { position: static; width: 100%; margin-top: 14px; transform: none; }
     .etiqueta-flutuante { position: static; max-width: none; margin-top: 14px; }
@@ -496,6 +511,12 @@
   @media (max-width: 560px) {
     .grade, .numeros, .beneficios-site { grid-template-columns: 1fr; }
     .antes-depois { grid-template-columns: 1fr; }
+    /* no telefone o círculo encolhe, e cada canal fica só com o nome */
+    .orbita { width: min(360px, 100%); --disco: 50px; }
+    .satelite .nome { font-size: .78rem; }
+    .satelite .nome small { display: none; }
+    .satelite .chip-no-ar { font-size: .6rem; padding: 3px 8px; }
+    .nucleo span { display: none; }
     .etapa { font-size: .84rem; padding: 9px 15px; }
   }
 
@@ -506,6 +527,7 @@
     .palco-fone { height: auto; }
     .cola { position: static; height: auto; padding: 60px 0; }
     .chip-no-ar, .placar { opacity: 1; transform: none; }
+    .pulso { opacity: 0; }
     .etapa { color: var(--claro); }
   }
 </style>
@@ -569,56 +591,70 @@
         <svg class="cursor" id="cursor" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2.5 19 12l-6.2 1.3L9.9 19 5 2.5Z" fill="#fff" stroke="#000" stroke-width="1.2" stroke-linejoin="round"/></svg>
       </div>
 
-      <div class="canais-fila rev d1" id="canais-fila">
-        <div class="canal-linha">
-          <div class="fio"><i></i></div>
-          <div class="no-canal">
-            <svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
-            <span class="nome">WhatsApp<small>a ficha inteira do veículo na conversa</small></span>
-            <span class="chip-no-ar">✓ ENVIADO</span>
-          </div>
-        </div>
-        <div class="canal-linha">
-          <div class="fio"><i></i></div>
-          <div class="no-canal">
-            <img class="branco" src="/conheca/img/instagram.svg" alt="Instagram" />
-            <span class="nome">Instagram<small>post e story com arte pronta</small></span>
-            <span class="chip-no-ar">✓ NO AR</span>
-          </div>
-        </div>
-        <div class="canal-linha">
-          <div class="fio"><i></i></div>
-          <div class="no-canal">
-            <img class="branco" src="/conheca/img/facebook.svg" alt="Facebook" />
-            <span class="nome">Facebook<small>página e catálogo sincronizados</small></span>
-            <span class="chip-no-ar">✓ NO AR</span>
-          </div>
-        </div>
-        <div class="canal-linha">
-          <div class="fio"><i></i></div>
-          <div class="no-canal">
-            <img src="/conheca/img/mercadolivre-branco.png" alt="Mercado Livre" />
-            <span class="nome">Mercado Livre<small>anuncia e despublica com o estoque</small></span>
-            <span class="chip-no-ar">✓ NO AR</span>
-          </div>
-        </div>
-        <div class="canal-linha">
-          <div class="fio"><i></i></div>
-          <div class="no-canal">
-            <img src="/conheca/img/via-icon-white.png" alt="Site da loja" />
-            <span class="nome">Site da sua loja<small>página do veículo criada na hora</small></span>
-            <span class="chip-no-ar">✓ NO AR</span>
-          </div>
+      <div class="orbita rev d1" id="orbita">
+        <svg class="raios" viewBox="0 0 520 520" aria-hidden="true">
+          <circle class="anel" cx="260" cy="260" r="190" />
+        <g class="raio" data-raio="0">
+          <line class="trilho" x1="260.0" y1="194.0" x2="260.0" y2="108.0" />
+          <line class="pulso"  x1="260.0" y1="194.0" x2="260.0" y2="108.0" />
+        </g>
+        <g class="raio" data-raio="1">
+          <line class="trilho" x1="322.8" y1="239.6" x2="404.6" y2="213.0" />
+          <line class="pulso"  x1="322.8" y1="239.6" x2="404.6" y2="213.0" />
+        </g>
+        <g class="raio" data-raio="2">
+          <line class="trilho" x1="298.8" y1="313.4" x2="349.3" y2="383.0" />
+          <line class="pulso"  x1="298.8" y1="313.4" x2="349.3" y2="383.0" />
+        </g>
+        <g class="raio" data-raio="3">
+          <line class="trilho" x1="221.2" y1="313.4" x2="170.7" y2="383.0" />
+          <line class="pulso"  x1="221.2" y1="313.4" x2="170.7" y2="383.0" />
+        </g>
+        <g class="raio" data-raio="4">
+          <line class="trilho" x1="197.2" y1="239.6" x2="115.4" y2="213.0" />
+          <line class="pulso"  x1="197.2" y1="239.6" x2="115.4" y2="213.0" />
+        </g>
+        </svg>
+
+        <div class="nucleo" id="nucleo">
+          <img src="/conheca/img/via-icon-white.png" alt="Via Pesados" />
+          <span>uma ficha só</span>
         </div>
 
-        <div class="placar" id="placar">
-          <span class="selo-tempo">5 canais · 1 clique</span>
-          <span>Meia hora por caminhão, toda vez que entra um no pátio. Agora é <b>um clique</b> — feito enquanto você atende o próximo cliente.</span>
-        </div>
-        <p class="nota-vendeu">E quando vender? <strong>O sistema tira o anúncio de todos os canais sozinho.</strong> Ninguém liga por caminhão que já saiu.</p>
-        <p class="nota-vendeu">Quem aparece primeiro vende primeiro: <strong>o caminhão que entrou hoje no pátio está anunciado hoje</strong> — não na semana que vem, quando alguém tiver tempo.</p>
+      <div class="satelite" data-canal="0" style="--cx: 0.0000; --cy: -1.0000;">
+        <span class="disco"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg></span>
+        <span class="nome">WhatsApp<small>a ficha completa na conversa</small></span>
+        <span class="chip-no-ar">✓ NO AR</span>
+      </div>
+      <div class="satelite" data-canal="1" style="--cx: 0.9511; --cy: -0.3090;">
+        <span class="disco"><img class="branco" src="/conheca/img/instagram.svg" alt="" /></span>
+        <span class="nome">Instagram<small>post e story com arte pronta</small></span>
+        <span class="chip-no-ar">✓ NO AR</span>
+      </div>
+      <div class="satelite" data-canal="2" style="--cx: 0.5878; --cy: 0.8090;">
+        <span class="disco"><img class="branco" src="/conheca/img/facebook.svg" alt="" /></span>
+        <span class="nome">Facebook<small>página e catálogo</small></span>
+        <span class="chip-no-ar">✓ NO AR</span>
+      </div>
+      <div class="satelite" data-canal="3" style="--cx: -0.5878; --cy: 0.8090;">
+        <span class="disco"><img src="/conheca/img/mercadolivre-branco.png" alt="" /></span>
+        <span class="nome">Mercado Livre<small>anúncio completo</small></span>
+        <span class="chip-no-ar">✓ NO AR</span>
+      </div>
+      <div class="satelite" data-canal="4" style="--cx: -0.9511; --cy: -0.3090;">
+        <span class="disco"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.2 9.5h17.6M3.2 14.5h17.6M12 3c2.6 2.7 2.6 15.3 0 18M12 3c-2.6 2.7-2.6 15.3 0 18"/></svg></span>
+        <span class="nome">Site da sua loja<small>página do veículo</small></span>
+        <span class="chip-no-ar">✓ NO AR</span>
+      </div>
       </div>
     </div>
+
+    <div class="placar" id="placar">
+      <span class="selo-tempo">5 canais · 1 clique</span>
+      <span>Meia hora por caminhão, toda vez que entra um no pátio. Agora é <b>um clique</b> — feito enquanto você atende o próximo cliente.</span>
+    </div>
+    <p class="nota-vendeu">E quando vender? <strong>O sistema tira o anúncio de todos os canais sozinho.</strong> Ninguém liga por caminhão que já saiu.</p>
+    <p class="nota-vendeu">Quem aparece primeiro vende primeiro: <strong>o caminhão que entrou hoje no pátio está anunciado hoje</strong> — não na semana que vem, quando alguém tiver tempo.</p>
 
     <div class="antes-depois">
       <div class="coluna-tempo rev">
@@ -718,9 +754,9 @@
 <!-- SITE PRÓPRIO — logo abaixo do fluxo -->
 <section class="secao" id="site">
   <div class="wrap">
-    <p class="olho rev">A sua vitrine</p>
+    <p class="olho rev">A sua vitrine, trabalhando sozinha</p>
     <h2 class="rev d1">E o link leva para <span class="acento">um site desse nível</span>.</h2>
-    <p class="conversa rev d2">Todo anúncio que o sistema dispara termina no site da sua loja — <strong>com a sua marca, as suas cores e o seu WhatsApp</strong>. Cada caminhão ganha página própria, galeria, ficha técnica, simulador de financiamento e botão de conversa. <strong>Você não paga um site à parte: ele já vem no sistema.</strong></p>
+    <p class="conversa rev d2">Todo anúncio que o sistema dispara termina no site da sua loja — <strong>com a sua marca, as suas cores e o seu WhatsApp</strong>. Cada caminhão ganha página própria, galeria, ficha técnica, simulador de financiamento e botão de conversa. De madrugada, no domingo e no feriado, <strong>o cliente simula a parcela sozinho e chega no WhatsApp do vendedor já sabendo o que quer</strong>. E você não paga um site à parte: ele já vem no sistema.</p>
 
     <div class="palco-site rev">
       <div class="navegador">
@@ -803,9 +839,9 @@
 <!-- VENDA -->
 <section class="secao" id="venda">
   <div class="wrap">
-    <p class="olho rev">Venda</p>
+    <p class="olho rev">Atendimento e equipe</p>
     <h2 class="rev d1">Nenhuma venda <span class="acento">escapa</span>.</h2>
-    <p class="conversa rev d2">O WhatsApp da equipe inteira, o funil e o pós-venda dentro de um lugar só — com o sistema <strong>avisando quem está na hora de comprar de novo</strong>.</p>
+    <p class="conversa rev d2">O WhatsApp de todo vendedor, o funil e o pós-venda num lugar só — o sistema <strong>avisa quem está na hora de trocar de caminhão</strong> e mostra, no fim do mês, <strong>quem vendeu o quê e quanto ganhou</strong>. Sem planilha, sem cobrar relatório de ninguém.</p>
 
     <div class="linhas-venda">
       <div class="linha-venda rev">
@@ -847,6 +883,16 @@
           <span class="etiqueta-mini">Etiquetas saem sozinhas da ficha</span>
         </div>
       </div>
+
+      <div class="linha-venda rev">
+        <div class="midia"><img src="/conheca/img/vendas.jpg" loading="lazy" alt="Vendas do mês com vendedor, canal de origem, comissão e lucro" /></div>
+        <div>
+          <div class="num-bloco">05</div>
+          <h3>A equipe inteira num quadro só</h3>
+          <p>Venda por venda: <strong>quem vendeu, por qual canal o cliente chegou, quanto é de comissão e quanto sobrou de lucro</strong>. A comissão sai calculada da própria venda — ninguém precisa fechar planilha no dia 30, e dá para ver qual vendedor e qual canal estão trazendo dinheiro.</p>
+          <span class="etiqueta-mini">Comissão por vendedor, tirada da venda</span>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -867,7 +913,7 @@
       <figure class="cartao-tela rev d2"><img src="/conheca/img/calendario.jpg" loading="lazy" alt="" /><figcaption>Agenda <small>visitas, entregas, avaliações</small></figcaption></figure>
     </div>
 
-    <p class="aviso-real rev">E ainda: financiamento, consórcio, ponto eletrônico, equipe, metas, pós-venda, inteligência artificial… <b>a lista não cabe na página — cabe na demonstração.</b></p>
+    <p class="aviso-real rev">E ainda: financiamento, consórcio, ponto eletrônico, equipe, metas, pós-venda, inteligência artificial… <b>tudo no mesmo lugar, para ninguém da loja perder tempo trocando de sistema.</b></p>
   </div>
 </section>
 
@@ -913,7 +959,9 @@
   const cursor  = document.getElementById('cursor');
   const botao   = document.getElementById('botao-anunciar');
   const onda    = document.getElementById('onda');
-  const linhas  = [...document.querySelectorAll('#canais-fila .canal-linha')];
+  const nucleo  = document.getElementById('nucleo');
+  const sats    = [...document.querySelectorAll('#orbita .satelite')];
+  const raios   = [...document.querySelectorAll('#orbita .raio')];
   const etapas  = [...document.querySelectorAll('#etapas .etapa')];
   const placar  = document.getElementById('placar');
   const palco   = document.getElementById('palco-canais');
@@ -922,7 +970,9 @@
   const limpa = () => {
     cursor.classList.remove('aparece', 'mira', 'clicou');
     onda.classList.remove('bate');
-    linhas.forEach(l => l.classList.remove('disparou', 'no-ar'));
+    nucleo.classList.remove('bate');
+    sats.forEach(x => x.classList.remove('disparou', 'no-ar'));
+    raios.forEach(x => x.classList.remove('disparou', 'no-ar'));
     placar.classList.remove('no-ar');
     marcaEtapa(0);
   };
@@ -932,15 +982,17 @@
     [ 250, () => cursor.classList.add('aparece')],
     [ 400, () => { cursor.classList.add('mira'); marcaEtapa(1); }],
     [1450, () => { cursor.classList.add('clicou'); botao.classList.add('apertado'); }],
-    [1620, () => { botao.classList.remove('apertado'); onda.classList.add('bate'); marcaEtapa(2); }],
+    [1620, () => { botao.classList.remove('apertado'); onda.classList.add('bate'); nucleo.classList.add('bate'); marcaEtapa(2); }],
+    [2400, () => nucleo.classList.remove('bate')],
     [1750, () => cursor.classList.remove('clicou')],
     [2100, () => cursor.classList.remove('aparece', 'mira')],
   ];
-  linhas.forEach((l, k) => {
-    roteiro.push([1750 + k * 320, () => l.classList.add('disparou')]);
-    roteiro.push([2450 + k * 320, () => l.classList.add('no-ar')]);
+  sats.forEach((sat, k) => {
+    const sai = 1780 + k * 130, chega = sai + 700;
+    roteiro.push([sai,   () => { raios[k].classList.add('disparou'); sat.classList.add('disparou'); }]);
+    roteiro.push([chega, () => { raios[k].classList.add('no-ar');    sat.classList.add('no-ar');    }]);
   });
-  roteiro.push([2450 + linhas.length * 320 + 250, () => { marcaEtapa(3); placar.classList.add('no-ar'); }]);
+  roteiro.push([1780 + (sats.length - 1) * 130 + 700 + 260, () => { marcaEtapa(3); placar.classList.add('no-ar'); }]);
 
   let relogios = [], ciclo = null;
   const roda = () => {
@@ -950,13 +1002,14 @@
   const paraTudo = () => { relogios.forEach(clearTimeout); relogios = []; clearInterval(ciclo); ciclo = null; };
 
   if (reduzido) {
-    linhas.forEach(l => l.classList.add('no-ar'));
+    sats.forEach(x => x.classList.add('no-ar'));
+    raios.forEach(x => x.classList.add('no-ar'));
     placar.classList.add('no-ar');
     marcaEtapa(3);
   } else {
     /* só anima enquanto a seção está à vista */
     new IntersectionObserver(es => es.forEach(e => {
-      if (e.isIntersecting) { if (!ciclo) { roda(); ciclo = setInterval(roda, 9000); } }
+      if (e.isIntersecting) { if (!ciclo) { roda(); ciclo = setInterval(roda, 7200); } }
       else paraTudo();
     }), { threshold: .28 }).observe(palco);
   }
