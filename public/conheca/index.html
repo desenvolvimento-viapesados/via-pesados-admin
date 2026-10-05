@@ -305,35 +305,28 @@
   .personalizacao { margin-top: clamp(56px, 8vw, 90px); }
   .frase-forte.menor { font-size: clamp(1.35rem, 3.1vw, 2.1rem); max-width: 24ch; margin-top: 0; }
   .centrado-estreito { max-width: 58ch; margin: 16px auto 0; text-align: center; }
-  /* o mesmo sistema, a cara de cada loja: a barra do print é cortada e
-     cada painel ganha o cabeçalho da sua marca */
-  .paineis-lojas { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(14px, 1.8vw, 22px); margin-top: 40px; }
-  .painel-loja {
-    border: 1px solid var(--linha); border-radius: 18px; overflow: hidden; background: #0d0d0f;
-    transform: rotate(var(--giro, 0deg)) translateY(var(--sobe, 0));
-    box-shadow: 0 44px 80px -42px #000, 0 0 60px -40px var(--c1, #000);
-    transition: transform .4s cubic-bezier(.2,.9,.3,1), border-color .4s ease;
+  /* ── a esteira de telas: o mesmo sistema, a cara de cada loja ───────
+     Rola sozinha, sem botão e sem ponto: quem passa os olhos vê três ou
+     quatro lojas diferentes sem precisar fazer nada. A lista é duplicada e
+     a animação anda exatamente metade — por isso o laço não tem emenda. A
+     cópia é aria-hidden: para quem usa leitor de tela, ler duas vezes a
+     mesma lista é ruído. */
+  .esteira { margin-top: 40px; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
+  .esteira-trilho { display: flex; gap: clamp(14px, 1.6vw, 22px); width: max-content; animation: esteira 64s linear infinite; }
+  .esteira:hover .esteira-trilho { animation-play-state: paused; }
+  @keyframes esteira { to { transform: translateX(calc(-50% - clamp(7px, .8vw, 11px))); } }
+
+  .tela-cliente { width: clamp(300px, 34vw, 480px); flex: none; }
+  .tela-cliente img {
+    width: 100%; height: auto; display: block; border-radius: 14px;
+    border: 1px solid var(--linha); background: #0d0d0f;
+    box-shadow: 0 30px 60px -34px #000;
   }
-  .painel-loja:hover { transform: rotate(0deg) translateY(-6px) scale(1.025); border-color: #ffffff2b; }
-  .barra-loja {
-    display: flex; align-items: center; gap: 10px;
-    padding: 11px 14px; background: #131315; border-bottom: 1px solid var(--linha);
+  .tela-cliente figcaption {
+    margin-top: 11px; text-align: center;
+    font-size: .88rem; font-weight: 700; color: var(--claro); letter-spacing: -.01em;
   }
-  .barra-loja .emblema {
-    width: 32px; height: 32px; border-radius: 10px; flex: none;
-    display: grid; place-content: center; color: #fff;
-    background: linear-gradient(140deg, var(--c1, #333), var(--c2, #666));
-    box-shadow: inset 0 1px 0 #ffffff40;
-  }
-  .barra-loja .emblema svg { width: 18px; height: auto; }
-  .barra-loja .nome-loja { font-weight: 800; font-size: .86rem; line-height: 1.05; letter-spacing: -.01em; }
-  .barra-loja .nome-loja small {
-    display: block; font-weight: 600; font-size: .63rem; letter-spacing: .1em;
-    text-transform: uppercase; color: var(--cinza-escuro); margin-top: 2px;
-  }
-  /* 115px dos 1250 do print são a barra original, com o logo: ficam de fora */
-  .tela-loja { aspect-ratio: 2000 / 1135; overflow: hidden; }
-  .tela-loja img { width: 100%; height: 100%; object-fit: cover; object-position: center bottom; }
+  .tela-cliente figcaption span { font-weight: 500; color: var(--cinza); }
 
   .nota-exemplo { margin-top: 22px; text-align: center; color: var(--cinza-escuro); font-size: .78rem; }
 
@@ -487,8 +480,7 @@
   @media (max-width: 560px) {
     .grade, .numeros, .beneficios-site { grid-template-columns: 1fr; }
     /* no telefone o caos vira pilha: rotação some e um painel por linha */
-    .paineis-lojas { grid-template-columns: 1fr; }
-    .painel-loja { transform: none; }
+    .esteira-trilho { animation-duration: 46s; }
     /* no telefone o círculo encolhe, e cada canal fica só com o nome */
     .orbita { width: min(360px, 100%); --disco: 50px; }
     .satelite .nome { font-size: .78rem; }
@@ -506,6 +498,9 @@
     .cola { position: static; height: auto; padding: 60px 0; }
     .chip-no-ar { opacity: 1; transform: none; }
     .pulso { opacity: 0; }
+    /* a esteira para, e vira uma faixa que se arrasta com o dedo */
+    .esteira-trilho { animation: none; }
+    .esteira { overflow-x: auto; }
     .etapa { color: var(--claro); }
   }
 </style>
@@ -557,30 +552,111 @@
     <div class="personalizacao">
       <p class="frase-forte menor rev">Personalizado para <b>a sua empresa</b>.</p>
       <p class="conversa centrado-estreito rev d1">O painel, os anúncios e o site saem com a <strong>sua marca, suas cores e o seu telefone</strong>. Quem compra de você vê a sua loja — a Via Pesados fica nos bastidores.</p>
-      <div class="paineis-lojas rev d2">
-        <figure class="painel-loja" style="--c1: #2f6bff; --c2: #36b6ff; --giro: -2deg; --sobe: 14px;">
-          <figcaption class="barra-loja">
-            <span class="emblema"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
-            <span class="nome-loja">Rota Norte<small>Caminhões</small></span>
-          </figcaption>
-          <div class="tela-loja"><img src="/conheca/img/gestao.jpg" loading="lazy" alt="Estoque da loja no painel" /></div>
+      <div class="esteira rev d2" aria-label="O sistema em lojas diferentes">
+        <div class="esteira-trilho">
+        <figure class="tela-cliente">
+          <img src="/conheca/img/clientes/carreta-viva-escuro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Carreta Viva, Governador Valadares, MG" width="1500" height="835" />
+          <figcaption>Carreta Viva <span>— Governador Valadares, MG</span></figcaption>
         </figure>
-        <figure class="painel-loja" style="--c1: #13a66b; --c2: #49d99a; --giro: 1.4deg; --sobe: -10px;">
-          <figcaption class="barra-loja">
-            <span class="emblema"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
-            <span class="nome-loja">Pampa<small>Diesel</small></span>
-          </figcaption>
-          <div class="tela-loja"><img src="/conheca/img/relatorios.jpg" loading="lazy" alt="Relatórios da loja no painel" /></div>
+        <figure class="tela-cliente">
+          <img src="/conheca/img/clientes/carreta-viva-claro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Carreta Viva, Governador Valadares, MG" width="1500" height="835" />
+          <figcaption>Carreta Viva <span>— Governador Valadares, MG</span></figcaption>
         </figure>
-        <figure class="painel-loja" style="--c1: #e0452f; --c2: #ff8a4c; --giro: -1.2deg; --sobe: 8px;">
-          <figcaption class="barra-loja">
-            <span class="emblema"><svg viewBox="0 0 24 22" fill="currentColor" aria-hidden="true"><path d="M1.4 4.6h10.9a1 1 0 0 1 1 1v8.8H1.4a1 1 0 0 1-1-1V5.6a1 1 0 0 1 1-1Z"/><path d="M14.6 8.1h3.1a1 1 0 0 1 .8.4l2.4 3.1a1 1 0 0 1 .2.6v2.2h-6.5V8.1Z"/><circle cx="5.9" cy="16.8" r="2.4"/><circle cx="17.6" cy="16.8" r="2.4"/></svg></span>
-            <span class="nome-loja">Vale<small>Pesados</small></span>
-          </figcaption>
-          <div class="tela-loja"><img src="/conheca/img/clientes.jpg" loading="lazy" alt="Clientes da loja no painel" /></div>
+        <figure class="tela-cliente">
+          <img src="/conheca/img/clientes/eixo-forte-claro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Eixo Forte, Cascavel, PR" width="1500" height="835" />
+          <figcaption>Eixo Forte <span>— Cascavel, PR</span></figcaption>
         </figure>
+        <figure class="tela-cliente">
+          <img src="/conheca/img/clientes/eixo-forte-escuro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Eixo Forte, Cascavel, PR" width="1500" height="835" />
+          <figcaption>Eixo Forte <span>— Cascavel, PR</span></figcaption>
+        </figure>
+        <figure class="tela-cliente">
+          <img src="/conheca/img/clientes/marco-zero-escuro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Marco Zero, Feira de Santana, BA" width="1500" height="835" />
+          <figcaption>Marco Zero <span>— Feira de Santana, BA</span></figcaption>
+        </figure>
+        <figure class="tela-cliente">
+          <img src="/conheca/img/clientes/marco-zero-claro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Marco Zero, Feira de Santana, BA" width="1500" height="835" />
+          <figcaption>Marco Zero <span>— Feira de Santana, BA</span></figcaption>
+        </figure>
+        <figure class="tela-cliente">
+          <img src="/conheca/img/clientes/torque-norte-claro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Torque Norte, Imperatriz, MA" width="1500" height="835" />
+          <figcaption>Torque Norte <span>— Imperatriz, MA</span></figcaption>
+        </figure>
+        <figure class="tela-cliente">
+          <img src="/conheca/img/clientes/torque-norte-escuro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Torque Norte, Imperatriz, MA" width="1500" height="835" />
+          <figcaption>Torque Norte <span>— Imperatriz, MA</span></figcaption>
+        </figure>
+        <figure class="tela-cliente">
+          <img src="/conheca/img/clientes/vulcano-diesel-escuro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Vulcano Diesel, Rio Verde, GO" width="1500" height="835" />
+          <figcaption>Vulcano Diesel <span>— Rio Verde, GO</span></figcaption>
+        </figure>
+        <figure class="tela-cliente">
+          <img src="/conheca/img/clientes/vulcano-diesel-claro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Vulcano Diesel, Rio Verde, GO" width="1500" height="835" />
+          <figcaption>Vulcano Diesel <span>— Rio Verde, GO</span></figcaption>
+        </figure>
+        <figure class="tela-cliente" aria-hidden="true">
+          <img src="/conheca/img/clientes/carreta-viva-escuro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Carreta Viva, Governador Valadares, MG" width="1500" height="835" />
+          <figcaption>Carreta Viva <span>— Governador Valadares, MG</span></figcaption>
+        </figure>
+        <figure class="tela-cliente" aria-hidden="true">
+          <img src="/conheca/img/clientes/carreta-viva-claro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Carreta Viva, Governador Valadares, MG" width="1500" height="835" />
+          <figcaption>Carreta Viva <span>— Governador Valadares, MG</span></figcaption>
+        </figure>
+        <figure class="tela-cliente" aria-hidden="true">
+          <img src="/conheca/img/clientes/eixo-forte-claro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Eixo Forte, Cascavel, PR" width="1500" height="835" />
+          <figcaption>Eixo Forte <span>— Cascavel, PR</span></figcaption>
+        </figure>
+        <figure class="tela-cliente" aria-hidden="true">
+          <img src="/conheca/img/clientes/eixo-forte-escuro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Eixo Forte, Cascavel, PR" width="1500" height="835" />
+          <figcaption>Eixo Forte <span>— Cascavel, PR</span></figcaption>
+        </figure>
+        <figure class="tela-cliente" aria-hidden="true">
+          <img src="/conheca/img/clientes/marco-zero-escuro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Marco Zero, Feira de Santana, BA" width="1500" height="835" />
+          <figcaption>Marco Zero <span>— Feira de Santana, BA</span></figcaption>
+        </figure>
+        <figure class="tela-cliente" aria-hidden="true">
+          <img src="/conheca/img/clientes/marco-zero-claro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Marco Zero, Feira de Santana, BA" width="1500" height="835" />
+          <figcaption>Marco Zero <span>— Feira de Santana, BA</span></figcaption>
+        </figure>
+        <figure class="tela-cliente" aria-hidden="true">
+          <img src="/conheca/img/clientes/torque-norte-claro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Torque Norte, Imperatriz, MA" width="1500" height="835" />
+          <figcaption>Torque Norte <span>— Imperatriz, MA</span></figcaption>
+        </figure>
+        <figure class="tela-cliente" aria-hidden="true">
+          <img src="/conheca/img/clientes/torque-norte-escuro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Torque Norte, Imperatriz, MA" width="1500" height="835" />
+          <figcaption>Torque Norte <span>— Imperatriz, MA</span></figcaption>
+        </figure>
+        <figure class="tela-cliente" aria-hidden="true">
+          <img src="/conheca/img/clientes/vulcano-diesel-escuro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Vulcano Diesel, Rio Verde, GO" width="1500" height="835" />
+          <figcaption>Vulcano Diesel <span>— Rio Verde, GO</span></figcaption>
+        </figure>
+        <figure class="tela-cliente" aria-hidden="true">
+          <img src="/conheca/img/clientes/vulcano-diesel-claro.jpg" loading="lazy" decoding="async"
+               alt="O sistema na Vulcano Diesel, Rio Verde, GO" width="1500" height="835" />
+          <figcaption>Vulcano Diesel <span>— Rio Verde, GO</span></figcaption>
+        </figure>
+        </div>
       </div>
-      <p class="nota-exemplo rev d3">O mesmo sistema, a cara de cada loja. Marcas acima são exemplos.</p>
+      <p class="nota-exemplo rev d3">Telas reais do sistema, nos dois temas. As lojas acima são demonstrações, criadas para mostrar como a sua ficaria.</p>
     </div>
   </div>
 </section>
