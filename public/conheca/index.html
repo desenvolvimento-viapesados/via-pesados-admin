@@ -152,7 +152,14 @@
      uma vez, e é assim que um time de parceiros se apresenta. */
   .faixas-canais {
     display: grid; grid-template-columns: repeat(4, 1fr);
-    gap: clamp(10px, 1.1vw, 15px); margin-top: 18px;
+    gap: clamp(10px, 1.2vw, 18px); margin-top: 18px;
+  }
+  /* A fileira sai do wrap e ocupa quase a página inteira — até 1480px,
+     sempre 24px longe da borda. A margem negativa nasce do próprio wrap
+     (100%): o max() impede que, no celular, ela encolha em vez de crescer.
+     O selo acompanha, para os fios terminarem junto com as faixas. */
+  .faixas-canais, .selo-parceiros {
+    margin-inline: calc((100% - max(100%, min(1480px, 100vw - 48px))) / 2);
   }
   /* abaixo de 1100 a coluna fica estreita demais para a marca e a frase na
      mesma linha — a do Mercado Livre quebrava em quatro linhas. Vira dois
@@ -173,7 +180,7 @@
 
   .faixa-canal {
     display: flex; align-items: center; gap: 16px; text-align: left;
-    padding: 13px 20px; border-radius: 16px;
+    padding: 15px clamp(20px, 2.3vw, 34px); border-radius: 16px;
     /* todas com a mesma altura: a marca do Mercado Livre é mais alta que
        os glifos e, sem isto, a pilha ficava com um degrau */
     min-height: clamp(68px, 6.6vw, 78px);
