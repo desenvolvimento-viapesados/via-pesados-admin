@@ -135,6 +135,36 @@
   /* ══ MULTICANAIS — a sequência de um clique ═════════════════════════ */
   .multicanal { background: linear-gradient(180deg, var(--fundo), #0B0906 45%, var(--fundo)); padding-block: clamp(60px, 8vh, 96px); }
 
+  /* ── os quatro canais, com a marca de cada um ─────────────────────────
+     A cor da marca fica no selo e numa linha fina no alto do cartão. É o
+     bastante para reconhecer o canal de longe; pintar o cartão inteiro de
+     amarelo, azul, rosa e verde faria um mosaico ao lado da órbita, que é
+     quem deve prender o olho aqui. */
+  .contas-canais {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: clamp(10px, 1.2vw, 16px); margin: 32px auto 0; max-width: 1040px;
+  }
+  .conta-canal {
+    position: relative; overflow: hidden; text-align: left;
+    padding: 18px 16px 16px; border-radius: 16px;
+    border: 1px solid var(--linha); background: var(--cartao);
+    display: grid; gap: 9px; justify-items: start;
+  }
+  .conta-canal::before {
+    content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--marca);
+  }
+  .conta-canal .selo {
+    width: 44px; height: 44px; border-radius: 12px; flex: none;
+    display: grid; place-items: center; background: var(--marca);
+  }
+  .conta-canal .selo img, .conta-canal .selo svg { width: 23px; height: 23px; display: block; }
+  .conta-canal b { font-size: 1rem; font-weight: 800; color: var(--claro); letter-spacing: -.01em; }
+  .conta-canal small { font-size: .83rem; line-height: 1.4; color: var(--cinza); }
+  .nota-contas { margin-top: 15px; color: var(--cinza-escuro); font-size: .84rem; }
+  @media (max-width: 760px) {
+    .contas-canais { grid-template-columns: repeat(2, 1fr); }
+  }
+
   /* trilha de etapas: diz em palavras o que a animação está fazendo */
   .etapas { display: flex; justify-content: center; gap: 0; flex-wrap: wrap; margin-top: 30px; }
   .etapa {
@@ -728,8 +758,32 @@
   <div class="wrap">
     <div class="centrado">
       <p class="olho rev">Todos os canais de venda</p>
-      <h2 class="rev d1">O único sistema de pesados <span class="acento">ligado em todos os seus canais</span>.</h2>
-      <p class="conversa rev d2">Mercado Livre, Facebook, Instagram, WhatsApp e o site da sua loja: todos ligados de uma vez, <strong>sem integrador e sem ninguém de TI</strong>. O sistema cuida dos cinco por você — preço, fotos e estoque sempre iguais em todo lugar. E o mais importante: <strong>põe o caminhão no ar nos cinco com um botão só</strong>, para o seu tempo ir para onde dá dinheiro, que é vender.</p>
+      <h2 class="rev d1">O único sistema que <span class="acento">conecta as suas contas</span> e publica o estoque sozinho.</h2>
+      <p class="conversa rev d2">Você liga as contas da loja uma vez. Daí em diante, o caminhão que entra no estoque <strong>aparece em todos os canais</strong> — com preço, fotos e ficha iguais. Vendeu, sai de todos.</p>
+
+      <div class="contas-canais rev d2">
+        <article class="conta-canal" style="--marca: #FFE600;">
+          <span class="selo"><img src="/conheca/img/mercadolibre.svg" alt="" width="23" height="23" /></span>
+          <b>Mercado Livre</b>
+          <small>a conta da loja, ligada por dentro</small>
+        </article>
+        <article class="conta-canal" style="--marca: #1877F2;">
+          <span class="selo"><img class="branco" src="/conheca/img/facebook.svg" alt="" width="23" height="23" /></span>
+          <b>Facebook</b>
+          <small>a sua página e o seu catálogo</small>
+        </article>
+        <article class="conta-canal" style="--marca: linear-gradient(135deg, #F58529, #DD2A7B 52%, #8134AF 78%, #515BD4);">
+          <span class="selo"><img class="branco" src="/conheca/img/instagram.svg" alt="" width="23" height="23" /></span>
+          <b>Instagram</b>
+          <small>o perfil comercial da loja</small>
+        </article>
+        <article class="conta-canal" style="--marca: #25D366;">
+          <span class="selo"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg></span>
+          <b>WhatsApp</b>
+          <small>o número que a loja já usa</small>
+        </article>
+      </div>
+      <p class="nota-contas rev d3">Conexão direta com as contas da sua loja. Sem integrador e sem ninguém de TI.</p>
 
       <div class="etapas rev d3" id="etapas">
         <span class="etapa" data-etapa="1"><b>1</b> Um clique na ficha</span>
