@@ -318,11 +318,25 @@
   /* o seletor decide qual das duas aparece; a outra sai do fluxo */
   .vitrine-topo[data-tema="escuro"] .no-claro,
   .vitrine-topo[data-tema="claro"]  .no-escuro { display: none; }
+  .tela-loja picture { display: block; }
   .tela-loja figcaption {
     margin-top: 14px; text-align: center; font-size: .95rem; letter-spacing: -.01em;
   }
   .tela-loja figcaption b { font-weight: 800; color: var(--claro); }
   .tela-loja figcaption span { color: var(--cinza); font-weight: 500; }
+
+  /* No celular a tela é em pé, e é a altura da janela que decide o tamanho:
+     36svh de largura dá 63svh de altura (a proporção do print é 1,7735).
+     A largura fica no quadro, não na imagem — deixá-la "auto" fazia a
+     legenda, que é mais larga que a tela em pé, esticar o quadro, e cada
+     loja ficava com uma largura diferente conforme o nome da cidade.
+     O svh é a janela sem a barra do navegador: o vh do iOS cresce ao rolar. */
+  @media (max-width: 760px) {
+    .tela-loja { width: min(36vh, 76vw); width: min(36svh, 76vw); }
+    /* .78rem é o tamanho em que o nome e a cidade cabem na mesma linha na
+       tela mais larga do quadro; a .85rem a Carreta Viva já quebrava. */
+    .tela-loja figcaption { margin-top: 10px; font-size: .78rem; }
+  }
 
   /* ── o botão que troca o tema das telas ────────────────────────────── */
   .troca-tema {
@@ -489,8 +503,9 @@
   }
   @media (max-width: 560px) {
     .grade, .numeros, .beneficios-site { grid-template-columns: 1fr; }
-    /* no telefone o caos vira pilha: rotação some e um painel por linha */
-    .tela-loja { width: 86vw; }
+    /* a largura da tela mora na regra de 760px, que é onde a arte troca
+       pela do celular; 86vw aqui era a sobra da época em que a tela era
+       deitada, e vencia a outra por vir depois. */
     .trilho-lojas { animation-duration: 34s; }
     /* no telefone o círculo encolhe, e cada canal fica só com o nome */
     .orbita { width: min(360px, 100%); --disco: 50px; }
@@ -547,73 +562,153 @@
     <div class="esteira-lojas rev" aria-label="O mesmo sistema em lojas diferentes">
       <div class="trilho-lojas">
         <figure class="tela-loja">
-          <img class="no-escuro" src="/conheca/img/clientes/carreta-viva-escuro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Carreta Viva" width="1500" height="835" />
-          <img class="no-claro" src="/conheca/img/clientes/carreta-viva-claro.jpg" fetchpriority="high" decoding="async"
-               alt="O painel da Carreta Viva" width="1500" height="835" />
+          <picture class="no-escuro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/carreta-viva-cel-escuro.jpg" />
+            <img src="/conheca/img/clientes/carreta-viva-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Carreta Viva" width="1500" height="835" />
+          </picture>
+          <picture class="no-claro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/carreta-viva-cel-claro.jpg" />
+            <img src="/conheca/img/clientes/carreta-viva-claro.jpg" fetchpriority="high" decoding="async"
+                 alt="O painel da Carreta Viva" width="1500" height="835" />
+          </picture>
           <figcaption><b>Carreta Viva</b> <span>— Governador Valadares, MG</span></figcaption>
         </figure>
         <figure class="tela-loja">
-          <img class="no-escuro" src="/conheca/img/clientes/eixo-forte-escuro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Eixo Forte" width="1500" height="835" />
-          <img class="no-claro" src="/conheca/img/clientes/eixo-forte-claro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Eixo Forte" width="1500" height="835" />
+          <picture class="no-escuro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/eixo-forte-cel-escuro.jpg" />
+            <img src="/conheca/img/clientes/eixo-forte-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Eixo Forte" width="1500" height="835" />
+          </picture>
+          <picture class="no-claro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/eixo-forte-cel-claro.jpg" />
+            <img src="/conheca/img/clientes/eixo-forte-claro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Eixo Forte" width="1500" height="835" />
+          </picture>
           <figcaption><b>Eixo Forte</b> <span>— Cascavel, PR</span></figcaption>
         </figure>
         <figure class="tela-loja">
-          <img class="no-escuro" src="/conheca/img/clientes/marco-zero-escuro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Marco Zero" width="1500" height="835" />
-          <img class="no-claro" src="/conheca/img/clientes/marco-zero-claro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Marco Zero" width="1500" height="835" />
+          <picture class="no-escuro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/marco-zero-cel-escuro.jpg" />
+            <img src="/conheca/img/clientes/marco-zero-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Marco Zero" width="1500" height="835" />
+          </picture>
+          <picture class="no-claro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/marco-zero-cel-claro.jpg" />
+            <img src="/conheca/img/clientes/marco-zero-claro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Marco Zero" width="1500" height="835" />
+          </picture>
           <figcaption><b>Marco Zero</b> <span>— Feira de Santana, BA</span></figcaption>
         </figure>
         <figure class="tela-loja">
-          <img class="no-escuro" src="/conheca/img/clientes/torque-norte-escuro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Torque Norte" width="1500" height="835" />
-          <img class="no-claro" src="/conheca/img/clientes/torque-norte-claro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Torque Norte" width="1500" height="835" />
+          <picture class="no-escuro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/torque-norte-cel-escuro.jpg" />
+            <img src="/conheca/img/clientes/torque-norte-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Torque Norte" width="1500" height="835" />
+          </picture>
+          <picture class="no-claro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/torque-norte-cel-claro.jpg" />
+            <img src="/conheca/img/clientes/torque-norte-claro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Torque Norte" width="1500" height="835" />
+          </picture>
           <figcaption><b>Torque Norte</b> <span>— Imperatriz, MA</span></figcaption>
         </figure>
         <figure class="tela-loja">
-          <img class="no-escuro" src="/conheca/img/clientes/vulcano-diesel-escuro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Vulcano Diesel" width="1500" height="835" />
-          <img class="no-claro" src="/conheca/img/clientes/vulcano-diesel-claro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Vulcano Diesel" width="1500" height="835" />
+          <picture class="no-escuro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/vulcano-diesel-cel-escuro.jpg" />
+            <img src="/conheca/img/clientes/vulcano-diesel-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Vulcano Diesel" width="1500" height="835" />
+          </picture>
+          <picture class="no-claro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/vulcano-diesel-cel-claro.jpg" />
+            <img src="/conheca/img/clientes/vulcano-diesel-claro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Vulcano Diesel" width="1500" height="835" />
+          </picture>
           <figcaption><b>Vulcano Diesel</b> <span>— Rio Verde, GO</span></figcaption>
         </figure>
         <figure class="tela-loja" aria-hidden="true">
-          <img class="no-escuro" src="/conheca/img/clientes/carreta-viva-escuro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Carreta Viva" width="1500" height="835" />
-          <img class="no-claro" src="/conheca/img/clientes/carreta-viva-claro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Carreta Viva" width="1500" height="835" />
+          <picture class="no-escuro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/carreta-viva-cel-escuro.jpg" />
+            <img src="/conheca/img/clientes/carreta-viva-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Carreta Viva" width="1500" height="835" />
+          </picture>
+          <picture class="no-claro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/carreta-viva-cel-claro.jpg" />
+            <img src="/conheca/img/clientes/carreta-viva-claro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Carreta Viva" width="1500" height="835" />
+          </picture>
           <figcaption><b>Carreta Viva</b> <span>— Governador Valadares, MG</span></figcaption>
         </figure>
         <figure class="tela-loja" aria-hidden="true">
-          <img class="no-escuro" src="/conheca/img/clientes/eixo-forte-escuro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Eixo Forte" width="1500" height="835" />
-          <img class="no-claro" src="/conheca/img/clientes/eixo-forte-claro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Eixo Forte" width="1500" height="835" />
+          <picture class="no-escuro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/eixo-forte-cel-escuro.jpg" />
+            <img src="/conheca/img/clientes/eixo-forte-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Eixo Forte" width="1500" height="835" />
+          </picture>
+          <picture class="no-claro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/eixo-forte-cel-claro.jpg" />
+            <img src="/conheca/img/clientes/eixo-forte-claro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Eixo Forte" width="1500" height="835" />
+          </picture>
           <figcaption><b>Eixo Forte</b> <span>— Cascavel, PR</span></figcaption>
         </figure>
         <figure class="tela-loja" aria-hidden="true">
-          <img class="no-escuro" src="/conheca/img/clientes/marco-zero-escuro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Marco Zero" width="1500" height="835" />
-          <img class="no-claro" src="/conheca/img/clientes/marco-zero-claro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Marco Zero" width="1500" height="835" />
+          <picture class="no-escuro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/marco-zero-cel-escuro.jpg" />
+            <img src="/conheca/img/clientes/marco-zero-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Marco Zero" width="1500" height="835" />
+          </picture>
+          <picture class="no-claro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/marco-zero-cel-claro.jpg" />
+            <img src="/conheca/img/clientes/marco-zero-claro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Marco Zero" width="1500" height="835" />
+          </picture>
           <figcaption><b>Marco Zero</b> <span>— Feira de Santana, BA</span></figcaption>
         </figure>
         <figure class="tela-loja" aria-hidden="true">
-          <img class="no-escuro" src="/conheca/img/clientes/torque-norte-escuro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Torque Norte" width="1500" height="835" />
-          <img class="no-claro" src="/conheca/img/clientes/torque-norte-claro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Torque Norte" width="1500" height="835" />
+          <picture class="no-escuro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/torque-norte-cel-escuro.jpg" />
+            <img src="/conheca/img/clientes/torque-norte-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Torque Norte" width="1500" height="835" />
+          </picture>
+          <picture class="no-claro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/torque-norte-cel-claro.jpg" />
+            <img src="/conheca/img/clientes/torque-norte-claro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Torque Norte" width="1500" height="835" />
+          </picture>
           <figcaption><b>Torque Norte</b> <span>— Imperatriz, MA</span></figcaption>
         </figure>
         <figure class="tela-loja" aria-hidden="true">
-          <img class="no-escuro" src="/conheca/img/clientes/vulcano-diesel-escuro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Vulcano Diesel" width="1500" height="835" />
-          <img class="no-claro" src="/conheca/img/clientes/vulcano-diesel-claro.jpg" loading="lazy" decoding="async"
-               alt="O painel da Vulcano Diesel" width="1500" height="835" />
+          <picture class="no-escuro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/vulcano-diesel-cel-escuro.jpg" />
+            <img src="/conheca/img/clientes/vulcano-diesel-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Vulcano Diesel" width="1500" height="835" />
+          </picture>
+          <picture class="no-claro">
+            <source media="(max-width: 760px)" width="800" height="1419"
+                    srcset="/conheca/img/clientes/vulcano-diesel-cel-claro.jpg" />
+            <img src="/conheca/img/clientes/vulcano-diesel-claro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Vulcano Diesel" width="1500" height="835" />
+          </picture>
           <figcaption><b>Vulcano Diesel</b> <span>— Rio Verde, GO</span></figcaption>
         </figure>
       </div>
