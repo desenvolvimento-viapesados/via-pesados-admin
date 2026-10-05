@@ -98,7 +98,11 @@
     overflow: clip; text-align: center;
   }
   .heroi .marca { height: clamp(64px, 9vw, 96px); width: auto; margin: 0 auto 30px; }
-  .heroi h1 { font-size: var(--pico); line-height: 1.04; max-width: 20ch; margin: 0 auto 26px; }
+  /* O título do herói recua para um cinza claro e o que importa fica em
+     branco cheio. Sem isso o destaque não existia: o .acento é branco e o
+     título já era quase branco — a diferença não se via. */
+  .heroi h1 { font-size: var(--pico); line-height: 1.04; max-width: 20ch; margin: 0 auto 26px; color: #8e8c97; }
+  .heroi h1 .acento { color: #fff; }
   .heroi .sub {
     font-size: clamp(1.05rem, 1.75vw, 1.3rem); color: var(--cinza);
     max-width: 46ch; margin: 0 auto 40px; line-height: 1.6;
@@ -287,40 +291,47 @@
 
   /* ── a tela do sistema, logo abaixo do herói ────────────────────────── */
   .vitrine-topo { position: relative; z-index: 3; padding-bottom: clamp(50px, 8vh, 90px); }
-  /* ── o par de telas: a mesma loja, os dois temas ───────────────────
-     A escura atrás e a clara na frente, levemente tortas, uma sobre a
-     outra: mostra numa olhada que o sistema tem os dois temas e que a
-     marca é da loja. O palco tem proporção fixa para o par não pular de
-     altura quando troca de loja. */
-  .palco-lojas {
-    position: relative; max-width: 1060px; margin: 8px auto 0;
-    aspect-ratio: 3 / 2;
+  /* ── o carrossel das lojas: a mesma loja nos dois temas, empilhada ──
+     Anda sem parar para o lado. Cada item traz as DUAS telas da mesma
+     loja, uma sobre a outra e levemente tortas, e a cada loja troca quem
+     fica na frente — ora a clara, ora a escura. A lista é duplicada e a
+     animação anda metade mais meio vão: o laço não tem emenda. */
+  .esteira-lojas {
+    overflow: hidden; margin-top: 10px;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
   }
-  .par-loja {
-    position: absolute; inset: 0;
-    opacity: 0; visibility: hidden;
-    transition: opacity .9s ease, visibility 0s linear .9s;
+  .trilho-lojas {
+    display: flex; gap: clamp(20px, 2.4vw, 40px); width: max-content;
+    animation: andaLojas 58s linear infinite;
   }
-  .par-loja.agora { opacity: 1; visibility: visible; transition: opacity .9s ease; }
-  .par-loja img {
-    position: absolute; width: 82%; height: auto; border-radius: 14px;
-    border: 1px solid var(--linha);
+  .esteira-lojas:hover .trilho-lojas { animation-play-state: paused; }
+  @keyframes andaLojas { to { transform: translateX(calc(-50% - clamp(10px, 1.2vw, 20px))); } }
+
+  .par-loja { width: clamp(340px, 46vw, 660px); flex: none; }
+  /* a área das duas telas: proporção fixa, senão o trilho pula de altura */
+  .par-loja .telas { position: relative; aspect-ratio: 7 / 5; }
+  .par-loja .telas img {
+    position: absolute; width: 84%; height: auto;
+    border-radius: 12px; border: 1px solid var(--linha);
   }
-  /* a rotação estica a caixa: sem esta folga de 3% as pontas passavam do
-     palco e encostavam no que vem antes e depois */
   .par-loja .tela-escura {
-    left: 0; top: 3%; transform: rotate(-2.4deg);
-    box-shadow: 0 40px 80px -34px #000;
+    left: 0; top: 3%; transform: rotate(-2.4deg); z-index: 1;
+    box-shadow: 0 34px 70px -34px #000;
   }
   .par-loja .tela-clara {
-    right: 0; bottom: 3%; transform: rotate(1.8deg);
-    box-shadow: 0 50px 90px -30px rgba(0,0,0,.95), 0 0 0 1px #ffffff14;
+    right: 0; bottom: 3%; transform: rotate(1.8deg); z-index: 2;
+    box-shadow: 0 44px 80px -30px rgba(0,0,0,.95), 0 0 0 1px #ffffff14;
   }
-  .legenda-loja {
-    margin-top: 26px; text-align: center; font-size: 1.02rem; letter-spacing: -.01em;
+  /* alternado: a de fundo branco é que fica atrás */
+  .par-loja.invertido .tela-clara { z-index: 1; left: 0; right: auto; top: 3%; bottom: auto; transform: rotate(-2deg); }
+  .par-loja.invertido .tela-escura { z-index: 2; right: 0; left: auto; bottom: 3%; top: auto; transform: rotate(2.2deg); }
+
+  .par-loja figcaption {
+    margin-top: 16px; text-align: center; font-size: .95rem; letter-spacing: -.01em;
   }
-  .legenda-loja b { font-weight: 800; color: var(--claro); }
-  .legenda-loja span { color: var(--cinza); font-weight: 500; }
+  .par-loja figcaption b { font-weight: 800; color: var(--claro); }
+  .par-loja figcaption span { color: var(--cinza); font-weight: 500; }
 
   .nota-exemplo { margin-top: 22px; text-align: center; color: var(--cinza-escuro); font-size: .78rem; }
 
@@ -474,14 +485,11 @@
   @media (max-width: 560px) {
     .grade, .numeros, .beneficios-site { grid-template-columns: 1fr; }
     /* no telefone o caos vira pilha: rotação some e um painel por linha */
-    /* No telefone as telas ficam quase do tamanho da largura, então o palco
-       precisa ser mais baixo que o quadrado — senão elas se afastam e o
-       empilhamento, que é o ponto, desaparece. 7/6 deixa cerca de um terço
-       de uma sobre a outra. */
-    .palco-lojas { aspect-ratio: 7 / 6; }
-    .par-loja img { width: 92%; }
-    .par-loja .tela-escura { transform: rotate(-1.6deg); }
-    .par-loja .tela-clara { transform: rotate(1.2deg); }
+    /* No telefone a tela ocupa quase toda a largura do item: a área precisa
+       ser mais alta, senão as duas se afastam e o empilhamento some. */
+    .par-loja .telas { aspect-ratio: 6 / 5; }
+    .par-loja .telas img { width: 92%; }
+    .trilho-lojas { animation-duration: 40s; }
     /* no telefone o círculo encolhe, e cada canal fica só com o nome */
     .orbita { width: min(360px, 100%); --disco: 50px; }
     .satelite .nome { font-size: .78rem; }
@@ -499,8 +507,9 @@
     .cola { position: static; height: auto; padding: 60px 0; }
     .chip-no-ar { opacity: 1; transform: none; }
     .pulso { opacity: 0; }
-    /* sem troca automática: fica a primeira loja, parada */
-    .par-loja { transition: none; }
+    /* o carrossel para, e vira uma faixa que se arrasta com o dedo */
+    .trilho-lojas { animation: none; }
+    .esteira-lojas { overflow-x: auto; }
     .etapa { color: var(--claro); }
   }
 </style>
@@ -519,7 +528,7 @@
 <section class="heroi" id="inicio">
   <div class="wrap">
     <img class="marca rev" src="/conheca/img/via-icon-white.png" alt="Via Pesados" />
-    <h1 class="rev d1">Menos tempo anunciando.<br />Mais caminhão vendido.</h1>
+    <h1 class="rev d1">Feito para <span class="acento">poupar tempo</span>.<br />E <span class="acento">vender mais</span>.</h1>
     <p class="sub rev d2">O único sistema feito só para lojas de caminhões e carretas.</p>
     <div class="acoes rev d3">
       <a class="btn-zap pulso" href="https://wa.me/5533997075272?text=Ol%C3%A1!%20Vi%20a%20p%C3%A1gina%20do%20Via%20Pesados%20e%20quero%20marcar%20uma%20demonstra%C3%A7%C3%A3o." target="_blank" rel="noopener">
@@ -533,52 +542,100 @@
 <!-- O SISTEMA, LOGO DE CARA -->
 <section class="vitrine-topo" id="vitrine">
   <div class="wrap">
-    <div class="palco-lojas rev" id="palco-lojas" aria-label="O mesmo sistema em lojas diferentes, nos dois temas">
-        <div class="par-loja agora" data-nome="Carreta Viva" data-praca="Governador Valadares, MG">
-          <img class="tela-escura" src="/conheca/img/clientes/carreta-viva-escuro.jpg"
-               fetchpriority="high" decoding="async"
-               alt="O painel da Carreta Viva no tema escuro" width="1500" height="835" />
-          <img class="tela-clara" src="/conheca/img/clientes/carreta-viva-claro.jpg"
-               fetchpriority="high" decoding="async"
-               alt="O mesmo painel da Carreta Viva no tema claro" width="1500" height="835" />
-        </div>
-        <div class="par-loja" data-nome="Eixo Forte" data-praca="Cascavel, PR">
-          <img class="tela-escura" src="/conheca/img/clientes/eixo-forte-escuro.jpg"
-               loading="lazy" decoding="async"
-               alt="O painel da Eixo Forte no tema escuro" width="1500" height="835" />
-          <img class="tela-clara" src="/conheca/img/clientes/eixo-forte-claro.jpg"
-               loading="lazy" decoding="async"
-               alt="O mesmo painel da Eixo Forte no tema claro" width="1500" height="835" />
-        </div>
-        <div class="par-loja" data-nome="Marco Zero" data-praca="Feira de Santana, BA">
-          <img class="tela-escura" src="/conheca/img/clientes/marco-zero-escuro.jpg"
-               loading="lazy" decoding="async"
-               alt="O painel da Marco Zero no tema escuro" width="1500" height="835" />
-          <img class="tela-clara" src="/conheca/img/clientes/marco-zero-claro.jpg"
-               loading="lazy" decoding="async"
-               alt="O mesmo painel da Marco Zero no tema claro" width="1500" height="835" />
-        </div>
-        <div class="par-loja" data-nome="Torque Norte" data-praca="Imperatriz, MA">
-          <img class="tela-escura" src="/conheca/img/clientes/torque-norte-escuro.jpg"
-               loading="lazy" decoding="async"
-               alt="O painel da Torque Norte no tema escuro" width="1500" height="835" />
-          <img class="tela-clara" src="/conheca/img/clientes/torque-norte-claro.jpg"
-               loading="lazy" decoding="async"
-               alt="O mesmo painel da Torque Norte no tema claro" width="1500" height="835" />
-        </div>
-        <div class="par-loja" data-nome="Vulcano Diesel" data-praca="Rio Verde, GO">
-          <img class="tela-escura" src="/conheca/img/clientes/vulcano-diesel-escuro.jpg"
-               loading="lazy" decoding="async"
-               alt="O painel da Vulcano Diesel no tema escuro" width="1500" height="835" />
-          <img class="tela-clara" src="/conheca/img/clientes/vulcano-diesel-claro.jpg"
-               loading="lazy" decoding="async"
-               alt="O mesmo painel da Vulcano Diesel no tema claro" width="1500" height="835" />
-        </div>
+    <div class="esteira-lojas rev" aria-label="O mesmo sistema em lojas diferentes, nos dois temas">
+      <div class="trilho-lojas">
+        <figure class="par-loja">
+          <div class="telas">
+            <img class="tela-escura" src="/conheca/img/clientes/carreta-viva-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Carreta Viva no tema escuro" width="1500" height="835" />
+            <img class="tela-clara" src="/conheca/img/clientes/carreta-viva-claro.jpg" loading="lazy" decoding="async"
+                 alt="O mesmo painel da Carreta Viva no tema claro" width="1500" height="835" />
+          </div>
+          <figcaption><b>Carreta Viva</b> <span>— Governador Valadares, MG</span></figcaption>
+        </figure>
+        <figure class="par-loja invertido">
+          <div class="telas">
+            <img class="tela-escura" src="/conheca/img/clientes/eixo-forte-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Eixo Forte no tema escuro" width="1500" height="835" />
+            <img class="tela-clara" src="/conheca/img/clientes/eixo-forte-claro.jpg" loading="lazy" decoding="async"
+                 alt="O mesmo painel da Eixo Forte no tema claro" width="1500" height="835" />
+          </div>
+          <figcaption><b>Eixo Forte</b> <span>— Cascavel, PR</span></figcaption>
+        </figure>
+        <figure class="par-loja">
+          <div class="telas">
+            <img class="tela-escura" src="/conheca/img/clientes/marco-zero-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Marco Zero no tema escuro" width="1500" height="835" />
+            <img class="tela-clara" src="/conheca/img/clientes/marco-zero-claro.jpg" loading="lazy" decoding="async"
+                 alt="O mesmo painel da Marco Zero no tema claro" width="1500" height="835" />
+          </div>
+          <figcaption><b>Marco Zero</b> <span>— Feira de Santana, BA</span></figcaption>
+        </figure>
+        <figure class="par-loja invertido">
+          <div class="telas">
+            <img class="tela-escura" src="/conheca/img/clientes/torque-norte-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Torque Norte no tema escuro" width="1500" height="835" />
+            <img class="tela-clara" src="/conheca/img/clientes/torque-norte-claro.jpg" loading="lazy" decoding="async"
+                 alt="O mesmo painel da Torque Norte no tema claro" width="1500" height="835" />
+          </div>
+          <figcaption><b>Torque Norte</b> <span>— Imperatriz, MA</span></figcaption>
+        </figure>
+        <figure class="par-loja">
+          <div class="telas">
+            <img class="tela-escura" src="/conheca/img/clientes/vulcano-diesel-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Vulcano Diesel no tema escuro" width="1500" height="835" />
+            <img class="tela-clara" src="/conheca/img/clientes/vulcano-diesel-claro.jpg" loading="lazy" decoding="async"
+                 alt="O mesmo painel da Vulcano Diesel no tema claro" width="1500" height="835" />
+          </div>
+          <figcaption><b>Vulcano Diesel</b> <span>— Rio Verde, GO</span></figcaption>
+        </figure>
+        <figure class="par-loja" aria-hidden="true">
+          <div class="telas">
+            <img class="tela-escura" src="/conheca/img/clientes/carreta-viva-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Carreta Viva no tema escuro" width="1500" height="835" />
+            <img class="tela-clara" src="/conheca/img/clientes/carreta-viva-claro.jpg" loading="lazy" decoding="async"
+                 alt="O mesmo painel da Carreta Viva no tema claro" width="1500" height="835" />
+          </div>
+          <figcaption><b>Carreta Viva</b> <span>— Governador Valadares, MG</span></figcaption>
+        </figure>
+        <figure class="par-loja invertido" aria-hidden="true">
+          <div class="telas">
+            <img class="tela-escura" src="/conheca/img/clientes/eixo-forte-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Eixo Forte no tema escuro" width="1500" height="835" />
+            <img class="tela-clara" src="/conheca/img/clientes/eixo-forte-claro.jpg" loading="lazy" decoding="async"
+                 alt="O mesmo painel da Eixo Forte no tema claro" width="1500" height="835" />
+          </div>
+          <figcaption><b>Eixo Forte</b> <span>— Cascavel, PR</span></figcaption>
+        </figure>
+        <figure class="par-loja" aria-hidden="true">
+          <div class="telas">
+            <img class="tela-escura" src="/conheca/img/clientes/marco-zero-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Marco Zero no tema escuro" width="1500" height="835" />
+            <img class="tela-clara" src="/conheca/img/clientes/marco-zero-claro.jpg" loading="lazy" decoding="async"
+                 alt="O mesmo painel da Marco Zero no tema claro" width="1500" height="835" />
+          </div>
+          <figcaption><b>Marco Zero</b> <span>— Feira de Santana, BA</span></figcaption>
+        </figure>
+        <figure class="par-loja invertido" aria-hidden="true">
+          <div class="telas">
+            <img class="tela-escura" src="/conheca/img/clientes/torque-norte-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Torque Norte no tema escuro" width="1500" height="835" />
+            <img class="tela-clara" src="/conheca/img/clientes/torque-norte-claro.jpg" loading="lazy" decoding="async"
+                 alt="O mesmo painel da Torque Norte no tema claro" width="1500" height="835" />
+          </div>
+          <figcaption><b>Torque Norte</b> <span>— Imperatriz, MA</span></figcaption>
+        </figure>
+        <figure class="par-loja" aria-hidden="true">
+          <div class="telas">
+            <img class="tela-escura" src="/conheca/img/clientes/vulcano-diesel-escuro.jpg" loading="lazy" decoding="async"
+                 alt="O painel da Vulcano Diesel no tema escuro" width="1500" height="835" />
+            <img class="tela-clara" src="/conheca/img/clientes/vulcano-diesel-claro.jpg" loading="lazy" decoding="async"
+                 alt="O mesmo painel da Vulcano Diesel no tema claro" width="1500" height="835" />
+          </div>
+          <figcaption><b>Vulcano Diesel</b> <span>— Rio Verde, GO</span></figcaption>
+        </figure>
+      </div>
     </div>
-
-    <p class="legenda-loja rev d1">
-      <b id="loja-nome">Carreta Viva</b> <span id="loja-praca">— Governador Valadares, MG</span>
-    </p>
 
     <p class="frase-forte menor rev d1">Personalizado para <b>a sua empresa</b>.</p>
     <p class="conversa centrado-estreito rev d2">O painel, os anúncios e o site saem com a <strong>sua marca, suas cores e o seu telefone</strong>. Quem compra de você vê a sua loja — a Via Pesados fica nos bastidores. Claro ou escuro, quem escolhe é quem usa.</p>
@@ -1015,34 +1072,6 @@
     if (video.duration) barra.style.width = (t / video.duration * 100) + '%';
     legendas.forEach(l => l.classList.toggle('ativa', t >= +l.dataset.ini && t < +l.dataset.fim));
   });
-
-  /* ── o rodízio das lojas ───────────────────────────────────────────────
-     Troca o par a cada 4,5s. Só anda enquanto a seção está à vista: rodar
-     escondido gasta bateria e não é visto por ninguém. Quem pediu menos
-     movimento fica com a primeira loja, parada. */
-  const paresDeLoja = [...document.querySelectorAll('#palco-lojas .par-loja')];
-  if (paresDeLoja.length > 1 && !reduzido) {
-    const nomeEl = document.getElementById('loja-nome');
-    const pracaEl = document.getElementById('loja-praca');
-    let atual = 0, relogioLojas = null;
-
-    const mostra = (i) => {
-      paresDeLoja[atual].classList.remove('agora');
-      atual = i % paresDeLoja.length;
-      const par = paresDeLoja[atual];
-      par.classList.add('agora');
-      nomeEl.textContent = par.dataset.nome;
-      pracaEl.textContent = '— ' + par.dataset.praca;
-    };
-
-    new IntersectionObserver(es => es.forEach(e => {
-      if (e.isIntersecting && !relogioLojas) {
-        relogioLojas = setInterval(() => mostra(atual + 1), 4500);
-      } else if (!e.isIntersecting && relogioLojas) {
-        clearInterval(relogioLojas); relogioLojas = null;
-      }
-    }), { threshold: .25 }).observe(document.getElementById('palco-lojas'));
-  }
 
   /* contadores */
   const conta = el => {
