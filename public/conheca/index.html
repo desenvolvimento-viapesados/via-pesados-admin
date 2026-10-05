@@ -135,60 +135,57 @@
   /* ══ MULTICANAIS — a sequência de um clique ═════════════════════════ */
   .multicanal { background: linear-gradient(180deg, var(--fundo), #0B0906 45%, var(--fundo)); padding-block: clamp(60px, 8vh, 96px); }
 
-  /* ── os quatro canais, com a marca de cada um ─────────────────────────
-     A cor da marca fica no selo e numa linha fina no alto do cartão. É o
-     bastante para reconhecer o canal de longe; pintar o cartão inteiro de
-     amarelo, azul, rosa e verde faria um mosaico ao lado da órbita, que é
-     quem deve prender o olho aqui. */
-  .contas-canais {
-    display: grid; grid-template-columns: repeat(4, 1fr);
-    gap: clamp(10px, 1.2vw, 16px); margin: 32px auto 0; max-width: 1040px;
+  /* ── as faixas de marca, as mesmas das telas de publicação ──────────
+     No sistema, cada etapa abre com uma faixa na cor do canal e o emblema
+     grande: é o que faz a tela ser reconhecida de relance como "o anúncio
+     lá". Aqui elas ficam ao lado da órbita — a faixa diz onde, a órbita
+     mostra o caminho. */
+  .faixas-canais { display: grid; gap: 14px; align-content: center; }
+  .faixa-canal {
+    display: flex; align-items: center; gap: 18px; text-align: left;
+    padding: 18px 20px; border-radius: 18px;
+    box-shadow: 0 24px 48px -26px #000;
   }
-  .conta-canal {
-    position: relative; overflow: hidden; text-align: left;
-    padding: 18px 16px 16px; border-radius: 16px;
-    border: 1px solid var(--linha); background: var(--cartao);
-    display: grid; gap: 9px; justify-items: start;
+  .faixa-canal .dizeres { min-width: 0; }
+  .faixa-canal b {
+    display: block; font-size: clamp(1.02rem, 1.5vw, 1.22rem);
+    font-weight: 800; letter-spacing: -.02em; line-height: 1.15;
   }
-  .conta-canal::before {
-    content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--marca);
-  }
-  .conta-canal .selo {
-    width: 44px; height: 44px; border-radius: 12px; flex: none;
-    display: grid; place-items: center; background: var(--marca);
-  }
-  .conta-canal .selo img, .conta-canal .selo svg { width: 23px; height: 23px; display: block; }
-  .conta-canal b { font-size: 1rem; font-weight: 800; color: var(--claro); letter-spacing: -.01em; }
-  .conta-canal small { font-size: .83rem; line-height: 1.4; color: var(--cinza); }
-  .nota-contas { margin-top: 15px; color: var(--cinza-escuro); font-size: .84rem; }
-  @media (max-width: 760px) {
-    .contas-canais { grid-template-columns: repeat(2, 1fr); }
-  }
+  .faixa-canal span { display: block; margin-top: 3px; font-size: .84rem; line-height: 1.38; }
 
-  /* trilha de etapas: diz em palavras o que a animação está fazendo */
-  .etapas { display: flex; justify-content: center; gap: 0; flex-wrap: wrap; margin-top: 30px; }
-  .etapa {
-    display: flex; align-items: center; gap: 11px;
-    padding: 11px 20px; border-radius: 999px;
-    border: 1px solid var(--linha); background: var(--cartao);
-    font-weight: 700; font-size: .92rem; color: var(--cinza-escuro);
-    transition: all .45s cubic-bezier(.2,.8,.2,1);
-  }
-  .etapa b {
-    width: 24px; height: 24px; border-radius: 50%; flex: none;
+  .fx-ml { background: #FFE600; }
+  .fx-ml .emblema-ml { height: clamp(46px, 5.6vw, 58px); width: auto; flex: none; }
+  .fx-ml b { color: #2D3277; }
+  .fx-ml span { color: #2d3277bf; }
+
+  /* as três cores dos canais na mesma faixa, como quando se publica nos três */
+  .fx-redes { background: linear-gradient(120deg, #C13584, #1877F2 58%, #128C7E); }
+  .fx-redes b { color: #fff; }
+  .fx-redes span { color: #ffffffd1; }
+  .pilha-emblemas { display: flex; flex: none; }
+  .pilha-emblemas .emb { margin-left: -13px; }
+  .pilha-emblemas .emb:first-child { margin-left: 0; }
+  .emb {
+    width: clamp(44px, 5.2vw, 54px); aspect-ratio: 1; border-radius: 15px;
     display: grid; place-items: center;
-    background: #ffffff10; color: var(--cinza-escuro);
-    font-size: .78rem; font-weight: 800;
-    transition: all .45s ease;
+    box-shadow: 0 0 0 3px #ffffffe8, 0 8px 18px -6px #00000080;
   }
-  .etapa.agora { color: var(--claro); border-color: #ff6e0066; background: #1a120a; }
-  .etapa.agora b { background: var(--laranja); color: #1d0c00; }
-  .tracinho { width: clamp(16px, 4vw, 46px); height: 2px; background: #ffffff14; align-self: center; }
+  .emb img { width: 46%; height: auto; display: block; }
+  .emb-instagram { background: linear-gradient(45deg, #F58529, #DD2A7B 55%, #8134AF); }
+  .emb-facebook  { background: #1877F2; }
+  .emb-whatsapp  { background: #25D366; }
 
-  .palco-canais { margin-top: 26px; }
+  /* banner e animação lado a lado: a faixa diz em que conta sai, a órbita
+     mostra o clique virando cinco publicações. */
+  .palco-canais {
+    margin-top: 30px; display: grid; align-items: center;
+    grid-template-columns: minmax(280px, 1fr) minmax(330px, 1fr);
+    gap: clamp(20px, 3.4vw, 52px);
+  }
+  @media (max-width: 900px) { .palco-canais { grid-template-columns: 1fr; } }
 
   /* ── a órbita: o Via Pesados no centro, os canais em volta ─────────── */
-  .orbita { --raio: 36.54%; --disco: 68px; position: relative; width: min(620px, 100%); aspect-ratio: 1; margin: 18px auto 0; }
+  .orbita { --raio: 36.54%; --disco: 68px; position: relative; width: min(620px, 100%); aspect-ratio: 1; margin: 0 auto; }
   .orbita .raios { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
   .anel-orbita { fill: none; stroke: #ffffff10; stroke-width: 1.5; stroke-dasharray: 2 11; }
   .trilho { stroke: #ffffff14; stroke-width: 2; stroke-linecap: round; transition: stroke .5s ease; }
@@ -251,14 +248,12 @@
   }
   .satelite.no-ar .chip-no-ar { opacity: 1; transform: scale(1); }
 
-  /* ── o fecho da cena: uma frase, grande ─────────────────────────────── */
-  .frase-forte {
-    margin: 34px auto 0; max-width: 20ch; text-align: center;
-    font-size: clamp(1.55rem, 4vw, 2.6rem); font-weight: 800;
-    letter-spacing: -.025em; line-height: 1.18; text-wrap: balance; color: var(--claro);
+  /* a frase que fechava a cena agora é o título dela: o risco em "uma hora"
+     e o laranja em "um clique" fazem o antes e o depois numa linha só */
+  .multicanal h2 s {
+    color: var(--cinza-escuro); text-decoration-color: #ff6e0088; text-decoration-thickness: .08em;
   }
-  .frase-forte s { color: var(--cinza-escuro); text-decoration-color: #ff6e0088; text-decoration-thickness: .08em; }
-  .frase-forte b { color: var(--laranja); }
+  .multicanal h2 .laranja { color: var(--laranja); }
 
 
   /* ── FONE ───────────────────────────────────────────────────────────── */
@@ -528,8 +523,6 @@
     .orbita { --disco: 58px; }
     .site-flutuante { position: static; width: 100%; margin-top: 14px; transform: none; }
     .etiqueta-flutuante { position: static; max-width: none; margin-top: 14px; }
-    .tracinho { display: none; }
-    .etapas { gap: 8px; }
   }
   @media (max-width: 560px) {
     .grade, .numeros, .beneficios-site { grid-template-columns: 1fr; }
@@ -543,7 +536,6 @@
     .satelite .nome small { display: none; }
     .satelite .chip-no-ar { font-size: .6rem; padding: 3px 8px; }
     .nucleo span { display: none; }
-    .etapa { font-size: .84rem; padding: 9px 15px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -557,7 +549,6 @@
     /* o carrossel para, e vira uma faixa que se arrasta com o dedo */
     .trilho-lojas { animation: none; }
     .esteira-lojas { overflow-x: auto; }
-    .etapa { color: var(--claro); }
   }
 </style>
 </head>
@@ -758,43 +749,32 @@
   <div class="wrap">
     <div class="centrado">
       <p class="olho rev">Todos os canais de venda</p>
-      <h2 class="rev d1">O único sistema que <span class="acento">conecta as suas contas</span> e publica o estoque sozinho.</h2>
-      <p class="conversa rev d2">Você liga as contas da loja uma vez. Daí em diante, o caminhão que entra no estoque <strong>aparece em todos os canais</strong> — com preço, fotos e ficha iguais. Vendeu, sai de todos.</p>
-
-      <div class="contas-canais rev d2">
-        <article class="conta-canal" style="--marca: #FFE600;">
-          <span class="selo"><img src="/conheca/img/mercadolibre.svg" alt="" width="23" height="23" /></span>
-          <b>Mercado Livre</b>
-          <small>a conta da loja, ligada por dentro</small>
-        </article>
-        <article class="conta-canal" style="--marca: #1877F2;">
-          <span class="selo"><img class="branco" src="/conheca/img/facebook.svg" alt="" width="23" height="23" /></span>
-          <b>Facebook</b>
-          <small>a sua página e o seu catálogo</small>
-        </article>
-        <article class="conta-canal" style="--marca: linear-gradient(135deg, #F58529, #DD2A7B 52%, #8134AF 78%, #515BD4);">
-          <span class="selo"><img class="branco" src="/conheca/img/instagram.svg" alt="" width="23" height="23" /></span>
-          <b>Instagram</b>
-          <small>o perfil comercial da loja</small>
-        </article>
-        <article class="conta-canal" style="--marca: #25D366;">
-          <span class="selo"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg></span>
-          <b>WhatsApp</b>
-          <small>o número que a loja já usa</small>
-        </article>
-      </div>
-      <p class="nota-contas rev d3">Conexão direta com as contas da sua loja. Sem integrador e sem ninguém de TI.</p>
-
-      <div class="etapas rev d3" id="etapas">
-        <span class="etapa" data-etapa="1"><b>1</b> Um clique na ficha</span>
-        <span class="tracinho"></span>
-        <span class="etapa" data-etapa="2"><b>2</b> O sistema publica</span>
-        <span class="tracinho"></span>
-        <span class="etapa" data-etapa="3"><b>3</b> No ar em todos os canais</span>
-      </div>
+      <h2 class="rev d1">O que levava <s>uma hora</s>, agora é <b class="laranja">um clique</b>.</h2>
+      <p class="conversa rev d2">O Via Pesados publica <strong>direto na conta da sua loja</strong> em cada canal, pela conexão oficial de cada um, e mantém o anúncio atualizado sozinho. Sem integrador e sem ninguém de TI.</p>
     </div>
 
     <div class="palco-canais" id="palco-canais">
+      <div class="faixas-canais rev">
+        <article class="faixa-canal fx-ml">
+          <img class="emblema-ml" src="/conheca/img/mercadolivre-emblema.png" alt="Mercado Livre" width="416" height="292" />
+          <div class="dizeres">
+            <b>Mercado Livre</b>
+            <span>Anúncio completo, pela conta da sua loja.</span>
+          </div>
+        </article>
+        <article class="faixa-canal fx-redes">
+          <div class="pilha-emblemas">
+            <span class="emb emb-instagram"><img class="branco" src="/conheca/img/instagram.svg" alt="" width="24" height="24" /></span>
+            <span class="emb emb-facebook"><img class="branco" src="/conheca/img/facebook.svg" alt="" width="24" height="24" /></span>
+            <span class="emb emb-whatsapp"><img class="branco" src="/conheca/img/whatsapp.svg" alt="" width="24" height="24" /></span>
+          </div>
+          <div class="dizeres">
+            <b>Instagram, Facebook e WhatsApp</b>
+            <span>Post, story e catálogo com as mesmas fotos.</span>
+          </div>
+        </article>
+      </div>
+
       <div class="orbita rev" id="orbita">
         <svg class="raios" viewBox="0 0 520 520" aria-hidden="true">
           <circle class="anel-orbita" cx="260" cy="260" r="190" />
@@ -853,8 +833,6 @@
       </div>
 
     </div>
-
-    <p class="frase-forte rev">O que levava <s>uma hora</s>, agora é <b>um clique</b>.</p>
 
   </div>
 </section>
@@ -1143,22 +1121,18 @@
   const nucleo  = document.getElementById('nucleo');
   const sats    = [...document.querySelectorAll('#orbita .satelite')];
   const raios   = [...document.querySelectorAll('#orbita .raio')];
-  const etapas  = [...document.querySelectorAll('#etapas .etapa')];
   const palco   = document.getElementById('palco-canais');
 
-  const marcaEtapa = n => etapas.forEach(e => e.classList.toggle('agora', +e.dataset.etapa === n));
   const limpa = () => {
     nucleo.classList.remove('bate');
     sats.forEach(x => x.classList.remove('disparou', 'no-ar'));
     raios.forEach(x => x.classList.remove('disparou', 'no-ar'));
-    marcaEtapa(0);
   };
 
   const SAIDA = 1120, PASSO = 130, VOO = 700;
   const roteiro = [
     [   0, limpa],
-    [ 340, () => marcaEtapa(1)],
-    [ 940, () => { nucleo.classList.add('bate'); marcaEtapa(2); }],
+    [ 940, () => nucleo.classList.add('bate')],
     [1740, () => nucleo.classList.remove('bate')],
   ];
   sats.forEach((sat, k) => {
@@ -1166,7 +1140,6 @@
     roteiro.push([sai,   () => { raios[k].classList.add('disparou'); sat.classList.add('disparou'); }]);
     roteiro.push([chega, () => { raios[k].classList.add('no-ar');    sat.classList.add('no-ar');    }]);
   });
-  roteiro.push([SAIDA + (sats.length - 1) * PASSO + VOO + 280, () => marcaEtapa(3)]);
 
   let relogios = [], ciclo = null;
   const roda = () => {
@@ -1178,7 +1151,6 @@
   if (reduzido) {
     sats.forEach(x => x.classList.add('no-ar'));
     raios.forEach(x => x.classList.add('no-ar'));
-    marcaEtapa(3);
   } else {
     /* só anima enquanto a seção está à vista */
     new IntersectionObserver(es => es.forEach(e => {
