@@ -136,53 +136,60 @@
   .multicanal { background: linear-gradient(180deg, var(--fundo), #0B0906 45%, var(--fundo)); padding-block: clamp(60px, 8vh, 96px); }
 
   /* ── as faixas de marca, as mesmas das telas de publicação ──────────
-     No sistema, cada etapa abre com uma faixa na cor do canal e o emblema
+     No sistema, cada etapa abre com uma faixa na cor do canal e a marca
      grande: é o que faz a tela ser reconhecida de relance como "o anúncio
-     lá". Aqui elas ficam ao lado da órbita — a faixa diz onde, a órbita
-     mostra o caminho. */
-  .faixas-canais { display: grid; gap: 14px; align-content: center; }
-  .faixa-canal {
-    display: flex; align-items: center; gap: 18px; text-align: left;
-    padding: 18px 20px; border-radius: 18px;
-    box-shadow: 0 24px 48px -26px #000;
+     lá". Aqui são quatro, uma por canal, ao lado da órbita — a faixa diz
+     onde sai, a órbita mostra o caminho até lá. */
+  .faixas-canais { display: grid; gap: 11px; align-content: center; }
+  .olho-parceiros {
+    font-weight: 700; font-size: .72rem; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--cinza-escuro); margin-bottom: 3px;
   }
+  .faixa-canal {
+    display: flex; align-items: center; gap: 16px; text-align: left;
+    padding: 13px 20px; border-radius: 16px;
+    /* todas com a mesma altura: a marca do Mercado Livre é mais alta que
+       os glifos e, sem isto, a pilha ficava com um degrau */
+    min-height: clamp(68px, 6.6vw, 78px);
+    box-shadow: 0 22px 44px -28px #000;
+  }
+  .faixa-canal .marca { width: clamp(30px, 3.4vw, 38px); height: auto; flex: none; }
+  .faixa-canal .marca-ml { height: clamp(36px, 4.2vw, 46px); width: auto; flex: none; }
   .faixa-canal .dizeres { min-width: 0; }
   .faixa-canal b {
-    display: block; font-size: clamp(1.02rem, 1.5vw, 1.22rem);
-    font-weight: 800; letter-spacing: -.02em; line-height: 1.15;
+    display: block; font-size: clamp(1rem, 1.35vw, 1.14rem);
+    font-weight: 800; letter-spacing: -.02em; line-height: 1.15; color: #fff;
   }
-  .faixa-canal span { display: block; margin-top: 3px; font-size: .84rem; line-height: 1.38; }
+  .faixa-canal span { display: block; margin-top: 2px; font-size: .82rem; line-height: 1.35; color: #ffffffd1; }
 
+  /* o Mercado Livre é o único com marca escura: o amarelo pede texto azul */
   .fx-ml { background: #FFE600; }
-  .fx-ml .emblema-ml { height: clamp(46px, 5.6vw, 58px); width: auto; flex: none; }
   .fx-ml b { color: #2D3277; }
   .fx-ml span { color: #2d3277bf; }
+  .fx-instagram { background: linear-gradient(45deg, #F58529, #DD2A7B 55%, #8134AF); }
+  .fx-facebook  { background: #1877F2; }
+  .fx-whatsapp  { background: #25D366; }
 
-  /* as três cores dos canais na mesma faixa, como quando se publica nos três */
-  .fx-redes { background: linear-gradient(120deg, #C13584, #1877F2 58%, #128C7E); }
-  .fx-redes b { color: #fff; }
-  .fx-redes span { color: #ffffffd1; }
-  .pilha-emblemas { display: flex; flex: none; }
-  .pilha-emblemas .emb { margin-left: -13px; }
-  .pilha-emblemas .emb:first-child { margin-left: 0; }
-  .emb {
-    width: clamp(44px, 5.2vw, 54px); aspect-ratio: 1; border-radius: 15px;
-    display: grid; place-items: center;
-    box-shadow: 0 0 0 3px #ffffffe8, 0 8px 18px -6px #00000080;
-  }
-  .emb img { width: 46%; height: auto; display: block; }
-  .emb-instagram { background: linear-gradient(45deg, #F58529, #DD2A7B 55%, #8134AF); }
-  .emb-facebook  { background: #1877F2; }
-  .emb-whatsapp  { background: #25D366; }
-
-  /* banner e animação lado a lado: a faixa diz em que conta sai, a órbita
-     mostra o clique virando cinco publicações. */
+  /* banner e animação lado a lado, com a dupla puxada para fora do wrap:
+     sem a sangra os dois blocos ficam espremidos no meio e sobra margem
+     vazia dos dois lados. O vão entre eles é largo de propósito — são duas
+     cenas, não uma lista. */
   .palco-canais {
+    /* o quanto dá para avançar além do wrap sem encostar na borda: em tela
+       larga a folga é (100vw - 1180px)/2; em tela média o wrap já é 92vw e
+       a folga é 4vw. Fica sempre 18px de respiro, e no máximo 80px. */
+    --sangra: min(80px, max(0px, max((100vw - 1180px) / 2, 4vw) - 18px));
     margin-top: 30px; display: grid; align-items: center;
-    grid-template-columns: minmax(280px, 1fr) minmax(330px, 1fr);
-    gap: clamp(20px, 3.4vw, 52px);
+    grid-template-columns: minmax(260px, .9fr) minmax(330px, 1.1fr);
+    gap: clamp(34px, 8vw, 140px);
+    width: calc(100% + 2 * var(--sangra)); margin-inline: calc(-1 * var(--sangra));
   }
-  @media (max-width: 900px) { .palco-canais { grid-template-columns: 1fr; } }
+  /* encostada na direita: o vão entre ela e as faixas é o assunto aqui */
+  .palco-canais .orbita { margin: 0; justify-self: end; }
+  @media (max-width: 900px) {
+    .palco-canais { grid-template-columns: 1fr; --sangra: 0px; }
+    .palco-canais .orbita { justify-self: center; }
+  }
 
   /* ── a órbita: o Via Pesados no centro, os canais em volta ─────────── */
   .orbita { --raio: 36.54%; --disco: 68px; position: relative; width: min(620px, 100%); aspect-ratio: 1; margin: 0 auto; }
@@ -248,12 +255,6 @@
   }
   .satelite.no-ar .chip-no-ar { opacity: 1; transform: scale(1); }
 
-  /* a frase que fechava a cena agora é o título dela: o risco em "uma hora"
-     e o laranja em "um clique" fazem o antes e o depois numa linha só */
-  .multicanal h2 s {
-    color: var(--cinza-escuro); text-decoration-color: #ff6e0088; text-decoration-thickness: .08em;
-  }
-  .multicanal h2 .laranja { color: var(--laranja); }
 
 
   /* ── FONE ───────────────────────────────────────────────────────────── */
@@ -749,28 +750,43 @@
   <div class="wrap">
     <div class="centrado">
       <p class="olho rev">Todos os canais de venda</p>
-      <h2 class="rev d1">O que levava <s>uma hora</s>, agora é <b class="laranja">um clique</b>.</h2>
+      <h2 class="rev d1">O seu estoque, publicado <span class="acento">sozinho</span> em todos os canais.</h2>
       <p class="conversa rev d2">O Via Pesados publica <strong>direto na conta da sua loja</strong> em cada canal, pela conexão oficial de cada um, e mantém o anúncio atualizado sozinho. Sem integrador e sem ninguém de TI.</p>
     </div>
 
     <div class="palco-canais" id="palco-canais">
       <div class="faixas-canais rev">
+        <p class="olho-parceiros">Nossos parceiros oficiais</p>
+
         <article class="faixa-canal fx-ml">
-          <img class="emblema-ml" src="/conheca/img/mercadolivre-emblema.png" alt="Mercado Livre" width="416" height="292" />
+          <img class="marca-ml" src="/conheca/img/mercadolivre-emblema.png" alt="Mercado Livre" width="416" height="292" />
           <div class="dizeres">
             <b>Mercado Livre</b>
-            <span>Anúncio completo, pela conta da sua loja.</span>
+            <span>Anúncio completo, com ficha técnica e fotos.</span>
           </div>
         </article>
-        <article class="faixa-canal fx-redes">
-          <div class="pilha-emblemas">
-            <span class="emb emb-instagram"><img class="branco" src="/conheca/img/instagram.svg" alt="" width="24" height="24" /></span>
-            <span class="emb emb-facebook"><img class="branco" src="/conheca/img/facebook.svg" alt="" width="24" height="24" /></span>
-            <span class="emb emb-whatsapp"><img class="branco" src="/conheca/img/whatsapp.svg" alt="" width="24" height="24" /></span>
-          </div>
+
+        <article class="faixa-canal fx-instagram">
+          <img class="branco marca" src="/conheca/img/instagram.svg" alt="Instagram" width="24" height="24" />
           <div class="dizeres">
-            <b>Instagram, Facebook e WhatsApp</b>
-            <span>Post, story e catálogo com as mesmas fotos.</span>
+            <b>Instagram</b>
+            <span>Post e story com a arte pronta.</span>
+          </div>
+        </article>
+
+        <article class="faixa-canal fx-facebook">
+          <img class="branco marca" src="/conheca/img/facebook.svg" alt="Facebook" width="24" height="24" />
+          <div class="dizeres">
+            <b>Facebook</b>
+            <span>Página e catálogo sempre em dia.</span>
+          </div>
+        </article>
+
+        <article class="faixa-canal fx-whatsapp">
+          <img class="branco marca" src="/conheca/img/whatsapp.svg" alt="WhatsApp" width="24" height="24" />
+          <div class="dizeres">
+            <b>WhatsApp</b>
+            <span>A ficha completa na conversa.</span>
           </div>
         </article>
       </div>
@@ -807,27 +823,27 @@
 
       <div class="satelite" data-canal="0" style="--cx: 0.0000; --cy: -1.0000;">
         <span class="disco"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg></span>
-        <span class="nome">WhatsApp<small>a ficha completa na conversa</small></span>
+        <span class="nome">WhatsApp</span>
         <span class="chip-no-ar">✓ NO AR</span>
       </div>
       <div class="satelite" data-canal="1" style="--cx: 0.9511; --cy: -0.3090;">
         <span class="disco"><img class="branco" src="/conheca/img/instagram.svg" alt="" /></span>
-        <span class="nome">Instagram<small>post e story com arte pronta</small></span>
+        <span class="nome">Instagram</span>
         <span class="chip-no-ar">✓ NO AR</span>
       </div>
       <div class="satelite" data-canal="2" style="--cx: 0.5878; --cy: 0.8090;">
         <span class="disco"><img class="branco" src="/conheca/img/facebook.svg" alt="" /></span>
-        <span class="nome">Facebook<small>página e catálogo</small></span>
+        <span class="nome">Facebook</span>
         <span class="chip-no-ar">✓ NO AR</span>
       </div>
       <div class="satelite" data-canal="3" style="--cx: -0.5878; --cy: 0.8090;">
         <span class="disco"><img src="/conheca/img/mercadolivre-branco.png" alt="" /></span>
-        <span class="nome">Mercado Livre<small>anúncio completo</small></span>
+        <span class="nome">Mercado Livre</span>
         <span class="chip-no-ar">✓ NO AR</span>
       </div>
       <div class="satelite" data-canal="4" style="--cx: -0.9511; --cy: -0.3090;">
         <span class="disco"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.2 9.5h17.6M3.2 14.5h17.6M12 3c2.6 2.7 2.6 15.3 0 18M12 3c-2.6 2.7-2.6 15.3 0 18"/></svg></span>
-        <span class="nome">Site da sua loja<small>página do veículo</small></span>
+        <span class="nome">Site da sua loja</span>
         <span class="chip-no-ar">✓ NO AR</span>
       </div>
       </div>
