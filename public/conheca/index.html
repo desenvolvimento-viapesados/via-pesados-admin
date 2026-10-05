@@ -253,7 +253,10 @@
   .satelite .disco {
     width: var(--disco); aspect-ratio: 1; border-radius: 50%;
     background: var(--cartao); border: 1px solid var(--linha);
-    display: grid; place-content: center;
+    /* place-items também: place-content centraliza a faixa da grade, não o
+       ícone dentro dela — um ícone com largura em % ficava encostado no
+       início (o Mercado Livre saía 8,6px para a esquerda). */
+    display: grid; place-content: center; place-items: center;
     transition: border-color .45s ease, background .45s ease, transform .45s cubic-bezier(.2,.9,.3,1);
   }
   .satelite .disco img, .satelite .disco svg { width: clamp(25px, 5.4vw, 29px); height: auto; object-fit: contain; }
@@ -263,7 +266,9 @@
      deixa de trocar o fundo — trocar apagaria a cor da marca — e vira um
      anel verde em volta, junto com o leve aumento e o selo. */
   .satelite[data-marca] .disco {
-    background: var(--marca); border-color: transparent; overflow: hidden;
+    /* sem borda: transparente, ela ainda mostrava o fundo por baixo — no
+       Facebook, um fio branco em volta do círculo azul */
+    background: var(--marca); border: 0; overflow: hidden;
     box-shadow: 0 12px 26px -14px #000;
     transition: box-shadow .45s ease, transform .45s cubic-bezier(.2,.9,.3,1);
   }
