@@ -252,6 +252,23 @@
   .satelite .disco img, .satelite .disco svg { width: clamp(25px, 5.4vw, 29px); height: auto; object-fit: contain; }
   .satelite.disparou .disco { border-color: #ff6e0070; }
   .satelite.no-ar .disco { border-color: #25d36670; background: #0e1712; transform: scale(1.07); }
+  /* As marcas na cor delas: cada disco é o ícone oficial do app. O "no ar"
+     deixa de trocar o fundo — trocar apagaria a cor da marca — e vira um
+     anel verde em volta, junto com o leve aumento e o selo. */
+  .satelite[data-marca] .disco {
+    background: var(--marca); border-color: transparent; overflow: hidden;
+    box-shadow: 0 12px 26px -14px #000;
+    transition: box-shadow .45s ease, transform .45s cubic-bezier(.2,.9,.3,1);
+  }
+  .satelite[data-marca].disparou .disco { box-shadow: 0 0 0 2px #ff6e0090, 0 12px 26px -14px #000; }
+  .satelite[data-marca].no-ar .disco {
+    background: var(--marca);
+    box-shadow: 0 0 0 3px #25d36666, 0 0 28px -6px #25d366b0;
+  }
+  /* o "f" do Facebook é recortado no círculo azul: o desenho ocupa o disco
+     inteiro (um pouco além, para não sobrar fio branco na borda) */
+  .satelite .disco svg.marca-fb { width: 104%; height: 104%; }
+  .satelite .disco img.marca-ml { width: 74%; }
   .satelite .nome { font-weight: 700; font-size: .87rem; line-height: 1.25; }
   .satelite .nome small { display: block; font-weight: 500; color: var(--cinza-escuro); font-size: .72rem; margin-top: 2px; }
   .chip-no-ar {
@@ -830,23 +847,23 @@
           <span>uma ficha só</span>
         </div>
 
-      <div class="satelite" data-canal="0" style="--cx: 0.0000; --cy: -1.0000;">
+      <div class="satelite" data-canal="0" data-marca style="--cx: 0.0000; --cy: -1.0000; --marca: #25D366;">
         <span class="disco"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg></span>
         <span class="nome">WhatsApp</span>
         <span class="chip-no-ar">✓ NO AR</span>
       </div>
-      <div class="satelite" data-canal="1" style="--cx: 0.9511; --cy: -0.3090;">
+      <div class="satelite" data-canal="1" data-marca style="--cx: 0.9511; --cy: -0.3090; --marca: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);">
         <span class="disco"><img class="branco" src="/conheca/img/instagram.svg" alt="" /></span>
         <span class="nome">Instagram</span>
         <span class="chip-no-ar">✓ NO AR</span>
       </div>
-      <div class="satelite" data-canal="2" style="--cx: 0.5878; --cy: 0.8090;">
-        <span class="disco"><img class="branco" src="/conheca/img/facebook.svg" alt="" /></span>
+      <div class="satelite" data-canal="2" data-marca style="--cx: 0.5878; --cy: 0.8090; --marca: #ffffff;">
+        <span class="disco"><svg class="marca-fb" viewBox="0 0 24 24" aria-hidden="true"><path fill="#1877F2" d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.686 1.686 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647Z"/></svg></span>
         <span class="nome">Facebook</span>
         <span class="chip-no-ar">✓ NO AR</span>
       </div>
-      <div class="satelite" data-canal="3" style="--cx: -0.5878; --cy: 0.8090;">
-        <span class="disco"><img src="/conheca/img/mercadolivre-branco.png" alt="" /></span>
+      <div class="satelite" data-canal="3" data-marca style="--cx: -0.5878; --cy: 0.8090; --marca: #FFE600;">
+        <span class="disco"><img class="marca-ml" src="/conheca/img/mercadolivre-emblema.png" alt="" width="416" height="292" /></span>
         <span class="nome">Mercado Livre</span>
         <span class="chip-no-ar">✓ NO AR</span>
       </div>
