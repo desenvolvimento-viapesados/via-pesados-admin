@@ -586,7 +586,7 @@
           <picture class="no-claro">
             <source media="(max-width: 760px)" width="800" height="1419"
                     srcset="/conheca/img/clientes/eixo-forte-cel-claro.jpg" />
-            <img src="/conheca/img/clientes/eixo-forte-claro.jpg" loading="lazy" decoding="async"
+            <img src="/conheca/img/clientes/eixo-forte-claro.jpg" decoding="async"
                  alt="O painel da Eixo Forte" width="1500" height="835" />
           </picture>
           <figcaption><b>Eixo Forte</b> <span>— Cascavel, PR</span></figcaption>
@@ -601,7 +601,7 @@
           <picture class="no-claro">
             <source media="(max-width: 760px)" width="800" height="1419"
                     srcset="/conheca/img/clientes/marco-zero-cel-claro.jpg" />
-            <img src="/conheca/img/clientes/marco-zero-claro.jpg" loading="lazy" decoding="async"
+            <img src="/conheca/img/clientes/marco-zero-claro.jpg" decoding="async"
                  alt="O painel da Marco Zero" width="1500" height="835" />
           </picture>
           <figcaption><b>Marco Zero</b> <span>— Feira de Santana, BA</span></figcaption>
@@ -616,7 +616,7 @@
           <picture class="no-claro">
             <source media="(max-width: 760px)" width="800" height="1419"
                     srcset="/conheca/img/clientes/torque-norte-cel-claro.jpg" />
-            <img src="/conheca/img/clientes/torque-norte-claro.jpg" loading="lazy" decoding="async"
+            <img src="/conheca/img/clientes/torque-norte-claro.jpg" decoding="async"
                  alt="O painel da Torque Norte" width="1500" height="835" />
           </picture>
           <figcaption><b>Torque Norte</b> <span>— Imperatriz, MA</span></figcaption>
@@ -631,7 +631,7 @@
           <picture class="no-claro">
             <source media="(max-width: 760px)" width="800" height="1419"
                     srcset="/conheca/img/clientes/vulcano-diesel-cel-claro.jpg" />
-            <img src="/conheca/img/clientes/vulcano-diesel-claro.jpg" loading="lazy" decoding="async"
+            <img src="/conheca/img/clientes/vulcano-diesel-claro.jpg" decoding="async"
                  alt="O painel da Vulcano Diesel" width="1500" height="835" />
           </picture>
           <figcaption><b>Vulcano Diesel</b> <span>— Rio Verde, GO</span></figcaption>
@@ -1153,7 +1153,14 @@
   if (vitrine) {
     vitrine.querySelectorAll('.troca-tema button').forEach(b => {
       b.addEventListener('click', () => {
-        vitrine.dataset.tema = b.dataset.temaAlvo;
+        const alvo = b.dataset.temaAlvo;
+        /* As telas do outro tema nascem com loading="lazy" e dentro de um
+           picture escondido: o navegador nunca as considera visíveis, e
+           mostrá-las não basta para que ele as busque — a esteira ficava
+           vazia. Pedir o tema é o sinal de que agora valem a pena. */
+        vitrine.querySelectorAll('picture.no-' + alvo + ' img[loading="lazy"]')
+               .forEach(img => { img.loading = 'eager'; });
+        vitrine.dataset.tema = alvo;
         vitrine.querySelectorAll('.troca-tema button').forEach(o =>
           o.classList.toggle('agora', o === b));
       });
