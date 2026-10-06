@@ -368,12 +368,16 @@
 
   .nota-exemplo { margin-top: 22px; text-align: center; color: var(--cinza-escuro); font-size: .78rem; }
 
-  /* ══ ENVIO — o vendedor manda, o cliente recebe, lado a lado ════════
+  /* ══ ENVIO — a sua tela e a do cliente, lado a lado ═════════════════
      Quatro gravações reais. Envio e recebimento foram gravados em envios
      diferentes, cada um no seu ritmo: o tempo de cada vídeo foi remontado
      por trechos, ancorado na chegada de cada mensagem, para a mesma
      mensagem aparecer dos dois lados no mesmo instante. Os dois vídeos de
-     um par têm a mesma duração e giram juntos (o script corrige a deriva). */
+     um par têm a mesma duração e giram juntos (o script corrige a deriva).
+
+     Duas molduras iguais liam como duas telas do mesmo sistema. Agora cada
+     lado é um ambiente: o da loja em laranja, com a marca Via; o do cliente
+     em verde, com o ícone do WhatsApp — e o nome escrito em cima. */
   .envio { background: linear-gradient(180deg, var(--fundo), #07100b 40%, #07100b 70%, var(--fundo)); }
   .envio h2 .verde { color: var(--zap); }
   .troca-modo {
@@ -382,66 +386,106 @@
     border: 1px solid var(--linha); background: #101012;
   }
   .troca-modo button {
+    display: inline-flex; align-items: center; gap: 8px;
     font: inherit; font-size: .9rem; font-weight: 700; color: var(--cinza);
     background: transparent; border: 0; cursor: pointer;
-    padding: 9px 22px; border-radius: 999px; transition: color .2s ease, background .2s ease;
+    padding: 9px 20px; border-radius: 999px; transition: color .2s ease, background .2s ease;
   }
+  .troca-modo svg { width: 16px; height: 16px; flex: none; }
   .troca-modo button:hover { color: var(--claro); }
   .troca-modo button:focus-visible { outline: 2px solid var(--claro); outline-offset: 2px; }
   .troca-modo button[aria-pressed="true"] { background: var(--claro); color: #0a0a0b; }
 
-  /* o palco sai do wrap como a fileira de parceiros: até 1360px */
+  /* O palco sai do wrap como a fileira de parceiros, até 1360px. A altura
+     dos dois vídeos é uma só: a que cabe na largura (as proporções somadas,
+     1600/1180 + 960/1280 = 2,106, descontados conector, folgas e
+     respiros) e na altura da janela. */
   .palco-envio {
+    --pad: 18px; --vao: 14px; --ponte: 76px;
+    --alto: min(600px, 64vh, calc((min(1360px, 100vw - 48px) - 200px) / 2.106));
+    --alto-cel: min(540px, 60vh, calc((min(440px, 40vw) - 54px) * 1.8056));
     position: relative; margin-top: 30px;
     margin-inline: calc((100% - max(100%, min(1360px, 100vw - 48px))) / 2);
   }
-  .palco-envio .par { display: none; }
+  .palco-envio .par { display: none; justify-content: center; align-items: center; gap: var(--vao); }
   .palco-envio[data-modo="pc"] .par-pc,
-  .palco-envio[data-modo="cel"] .par-cel { display: grid; }
-  /* 1,808 = (1600/1180) / (960/1280): com as colunas nessa razão, as duas
-     janelas saem com a mesma altura */
-  .par-pc { grid-template-columns: minmax(0, 1.808fr) auto minmax(0, 1fr); align-items: center; gap: clamp(10px, 1.2vw, 18px); }
-  .par-cel { grid-template-columns: auto auto auto; justify-content: center; align-items: center; gap: clamp(18px, 3vw, 46px); }
-  .lado { margin: 0; min-width: 0; }
-  .lado video { display: block; width: 100%; height: auto; background: #0b0b0d; }
-  .rotulo {
-    display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
-    font-size: .92rem; color: var(--cinza);
-  }
-  .rotulo b { color: var(--claro); font-weight: 800; }
-  .rotulo::before { content: ""; flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--laranja); box-shadow: 0 0 0 4px #ff6e0026; }
-  .rotulo.recebe::before { background: var(--zap); box-shadow: 0 0 0 4px #25d36626; }
-  .navegador.zap { box-shadow: 0 60px 120px -40px rgba(0,0,0,.9), 0 0 80px -30px rgba(37,211,102,.3); }
-  .navegador .url svg { display: inline-block; width: 13px; height: 13px; vertical-align: -2px; margin-right: 6px; }
-  .aparelho {
-    width: min(300px, 38vw); border-radius: 46px; padding: 10px;
-    background: linear-gradient(160deg, #38383c, #131315 30%, #232327);
-    box-shadow: 0 50px 110px -30px rgba(0,0,0,.95), 0 0 100px -40px rgba(255,110,0,.4), inset 0 0 0 2px #000;
-  }
-  .rotulo.recebe + .aparelho { box-shadow: 0 50px 110px -30px rgba(0,0,0,.95), 0 0 100px -40px rgba(37,211,102,.45), inset 0 0 0 2px #000; }
-  .aparelho video { border-radius: 36px; }
+  .palco-envio[data-modo="cel"] .par-cel { display: flex; }
+  .par-cel .mundo { width: min(440px, 40vw); }
 
-  /* entre os dois lados: o clique, e as mensagens correndo enquanto chegam */
-  .ponte { display: grid; justify-items: center; gap: 12px; width: clamp(70px, 7vw, 108px); }
-  .ponte .trilha {
-    position: relative; width: 100%; height: 2px; border-radius: 2px;
-    background: repeating-linear-gradient(90deg, #ffffff26 0 6px, transparent 6px 12px);
+  .mundo {
+    --cor: 255, 110, 0;
+    position: relative; margin: 0; min-width: 0;
+    padding: var(--pad); border-radius: 26px;
+    background: linear-gradient(180deg, rgba(var(--cor), .12), rgba(var(--cor), .04) 30%, #0c0c0ef0 64%);
+    border: 1px solid rgba(var(--cor), .2);
+    box-shadow: 0 50px 110px -45px rgba(0,0,0,.95);
+    transition: border-color .6s ease, box-shadow .6s ease;
   }
-  .ponte .trilha::after {
-    content: ""; position: absolute; right: -2px; top: 50%; width: 9px; height: 9px;
-    border-top: 2px solid #ffffff40; border-right: 2px solid #ffffff40;
-    transform: translateY(-50%) rotate(45deg);
+  .mundo.cliente { --cor: 37, 211, 102; }
+  .mundo.ativo { border-color: rgba(var(--cor), .55); box-shadow: 0 50px 110px -45px rgba(0,0,0,.95), 0 0 90px -34px rgba(var(--cor), .6); }
+  .mundo-topo { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .selo-mundo {
+    flex: none; width: 44px; height: 44px; border-radius: 13px;
+    display: grid; place-items: center;
+    box-shadow: 0 10px 26px -10px rgba(var(--cor), .8);
   }
-  .ponte span {
-    font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
-    color: var(--laranja-claro); border: 1px solid #ff6e0055; background: #1a120b;
-    padding: 6px 11px; border-radius: 999px; white-space: nowrap;
+  .loja .selo-mundo { background: linear-gradient(140deg, #FF8A2B, #FF6E00 55%, #E35A00); }
+  .loja .selo-mundo img { width: 33px; height: auto; }
+  .cliente .selo-mundo { background: var(--zap); }
+  .cliente .selo-mundo svg { width: 25px; height: 25px; }
+  .mundo-nome { display: grid; gap: 2px; min-width: 0; }
+  .mundo-nome small { font-size: .68rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: rgb(var(--cor)); }
+  .loja .mundo-nome small { color: var(--laranja-claro); }
+  .mundo-nome b { font-size: 1.06rem; font-weight: 800; letter-spacing: -.01em; color: var(--claro); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* o que está acontecendo de cada lado, agora */
+  .estado {
+    margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 7px;
+    font-size: .74rem; font-weight: 700; color: rgb(var(--cor)); white-space: nowrap;
+    background: rgba(var(--cor), .1); border: 1px solid rgba(var(--cor), .26);
+    padding: 5px 11px; border-radius: 999px;
+    opacity: 0; transform: translateY(-3px); transition: opacity .35s ease, transform .35s ease;
   }
-  .palco-envio.enviando .ponte .trilha {
+  .loja .estado { color: var(--laranja-claro); }
+  .estado::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pisca 1s steps(2) infinite; }
+  .estado.no-ar { opacity: 1; transform: none; }
+  .estado.feito::before { animation: none; }
+  @keyframes pisca { to { opacity: .2; } }
+
+  .tela { border-radius: 14px; overflow: hidden; border: 1px solid #ffffff14; background: #0b0b0d; box-shadow: 0 24px 60px -24px #000; }
+  .tela video, .aparelho video { display: block; background: #0b0b0d; }
+  .par-pc .loja video    { height: var(--alto); width: auto; aspect-ratio: 1600 / 1180; }
+  .par-pc .cliente video { height: var(--alto); width: auto; aspect-ratio: 960 / 1280; }
+  .aparelho {
+    width: max-content; margin-inline: auto; border-radius: 44px; padding: 9px;
+    background: linear-gradient(160deg, #3a3a3e, #141416 30%, #252529);
+    box-shadow: 0 30px 70px -26px rgba(0,0,0,.95), inset 0 0 0 2px #000;
+  }
+  .aparelho video { height: var(--alto-cel); width: auto; aspect-ratio: 720 / 1300; border-radius: 35px; }
+
+  /* entre os dois ambientes, o cabo e o clique: o nó pulsa na hora do
+     clique, e o cabo corre verde enquanto as mensagens atravessam */
+  .ponte { position: relative; flex: none; width: var(--ponte); display: grid; justify-items: center; gap: 10px; }
+  .ponte::before {
+    content: ""; position: absolute; top: 25px; height: 2px;
+    left: calc(var(--vao) * -1); right: calc(var(--vao) * -1);
+    background: repeating-linear-gradient(90deg, #ffffff2e 0 6px, transparent 6px 12px);
+  }
+  .no {
+    position: relative; z-index: 1; width: 52px; height: 52px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: #170f09; border: 1px solid #ff6e0066; color: var(--laranja-claro);
+    transition: border-color .4s ease, color .4s ease, background .4s ease;
+  }
+  .no svg { width: 22px; height: 22px; }
+  .rotulo-ponte { font-size: .68rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--cinza); white-space: nowrap; }
+  .palco-envio[data-fase="clique"] .no { border-color: var(--laranja); animation: clica .9s ease-out infinite; }
+  @keyframes clica { from { box-shadow: 0 0 0 0 rgba(255,110,0,.6); } to { box-shadow: 0 0 0 18px rgba(255,110,0,0); } }
+  .palco-envio[data-fase="chega"] .ponte::before {
     background: repeating-linear-gradient(90deg, var(--zap) 0 6px, transparent 6px 12px);
     animation: corre .6s linear infinite;
   }
-  .palco-envio.enviando .ponte .trilha::after { border-color: var(--zap); }
+  .palco-envio[data-fase="chega"] .no,
+  .palco-envio[data-fase="pronto"] .no { border-color: #25d36688; color: var(--zap); background: #0b1a11; }
   @keyframes corre { to { background-position: 12px 0; } }
 
   /* sem autoplay (iPhone em modo de economia, ou movimento reduzido) */
@@ -455,19 +499,19 @@
   .tocar[hidden] { display: none; }
   .tocar:focus-visible { outline: 3px solid var(--laranja); outline-offset: 3px; }
 
-  /* a linha do tempo do envio: laranja é o lado do vendedor, verde o do cliente */
+  /* a linha do tempo: laranja é o lado da loja, verde o do cliente */
   .passos-envio {
-    list-style: none; counter-reset: passo;
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
     max-width: 1000px; margin: 34px auto 0;
   }
   .passos-envio li {
-    counter-increment: passo; display: grid; gap: 10px; align-content: start;
-    color: var(--cinza-escuro); font-size: .88rem; font-weight: 700; line-height: 1.35;
+    display: grid; gap: 7px; align-content: start;
+    color: var(--cinza-escuro); font-size: .9rem; font-weight: 700; line-height: 1.35;
     transition: color .3s ease;
   }
-  .passos-envio li span::before { content: counter(passo) "  "; color: inherit; font-variant-numeric: tabular-nums; }
-  .passos-envio li i { position: relative; display: block; height: 3px; border-radius: 3px; background: #ffffff14; overflow: hidden; }
+  .passos-envio li small { font-size: .64rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: #ff8a2b80; transition: color .3s ease; }
+  .passos-envio li:nth-child(n+3) small { color: #25d36680; }
+  .passos-envio li i { position: relative; display: block; height: 3px; border-radius: 3px; background: #ffffff14; overflow: hidden; margin-bottom: 3px; }
   .passos-envio li i::after {
     content: ""; position: absolute; inset: 0; border-radius: inherit;
     background: linear-gradient(90deg, var(--laranja), var(--laranja-claro));
@@ -475,26 +519,50 @@
   }
   .passos-envio li:nth-child(n+3) i::after { background: var(--zap); }
   .passos-envio li.agora, .passos-envio li.feito { color: var(--claro); }
+  .passos-envio li.agora small, .passos-envio li.feito small { color: var(--laranja-claro); }
+  .passos-envio li:nth-child(n+3).agora small, .passos-envio li:nth-child(n+3).feito small { color: var(--zap); }
   .nota-envio { margin-top: 18px; text-align: center; color: var(--cinza-escuro); font-size: .78rem; }
 
   .pilares-envio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: clamp(56px, 8vh, 96px); }
 
+  /* tela estreita para o estado ao lado do nome */
+  @media (max-width: 1180px) { .estado { display: none; } }
+  /* até 900, o computador vira pilha: lado a lado os dois ficariam miúdos */
+  @media (max-width: 900px) {
+    .par-pc { flex-direction: column; gap: 0; }
+    .par-pc .mundo { width: 100%; }
+    .par-pc .mundo.cliente { width: min(100%, 420px); }
+    .par-pc .loja video, .par-pc .cliente video { width: 100%; height: auto; }
+    .par-pc .ponte { width: 100%; height: 88px; display: grid; place-items: center; }
+    .par-pc .ponte::before {
+      left: 50%; right: auto; top: 0; bottom: 0; width: 2px; height: auto; transform: translateX(-1px);
+      background: repeating-linear-gradient(180deg, #ffffff2e 0 6px, transparent 6px 12px);
+    }
+    .palco-envio[data-fase="chega"] .par-pc .ponte::before {
+      background: repeating-linear-gradient(180deg, var(--zap) 0 6px, transparent 6px 12px);
+      animation-name: corre-desce;
+    }
+    .par-pc .rotulo-ponte { position: absolute; left: calc(50% + 38px); top: 50%; transform: translateY(-50%); }
+  }
+  @keyframes corre-desce { to { background-position: 0 12px; } }
   @media (max-width: 760px) {
-    /* no telefone o computador vira pilha; o celular continua lado a lado */
-    .par-pc { grid-template-columns: 1fr; justify-items: center; gap: 14px; }
-    .par-pc .lado { width: 100%; }
-    .par-pc .lado:last-child { width: min(100%, 320px); }
-    .par-pc .ponte { width: auto; }
-    .par-pc .ponte .trilha { display: none; }
-    .par-pc .ponte span::after { content: " ↓"; }
-    .par-cel { grid-template-columns: 1fr 1fr; gap: 12px; }
+    /* no telefone, o celular continua lado a lado: cada ambiente com metade */
+    .palco-envio { --pad: 12px; }
+    .mundo { border-radius: 20px; }
+    .par-cel { gap: 8px; align-items: stretch; }
+    .par-cel .mundo { flex: 1 1 0; width: auto; padding: 6px 6px 7px; border-radius: 18px; }
     .par-cel .ponte { display: none; }
-    .aparelho { width: 100%; border-radius: 28px; padding: 6px; }
-    .aparelho video { border-radius: 23px; }
-    .rotulo { font-size: .8rem; gap: 8px; margin-bottom: 10px; }
-    .rotulo .onde { display: none; }
-    .passos-envio { grid-template-columns: 1fr 1fr; gap: 14px 12px; }
-    .passos-envio li { font-size: .8rem; }
+    .par-cel .mundo-topo { gap: 7px; margin: 2px 2px 9px; }
+    .par-cel .selo-mundo { width: 28px; height: 28px; border-radius: 9px; }
+    .par-cel .loja .selo-mundo img { width: 21px; }
+    .par-cel .cliente .selo-mundo svg { width: 16px; height: 16px; }
+    .par-cel .mundo-nome small { font-size: .6rem; letter-spacing: .1em; }
+    .par-cel .mundo-nome b { display: none; }
+    .mundo-nome b { font-size: .98rem; }
+    .aparelho { width: 100%; padding: 4px; border-radius: 22px; }
+    .aparelho video { width: 100%; height: auto; border-radius: 18px; }
+    .passos-envio { grid-template-columns: 1fr 1fr; gap: 16px 12px; }
+    .passos-envio li { font-size: .82rem; }
     .pilares-envio { grid-template-columns: 1fr; }
   }
 
@@ -940,7 +1008,7 @@
   </div>
 </section>
 
-<!-- ENVIO: o vendedor manda, o cliente recebe — gravações reais, lado a lado -->
+<!-- ENVIO: a sua tela e a do cliente — gravações reais, lado a lado -->
 <section class="secao envio" id="envio">
   <div class="wrap">
     <div class="centrado">
@@ -950,27 +1018,25 @@
     </div>
 
     <div class="troca-modo rev" role="group" aria-label="Ver o envio">
-      <button type="button" data-modo="pc" aria-pressed="true">No computador</button>
-      <button type="button" data-modo="cel" aria-pressed="false">No celular</button>
+      <button type="button" data-modo="pc" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>No computador</button>
+      <button type="button" data-modo="cel" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.5" y="2" width="11" height="20" rx="2.5"/><path d="M11 18h2"/></svg>No celular</button>
     </div>
 
     <div class="palco-envio rev" id="palco-envio" data-modo="pc">
       <div class="par par-pc">
-        <figure class="lado">
-          <figcaption class="rotulo envia"><b>Você envia</b><span class="onde">pelo Via CRM</span></figcaption>
-          <div class="navegador">
-            <div class="barra"><span class="bola"></span><span class="bola"></span><span class="bola"></span><span class="url">Via CRM — conversa com o cliente</span></div>
-            <video class="mestre" muted playsinline preload="none" width="1600" height="1180" poster="/conheca/video/pc-envio.jpg" aria-label="Gravação real do Via CRM: o vendedor escolhe o Scania S 540 e envia o fluxo de fotos para o cliente">
+        <figure class="mundo loja">
+          <figcaption class="mundo-topo"><span class="selo-mundo"><img src="/conheca/img/via-icon-white.png" alt="" width="971" height="600" /></span><span class="mundo-nome"><small>Sua tela</small><b>Você envia pelo Via CRM</b></span><span class="estado" data-escolhe="Escolhendo" data-clique="Enviando" data-chega="Enviando"></span></figcaption>
+          <div class="tela">
+            <video class="mestre" muted playsinline preload="none" width="1600" height="1180" poster="/conheca/video/pc-envio.jpg" aria-label="Gravação real da tela da loja: no Via CRM, o vendedor escolhe o Scania S 540 e envia o fluxo de fotos">
               <source src="/conheca/video/pc-envio.mp4" type="video/mp4" />
             </video>
           </div>
         </figure>
-        <div class="ponte" aria-hidden="true"><i class="trilha"></i><span>1 clique</span></div>
-        <figure class="lado">
-          <figcaption class="rotulo recebe"><b>O cliente recebe</b><span class="onde">no WhatsApp dele</span></figcaption>
-          <div class="navegador zap">
-            <div class="barra"><span class="bola"></span><span class="bola"></span><span class="bola"></span><span class="url"><svg viewBox="0 0 24 24" fill="#25D366" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>WhatsApp do cliente</span></div>
-            <video muted playsinline preload="none" width="960" height="1280" poster="/conheca/video/pc-recebe.jpg" aria-label="Gravação real do WhatsApp do cliente recebendo o título, as fotos, o preço, a ficha e o link do Scania S 540">
+        <div class="ponte" aria-hidden="true"><span class="no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9l5 12 1.8-5.2L21 14z"/><path d="M7.2 2.2 8 5.1M5.1 8l-2.9-.8M14 4.1 12 6M6 12l-1.9 2"/></svg></span><span class="rotulo-ponte">1 clique</span></div>
+        <figure class="mundo cliente">
+          <figcaption class="mundo-topo"><span class="selo-mundo"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg></span><span class="mundo-nome"><small>Tela do cliente</small><b>Ele recebe no WhatsApp</b></span><span class="estado" data-chega="Recebendo" data-pronto="Tudo recebido"></span></figcaption>
+          <div class="tela">
+            <video muted playsinline preload="none" width="960" height="1280" poster="/conheca/video/pc-recebe.jpg" aria-label="Gravação real da tela do cliente: o WhatsApp recebe o título, as fotos, o preço, a ficha e o link do Scania S 540">
               <source src="/conheca/video/pc-recebe.mp4" type="video/mp4" />
             </video>
           </div>
@@ -978,17 +1044,17 @@
       </div>
 
       <div class="par par-cel">
-        <figure class="lado">
-          <figcaption class="rotulo envia"><b>Você envia</b><span class="onde">pelo celular</span></figcaption>
+        <figure class="mundo loja">
+          <figcaption class="mundo-topo"><span class="selo-mundo"><img src="/conheca/img/via-icon-white.png" alt="" width="971" height="600" /></span><span class="mundo-nome"><small>Sua tela</small><b>Você envia pelo celular</b></span><span class="estado" data-escolhe="Escolhendo" data-clique="Enviando" data-chega="Enviando" data-pronto="Enviado"></span></figcaption>
           <div class="aparelho">
-            <video class="mestre" muted playsinline preload="none" width="720" height="1300" poster="/conheca/video/cel-envio.jpg" aria-label="Gravação real do Via CRM no celular: o vendedor escolhe o Scania S 540 e envia as 12 mensagens">
+            <video class="mestre" muted playsinline preload="none" width="720" height="1300" poster="/conheca/video/cel-envio.jpg" aria-label="Gravação real da tela da loja no celular: o vendedor escolhe o Scania S 540 e envia as 12 mensagens">
               <source src="/conheca/video/cel-envio.mp4" type="video/mp4" />
             </video>
           </div>
         </figure>
-        <div class="ponte" aria-hidden="true"><i class="trilha"></i><span>1 clique</span></div>
-        <figure class="lado">
-          <figcaption class="rotulo recebe"><b>Chega no WhatsApp</b><span class="onde">foto por foto</span></figcaption>
+        <div class="ponte" aria-hidden="true"><span class="no"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9l5 12 1.8-5.2L21 14z"/><path d="M7.2 2.2 8 5.1M5.1 8l-2.9-.8M14 4.1 12 6M6 12l-1.9 2"/></svg></span><span class="rotulo-ponte">1 clique</span></div>
+        <figure class="mundo cliente">
+          <figcaption class="mundo-topo"><span class="selo-mundo"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg></span><span class="mundo-nome"><small>Tela do cliente</small><b>Ele recebe no WhatsApp</b></span><span class="estado" data-chega="Recebendo" data-pronto="Tudo recebido"></span></figcaption>
           <div class="aparelho">
             <video muted playsinline preload="none" width="720" height="1300" poster="/conheca/video/cel-recebe.jpg" aria-label="Gravação real do WhatsApp no celular com o fluxo do Scania S 540 chegando foto por foto">
               <source src="/conheca/video/cel-recebe.mp4" type="video/mp4" />
@@ -1004,10 +1070,10 @@
     </div>
 
     <ol class="passos-envio" id="passos-envio">
-      <li data-pc="0" data-cel="0"><i></i><span>Escolhe o caminhão</span></li>
-      <li data-pc="4.6" data-cel="5.9"><i></i><span>Um clique em enviar</span></li>
-      <li data-pc="6.2" data-cel="7.66"><i></i><span>Chega mensagem por mensagem</span></li>
-      <li data-pc="21.2" data-cel="25.66"><i></i><span>O caminhão inteiro no WhatsApp do cliente</span></li>
+      <li data-pc="0" data-cel="0"><i></i><small>Você</small><span>Escolhe o caminhão</span></li>
+      <li data-pc="4.6" data-cel="5.9"><i></i><small>Você</small><span>Um clique em enviar</span></li>
+      <li data-pc="6.2" data-cel="7.66"><i></i><small>Cliente</small><span>Recebe mensagem por mensagem</span></li>
+      <li data-pc="21.2" data-cel="25.66"><i></i><small>Cliente</small><span>Fica com o caminhão inteiro no WhatsApp</span></li>
     </ol>
     <p class="nota-envio">Gravações reais do sistema, aceleradas para caber aqui.</p>
 
@@ -1311,18 +1377,21 @@
   document.querySelectorAll('[data-conta]').forEach(el => ioNum.observe(el));
 
   /* ── envio lado a lado ─────────────────────────────────────────────────
-     Dois vídeos por modo, da mesma duração. O do envio manda: o outro
+     Dois vídeos por modo, da mesma duração. O da loja manda: o do cliente
      acompanha o relógio dele, e os dois recomeçam juntos. Sem "loop" no
      elemento: cada um voltaria ao zero na sua hora e o par se desencontraria.
+     A fase do vídeo acende o ambiente de quem está agindo e escreve, em
+     cima de cada lado, o que está acontecendo ali.
      No telefone começa no celular — o computador, em pé, fica pequeno. */
   const palcoEnvio = document.getElementById('palco-envio');
   if (palcoEnvio) {
+    const FASES   = ['escolhe', 'clique', 'chega', 'pronto'];
     const passos  = [...document.querySelectorAll('#passos-envio li')];
     const botoes  = [...document.querySelectorAll('.troca-modo button')];
     const tocarBt = palcoEnvio.querySelector('.tocar');
     const par = m => [...palcoEnvio.querySelectorAll('.par-' + m + ' video')];
     let modo = matchMedia('(max-width: 760px)').matches ? 'cel' : 'pc';
-    let visivel = false, quadro = 0;
+    let visivel = false, quadro = 0, faseAgora = null, tentou = false;
 
     const marca = () => {
       palcoEnvio.dataset.modo = modo;
@@ -1330,21 +1399,40 @@
     };
     const carrega = m => par(m).forEach(v => { if (v.preload !== 'auto') { v.preload = 'auto'; v.load(); } });
 
+    /* só mexe no DOM quando a fase muda, não a cada quadro */
+    const poeFase = k => {
+      const fase = k < 0 ? null : FASES[k];
+      if (fase === faseAgora) return;
+      faseAgora = fase;
+      if (fase) palcoEnvio.dataset.fase = fase; else delete palcoEnvio.dataset.fase;
+      palcoEnvio.querySelectorAll('.mundo.loja').forEach(m => m.classList.toggle('ativo', k >= 0 && k <= 2));
+      palcoEnvio.querySelectorAll('.mundo.cliente').forEach(m => m.classList.toggle('ativo', k >= 2));
+      palcoEnvio.querySelectorAll('.estado').forEach(e => {
+        const texto = fase ? e.dataset[fase] || '' : '';
+        if (texto) e.textContent = texto;
+        e.classList.toggle('no-ar', !!texto);
+        e.classList.toggle('feito', fase === 'pronto');
+      });
+    };
+
     const pinta = () => {
       const [a] = par(modo);
       const t = a.currentTime, fim = a.duration || Infinity;
       const ini = passos.map(p => +p.dataset[modo]);
-      passos.forEach((p, k) => {
-        const i0 = ini[k], i1 = k + 1 < ini.length ? ini[k + 1] : fim;
+      let k = -1;
+      passos.forEach((p, i) => {
+        const i0 = ini[i], i1 = i + 1 < ini.length ? ini[i + 1] : fim;
         p.style.setProperty('--p', Math.max(0, Math.min(1, (t - i0) / (i1 - i0))).toFixed(3));
         p.classList.toggle('agora', t >= i0 && t < i1);
         p.classList.toggle('feito', t >= i1);
+        if (t >= i0) k = i;
       });
-      palcoEnvio.classList.toggle('enviando', t >= ini[2] && t < ini[3]);
+      /* parado no zero, antes de tocar, nada aceso */
+      poeFase(a.paused && t === 0 ? -1 : k);
     };
     const anda = () => {
       const [a, b] = par(modo);
-      if (!a.paused && !b.paused && Math.abs(b.currentTime - a.currentTime) > .2) b.currentTime = a.currentTime;
+      if (!a.paused && !b.paused && Math.abs(b.currentTime - a.currentTime) > .15) b.currentTime = a.currentTime;
       pinta();
       quadro = a.paused ? 0 : requestAnimationFrame(anda);
     };
@@ -1353,9 +1441,19 @@
       const [a, b] = par(modo);
       b.currentTime = a.currentTime;
       Promise.all([a.play(), b.play()]).then(() => {
-        tocarBt.hidden = true;
+        tocarBt.hidden = true; tentou = false;
         cancelAnimationFrame(quadro); quadro = requestAnimationFrame(anda);
-      }, () => { a.pause(); b.pause(); tocarBt.hidden = false; });
+      }, erro => {
+        a.pause(); b.pause();
+        /* AbortError é o vídeo recomeçando a carregar no meio do play — não
+           é recusa. Tenta de novo quando os dois puderem tocar. Recusa de
+           verdade (economia de bateria, NotAllowedError) mostra o botão. */
+        if (erro && erro.name === 'AbortError' && !tentou) {
+          tentou = true;
+          Promise.all([a, b].map(v => v.readyState >= 3 ? 0 : new Promise(ok => v.addEventListener('canplay', ok, { once: true }))))
+            .then(() => { if (visivel) toca(); });
+        } else tocarBt.hidden = false;
+      });
     };
     const para = () => { palcoEnvio.querySelectorAll('video').forEach(v => v.pause()); cancelAnimationFrame(quadro); quadro = 0; };
 
@@ -1388,6 +1486,7 @@
   }
 })();
 </script>
+
 
 </body>
 </html>
