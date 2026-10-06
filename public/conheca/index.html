@@ -583,22 +583,30 @@
     .pilares-envio { grid-template-columns: 1fr; }
   }
 
-  /* ── site próprio ───────────────────────────────────────────────────── */
-  .palco-site { position: relative; margin-top: 50px; }
-  .palco-site .navegador { max-width: 880px; }
-  .site-flutuante {
-    position: absolute; right: 0; bottom: -10%; width: min(46%, 450px); z-index: 5;
-    border-radius: 14px; overflow: hidden; border: 1px solid #ffffff22;
-    box-shadow: 0 40px 90px -30px rgba(0,0,0,.95);
-    transform: rotate(1.8deg);
+  /* ── site próprio ───────────────────────────────────────────────────
+     Três páginas reais da iTruck: a inicial no navegador, e por cima, nos
+     cantos, a do caminhão (a mesma do link que fecha o fluxo de fotos) e a
+     de quem somos. Cada uma com uma etiqueta presa na borda de cima. */
+  #site h2 .laranja { color: var(--laranja); }
+  .palco-site { position: relative; margin-top: 50px; padding-bottom: clamp(70px, 9vw, 130px); }
+  .palco-site .navegador { max-width: 900px; margin-inline: auto; }
+  .palco-site .navegador img { width: 100%; height: auto; }
+  .site-flutuante { position: absolute; z-index: 5; margin: 0; transform: rotate(var(--giro, 0deg)); }
+  .site-flutuante img {
+    display: block; width: 100%; height: auto; border-radius: 14px;
+    border: 1px solid #ffffff22; box-shadow: 0 40px 90px -30px rgba(0,0,0,.95);
   }
-  .etiqueta-flutuante {
-    position: absolute; left: 0; bottom: -5%; z-index: 6;
-    background: #0f0f11f2; border: 1px solid #ff6e0055; border-radius: 14px;
-    padding: 13px 17px; max-width: 260px; font-size: .88rem; color: var(--cinza);
-    backdrop-filter: blur(8px); box-shadow: 0 24px 50px -20px #000;
+  .pagina-veiculo { --giro: 1.8deg; right: -1%; bottom: 0; width: min(42%, 480px); }
+  .pagina-loja { --giro: -2deg; left: -1%; bottom: 5%; width: min(30%, 340px); }
+  .site-flutuante figcaption {
+    position: absolute; left: 16px; top: 0; transform: translateY(-62%); z-index: 2;
+    max-width: min(300px, 86%); padding: 9px 13px; border-radius: 12px;
+    background: #0f0f11f2; border: 1px solid #ff6e0055; box-shadow: 0 18px 40px -18px #000;
+    font-size: .8rem; line-height: 1.4; color: var(--cinza); backdrop-filter: blur(8px);
   }
-  .etiqueta-flutuante b { color: var(--claro); display: block; margin-bottom: 3px; }
+  .site-flutuante figcaption b { display: block; color: var(--claro); font-size: .86rem; }
+  .site-flutuante figcaption span { display: block; margin-top: 2px; }
+  .legenda-site { margin-top: 18px; }
   .beneficios-site { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: clamp(70px, 10vh, 110px); }
   .beneficio { border: 1px solid var(--linha); background: var(--cartao); border-radius: 16px; padding: 20px; }
   .beneficio b { display: block; font-size: .98rem; margin-bottom: 5px; }
@@ -694,8 +702,9 @@
     .numeros { grid-template-columns: 1fr 1fr; }
     .beneficios-site { grid-template-columns: 1fr 1fr; }
     .orbita { --disco: 58px; }
-    .site-flutuante { position: static; width: 100%; margin-top: 14px; transform: none; }
-    .etiqueta-flutuante { position: static; max-width: none; margin-top: 14px; }
+    .palco-site { padding-bottom: 0; }
+    .site-flutuante { position: relative; inset: auto; width: 100%; margin-top: 40px; transform: none; }
+    .site-flutuante figcaption { transform: translateY(-55%); }
   }
   @media (max-width: 560px) {
     .grade, .numeros, .beneficios-site { grid-template-columns: 1fr; }
@@ -1108,27 +1117,34 @@
 <!-- SITE PRÓPRIO — logo abaixo do fluxo -->
 <section class="secao" id="site">
   <div class="wrap">
-    <p class="olho rev">E tem mais</p>
-    <h2 class="rev d1">A sua empresa ganha um site <span class="acento">no padrão mais alto do mercado</span>.</h2>
-    <p class="conversa rev d2">Todo anúncio que o sistema dispara termina no site da sua loja — <strong>com a sua marca, as suas cores e o seu WhatsApp</strong>. Cada caminhão ganha página própria, galeria, ficha técnica, simulador de financiamento e botão de conversa. De madrugada, no domingo e no feriado, <strong>o cliente simula a parcela sozinho e chega no WhatsApp do vendedor já sabendo o que quer</strong>. E você não paga um site à parte: ele já vem no sistema.</p>
+    <p class="olho rev">Site próprio</p>
+    <h2 class="rev d1">Um site com a sua marca, que se atualiza sozinho e <span class="laranja">vende 24 horas</span>.</h2>
+    <p class="conversa rev d2">Cadastrou o caminhão, <strong>ele já está no site</strong>: página própria, fotos, ficha técnica, simulador de financiamento e o WhatsApp do vendedor. <strong>Vendeu, sai sozinho.</strong> É para essa página que vai o link do fluxo de fotos — e de madrugada, no domingo ou no feriado, o cliente simula a parcela e chega na conversa já sabendo o que quer. <strong>E você não paga site à parte: ele já vem no sistema.</strong></p>
 
     <div class="palco-site rev">
       <div class="navegador">
         <div class="barra">
           <span class="bola"></span><span class="bola"></span><span class="bola"></span>
-          <span class="url">o site da sua loja — este é o da Minas Caminhões, cliente de demonstração</span>
+          <span class="url">itruckcaminhoes.com.br</span>
         </div>
-        <img src="/conheca/img/site.jpg" alt="Página inicial do site da loja, com a marca do lojista" />
+        <img src="/conheca/img/site-itruck.jpg" width="2000" height="1116" loading="lazy" alt="Página inicial do site da iTruck Caminhões: a marca da loja, a busca e o estoque" />
       </div>
-      <div class="site-flutuante"><img src="/conheca/img/site-veiculo.jpg" alt="Página do Scania S 540 no site da loja" /></div>
-      <div class="etiqueta-flutuante"><b>Página criada sozinha.</b> Aquele mesmo botão lá em cima — e o caminhão já estava assim no seu site, sem ninguém montar nada.</div>
+      <figure class="site-flutuante pagina-loja">
+        <figcaption><b>Quem somos e rota até o pátio</b></figcaption>
+        <img src="/conheca/img/site-itruck-loja.jpg" width="1400" height="781" loading="lazy" alt="Página Quem Somos da iTruck Caminhões, com a foto da loja, o endereço, o horário e o mapa" />
+      </figure>
+      <figure class="site-flutuante pagina-veiculo">
+        <figcaption><b>O link do fluxo abre aqui</b><span>O mesmo Scania S 540 que chegou no WhatsApp — a página nasceu no cadastro, ninguém montou nada.</span></figcaption>
+        <img src="/conheca/img/site-itruck-veiculo.jpg" width="1600" height="893" loading="lazy" alt="Página do Scania S 540 6x4 no site da iTruck Caminhões, com preço, WhatsApp e simulador de financiamento" />
+      </figure>
     </div>
+    <p class="legenda-img legenda-site">Site real da <b>iTruck Caminhões</b>, de Governador Valadares, cliente Via Pesados.</p>
 
     <div class="beneficios-site">
-      <div class="beneficio rev"><b>Sua marca na frente</b><span>Logo, cores e telefone da sua loja. A Via Pesados fica nos bastidores.</span></div>
-      <div class="beneficio rev d1"><b>Estoque sempre certo</b><span>Cadastrou, apareceu. Vendeu, saiu. Sem site desatualizado.</span></div>
-      <div class="beneficio rev d2"><b>WhatsApp em cada veículo</b><span>O cliente vê o caminhão e fala com o vendedor em um toque.</span></div>
-      <div class="beneficio rev d3"><b>Financiamento na hora</b><span>Simulador em cada página. O cliente chega na conversa já sabendo a parcela.</span></div>
+      <div class="beneficio rev"><b>A sua marca, não a nossa</b><span>Logo, cores, endereço e o WhatsApp da sua loja. A Via Pesados fica nos bastidores.</span></div>
+      <div class="beneficio rev d1"><b>Estoque sempre certo</b><span>Cadastrou, apareceu. Vendeu, saiu. Ninguém liga perguntando de caminhão que já foi.</span></div>
+      <div class="beneficio rev d2"><b>Uma página por caminhão</b><span>Fotos, ficha e preço num link só — o que o vendedor manda e o cliente repassa.</span></div>
+      <div class="beneficio rev d3"><b>Financiamento na hora</b><span>Simulador em cada página: o cliente chega na conversa já sabendo a parcela.</span></div>
     </div>
   </div>
 </section>
@@ -1261,7 +1277,7 @@
     <div class="grade">
       <figure class="cartao-tela rev"><img src="/conheca/img/financeiro.jpg" loading="lazy" alt="" /><figcaption>Financeiro <small>a receber, a pagar e o resultado</small></figcaption></figure>
       <figure class="cartao-tela rev d1"><img src="/conheca/img/gestao.jpg" loading="lazy" alt="" /><figcaption>Estoque <small>consignação, custo e oferta</small></figcaption></figure>
-      <figure class="cartao-tela rev d2"><img src="/conheca/img/site.jpg" loading="lazy" alt="" /><figcaption>Site próprio <small>com a sua marca</small></figcaption></figure>
+      <figure class="cartao-tela rev d2"><img src="/conheca/img/site-itruck.jpg" loading="lazy" alt="" /><figcaption>Site próprio <small>com a sua marca</small></figcaption></figure>
       <figure class="cartao-tela rev"><img src="/conheca/img/clientes.jpg" loading="lazy" alt="" /><figcaption>Clientes <small>com etiquetas automáticas</small></figcaption></figure>
       <figure class="cartao-tela rev d1"><img src="/conheca/img/conectar.jpg" loading="lazy" alt="" /><figcaption>WhatsApp da equipe <small>QR code e pronto</small></figcaption></figure>
       <figure class="cartao-tela rev d2"><img src="/conheca/img/calendario.jpg" loading="lazy" alt="" /><figcaption>Agenda <small>visitas, entregas, avaliações</small></figcaption></figure>
