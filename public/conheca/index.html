@@ -375,10 +375,11 @@
      mensagem aparecer dos dois lados no mesmo instante. Os dois vídeos de
      um par têm a mesma duração e giram juntos (o script corrige a deriva).
 
-     A tela de envio do computador não é o CRM inteiro: era um retângulo
-     quase todo preto, com o conteúdo miúdo num canto. É um quadro 3:4, do
-     tamanho da tela do cliente, com uma câmera que acompanha a ação — o
-     menu, a escolha do caminhão, e as mensagens saindo de perto.
+     A tela de envio do computador tem formato de computador: um notebook
+     16:9 com o CRM inteiro, e uma câmera que aproxima no menu, na janela
+     de escolher o caminhão e nas mensagens saindo, e volta para a tela
+     inteira no fim. Recortada em 3:4 ela parecia celular, e o CRM inteiro
+     sem aproximação era um retângulo preto com o conteúdo miúdo.
 
      Quem é quem se lê pela luz (laranja atrás da sua tela, verde atrás da
      do cliente), pela etiqueta com a marca e pelo fio laranja→verde entre
@@ -405,11 +406,14 @@
   /* a altura dos vídeos cabe na janela e na largura: dois quadros 3:4
      somam 1,5 alturas; dois celulares (720/1300 + moldura) somam ~1,11 */
   .palco-envio {
-    --alto: min(560px, 62vh, calc((min(1180px, 92vw) - 130px) / 1.5));
     position: relative; margin-top: 46px;
+    margin-inline: calc((100% - max(100%, min(1360px, 100vw - 48px))) / 2);
   }
+  /* no computador: notebook 16:9 + janela 3:4 somam ~2,6 alturas */
+  .palco-envio .par.par-pc { --alto: min(480px, 58vh, calc((min(1360px, 100vw - 48px) - 190px) / 2.6)); align-items: flex-start; }
   .palco-envio .par-cel { --alto: min(560px, 62vh, calc((min(1180px, 92vw) - 170px) / 1.11)); }
   .palco-envio .par { display: none; justify-content: center; align-items: flex-end; }
+  .par-pc .fio { margin-top: calc(60px + var(--alto) / 2 - 20px); align-self: flex-start; }
   .palco-envio[data-modo="pc"] .par-pc,
   .palco-envio[data-modo="cel"] .par-cel { display: flex; }
 
@@ -426,13 +430,13 @@
 
   .etiqueta {
     display: inline-flex; align-items: center; gap: 10px;
-    padding: 5px 16px 5px 5px; border-radius: 999px;
+    min-height: 42px; padding: 5px 16px 5px 5px; border-radius: 999px;
     background: #111113d9; border: 1px solid rgba(var(--cor), .32);
     font-size: .95rem; font-weight: 700; letter-spacing: -.005em; color: var(--claro); white-space: nowrap;
   }
   .etiqueta .selo { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; }
-  .loja .etiqueta .selo { background: linear-gradient(140deg, #FF8A2B, #FF6E00 60%, #E35A00); }
-  .loja .etiqueta .selo img { width: 22px; height: auto; }
+  /* a marca oficial, só o "Via", como ela é — sem fundo */
+  .etiqueta img.via { flex: none; height: 19px; width: auto; margin: 0 2px 0 10px; }
   .cliente .etiqueta .selo { background: var(--zap); }
   .cliente .etiqueta .selo svg { width: 17px; height: 17px; }
 
@@ -443,6 +447,29 @@
     box-shadow: 0 0 0 7px #ffffff07, 0 50px 100px -36px rgba(0,0,0,.95), 0 34px 90px -56px rgba(var(--cor), .7);
   }
   .janela video { display: block; height: var(--alto); width: auto; aspect-ratio: 3 / 4; background: #0a0a0b; }
+  .par-pc .janela { margin-top: 13px; }
+  /* o notebook: tela com moldura e câmera, base de alumínio mais larga */
+  .notebook { display: grid; justify-items: center; }
+  .notebook-tela {
+    position: relative; padding: 13px 13px 15px; border-radius: 20px 20px 8px 8px;
+    background: linear-gradient(180deg, #27272a, #141416);
+    box-shadow: inset 0 0 0 1px #3a3a3f, 0 50px 100px -40px rgba(0,0,0,.95), 0 34px 90px -56px rgba(var(--cor), .75);
+  }
+  .notebook-tela::before {
+    content: ""; position: absolute; top: 4px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px;
+    border-radius: 50%; background: #0b0b0c; box-shadow: inset 0 0 0 1px #2e2e33;
+  }
+  .notebook-tela video { display: block; height: var(--alto); width: auto; aspect-ratio: 16 / 9; border-radius: 4px; background: #0a0a0b; }
+  .notebook-base {
+    position: relative; width: 114%; height: 15px; margin-top: -1px;
+    border-radius: 2px 2px 16px 16px / 2px 2px 10px 10px;
+    background: linear-gradient(180deg, #5c5c62, #35353b 30%, #1d1d21);
+    box-shadow: 0 26px 40px -18px #000;
+  }
+  .notebook-base::before {
+    content: ""; position: absolute; left: 50%; top: 0; width: 15%; height: 6px; transform: translateX(-50%);
+    border-radius: 0 0 8px 8px; background: #27272b;
+  }
   .aparelho {
     border-radius: 46px; padding: 10px;
     background: linear-gradient(160deg, #3a3a3e, #141416 30%, #252529);
@@ -511,20 +538,38 @@
 
   .pilares-envio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: clamp(56px, 8vh, 96px); }
 
+  @media (max-width: 1000px) {
+    /* o notebook ao lado da janela ficaria miúdo: empilha, com o fio em pé */
+    .palco-envio .par.par-pc { flex-direction: column; align-items: center; }
+    .par-pc .lado { width: 100%; }
+    .par-pc .notebook { width: min(100%, 720px); margin-inline: auto; }
+    .par-pc .notebook-tela { width: 100%; }
+    .par-pc .notebook-tela video { width: 100%; height: auto; }
+    .par-pc .notebook-base { width: 108%; }
+    .par-pc .janela { width: min(100%, 340px); margin-top: 0; }
+    .par-pc .janela video { width: 100%; height: auto; }
+    .par-pc .fio { width: 100%; height: 76px; margin: 14px 0 8px; align-self: center; }
+    .par-pc .fio::before { left: 50%; right: auto; top: 0; bottom: 0; width: 1px; height: auto; background: linear-gradient(180deg, #ff6e0000, #ff6e00b3 22%, #25d366b3 78%, #25d36600); }
+    .par-pc .fio::after { display: none; }
+  }
   @media (max-width: 760px) {
-    /* no telefone, os dois lados continuam lado a lado, cada um com metade */
+    /* no telefone, o celular continua lado a lado, cada um com metade */
     .palco-envio { margin-top: 34px; }
-    .palco-envio .par { gap: 10px; align-items: flex-start; }
-    .fio { display: none; }
-    .lado { flex: 1 1 0; gap: 12px; }
+    .palco-envio .par-cel { gap: 10px; align-items: flex-start; }
+    .par-cel .fio { display: none; }
+    .lado { gap: 12px; }
+    .par-cel .lado { flex: 1 1 0; }
+    .notebook-tela { padding: 7px 7px 9px; border-radius: 12px 12px 5px 5px; }
+    .notebook-tela::before { top: 2px; width: 3px; height: 3px; margin-left: -1.5px; }
+    .notebook-base { height: 9px; }
     .lado::before { width: 190%; }
     .janela { border-radius: 16px; box-shadow: 0 0 0 4px #ffffff07, 0 30px 60px -26px rgba(0,0,0,.95), 0 24px 60px -40px rgba(var(--cor), .7); }
-    .janela video, .aparelho video { width: 100%; height: auto; }
+    .aparelho video { width: 100%; height: auto; }
     .aparelho { width: 100%; padding: 4px; border-radius: 22px; }
     .aparelho video { border-radius: 18px; }
-    .etiqueta { gap: 7px; padding: 4px 11px 4px 4px; font-size: .78rem; }
+    .etiqueta { gap: 7px; min-height: 34px; padding: 4px 11px 4px 4px; font-size: .78rem; }
     .etiqueta .selo { width: 24px; height: 24px; }
-    .loja .etiqueta .selo img { width: 17px; }
+    .etiqueta img.via { height: 15px; margin-left: 8px; }
     .cliente .etiqueta .selo svg { width: 13px; height: 13px; }
     .tocar { top: 50%; }
     .passos-envio { grid-template-columns: 1fr 1fr; gap: 16px 12px; margin-top: 38px; }
@@ -991,11 +1036,14 @@
     <div class="palco-envio rev" id="palco-envio" data-modo="pc">
       <div class="par par-pc">
         <figure class="lado loja">
-          <figcaption class="etiqueta"><span class="selo"><img src="/conheca/img/via-icon-white.png" alt="" width="971" height="600" /></span>Sua tela</figcaption>
-          <div class="janela">
-            <video class="mestre" muted playsinline preload="none" width="960" height="1280" poster="/conheca/video/pc-envio.jpg" aria-label="Gravação real da tela da loja: no Via CRM, o vendedor abre o menu, escolhe o Scania S 540 e as mensagens saem uma a uma">
-              <source src="/conheca/video/pc-envio.mp4" type="video/mp4" />
-            </video>
+          <figcaption class="etiqueta"><img class="via" src="/conheca/img/via-logo-white.png" alt="" width="563" height="282" />Sua tela</figcaption>
+          <div class="notebook">
+            <div class="notebook-tela">
+              <video class="mestre" muted playsinline preload="none" width="1600" height="900" poster="/conheca/video/pc-envio.jpg" aria-label="Gravação real da tela da loja no computador: o Via CRM inteiro; o vendedor abre o menu, escolhe o Scania S 540 e as mensagens saem uma a uma">
+                <source src="/conheca/video/pc-envio.mp4" type="video/mp4" />
+              </video>
+            </div>
+            <div class="notebook-base" aria-hidden="true"></div>
           </div>
         </figure>
         <div class="fio" aria-hidden="true"><span class="clique"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9l5 12 1.8-5.2L21 14z"/><path d="M7.2 2.2 8 5.1M5.1 8l-2.9-.8M14 4.1 12 6M6 12l-1.9 2"/></svg>1 clique</span></div>
@@ -1011,7 +1059,7 @@
 
       <div class="par par-cel">
         <figure class="lado loja">
-          <figcaption class="etiqueta"><span class="selo"><img src="/conheca/img/via-icon-white.png" alt="" width="971" height="600" /></span>Sua tela</figcaption>
+          <figcaption class="etiqueta"><img class="via" src="/conheca/img/via-logo-white.png" alt="" width="563" height="282" />Sua tela</figcaption>
           <div class="aparelho">
             <video class="mestre" muted playsinline preload="none" width="720" height="1300" poster="/conheca/video/cel-envio.jpg" aria-label="Gravação real da tela da loja no celular: o vendedor escolhe o Scania S 540 e envia as 12 mensagens">
               <source src="/conheca/video/cel-envio.mp4" type="video/mp4" />
@@ -1037,9 +1085,9 @@
 
     <ol class="passos-envio" id="passos-envio">
       <li data-pc="0" data-cel="0"><i></i><small>Você</small><span>Escolhe o caminhão</span></li>
-      <li data-pc="4.6" data-cel="5.9"><i></i><small>Você</small><span>Um clique em enviar</span></li>
-      <li data-pc="6.2" data-cel="7.66"><i></i><small>Cliente</small><span>Recebe mensagem por mensagem</span></li>
-      <li data-pc="21.2" data-cel="25.66"><i></i><small>Cliente</small><span>Fica com o caminhão inteiro no WhatsApp</span></li>
+      <li data-pc="5.67" data-cel="5.9"><i></i><small>Você</small><span>Um clique em enviar</span></li>
+      <li data-pc="7.23" data-cel="7.66"><i></i><small>Cliente</small><span>Recebe mensagem por mensagem</span></li>
+      <li data-pc="22.23" data-cel="25.66"><i></i><small>Cliente</small><span>Fica com o caminhão inteiro no WhatsApp</span></li>
     </ol>
     <p class="nota-envio">Gravações reais do sistema, aceleradas para caber aqui.</p>
 
