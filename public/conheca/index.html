@@ -659,26 +659,14 @@
 
   /* ── relatórios ─────────────────────────────────────────────────────── */
   .fundo-relat { background: linear-gradient(180deg, var(--fundo), #100B06 35%, #0C0906 75%, var(--fundo)); }
-  .numeros { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 40px 0 46px; }
-  .numero { border: 1px solid var(--linha); background: var(--cartao); border-radius: var(--raio); padding: 22px 20px; }
-  .numero b { font-weight: 900; font-size: clamp(1.5rem, 2.7vw, 2.1rem); color: var(--laranja); display: block; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
-  .numero span { color: var(--cinza); font-size: .85rem; font-weight: 500; }
-  .painel-grande { margin-bottom: 18px; }
   .legenda-img { color: var(--cinza-escuro); font-size: .85rem; margin-top: 12px; text-align: center; }
   .legenda-img b { color: var(--cinza); }
-  .perguntas { display: grid; gap: clamp(40px, 6vh, 72px); margin-top: clamp(56px, 8vh, 90px); }
-  .pergunta { display: grid; grid-template-columns: 1fr 1.35fr; gap: clamp(24px, 4vw, 56px); align-items: center; }
-  .pergunta:nth-child(even) .midia { order: -1; }
-  .pergunta h3 { font-size: clamp(1.25rem, 2.2vw, 1.75rem); margin-bottom: 12px; }
-  .pergunta p { color: var(--cinza); max-width: 44ch; }
-  .pergunta p strong { color: var(--claro); }
   .midia { border-radius: var(--raio); overflow: hidden; border: 1px solid var(--linha); box-shadow: 0 50px 100px -40px #000; }
-  .fichas { display: flex; flex-wrap: wrap; gap: 9px; margin-top: clamp(50px, 7vh, 80px); justify-content: center; }
-  .ficha {
-    font-size: .84rem; font-weight: 600; color: var(--cinza);
-    border: 1px solid var(--linha); background: var(--cartao);
-    padding: 9px 15px; border-radius: 999px;
-  }
+  /* Os relatórios usam a mesma vitrine do site (seletor + janela + legenda);
+     só a proporção muda: as telas do sistema são 1900×1266, e no telefone
+     entra um recorte 4:3 da parte que conta de cada uma. */
+  #relatorios h2 .laranja { color: var(--laranja); }
+  .paginas-site.paginas-relat { aspect-ratio: 1900 / 1266; background: #0b0b0c; }
 
   /* ── venda ──────────────────────────────────────────────────────────── */
   .linhas-venda { display: grid; gap: clamp(50px, 8vh, 96px); margin-top: 56px; }
@@ -736,18 +724,18 @@
   /* itens de grid têm min-width:auto por padrão e são estourados por
      conteúdo de largura intrínseca (o vídeo, os prints). min-width:0 é o
      que impede a barra de rolagem horizontal. */
-  .pergunta > *, .linha-venda > *, .pilares-envio > *,
-  .trio > *, .grade > *, .numeros > *, .beneficios-site > * { min-width: 0; }
+  .linha-venda > *, .pilares-envio > *,
+  .trio > *, .grade > *, .beneficios-site > * { min-width: 0; }
 
   /* ── responsivo ─────────────────────────────────────────────────────── */
   @media (max-width: 900px) {
-    .linha-venda, .pergunta { grid-template-columns: 1fr; }
-    .linha-venda:nth-child(even) .midia, .pergunta:nth-child(even) .midia { order: 0; }
+    .linha-venda { grid-template-columns: 1fr; }
+    .linha-venda:nth-child(even) .midia { order: 0; }
     .grade { grid-template-columns: 1fr 1fr; }
-    .numeros { grid-template-columns: 1fr 1fr; }
     .beneficios-site { grid-template-columns: 1fr 1fr; }
     .orbita { --disco: 58px; }
     .paginas-site { aspect-ratio: 780 / 1440; }
+    .paginas-site.paginas-relat { aspect-ratio: 4 / 3; }
     .seletor-site { width: 100%; }
     .aba-site { flex: 1 1 0; justify-content: center; gap: 6px; padding: 11px 6px; font-size: .84rem; }
     .aba-site svg { width: 15px; height: 15px; }
@@ -759,7 +747,7 @@
     .legenda-pagina { font-size: .9rem; }
   }
   @media (max-width: 560px) {
-    .grade, .numeros, .beneficios-site { grid-template-columns: 1fr; }
+    .grade, .beneficios-site { grid-template-columns: 1fr; }
     /* a largura da tela mora na regra de 760px, que é onde a arte troca
        pela do celular; 86vw aqui era a sobra da época em que a tela era
        deitada, e vencia a outra por vir depois. */
@@ -1254,54 +1242,62 @@
   <div class="wrap">
     <div class="centrado">
       <p class="olho rev">Relatórios</p>
-      <h2 class="rev d1">No fim do mês, você enxerga <span class="acento">o que passava batido</span>.</h2>
-      <p class="conversa rev d2">O caminhão parado há seis meses comendo pátio. A margem que o desconto levou. O cliente que pediu proposta e ninguém retornou. Toda venda, toda compra, toda consignação e todo dia de pátio viram número — <strong>quanto entrou, quanto sobrou, o que está parado e por que você perdeu o que perdeu</strong>.</p>
+      <h2 class="rev d1">O resultado da sua loja, <span class="laranja">sem abrir planilha</span>.</h2>
+      <p class="conversa rev d2">Cada venda, compra e dia de pátio vira número sozinho. Você vê <strong>o que dá lucro, o que está parado e por que perdeu</strong>.</p>
     </div>
 
-    <div class="numeros">
-      <div class="numero rev"><b data-conta="7418400" data-prefixo="R$ ">R$ 0</b><span>faturados no ano — com lucro, margem e ticket separados</span></div>
-      <div class="numero rev d1"><b data-conta="27" data-sufixo=" veículos">0 veículos</b><span>em estoque, cada um com dias parado e margem própria</span></div>
-      <div class="numero rev d2"><b data-conta="17" data-sufixo=",7%">0,7%</b><span>de margem bruta média — a conta que o Excel nunca fechava</span></div>
-      <div class="numero rev d3"><b data-conta="205" data-sufixo=" dias">0 dias</b><span>de giro médio: quanto tempo o seu dinheiro fica no pátio</span></div>
-    </div>
-
-    <div class="painel-grande rev">
-      <div class="midia"><img src="/conheca/img/rel-geral.jpg" loading="lazy" alt="Painel de resultados do ano com faturamento, volume, ticket médio e margem" /></div>
-      <p class="legenda-img"><b>Resultado geral do ano</b> — faturamento e lucro lado a lado, por área, do jeito que o contador pede.</p>
-    </div>
-
-    <div class="perguntas">
-      <div class="pergunta rev">
-        <div>
-          <h3>“Qual caminhão está travando o meu dinheiro?”</h3>
-          <p>A lista inteira do pátio, ordenada por <strong>dias parado</strong>, com placa, status, preço e a margem de cada um. O que passou dos 200 dias aparece em vermelho — não dá para fingir que não viu.</p>
-        </div>
-        <div class="midia"><img src="/conheca/img/rel-giro.jpg" loading="lazy" alt="Lista de veículos por dias em estoque, preço e margem" /></div>
+    <div class="vitrine-site rev" id="vitrine-relat">
+      <div class="seletor-site" role="tablist" aria-label="Relatórios do Via Pesados">
+        <button class="aba-site" type="button" role="tab" id="aba-relat-0" aria-controls="pagina-relat-0" aria-selected="true" tabindex="0" data-url="Relatórios — Resultado do ano"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg><span class="longo">Resultado do ano</span><span class="curto">Lucro</span><i class="tempo" aria-hidden="true"></i></button>
+        <button class="aba-site" type="button" role="tab" id="aba-relat-1" aria-controls="pagina-relat-1" aria-selected="false" tabindex="-1" data-url="Relatórios — Dias em estoque"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="longo">Caminhão parado</span><span class="curto">Parados</span><i class="tempo" aria-hidden="true"></i></button>
+        <button class="aba-site" type="button" role="tab" id="aba-relat-2" aria-controls="pagina-relat-2" aria-selected="false" tabindex="-1" data-url="Relatórios — Estoque"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg><span class="longo">Estoque e marcas</span><span class="curto">Marcas</span><i class="tempo" aria-hidden="true"></i></button>
+        <button class="aba-site" type="button" role="tab" id="aba-relat-3" aria-controls="pagina-relat-3" aria-selected="false" tabindex="-1" data-url="Relatórios — Negociações perdidas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></svg><span class="longo">Vendas perdidas</span><span class="curto">Perdas</span><i class="tempo" aria-hidden="true"></i></button>
       </div>
-
-      <div class="pergunta rev">
-        <div>
-          <h3>“Estou comprando bem? De qual marca?”</h3>
-          <p>Estoque por status, ranking de marcas, entradas mês a mês e o <strong>custo contra o preço médio de cada marca</strong>. É onde você descobre que Volvo te dá 33% e outra marca te dá 9%.</p>
+      <div class="navegador navegador-site">
+        <div class="barra">
+          <span class="bola"></span><span class="bola"></span><span class="bola"></span>
+          <span class="url">Relatórios — Resultado do ano</span>
         </div>
-        <div class="midia"><img src="/conheca/img/rel-estoque.jpg" loading="lazy" alt="Relatório de estoque com margens e ranking de marcas" /></div>
-      </div>
-
-      <div class="pergunta rev">
-        <div>
-          <h3>“Por que eu perdi essas vendas?”</h3>
-          <p>Cada negociação perdida com <strong>o motivo, o valor que escapou e o vendedor</strong>. “Comprou em outra loja, R$ 202.800” é uma frase incômoda — e é exatamente por isso que ela precisa estar na tela.</p>
+        <div class="paginas-site paginas-relat">
+          <figure class="pagina-site agora" role="tabpanel" id="pagina-relat-0" aria-labelledby="aba-relat-0">
+            <picture>
+              <source media="(max-width: 900px)" srcset="/conheca/img/rel-geral-cel.jpg" width="800" height="600" />
+              <img src="/conheca/img/rel-geral.jpg" width="1900" height="1266" loading="lazy" alt="Painel do ano: faturamento, lucro bruto, ticket médio, margem, estoque e giro, e o resultado por área" />
+            </picture>
+            <figcaption><b>Resultado do ano.</b> Faturamento, lucro e margem, por área — do jeito que o contador pede.</figcaption>
+          </figure>
+          <figure class="pagina-site" role="tabpanel" id="pagina-relat-1" aria-labelledby="aba-relat-1">
+            <picture>
+              <source media="(max-width: 900px)" srcset="/conheca/img/rel-giro-cel.jpg" width="800" height="600" />
+              <img src="/conheca/img/rel-giro.jpg" width="1700" height="1157" loading="lazy" alt="Lista do pátio ordenada por dias parado, com placa, status, preço e margem de cada caminhão" />
+            </picture>
+            <figcaption><b>Caminhão parado.</b> O pátio ordenado por dias parado, com o preço e a margem de cada um.</figcaption>
+          </figure>
+          <figure class="pagina-site" role="tabpanel" id="pagina-relat-2" aria-labelledby="aba-relat-2">
+            <picture>
+              <source media="(max-width: 900px)" srcset="/conheca/img/rel-estoque-cel.jpg" width="800" height="600" />
+              <img src="/conheca/img/rel-estoque.jpg" width="1900" height="1266" loading="lazy" alt="Relatório de estoque: total, margem média, custo, tempo em estoque, marcas mais compradas e custo contra preço por marca" />
+            </picture>
+            <figcaption><b>Estoque e marcas.</b> Quais marcas você mais compra e qual delas deixa mais margem.</figcaption>
+          </figure>
+          <figure class="pagina-site" role="tabpanel" id="pagina-relat-3" aria-labelledby="aba-relat-3">
+            <picture>
+              <source media="(max-width: 900px)" srcset="/conheca/img/rel-perdidos-cel.jpg" width="800" height="600" />
+              <img src="/conheca/img/rel-perdidos.jpg" width="1700" height="1157" loading="lazy" alt="Negociações perdidas: total, valor que escapou, principal motivo, motivos de perda e perdas por vendedor" />
+            </picture>
+            <figcaption><b>Vendas perdidas.</b> Cada negociação perdida, com o motivo, o valor e o vendedor.</figcaption>
+          </figure>
         </div>
-        <div class="midia"><img src="/conheca/img/rel-perdidos.jpg" loading="lazy" alt="Relatório de negociações perdidas com motivos e valores" /></div>
       </div>
+      <p class="legenda-pagina" aria-live="polite"><b>Resultado do ano.</b> Faturamento, lucro e margem, por área — do jeito que o contador pede.</p>
+      <p class="legenda-img legenda-site">Telas reais do Via Pesados, com os números de uma loja de demonstração.</p>
     </div>
 
-    <div class="fichas rev">
-      <span class="ficha">Faturamento</span><span class="ficha">Margem bruta</span><span class="ficha">Ticket médio</span>
-      <span class="ficha">Volume total</span><span class="ficha">Lucro por venda</span><span class="ficha">Tempo médio de giro</span>
-      <span class="ficha">Custo total do estoque</span><span class="ficha">Margem por marca</span><span class="ficha">Entradas por mês</span>
-      <span class="ficha">Vendedores ativos</span><span class="ficha">Leads do WhatsApp</span><span class="ficha">Motivos de perda</span>
-      <span class="ficha">Perdas por vendedor</span><span class="ficha">Veículos em oferta</span><span class="ficha">Financiamento e consórcio</span>
+    <div class="beneficios-site">
+      <div class="beneficio rev"><b>Lucro de cada venda</b><span>Faturamento, lucro e margem na tela, sem fechar planilha no dia 30.</span></div>
+      <div class="beneficio rev d1"><b>Nada parado escondido</b><span>O caminhão que passou do ponto aparece em vermelho, com os dias de pátio.</span></div>
+      <div class="beneficio rev d2"><b>Compra mais certa</b><span>Custo contra preço de cada marca: você sabe onde ganha mais.</span></div>
+      <div class="beneficio rev d3"><b>Venda perdida tem motivo</b><span>Quem perdeu, quanto valia e por quê — para não perder de novo.</span></div>
     </div>
   </div>
 </section>
@@ -1500,61 +1496,46 @@
     });
   }
 
-  /* ── o site da iTruck, uma página por aba ──────────────────────────── */
-  const vitrineSite = document.getElementById('vitrine-site');
-  if (vitrineSite) {
-    const abasSite = [...vitrineSite.querySelectorAll('.aba-site')];
-    const paginasSite = [...vitrineSite.querySelectorAll('.pagina-site')];
-    const urlSite = document.getElementById('url-site');
-    const legendaSite = document.getElementById('legenda-pagina');
+  /* ── vitrines com abas: o site da iTruck e os relatórios ──────────────
+     Uma página por aba; giram sozinhas a cada 6 s enquanto estão à vista
+     (a linha na aba é o tempo) e param quando alguém clica. */
+  document.querySelectorAll('.vitrine-site').forEach(vitrine => {
+    const abas = [...vitrine.querySelectorAll('.aba-site')];
+    const paginas = [...vitrine.querySelectorAll('.pagina-site')];
+    const url = vitrine.querySelector('.url');
+    const legenda = vitrine.querySelector('.legenda-pagina');
     let pagina = 0, giro = 0, aVista = false, escolheu = false;
     const gira = () => {
       clearTimeout(giro);
-      abasSite.forEach(a => a.querySelector('.tempo').classList.remove('corre'));
+      abas.forEach(a => a.querySelector('.tempo').classList.remove('corre'));
       if (!aVista || escolheu || reduzido) return;
-      const t = abasSite[pagina].querySelector('.tempo');
+      const t = abas[pagina].querySelector('.tempo');
       void t.offsetWidth;            /* recomeça a animação da linha */
       t.classList.add('corre');
-      giro = setTimeout(() => mostraPagina((pagina + 1) % abasSite.length), 6000);
+      giro = setTimeout(() => mostra((pagina + 1) % abas.length), 6000);
     };
-    const mostraPagina = i => {
+    const mostra = i => {
       pagina = i;
-      abasSite.forEach((a, k) => { a.setAttribute('aria-selected', String(k === i)); a.tabIndex = k === i ? 0 : -1; });
-      paginasSite.forEach((p, k) => p.classList.toggle('agora', k === i));
-      urlSite.textContent = abasSite[i].dataset.url;
-      legendaSite.innerHTML = paginasSite[i].querySelector('figcaption').innerHTML;
+      abas.forEach((a, k) => { a.setAttribute('aria-selected', String(k === i)); a.tabIndex = k === i ? 0 : -1; });
+      paginas.forEach((p, k) => p.classList.toggle('agora', k === i));
+      url.textContent = abas[i].dataset.url;
+      legenda.innerHTML = paginas[i].querySelector('figcaption').innerHTML;
       gira();
     };
     /* quem clica quer olhar com calma: o giro para */
-    abasSite.forEach((a, i) => a.addEventListener('click', () => { escolheu = true; mostraPagina(i); }));
-    vitrineSite.querySelector('.seletor-site').addEventListener('keydown', e => {
+    abas.forEach((a, i) => a.addEventListener('click', () => { escolheu = true; mostra(i); }));
+    vitrine.querySelector('.seletor-site').addEventListener('keydown', e => {
       const passo = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
       if (!passo) return;
       e.preventDefault(); escolheu = true;
-      const i = (pagina + passo + abasSite.length) % abasSite.length;
-      mostraPagina(i); abasSite[i].focus();
+      const i = (pagina + passo + abas.length) % abas.length;
+      mostra(i); abas[i].focus();
     });
     /* com o mouse em cima, a aba não troca embaixo do olho */
-    vitrineSite.addEventListener('mouseenter', () => { vitrineSite.classList.add('parado'); clearTimeout(giro); });
-    vitrineSite.addEventListener('mouseleave', () => { vitrineSite.classList.remove('parado'); gira(); });
-    new IntersectionObserver(es => { aVista = es[0].isIntersecting; gira(); }, { threshold: .35 }).observe(vitrineSite);
-  }
-
-  /* contadores */
-  const conta = el => {
-    const fim = +el.dataset.conta, suf = el.dataset.sufixo || '', pre = el.dataset.prefixo || '';
-    const t0 = performance.now(), dur = 1300;
-    (function passo(t) {
-      const p = Math.min((t - t0) / dur, 1);
-      const v = Math.round(fim * (1 - Math.pow(1 - p, 3)));
-      el.textContent = pre + v.toLocaleString('pt-BR') + suf;
-      if (p < 1) requestAnimationFrame(passo);
-    })(t0);
-  };
-  const ioNum = new IntersectionObserver(es => {
-    es.forEach(e => { if (e.isIntersecting) { conta(e.target); ioNum.unobserve(e.target); } });
-  }, { threshold: .6 });
-  document.querySelectorAll('[data-conta]').forEach(el => ioNum.observe(el));
+    vitrine.addEventListener('mouseenter', () => { vitrine.classList.add('parado'); clearTimeout(giro); });
+    vitrine.addEventListener('mouseleave', () => { vitrine.classList.remove('parado'); gira(); });
+    new IntersectionObserver(es => { aVista = es[0].isIntersecting; gira(); }, { threshold: .35 }).observe(vitrine);
+  });
 
   /* ── envio lado a lado ─────────────────────────────────────────────────
      Dois vídeos por modo, da mesma duração. O da loja manda: o do cliente
