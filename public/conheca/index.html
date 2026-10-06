@@ -446,7 +446,8 @@
     border: 1px solid #ffffff1c;
     box-shadow: 0 0 0 7px #ffffff07, 0 50px 100px -36px rgba(0,0,0,.95), 0 34px 90px -56px rgba(var(--cor), .7);
   }
-  .janela video { display: block; height: var(--alto); width: auto; aspect-ratio: 3 / 4; background: #0a0a0b; }
+  .janela :is(video, .anima) { display: block; height: var(--alto); width: auto; aspect-ratio: 3 / 4; background: #0a0a0b; }
+  .palco-envio [hidden] { display: none !important; }
   .par-pc .janela { margin-top: 13px; }
   /* o notebook: tela com moldura e câmera, base de alumínio mais larga */
   .notebook { display: grid; justify-items: center; }
@@ -459,7 +460,7 @@
     content: ""; position: absolute; top: 4px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px;
     border-radius: 50%; background: #0b0b0c; box-shadow: inset 0 0 0 1px #2e2e33;
   }
-  .notebook-tela video { display: block; height: var(--alto); width: auto; aspect-ratio: 16 / 9; border-radius: 4px; background: #0a0a0b; }
+  .notebook-tela :is(video, .anima) { display: block; height: var(--alto); width: auto; aspect-ratio: 16 / 9; border-radius: 4px; background: #0a0a0b; }
   .notebook-base {
     position: relative; width: 114%; height: 15px; margin-top: -1px;
     border-radius: 2px 2px 16px 16px / 2px 2px 10px 10px;
@@ -475,7 +476,7 @@
     background: linear-gradient(160deg, #3a3a3e, #141416 30%, #252529);
     box-shadow: 0 50px 100px -36px rgba(0,0,0,.95), 0 34px 90px -56px rgba(var(--cor), .75), inset 0 0 0 2px #000;
   }
-  .aparelho video { display: block; height: var(--alto); width: auto; aspect-ratio: 720 / 1300; border-radius: 36px; background: #0b0b0d; }
+  .aparelho :is(video, .anima) { display: block; height: var(--alto); width: auto; aspect-ratio: 720 / 1300; border-radius: 36px; background: #0b0b0d; }
 
   /* o fio entre as duas telas: laranja de um lado, verde do outro; o clique
      no meio pulsa na hora de enviar, e uma luz atravessa enquanto chegam */
@@ -544,33 +545,38 @@
     .par-pc .lado { width: 100%; }
     .par-pc .notebook { width: min(100%, 720px); margin-inline: auto; }
     .par-pc .notebook-tela { width: 100%; }
-    .par-pc .notebook-tela video { width: 100%; height: auto; }
+    .par-pc .notebook-tela :is(video, .anima) { width: 100%; height: auto; }
     .par-pc .notebook-base { width: 108%; }
     .par-pc .janela { width: min(100%, 340px); margin-top: 0; }
-    .par-pc .janela video { width: 100%; height: auto; }
+    .par-pc .janela :is(video, .anima) { width: 100%; height: auto; }
     .par-pc .fio { width: 100%; height: 76px; margin: 14px 0 8px; align-self: center; }
     .par-pc .fio::before { left: 50%; right: auto; top: 0; bottom: 0; width: 1px; height: auto; background: linear-gradient(180deg, #ff6e0000, #ff6e00b3 22%, #25d366b3 78%, #25d36600); }
     .par-pc .fio::after { display: none; }
   }
   @media (max-width: 760px) {
-    /* no telefone, o celular continua lado a lado, cada um com metade */
+    /* No telefone, lado a lado cada celular ficava com 166px e não se lia
+       nada. Agora uma tela embaixo da outra, grandes, com o fio em pé
+       entre elas — continuam tocando juntas. */
     .palco-envio { margin-top: 34px; }
-    .palco-envio .par-cel { gap: 10px; align-items: flex-start; }
-    .par-cel .fio { display: none; }
+    .palco-envio .par.par-cel { flex-direction: column; align-items: center; }
+    .par-cel .lado { width: min(80vw, 320px); }
+    .par-cel .fio { width: 100%; height: 76px; margin: 14px 0 8px; align-self: center; }
+    .par-cel .fio::before { left: 50%; right: auto; top: 0; bottom: 0; width: 1px; height: auto; background: linear-gradient(180deg, #ff6e0000, #ff6e00b3 22%, #25d366b3 78%, #25d36600); }
+    .par-cel .fio::after { display: none; }
     .lado { gap: 12px; }
-    .par-cel .lado { flex: 1 1 0; }
+    /* o notebook vai quase de borda a borda */
+    .par-pc .notebook { width: calc(100vw - 24px); margin-inline: calc((100% - (100vw - 24px)) / 2); }
+    .par-pc .notebook-base { width: 104%; }
+    .par-pc .janela { width: min(86vw, 340px); }
     .notebook-tela { padding: 7px 7px 9px; border-radius: 12px 12px 5px 5px; }
     .notebook-tela::before { top: 2px; width: 3px; height: 3px; margin-left: -1.5px; }
     .notebook-base { height: 9px; }
     .lado::before { width: 190%; }
     .janela { border-radius: 16px; box-shadow: 0 0 0 4px #ffffff07, 0 30px 60px -26px rgba(0,0,0,.95), 0 24px 60px -40px rgba(var(--cor), .7); }
-    .aparelho video { width: 100%; height: auto; }
-    .aparelho { width: 100%; padding: 4px; border-radius: 22px; }
-    .aparelho video { border-radius: 18px; }
-    .etiqueta { gap: 7px; min-height: 34px; padding: 4px 11px 4px 4px; font-size: .78rem; }
-    .etiqueta .selo { width: 24px; height: 24px; }
-    .etiqueta img.via { height: 15px; margin-left: 8px; }
-    .cliente .etiqueta .selo svg { width: 13px; height: 13px; }
+    .aparelho :is(video, .anima) { width: 100%; height: auto; }
+    .aparelho { width: 100%; padding: 7px; border-radius: 34px; }
+    .aparelho :is(video, .anima) { border-radius: 28px; }
+    .etiqueta { font-size: .88rem; }
     .tocar { top: 50%; }
     .passos-envio { grid-template-columns: 1fr 1fr; gap: 16px 12px; margin-top: 38px; }
     .passos-envio li { font-size: .82rem; }
@@ -1034,12 +1040,12 @@
     </div>
 
     <div class="palco-envio rev" id="palco-envio" data-modo="pc">
-      <div class="par par-pc">
+      <div class="par par-pc" data-dur="25.233">
         <figure class="lado loja">
           <figcaption class="etiqueta"><img class="via" src="/conheca/img/via-logo-white.png" alt="" width="563" height="282" />Sua tela</figcaption>
           <div class="notebook">
             <div class="notebook-tela">
-              <video class="mestre" muted playsinline preload="none" width="1600" height="900" poster="/conheca/video/pc-envio.jpg" aria-label="Gravação real da tela da loja no computador: o Via CRM inteiro; o vendedor abre o menu, escolhe o Scania S 540 e as mensagens saem uma a uma">
+              <video class="mestre" muted playsinline preload="none" width="1600" height="900" poster="/conheca/video/pc-envio.jpg" data-anima="/conheca/video/pc-envio.avif" aria-label="Gravação real da tela da loja no computador: o Via CRM inteiro; o vendedor abre o menu, escolhe o Scania S 540 e as mensagens saem uma a uma">
                 <source src="/conheca/video/pc-envio.mp4" type="video/mp4" />
               </video>
             </div>
@@ -1050,18 +1056,18 @@
         <figure class="lado cliente">
           <figcaption class="etiqueta"><span class="selo"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg></span>Tela do cliente</figcaption>
           <div class="janela">
-            <video muted playsinline preload="none" width="960" height="1280" poster="/conheca/video/pc-recebe.jpg" aria-label="Gravação real da tela do cliente: o WhatsApp recebe o título, as fotos, o preço, a ficha e o link do Scania S 540">
+            <video muted playsinline preload="none" width="960" height="1280" poster="/conheca/video/pc-recebe.jpg" data-anima="/conheca/video/pc-recebe.avif" aria-label="Gravação real da tela do cliente: o WhatsApp recebe o título, as fotos, o preço, a ficha e o link do Scania S 540">
               <source src="/conheca/video/pc-recebe.mp4" type="video/mp4" />
             </video>
           </div>
         </figure>
       </div>
 
-      <div class="par par-cel">
+      <div class="par par-cel" data-dur="29.867">
         <figure class="lado loja">
           <figcaption class="etiqueta"><img class="via" src="/conheca/img/via-logo-white.png" alt="" width="563" height="282" />Sua tela</figcaption>
           <div class="aparelho">
-            <video class="mestre" muted playsinline preload="none" width="720" height="1300" poster="/conheca/video/cel-envio.jpg" aria-label="Gravação real da tela da loja no celular: o vendedor escolhe o Scania S 540 e envia as 12 mensagens">
+            <video class="mestre" muted playsinline preload="none" width="720" height="1300" poster="/conheca/video/cel-envio.jpg" data-anima="/conheca/video/cel-envio.avif" aria-label="Gravação real da tela da loja no celular: o vendedor escolhe o Scania S 540 e envia as 12 mensagens">
               <source src="/conheca/video/cel-envio.mp4" type="video/mp4" />
             </video>
           </div>
@@ -1070,7 +1076,7 @@
         <figure class="lado cliente">
           <figcaption class="etiqueta"><span class="selo"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg></span>Tela do cliente</figcaption>
           <div class="aparelho">
-            <video muted playsinline preload="none" width="720" height="1300" poster="/conheca/video/cel-recebe.jpg" aria-label="Gravação real do WhatsApp no celular com o fluxo do Scania S 540 chegando foto por foto">
+            <video muted playsinline preload="none" width="720" height="1300" poster="/conheca/video/cel-recebe.jpg" data-anima="/conheca/video/cel-recebe.avif" aria-label="Gravação real do WhatsApp no celular com o fluxo do Scania S 540 chegando foto por foto">
               <source src="/conheca/video/cel-recebe.mp4" type="video/mp4" />
             </video>
           </div>
@@ -1406,6 +1412,11 @@
     const par = m => [...palcoEnvio.querySelectorAll('.par-' + m + ' video')];
     let modo = matchMedia('(max-width: 760px)').matches ? 'cel' : 'pc';
     let visivel = false, quadro = 0, faseAgora = null, tentou = false;
+    let liberado = false, perto = false, avisa = 0, imagem = null;
+    /* o relógio dos passos: o do vídeo, ou o da página quando é a imagem animada que está tocando */
+    const relogio = () => imagem && imagem.modo === modo
+      ? ((performance.now() - imagem.inicio) / 1000) % imagem.dur
+      : par(modo)[0].currentTime;
 
     const marca = () => {
       palcoEnvio.dataset.modo = modo;
@@ -1425,7 +1436,7 @@
 
     const pinta = () => {
       const [a] = par(modo);
-      const t = a.currentTime, fim = a.duration || Infinity;
+      const t = relogio(), fim = imagem && imagem.modo === modo ? imagem.dur : a.duration || Infinity;
       const ini = passos.map(p => +p.dataset[modo]);
       let k = -1;
       passos.forEach((p, i) => {
@@ -1436,20 +1447,57 @@
         if (t >= i0) k = i;
       });
       /* parado no zero, antes de tocar, nada aceso */
-      poeFase(a.paused && t === 0 ? -1 : k);
+      poeFase(!imagem && a.paused && t === 0 ? -1 : k);
     };
     const anda = () => {
       const [a, b] = par(modo);
-      if (!a.paused && !b.paused && Math.abs(b.currentTime - a.currentTime) > .15) b.currentTime = a.currentTime;
+      const naImagem = imagem && imagem.modo === modo;
+      if (!naImagem && !a.paused && !b.paused && Math.abs(b.currentTime - a.currentTime) > .15) b.currentTime = a.currentTime;
       pinta();
-      quadro = a.paused ? 0 : requestAnimationFrame(anda);
+      quadro = (naImagem ? visivel : !a.paused) ? requestAnimationFrame(anda) : 0;
+    };
+
+    /* Onde o vídeo é recusado (iPhone em economia de bateria, modo de
+       pouco dado, alguns navegadores de aplicativo), a mesma gravação entra
+       em imagem animada — AVIF, comprimido como vídeo —, porque imagem
+       anima sem pedir licença. As duas aparecem no mesmo quadro, então
+       começam juntas; os passos seguem o relógio da página. O botão só
+       aparece se nem isso der (navegador sem AVIF animado). */
+    const animaPar = () => {
+      const vs = par(modo), m = modo;
+      const imgs = vs.map(v => {
+        let im = v.parentNode.querySelector('img.anima');
+        if (!im) {
+          im = new Image(); im.className = 'anima'; im.alt = v.getAttribute('aria-label') || '';
+          im.width = v.width; im.height = v.height; im.hidden = true; im.src = v.dataset.anima;
+          v.after(im);
+        }
+        return im;
+      });
+      return Promise.all(imgs.map(im => im.decode())).then(() => new Promise(ok => requestAnimationFrame(() => {
+        if (modo !== m) return ok();
+        vs.forEach(v => { v.pause(); v.hidden = true; });
+        imgs.forEach(im => { im.hidden = false; });
+        imagem = { modo: m, inicio: performance.now(), dur: +vs[0].closest('.par').dataset.dur };
+        liberado = true; clearTimeout(avisa); tocarBt.hidden = true;
+        cancelAnimationFrame(quadro); quadro = requestAnimationFrame(anda);
+        ok();
+      })));
+    };
+    /* sai da imagem animada e volta ao vídeo (trocar de modo é um toque: o vídeo pode tocar) */
+    const desanima = () => {
+      if (!imagem) return;
+      palcoEnvio.querySelectorAll('img.anima').forEach(im => im.remove());
+      palcoEnvio.querySelectorAll('video').forEach(v => { v.hidden = false; });
+      imagem = null;
     };
 
     const toca = () => {
+      if (imagem && imagem.modo === modo) { cancelAnimationFrame(quadro); quadro = requestAnimationFrame(anda); return; }
       const [a, b] = par(modo);
       b.currentTime = a.currentTime;
       Promise.all([a.play(), b.play()]).then(() => {
-        tocarBt.hidden = true; tentou = false;
+        tocarBt.hidden = true; tentou = false; liberado = true; clearTimeout(avisa);
         cancelAnimationFrame(quadro); quadro = requestAnimationFrame(anda);
       }, erro => {
         a.pause(); b.pause();
@@ -1460,9 +1508,37 @@
           tentou = true;
           Promise.all([a, b].map(v => v.readyState >= 3 ? 0 : new Promise(ok => v.addEventListener('canplay', ok, { once: true }))))
             .then(() => { if (visivel) toca(); });
-        } else tocarBt.hidden = false;
+        } else {
+          /* o botão é o último recurso: quem está rolando com o dedo
+             destrava antes dele aparecer (ver destrava, abaixo) */
+          clearTimeout(avisa);
+          if (!reduzido) animaPar().catch(() => { tocarBt.hidden = false; });
+          else tocarBt.hidden = false;
+        }
       });
     };
+
+    /* Sem autoplay — iPhone em economia de bateria ou em modo de pouco
+       dado recusam o play() que não nasce de um toque, e a seção ficava
+       parada esperando o botão. Mas tocar por dentro de um toque é
+       permitido, e depois disso a página pode tocar e pausar sozinha.
+       Então o primeiro toque na tela perto da seção — o de rolar conta —
+       destrava o par: ninguém precisa apertar nada. */
+    const GESTOS = ['touchstart', 'touchend', 'pointerdown', 'click', 'keydown'];
+    const destrava = () => {
+      if (liberado || !perto || reduzido || imagem) return;
+      const vs = par(modo);
+      vs.forEach(v => { if (v.preload !== 'auto') v.preload = 'auto'; });
+      Promise.all(vs.map(v => v.play())).then(() => {
+        liberado = true; clearTimeout(avisa); tocarBt.hidden = true;
+        GESTOS.forEach(g => removeEventListener(g, destrava, true));
+        if (visivel) {
+          vs[1].currentTime = vs[0].currentTime;
+          cancelAnimationFrame(quadro); quadro = requestAnimationFrame(anda);
+        } else vs.forEach(v => v.pause());
+      }, () => {});
+    };
+    GESTOS.forEach(g => addEventListener(g, destrava, { capture: true, passive: true }));
     const para = () => { palcoEnvio.querySelectorAll('video').forEach(v => v.pause()); cancelAnimationFrame(quadro); quadro = 0; };
 
     palcoEnvio.querySelectorAll('video.mestre').forEach(mestre => {
@@ -1475,7 +1551,7 @@
 
     botoes.forEach(b => b.addEventListener('click', () => {
       if (b.dataset.modo === modo) return;
-      para();
+      para(); desanima();
       par(modo).forEach(v => { v.currentTime = 0; });
       modo = b.dataset.modo; marca(); carrega(modo); pinta();
       if (visivel && !reduzido) toca(); else tocarBt.hidden = false;
@@ -1484,7 +1560,7 @@
 
     marca();
     /* baixa um pouco antes de aparecer, e só o par do modo que está à vista */
-    new IntersectionObserver(es => { if (es[0].isIntersecting) carrega(modo); }, { rootMargin: '600px 0px' }).observe(palcoEnvio);
+    new IntersectionObserver(es => { perto = es[0].isIntersecting; if (perto) carrega(modo); }, { rootMargin: '600px 0px' }).observe(palcoEnvio);
     new IntersectionObserver(es => es.forEach(e => {
       visivel = e.isIntersecting;
       if (!visivel) para();
