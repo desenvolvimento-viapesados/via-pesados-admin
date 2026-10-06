@@ -584,29 +584,48 @@
   }
 
   /* ── site próprio ───────────────────────────────────────────────────
-     Três páginas reais da iTruck: a inicial no navegador, e por cima, nos
-     cantos, a do caminhão (a mesma do link que fecha o fluxo de fotos) e a
-     de quem somos. Cada uma com uma etiqueta presa na borda de cima. */
+     Três páginas reais da iTruck num navegador com abas — uma por vez,
+     inteira e grande. A colagem anterior (a inicial atrás, a do caminhão e
+     a de quem somos tortas por cima) escondia metade de cada uma e deixava
+     tudo miúdo. As abas passam sozinhas a cada 6 s enquanto a seção está à
+     vista (a linha laranja na aba é o tempo); clicar numa aba para o giro.
+     No telefone entram as telas do site no formato de celular. */
   #site h2 .laranja { color: var(--laranja); }
-  .palco-site { position: relative; margin-top: 50px; padding-bottom: clamp(70px, 9vw, 130px); }
-  .palco-site .navegador { max-width: 900px; margin-inline: auto; }
-  .palco-site .navegador img { width: 100%; height: auto; }
-  .site-flutuante { position: absolute; z-index: 5; margin: 0; transform: rotate(var(--giro, 0deg)); }
-  .site-flutuante img {
-    display: block; width: 100%; height: auto; border-radius: 14px;
-    border: 1px solid #ffffff22; box-shadow: 0 40px 90px -30px rgba(0,0,0,.95);
+  .vitrine-site { margin-top: 46px; }
+  .navegador-site { max-width: 1180px; margin-inline: auto; }
+  .abas-navegador { display: flex; align-items: flex-end; gap: 4px; padding: 10px 14px 0; background: #151517; }
+  .abas-navegador .bolas { display: flex; gap: 8px; align-self: center; margin-right: 14px; padding-bottom: 8px; }
+  .aba-site {
+    position: relative; display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 260px;
+    padding: 10px 18px 11px; border: 0; border-radius: 10px 10px 0 0; background: transparent; cursor: pointer;
+    font: inherit; font-size: .82rem; font-weight: 600; color: var(--cinza); white-space: nowrap;
+    transition: color .2s ease, background .2s ease;
   }
-  .pagina-veiculo { --giro: 1.8deg; right: -1%; bottom: 0; width: min(42%, 480px); }
-  .pagina-loja { --giro: -2deg; left: -1%; bottom: 5%; width: min(30%, 340px); }
-  .site-flutuante figcaption {
-    position: absolute; left: 16px; top: 0; transform: translateY(-62%); z-index: 2;
-    max-width: min(300px, 86%); padding: 9px 13px; border-radius: 12px;
-    background: #0f0f11f2; border: 1px solid #ff6e0055; box-shadow: 0 18px 40px -18px #000;
-    font-size: .8rem; line-height: 1.4; color: var(--cinza); backdrop-filter: blur(8px);
+  .aba-site::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--laranja); }
+  .aba-site:hover { color: var(--claro); background: #ffffff0a; }
+  .aba-site:focus-visible { outline: 2px solid var(--laranja); outline-offset: -2px; }
+  .aba-site[aria-selected="true"] { background: #0c0c0e; color: var(--claro); }
+  .aba-site .longo { overflow: hidden; text-overflow: ellipsis; }
+  .aba-site .curto { display: none; }
+  .aba-site .tempo {
+    position: absolute; left: 14px; right: 14px; bottom: 3px; height: 2px; border-radius: 2px;
+    background: var(--laranja); transform-origin: left; transform: scaleX(0);
   }
-  .site-flutuante figcaption b { display: block; color: var(--claro); font-size: .86rem; }
-  .site-flutuante figcaption span { display: block; margin-top: 2px; }
-  .legenda-site { margin-top: 18px; }
+  .aba-site .tempo.corre { animation: corre-aba 6s linear forwards; }
+  .vitrine-site.parado .aba-site .tempo { animation-play-state: paused; }
+  @keyframes corre-aba { to { transform: scaleX(1); } }
+  .navegador-site .barra { background: #0c0c0e; }
+  /* a Inter troca o x entre números por × ("6×4"): num endereço, o x é x */
+  .navegador-site .url, .aba-site { font-feature-settings: "calt" 0; }
+  .navegador-site .url { text-align: left; }
+  .paginas-site { position: relative; aspect-ratio: 2000 / 1116; background: #f4f4f5; overflow: hidden; }
+  .pagina-site { position: absolute; inset: 0; margin: 0; opacity: 0; visibility: hidden; transition: opacity .45s ease, visibility 0s linear .45s; }
+  .pagina-site.agora { opacity: 1; visibility: visible; transition: opacity .45s ease; }
+  .pagina-site picture, .pagina-site img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+  .pagina-site figcaption { display: none; }
+  .legenda-pagina { min-height: 3.1em; max-width: 68ch; margin: 20px auto 0; text-align: center; color: var(--cinza); font-size: .98rem; line-height: 1.55; }
+  .legenda-pagina b { color: var(--claro); }
+  .legenda-site { margin-top: 8px; }
   .beneficios-site { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: clamp(70px, 10vh, 110px); }
   .beneficio { border: 1px solid var(--linha); background: var(--cartao); border-radius: 16px; padding: 20px; }
   .beneficio b { display: block; font-size: .98rem; margin-bottom: 5px; }
@@ -702,9 +721,15 @@
     .numeros { grid-template-columns: 1fr 1fr; }
     .beneficios-site { grid-template-columns: 1fr 1fr; }
     .orbita { --disco: 58px; }
-    .palco-site { padding-bottom: 0; }
-    .site-flutuante { position: relative; inset: auto; width: 100%; margin-top: 40px; transform: none; }
-    .site-flutuante figcaption { transform: translateY(-55%); }
+    .paginas-site { aspect-ratio: 780 / 1440; }
+    .abas-navegador { padding: 8px 8px 0; gap: 2px; }
+    .abas-navegador .bolas { display: none; }
+    .aba-site { flex: 1 1 0; justify-content: center; padding: 10px 6px 11px; font-size: .76rem; }
+    .aba-site::before { display: none; }
+    .aba-site .longo { display: none; }
+    .aba-site .curto { display: inline; }
+    .navegador-site .url { font-size: .68rem; }
+    .legenda-pagina { font-size: .9rem; }
   }
   @media (max-width: 560px) {
     .grade, .numeros, .beneficios-site { grid-template-columns: 1fr; }
@@ -1121,24 +1146,42 @@
     <h2 class="rev d1">Um site com a sua marca, que se atualiza sozinho e <span class="laranja">vende 24 horas</span>.</h2>
     <p class="conversa rev d2">Cadastrou o caminhão, <strong>ele já está no site</strong>: página própria, fotos, ficha técnica, simulador de financiamento e o WhatsApp do vendedor. <strong>Vendeu, sai sozinho.</strong> É para essa página que vai o link do fluxo de fotos — e de madrugada, no domingo ou no feriado, o cliente simula a parcela e chega na conversa já sabendo o que quer. <strong>E você não paga site à parte: ele já vem no sistema.</strong></p>
 
-    <div class="palco-site rev">
-      <div class="navegador">
-        <div class="barra">
-          <span class="bola"></span><span class="bola"></span><span class="bola"></span>
-          <span class="url">itruckcaminhoes.com.br</span>
+    <div class="vitrine-site rev" id="vitrine-site">
+      <div class="navegador navegador-site">
+        <div class="abas-navegador" role="tablist" aria-label="Páginas do site da iTruck Caminhões">
+          <span class="bolas" aria-hidden="true"><span class="bola"></span><span class="bola"></span><span class="bola"></span></span>
+          <button class="aba-site" type="button" role="tab" id="aba-site-0" aria-controls="pagina-site-0" aria-selected="true" tabindex="0" data-url="itruckcaminhoes.com.br"><span class="longo">Início</span><span class="curto">Início</span><i class="tempo" aria-hidden="true"></i></button>
+          <button class="aba-site" type="button" role="tab" id="aba-site-1" aria-controls="pagina-site-1" aria-selected="false" tabindex="-1" data-url="itruckcaminhoes.com.br/veiculo/scania-s-540-cavalo-6x4-2022-2022-e191e862"><span class="longo">Scania S 540 6x4</span><span class="curto">Caminhão</span><i class="tempo" aria-hidden="true"></i></button>
+          <button class="aba-site" type="button" role="tab" id="aba-site-2" aria-controls="pagina-site-2" aria-selected="false" tabindex="-1" data-url="itruckcaminhoes.com.br/quem-somos"><span class="longo">Quem somos</span><span class="curto">Quem somos</span><i class="tempo" aria-hidden="true"></i></button>
         </div>
-        <img src="/conheca/img/site-itruck.jpg" width="2000" height="1116" loading="lazy" alt="Página inicial do site da iTruck Caminhões: a marca da loja, a busca e o estoque" />
+        <div class="barra"><span class="url" id="url-site">itruckcaminhoes.com.br</span></div>
+        <div class="paginas-site">
+          <figure class="pagina-site agora" role="tabpanel" id="pagina-site-0" aria-labelledby="aba-site-0">
+            <picture>
+              <source media="(max-width: 760px)" srcset="/conheca/img/site-itruck-cel.jpg" width="780" height="1440" />
+              <img src="/conheca/img/site-itruck.jpg" width="2000" height="1116" loading="lazy" alt="Página inicial do site da iTruck Caminhões: a marca da loja, a busca e o estoque" />
+            </picture>
+            <figcaption><b>Página inicial.</b> A sua marca, a busca e o estoque inteiro, com filtro por tipo e por marca.</figcaption>
+          </figure>
+          <figure class="pagina-site" role="tabpanel" id="pagina-site-1" aria-labelledby="aba-site-1">
+            <picture>
+              <source media="(max-width: 760px)" srcset="/conheca/img/site-itruck-veiculo-cel.jpg" width="780" height="1440" />
+              <img src="/conheca/img/site-itruck-veiculo.jpg" width="1600" height="893" loading="lazy" alt="Página do Scania S 540 6x4 no site da iTruck Caminhões, com fotos, ficha, preço, WhatsApp e simulador de financiamento" />
+            </picture>
+            <figcaption><b>Página do caminhão.</b> É ela que o link do fluxo de fotos abre: fotos, ficha, preço, o WhatsApp do vendedor e o simulador de financiamento.</figcaption>
+          </figure>
+          <figure class="pagina-site" role="tabpanel" id="pagina-site-2" aria-labelledby="aba-site-2">
+            <picture>
+              <source media="(max-width: 760px)" srcset="/conheca/img/site-itruck-loja-cel.jpg" width="780" height="1440" />
+              <img src="/conheca/img/site-itruck-loja.jpg" width="1400" height="781" loading="lazy" alt="Página Quem Somos da iTruck Caminhões, com a foto da loja, o endereço, o horário e o mapa" />
+            </picture>
+            <figcaption><b>Quem somos.</b> A foto da loja, o endereço, o horário e a rota até o pátio.</figcaption>
+          </figure>
+        </div>
       </div>
-      <figure class="site-flutuante pagina-loja">
-        <figcaption><b>Quem somos e rota até o pátio</b></figcaption>
-        <img src="/conheca/img/site-itruck-loja.jpg" width="1400" height="781" loading="lazy" alt="Página Quem Somos da iTruck Caminhões, com a foto da loja, o endereço, o horário e o mapa" />
-      </figure>
-      <figure class="site-flutuante pagina-veiculo">
-        <figcaption><b>O link do fluxo abre aqui</b><span>O mesmo Scania S 540 que chegou no WhatsApp — a página nasceu no cadastro, ninguém montou nada.</span></figcaption>
-        <img src="/conheca/img/site-itruck-veiculo.jpg" width="1600" height="893" loading="lazy" alt="Página do Scania S 540 6x4 no site da iTruck Caminhões, com preço, WhatsApp e simulador de financiamento" />
-      </figure>
+      <p class="legenda-pagina" id="legenda-pagina" aria-live="polite"><b>Página inicial.</b> A sua marca, a busca e o estoque inteiro, com filtro por tipo e por marca.</p>
+      <p class="legenda-img legenda-site">Site real da <b>iTruck Caminhões</b>, de Governador Valadares, cliente Via Pesados.</p>
     </div>
-    <p class="legenda-img legenda-site">Site real da <b>iTruck Caminhões</b>, de Governador Valadares, cliente Via Pesados.</p>
 
     <div class="beneficios-site">
       <div class="beneficio rev"><b>A sua marca, não a nossa</b><span>Logo, cores, endereço e o WhatsApp da sua loja. A Via Pesados fica nos bastidores.</span></div>
@@ -1394,6 +1437,46 @@
           o.classList.toggle('agora', o === b));
       });
     });
+  }
+
+  /* ── o site da iTruck, uma página por aba ──────────────────────────── */
+  const vitrineSite = document.getElementById('vitrine-site');
+  if (vitrineSite) {
+    const abasSite = [...vitrineSite.querySelectorAll('.aba-site')];
+    const paginasSite = [...vitrineSite.querySelectorAll('.pagina-site')];
+    const urlSite = document.getElementById('url-site');
+    const legendaSite = document.getElementById('legenda-pagina');
+    let pagina = 0, giro = 0, aVista = false, escolheu = false;
+    const gira = () => {
+      clearTimeout(giro);
+      abasSite.forEach(a => a.querySelector('.tempo').classList.remove('corre'));
+      if (!aVista || escolheu || reduzido) return;
+      const t = abasSite[pagina].querySelector('.tempo');
+      void t.offsetWidth;            /* recomeça a animação da linha */
+      t.classList.add('corre');
+      giro = setTimeout(() => mostraPagina((pagina + 1) % abasSite.length), 6000);
+    };
+    const mostraPagina = i => {
+      pagina = i;
+      abasSite.forEach((a, k) => { a.setAttribute('aria-selected', String(k === i)); a.tabIndex = k === i ? 0 : -1; });
+      paginasSite.forEach((p, k) => p.classList.toggle('agora', k === i));
+      urlSite.textContent = abasSite[i].dataset.url;
+      legendaSite.innerHTML = paginasSite[i].querySelector('figcaption').innerHTML;
+      gira();
+    };
+    /* quem clica quer olhar com calma: o giro para */
+    abasSite.forEach((a, i) => a.addEventListener('click', () => { escolheu = true; mostraPagina(i); }));
+    vitrineSite.querySelector('[role="tablist"]').addEventListener('keydown', e => {
+      const passo = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if (!passo) return;
+      e.preventDefault(); escolheu = true;
+      const i = (pagina + passo + abasSite.length) % abasSite.length;
+      mostraPagina(i); abasSite[i].focus();
+    });
+    /* com o mouse em cima, a aba não troca embaixo do olho */
+    vitrineSite.addEventListener('mouseenter', () => { vitrineSite.classList.add('parado'); clearTimeout(giro); });
+    vitrineSite.addEventListener('mouseleave', () => { vitrineSite.classList.remove('parado'); gira(); });
+    new IntersectionObserver(es => { aVista = es[0].isIntersecting; gira(); }, { threshold: .35 }).observe(vitrineSite);
   }
 
   /* contadores */
