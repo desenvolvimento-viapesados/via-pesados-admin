@@ -670,18 +670,33 @@
   .paginas-site.paginas-venda { aspect-ratio: 2000 / 1250; background: #0b0b0c; }
   #venda h2 .laranja { color: var(--laranja); }
 
-  /* ── grade ──────────────────────────────────────────────────────────── */
-  .grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 50px; }
-  .cartao-tela {
-    border-radius: 16px; overflow: hidden; position: relative;
-    border: 1px solid var(--linha); background: var(--cartao);
-    transition: transform .35s cubic-bezier(.2,.8,.2,1), border-color .35s, box-shadow .35s;
+  /* ── o sistema inteiro, escrito ──────────────────────────────────────
+     Era uma grade de prints miúdos; ele pediu "escrito, de forma bonita,
+     com as demais funções". Quatro grupos, cinco funções cada: o nome em
+     branco e, embaixo, o que ela resolve. Só o que existe no sistema —
+     sem "hora de trocar" e sem comissão, que ele tirou da página. */
+  #sistema h2 .laranja { color: var(--laranja); }
+  .funcoes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 54px; }
+  .grupo-funcoes {
+    border: 1px solid var(--linha); border-radius: var(--raio); padding: 26px 24px 30px;
+    background: radial-gradient(120% 60% at 0% 0%, #ff6e000d, transparent 60%), var(--cartao);
   }
-  .cartao-tela:hover { transform: translateY(-6px); border-color: #ff6e0055; box-shadow: 0 34px 70px -30px #000, 0 0 46px -22px rgba(255,110,0,.45); }
-  .cartao-tela figcaption { display: flex; justify-content: space-between; align-items: center; padding: 13px 16px; font-size: .88rem; font-weight: 700; }
-  .cartao-tela figcaption small { color: var(--cinza-escuro); font-weight: 500; }
-  .aviso-real { text-align: center; margin-top: 32px; color: var(--cinza-escuro); font-size: .92rem; }
-  .aviso-real b { color: var(--cinza); }
+  .grupo-topo { display: flex; align-items: center; gap: 12px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--linha); }
+  .grupo-icone {
+    flex: none; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+    color: var(--laranja-claro); background: #ff6e0014; border: 1px solid #ff6e0038;
+  }
+  .grupo-icone svg { width: 21px; height: 21px; }
+  .grupo-funcoes h3 { font-size: 1.25rem; letter-spacing: -.015em; }
+  .grupo-funcoes ul { list-style: none; display: grid; gap: 17px; }
+  .grupo-funcoes li { position: relative; display: grid; gap: 3px; padding-left: 19px; }
+  .grupo-funcoes li::before {
+    content: ""; position: absolute; left: 1px; top: .5em; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--laranja); box-shadow: 0 0 0 3px #ff6e001f;
+  }
+  .grupo-funcoes li b { font-size: 1rem; font-weight: 700; color: var(--claro); line-height: 1.3; }
+  .grupo-funcoes li span { font-size: .87rem; color: var(--cinza); line-height: 1.45; }
+
 
   /* ── CTA final ──────────────────────────────────────────────────────── */
   .cta-final {
@@ -715,11 +730,11 @@
      conteúdo de largura intrínseca (o vídeo, os prints). min-width:0 é o
      que impede a barra de rolagem horizontal. */
   .pilares-envio > *,
-  .trio > *, .grade > *, .beneficios-site > * { min-width: 0; }
+  .trio > *, .funcoes > *, .beneficios-site > * { min-width: 0; }
 
   /* ── responsivo ─────────────────────────────────────────────────────── */
   @media (max-width: 900px) {
-    .grade { grid-template-columns: 1fr 1fr; }
+    .funcoes { grid-template-columns: 1fr 1fr; }
     .beneficios-site { grid-template-columns: 1fr 1fr; }
     .orbita { --disco: 58px; }
     .paginas-site { aspect-ratio: 780 / 1440; }
@@ -737,7 +752,7 @@
     .legenda-pagina { font-size: .9rem; }
   }
   @media (max-width: 560px) {
-    .grade, .beneficios-site { grid-template-columns: 1fr; }
+    .funcoes, .beneficios-site { grid-template-columns: 1fr; }
     /* a largura da tela mora na regra de 760px, que é onde a arte troca
        pela do celular; 86vw aqui era a sobra da época em que a tela era
        deitada, e vencia a outra por vir depois. */
@@ -1290,15 +1305,13 @@
     <div class="centrado">
       <p class="olho rev">Atendimento e equipe</p>
       <h2 class="rev d1">Nenhuma venda <span class="laranja">escapa</span>.</h2>
-      <p class="conversa rev d2">O WhatsApp de cada vendedor, o funil e a comissão num lugar só. <strong>O sistema avisa quem está na hora de trocar de caminhão.</strong></p>
+      <p class="conversa rev d2">O WhatsApp de cada vendedor e o funil de vendas num lugar só. <strong>Toda conversa vira negociação, e nenhuma se perde.</strong></p>
     </div>
 
     <div class="vitrine-site rev" id="vitrine-venda">
       <div class="seletor-site" role="tablist" aria-label="Atendimento e equipe no Via Pesados">
         <button class="aba-site" type="button" role="tab" id="aba-venda-0" aria-controls="pagina-venda-0" aria-selected="true" tabindex="0" data-url="Via CRM — WhatsApp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.4A8.4 8.4 0 1 1 21 11.5z"/></svg><span class="longo">WhatsApp da equipe</span><span class="curto">WhatsApp</span><i class="tempo" aria-hidden="true"></i></button>
         <button class="aba-site" type="button" role="tab" id="aba-venda-1" aria-controls="pagina-venda-1" aria-selected="false" tabindex="-1" data-url="Via CRM — Funil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5z"/></svg><span class="longo">Funil de vendas</span><span class="curto">Funil</span><i class="tempo" aria-hidden="true"></i></button>
-        <button class="aba-site" type="button" role="tab" id="aba-venda-2" aria-controls="pagina-venda-2" aria-selected="false" tabindex="-1" data-url="Via CRM — Recorrência"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg><span class="longo">Hora de trocar</span><span class="curto">Troca</span><i class="tempo" aria-hidden="true"></i></button>
-        <button class="aba-site" type="button" role="tab" id="aba-venda-3" aria-controls="pagina-venda-3" aria-selected="false" tabindex="-1" data-url="Vendas — Este mês"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="6"/><path d="M8.2 13.2 7 22l5-3 5 3-1.2-8.8"/></svg><span class="longo">Vendas e comissão</span><span class="curto">Comissão</span><i class="tempo" aria-hidden="true"></i></button>
       </div>
       <div class="navegador navegador-site">
         <div class="barra">
@@ -1320,20 +1333,6 @@
             </picture>
             <figcaption><b>Funil de vendas.</b> Cada cliente numa etapa, com o valor somado: você sabe onde está o dinheiro do mês.</figcaption>
           </figure>
-          <figure class="pagina-site" role="tabpanel" id="pagina-venda-2" aria-labelledby="aba-venda-2">
-            <picture>
-              <source media="(max-width: 900px)" srcset="/conheca/img/recorrencia-cel.jpg" width="800" height="600" />
-              <img src="/conheca/img/recorrencia.jpg" width="2000" height="1250" loading="lazy" alt="Lista de clientes na hora de trocar de caminhão, com o motivo e os caminhões do pátio que combinam com cada um" />
-            </picture>
-            <figcaption><b>Hora de trocar.</b> O sistema avisa quem está na hora de trocar e mostra os caminhões do pátio que combinam.</figcaption>
-          </figure>
-          <figure class="pagina-site" role="tabpanel" id="pagina-venda-3" aria-labelledby="aba-venda-3">
-            <picture>
-              <source media="(max-width: 900px)" srcset="/conheca/img/vendas-cel.jpg" width="800" height="600" />
-              <img src="/conheca/img/vendas.jpg" width="2000" height="1250" loading="lazy" alt="Vendas do mês com vendedor, canal de origem, pagamento, valor, comissão e lucro" />
-            </picture>
-            <figcaption><b>Vendas e comissão.</b> Quem vendeu, por qual canal, a comissão e o lucro de cada venda.</figcaption>
-          </figure>
         </div>
       </div>
       <p class="legenda-pagina" aria-live="polite"><b>WhatsApp da equipe.</b> Cada vendedor no próprio número, dentro do sistema — e a conversa fica com a loja.</p>
@@ -1343,8 +1342,8 @@
     <div class="beneficios-site">
       <div class="beneficio rev"><b>Nada some quando o vendedor sai</b><span>As conversas ficam na loja, com etiqueta e histórico.</span></div>
       <div class="beneficio rev d1"><b>Conecta em 90 segundos</b><span>O vendedor lê um QR code e o WhatsApp dele já está no sistema.</span></div>
-      <div class="beneficio rev d2"><b>Venda que nasce do cadastro</b><span>Quem está na hora de trocar aparece sozinho, com os caminhões certos.</span></div>
-      <div class="beneficio rev d3"><b>Comissão sem planilha</b><span>Calculada da própria venda. No dia 30, já está pronta.</span></div>
+      <div class="beneficio rev d2"><b>Cada cliente numa etapa</b><span>Interessado, quente, fechando: você vê o que falta em cada venda.</span></div>
+      <div class="beneficio rev d3"><b>O dinheiro do mês à vista</b><span>Cada etapa do funil com o valor somado.</span></div>
     </div>
   </div>
 </section>
@@ -1353,21 +1352,53 @@
 <section class="secao" id="sistema">
   <div class="wrap">
     <div class="centrado">
-      <p class="olho rev">Sem cortina</p>
-      <h2 class="rev d1">O sistema inteirinho, <span class="acento">print por print</span>.</h2>
-      <p class="conversa rev d2">Nada aqui é desenho de designer. <strong>Toda imagem desta página é tela real do Via Pesados</strong> — o mesmo sistema que você recebe no primeiro dia.</p>
+      <p class="olho rev">O sistema inteiro</p>
+      <h2 class="rev d1">Tudo o que a loja precisa, <span class="laranja">num sistema só</span>.</h2>
+      <p class="conversa rev d2">Do caminhão que entra ao caminhão que sai: <strong>sem planilha, sem caderno e sem pagar outro sistema</strong>.</p>
     </div>
 
-    <div class="grade">
-      <figure class="cartao-tela rev"><img src="/conheca/img/financeiro.jpg" loading="lazy" alt="" /><figcaption>Financeiro <small>a receber, a pagar e o resultado</small></figcaption></figure>
-      <figure class="cartao-tela rev d1"><img src="/conheca/img/gestao.jpg" loading="lazy" alt="" /><figcaption>Estoque <small>consignação, custo e oferta</small></figcaption></figure>
-      <figure class="cartao-tela rev d2"><img src="/conheca/img/site-itruck.jpg" loading="lazy" alt="" /><figcaption>Site próprio <small>com a sua marca</small></figcaption></figure>
-      <figure class="cartao-tela rev"><img src="/conheca/img/clientes.jpg" loading="lazy" alt="" /><figcaption>Clientes <small>com etiquetas automáticas</small></figcaption></figure>
-      <figure class="cartao-tela rev d1"><img src="/conheca/img/conectar.jpg" loading="lazy" alt="" /><figcaption>WhatsApp da equipe <small>QR code e pronto</small></figcaption></figure>
-      <figure class="cartao-tela rev d2"><img src="/conheca/img/calendario.jpg" loading="lazy" alt="" /><figcaption>Agenda <small>visitas, entregas, avaliações</small></figcaption></figure>
+    <div class="funcoes">
+      <div class="grupo-funcoes rev">
+        <div class="grupo-topo"><span class="grupo-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 6h11v10H2z"/><path d="M13 9h4l4 4v3h-8z"/><circle cx="6.5" cy="17.5" r="2"/><circle cx="16.5" cy="17.5" r="2"/></svg></span><h3>Estoque</h3></div>
+        <ul>
+          <li><b>Compra e consignação</b><span>O caminhão entra com custo, documentos e dono.</span></li>
+          <li><b>Despesa por caminhão</b><span>Cada gasto soma no custo, e a margem sai certa.</span></li>
+          <li><b>Ficha técnica</b><span>As perguntas certas para cada tipo de caminhão.</span></li>
+          <li><b>Ofertas com FIPE</b><span>O seu preço lado a lado com a tabela.</span></li>
+          <li><b>Caminhão pedido</b><span>O que o cliente procura fica anotado até chegar.</span></li>
+        </ul>
+      </div>
+      <div class="grupo-funcoes rev d1">
+        <div class="grupo-topo"><span class="grupo-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M19 6a8 8 0 0 1 0 12"/></svg></span><h3>Divulgação</h3></div>
+        <ul>
+          <li><b>Anúncio nos canais</b><span>Mercado Livre, Instagram e Facebook, num clique.</span></li>
+          <li><b>Fluxo de fotos</b><span>Fotos, ficha e preço no WhatsApp do cliente.</span></li>
+          <li><b>Site próprio</b><span>Com a sua marca, atualizado sozinho.</span></li>
+          <li><b>Simulador em PDF</b><span>A parcela com a sua marca e o WhatsApp do vendedor.</span></li>
+          <li><b>Destaques do site</b><span>Você escolhe o que aparece primeiro e quem atende cada anúncio.</span></li>
+        </ul>
+      </div>
+      <div class="grupo-funcoes rev d2">
+        <div class="grupo-topo"><span class="grupo-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.4A8.4 8.4 0 1 1 21 11.5z"/></svg></span><h3>Atendimento</h3></div>
+        <ul>
+          <li><b>WhatsApp da equipe</b><span>Cada vendedor no próprio número, dentro do sistema.</span></li>
+          <li><b>Funil de vendas</b><span>Cada cliente numa etapa, com o valor somado.</span></li>
+          <li><b>Clientes e leads</b><span>Quem chamou vira contato, com etiquetas automáticas.</span></li>
+          <li><b>Agenda do vendedor</b><span>Visitas, entregas e avaliações no calendário.</span></li>
+          <li><b>Financiamento e consórcio</b><span>Propostas e contratos acompanhados até o fim.</span></li>
+        </ul>
+      </div>
+      <div class="grupo-funcoes rev d3">
+        <div class="grupo-topo"><span class="grupo-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg></span><h3>Gestão</h3></div>
+        <ul>
+          <li><b>Financeiro</b><span>A receber, a pagar e o resultado do mês.</span></li>
+          <li><b>Relatórios</b><span>Lucro, margem, marcas e vendas perdidas.</span></li>
+          <li><b>Meta ao vivo</b><span>A meta do mês na tela, com quanto falta para bater.</span></li>
+          <li><b>Inteligência artificial</b><span>Pergunte do estoque e do faturamento: ela responde com os seus números.</span></li>
+          <li><b>Equipe e acessos</b><span>Cada pessoa vê só o que pode, e o ponto fica registrado.</span></li>
+        </ul>
+      </div>
     </div>
-
-    <p class="aviso-real rev">E ainda: financiamento, consórcio, ponto eletrônico, equipe, metas, pós-venda, inteligência artificial… <b>tudo no mesmo lugar, para ninguém da loja perder tempo trocando de sistema.</b></p>
   </div>
 </section>
 
