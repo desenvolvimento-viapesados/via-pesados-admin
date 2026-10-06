@@ -593,28 +593,34 @@
   #site h2 .laranja { color: var(--laranja); }
   .vitrine-site { margin-top: 46px; }
   .navegador-site { max-width: 1180px; margin-inline: auto; }
-  .abas-navegador { display: flex; align-items: flex-end; gap: 4px; padding: 10px 14px 0; background: #151517; }
-  .abas-navegador .bolas { display: flex; gap: 8px; align-self: center; margin-right: 14px; padding-bottom: 8px; }
+  /* As abas moravam dentro da barra do navegador e passavam por enfeite:
+     ninguém achava. O seletor fica acima da janela, grande, no mesmo
+     estilo do "No computador / No celular" da seção do envio. */
+  .seletor-site {
+    display: flex; gap: 4px; width: max-content; max-width: 100%; margin: 0 auto 22px;
+    padding: 5px; border-radius: 999px; border: 1px solid #ffffff1f; background: #111113;
+    box-shadow: 0 16px 40px -20px #000;
+  }
   .aba-site {
-    position: relative; display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 260px;
-    padding: 10px 18px 11px; border: 0; border-radius: 10px 10px 0 0; background: transparent; cursor: pointer;
-    font: inherit; font-size: .82rem; font-weight: 600; color: var(--cinza); white-space: nowrap;
+    position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 9px;
+    padding: 12px 22px; border: 0; border-radius: 999px; background: transparent; cursor: pointer;
+    font: inherit; font-size: 1rem; font-weight: 700; color: var(--cinza); white-space: nowrap;
     transition: color .2s ease, background .2s ease;
   }
-  .aba-site::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--laranja); }
-  .aba-site:hover { color: var(--claro); background: #ffffff0a; }
-  .aba-site:focus-visible { outline: 2px solid var(--laranja); outline-offset: -2px; }
-  .aba-site[aria-selected="true"] { background: #0c0c0e; color: var(--claro); }
-  .aba-site .longo { overflow: hidden; text-overflow: ellipsis; }
+  .aba-site svg { flex: none; width: 18px; height: 18px; }
+  .aba-site:hover { color: var(--claro); background: #ffffff0f; }
+  .aba-site:focus-visible { outline: 2px solid var(--laranja); outline-offset: 2px; }
+  .aba-site[aria-selected="true"] { background: var(--claro); color: #0a0a0b; }
+  .aba-site[aria-selected="true"] svg { color: var(--laranja); }
   .aba-site .curto { display: none; }
+  /* o tempo até a próxima página, na borda de baixo da opção ativa */
   .aba-site .tempo {
-    position: absolute; left: 14px; right: 14px; bottom: 3px; height: 2px; border-radius: 2px;
+    position: absolute; left: 0; bottom: 0; width: 100%; height: 3px;
     background: var(--laranja); transform-origin: left; transform: scaleX(0);
   }
   .aba-site .tempo.corre { animation: corre-aba 6s linear forwards; }
   .vitrine-site.parado .aba-site .tempo { animation-play-state: paused; }
   @keyframes corre-aba { to { transform: scaleX(1); } }
-  .navegador-site .barra { background: #0c0c0e; }
   /* a Inter troca o x entre números por × ("6×4"): num endereço, o x é x */
   .navegador-site .url, .aba-site { font-feature-settings: "calt" 0; }
   .navegador-site .url { text-align: left; }
@@ -722,13 +728,14 @@
     .beneficios-site { grid-template-columns: 1fr 1fr; }
     .orbita { --disco: 58px; }
     .paginas-site { aspect-ratio: 780 / 1440; }
-    .abas-navegador { padding: 8px 8px 0; gap: 2px; }
-    .abas-navegador .bolas { display: none; }
-    .aba-site { flex: 1 1 0; justify-content: center; padding: 10px 6px 11px; font-size: .76rem; }
-    .aba-site::before { display: none; }
+    .seletor-site { width: 100%; }
+    .aba-site { flex: 1 1 0; justify-content: center; gap: 6px; padding: 11px 6px; font-size: .84rem; }
+    .aba-site svg { width: 15px; height: 15px; }
     .aba-site .longo { display: none; }
     .aba-site .curto { display: inline; }
     .navegador-site .url { font-size: .68rem; }
+    .navegador-site .bola { display: none; }
+    .navegador-site .url { margin-inline: 0; }
     .legenda-pagina { font-size: .9rem; }
   }
   @media (max-width: 560px) {
@@ -1147,14 +1154,16 @@
     <p class="conversa rev d2">Cadastrou o caminhão, <strong>ele já está no site</strong>: página própria, fotos, ficha técnica, simulador de financiamento e o WhatsApp do vendedor. <strong>Vendeu, sai sozinho.</strong> É para essa página que vai o link do fluxo de fotos — e de madrugada, no domingo ou no feriado, o cliente simula a parcela e chega na conversa já sabendo o que quer. <strong>E você não paga site à parte: ele já vem no sistema.</strong></p>
 
     <div class="vitrine-site rev" id="vitrine-site">
+      <div class="seletor-site" role="tablist" aria-label="Páginas do site da iTruck Caminhões">
+        <button class="aba-site" type="button" role="tab" id="aba-site-0" aria-controls="pagina-site-0" aria-selected="true" tabindex="0" data-url="itruckcaminhoes.com.br"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg><span class="longo">Página inicial</span><span class="curto">Início</span><i class="tempo" aria-hidden="true"></i></button>
+        <button class="aba-site" type="button" role="tab" id="aba-site-1" aria-controls="pagina-site-1" aria-selected="false" tabindex="-1" data-url="itruckcaminhoes.com.br/veiculo/scania-s-540-cavalo-6x4-2022-2022-e191e862"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 6h11v10H2z"/><path d="M13 9h4l4 4v3h-8z"/><circle cx="6.5" cy="17.5" r="2"/><circle cx="16.5" cy="17.5" r="2"/></svg><span class="longo">Página do caminhão</span><span class="curto">Caminhão</span><i class="tempo" aria-hidden="true"></i></button>
+        <button class="aba-site" type="button" role="tab" id="aba-site-2" aria-controls="pagina-site-2" aria-selected="false" tabindex="-1" data-url="itruckcaminhoes.com.br/quem-somos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9 4.5 4h15L21 9"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 11.5V20h14v-8.5"/><path d="M10 20v-5h4v5"/></svg><span class="longo">Quem somos</span><span class="curto">Quem somos</span><i class="tempo" aria-hidden="true"></i></button>
+      </div>
       <div class="navegador navegador-site">
-        <div class="abas-navegador" role="tablist" aria-label="Páginas do site da iTruck Caminhões">
-          <span class="bolas" aria-hidden="true"><span class="bola"></span><span class="bola"></span><span class="bola"></span></span>
-          <button class="aba-site" type="button" role="tab" id="aba-site-0" aria-controls="pagina-site-0" aria-selected="true" tabindex="0" data-url="itruckcaminhoes.com.br"><span class="longo">Início</span><span class="curto">Início</span><i class="tempo" aria-hidden="true"></i></button>
-          <button class="aba-site" type="button" role="tab" id="aba-site-1" aria-controls="pagina-site-1" aria-selected="false" tabindex="-1" data-url="itruckcaminhoes.com.br/veiculo/scania-s-540-cavalo-6x4-2022-2022-e191e862"><span class="longo">Scania S 540 6x4</span><span class="curto">Caminhão</span><i class="tempo" aria-hidden="true"></i></button>
-          <button class="aba-site" type="button" role="tab" id="aba-site-2" aria-controls="pagina-site-2" aria-selected="false" tabindex="-1" data-url="itruckcaminhoes.com.br/quem-somos"><span class="longo">Quem somos</span><span class="curto">Quem somos</span><i class="tempo" aria-hidden="true"></i></button>
+        <div class="barra">
+          <span class="bola"></span><span class="bola"></span><span class="bola"></span>
+          <span class="url" id="url-site">itruckcaminhoes.com.br</span>
         </div>
-        <div class="barra"><span class="url" id="url-site">itruckcaminhoes.com.br</span></div>
         <div class="paginas-site">
           <figure class="pagina-site agora" role="tabpanel" id="pagina-site-0" aria-labelledby="aba-site-0">
             <picture>
@@ -1466,7 +1475,7 @@
     };
     /* quem clica quer olhar com calma: o giro para */
     abasSite.forEach((a, i) => a.addEventListener('click', () => { escolheu = true; mostraPagina(i); }));
-    vitrineSite.querySelector('[role="tablist"]').addEventListener('keydown', e => {
+    vitrineSite.querySelector('.seletor-site').addEventListener('keydown', e => {
       const passo = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
       if (!passo) return;
       e.preventDefault(); escolheu = true;
