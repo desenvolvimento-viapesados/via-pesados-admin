@@ -661,24 +661,14 @@
   .fundo-relat { background: linear-gradient(180deg, var(--fundo), #100B06 35%, #0C0906 75%, var(--fundo)); }
   .legenda-img { color: var(--cinza-escuro); font-size: .85rem; margin-top: 12px; text-align: center; }
   .legenda-img b { color: var(--cinza); }
-  .midia { border-radius: var(--raio); overflow: hidden; border: 1px solid var(--linha); box-shadow: 0 50px 100px -40px #000; }
-  /* Os relatórios usam a mesma vitrine do site (seletor + janela + legenda);
-     só a proporção muda: as telas do sistema são 1900×1266, e no telefone
-     entra um recorte 4:3 da parte que conta de cada uma. */
+  /* Relatórios e atendimento usam a mesma vitrine do site (seletor +
+     janela + legenda); só a proporção muda: as telas do sistema são mais
+     altas que as do site, e no telefone entra um recorte 4:3 da parte que
+     conta de cada uma (-cel.jpg). */
   #relatorios h2 .laranja { color: var(--laranja); }
   .paginas-site.paginas-relat { aspect-ratio: 1900 / 1266; background: #0b0b0c; }
-
-  /* ── venda ──────────────────────────────────────────────────────────── */
-  .linhas-venda { display: grid; gap: clamp(50px, 8vh, 96px); margin-top: 56px; }
-  .linha-venda { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(26px, 4vw, 64px); align-items: center; }
-  .linha-venda:nth-child(even) .midia { order: 2; }
-  .linha-venda .midia img { transition: transform .8s cubic-bezier(.2,.8,.2,1); }
-  .linha-venda:hover .midia img { transform: scale(1.03); }
-  .num-bloco { font-weight: 900; color: #ffffff12; font-size: clamp(2.6rem, 6vw, 4.6rem); line-height: 1; letter-spacing: -.03em; }
-  .linha-venda h3 { font-size: clamp(1.35rem, 2.4vw, 1.9rem); margin: 8px 0 13px; }
-  .linha-venda p { color: var(--cinza); max-width: 46ch; }
-  .linha-venda p strong { color: var(--claro); }
-  .etiqueta-mini { display: inline-block; margin-top: 16px; font-size: .76rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--laranja-claro); border: 1px solid #ff6e0040; background: #ff6e000d; padding: 7px 13px; border-radius: 999px; }
+  .paginas-site.paginas-venda { aspect-ratio: 2000 / 1250; background: #0b0b0c; }
+  #venda h2 .laranja { color: var(--laranja); }
 
   /* ── grade ──────────────────────────────────────────────────────────── */
   .grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 50px; }
@@ -724,20 +714,20 @@
   /* itens de grid têm min-width:auto por padrão e são estourados por
      conteúdo de largura intrínseca (o vídeo, os prints). min-width:0 é o
      que impede a barra de rolagem horizontal. */
-  .linha-venda > *, .pilares-envio > *,
+  .pilares-envio > *,
   .trio > *, .grade > *, .beneficios-site > * { min-width: 0; }
 
   /* ── responsivo ─────────────────────────────────────────────────────── */
   @media (max-width: 900px) {
-    .linha-venda { grid-template-columns: 1fr; }
-    .linha-venda:nth-child(even) .midia { order: 0; }
     .grade { grid-template-columns: 1fr 1fr; }
     .beneficios-site { grid-template-columns: 1fr 1fr; }
     .orbita { --disco: 58px; }
     .paginas-site { aspect-ratio: 780 / 1440; }
-    .paginas-site.paginas-relat { aspect-ratio: 4 / 3; }
+    .paginas-site.paginas-relat, .paginas-site.paginas-venda { aspect-ratio: 4 / 3; }
     .seletor-site { width: 100%; }
-    .aba-site { flex: 1 1 0; justify-content: center; gap: 6px; padding: 11px 6px; font-size: .84rem; }
+    /* largura pelo texto, não em partes iguais: "WhatsApp", "Comissão" e
+       "Quem somos" não cabiam num quarto ou num terço e saíam cortados */
+    .aba-site { flex: 1 1 auto; justify-content: center; gap: 6px; padding: 11px 6px; font-size: .84rem; }
     .aba-site svg { width: 15px; height: 15px; }
     .aba-site .longo { display: none; }
     .aba-site .curto { display: inline; }
@@ -1243,15 +1233,14 @@
     <div class="centrado">
       <p class="olho rev">Relatórios</p>
       <h2 class="rev d1">O resultado da sua loja, <span class="laranja">sem abrir planilha</span>.</h2>
-      <p class="conversa rev d2">Cada venda, compra e dia de pátio vira número sozinho. Você vê <strong>o que dá lucro, o que está parado e por que perdeu</strong>.</p>
+      <p class="conversa rev d2">Cada venda, compra e dia de pátio vira número sozinho. Você vê <strong>o que dá lucro, qual marca compensa e por que perdeu</strong>.</p>
     </div>
 
     <div class="vitrine-site rev" id="vitrine-relat">
       <div class="seletor-site" role="tablist" aria-label="Relatórios do Via Pesados">
         <button class="aba-site" type="button" role="tab" id="aba-relat-0" aria-controls="pagina-relat-0" aria-selected="true" tabindex="0" data-url="Relatórios — Resultado do ano"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg><span class="longo">Resultado do ano</span><span class="curto">Lucro</span><i class="tempo" aria-hidden="true"></i></button>
-        <button class="aba-site" type="button" role="tab" id="aba-relat-1" aria-controls="pagina-relat-1" aria-selected="false" tabindex="-1" data-url="Relatórios — Dias em estoque"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="longo">Caminhão parado</span><span class="curto">Parados</span><i class="tempo" aria-hidden="true"></i></button>
-        <button class="aba-site" type="button" role="tab" id="aba-relat-2" aria-controls="pagina-relat-2" aria-selected="false" tabindex="-1" data-url="Relatórios — Estoque"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg><span class="longo">Estoque e marcas</span><span class="curto">Marcas</span><i class="tempo" aria-hidden="true"></i></button>
-        <button class="aba-site" type="button" role="tab" id="aba-relat-3" aria-controls="pagina-relat-3" aria-selected="false" tabindex="-1" data-url="Relatórios — Negociações perdidas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></svg><span class="longo">Vendas perdidas</span><span class="curto">Perdas</span><i class="tempo" aria-hidden="true"></i></button>
+        <button class="aba-site" type="button" role="tab" id="aba-relat-1" aria-controls="pagina-relat-1" aria-selected="false" tabindex="-1" data-url="Relatórios — Estoque"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg><span class="longo">Estoque e marcas</span><span class="curto">Marcas</span><i class="tempo" aria-hidden="true"></i></button>
+        <button class="aba-site" type="button" role="tab" id="aba-relat-2" aria-controls="pagina-relat-2" aria-selected="false" tabindex="-1" data-url="Relatórios — Negociações perdidas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></svg><span class="longo">Vendas perdidas</span><span class="curto">Perdas</span><i class="tempo" aria-hidden="true"></i></button>
       </div>
       <div class="navegador navegador-site">
         <div class="barra">
@@ -1268,19 +1257,12 @@
           </figure>
           <figure class="pagina-site" role="tabpanel" id="pagina-relat-1" aria-labelledby="aba-relat-1">
             <picture>
-              <source media="(max-width: 900px)" srcset="/conheca/img/rel-giro-cel.jpg" width="800" height="600" />
-              <img src="/conheca/img/rel-giro.jpg" width="1700" height="1157" loading="lazy" alt="Lista do pátio ordenada por dias parado, com placa, status, preço e margem de cada caminhão" />
-            </picture>
-            <figcaption><b>Caminhão parado.</b> O pátio ordenado por dias parado, com o preço e a margem de cada um.</figcaption>
-          </figure>
-          <figure class="pagina-site" role="tabpanel" id="pagina-relat-2" aria-labelledby="aba-relat-2">
-            <picture>
               <source media="(max-width: 900px)" srcset="/conheca/img/rel-estoque-cel.jpg" width="800" height="600" />
               <img src="/conheca/img/rel-estoque.jpg" width="1900" height="1266" loading="lazy" alt="Relatório de estoque: total, margem média, custo, tempo em estoque, marcas mais compradas e custo contra preço por marca" />
             </picture>
             <figcaption><b>Estoque e marcas.</b> Quais marcas você mais compra e qual delas deixa mais margem.</figcaption>
           </figure>
-          <figure class="pagina-site" role="tabpanel" id="pagina-relat-3" aria-labelledby="aba-relat-3">
+          <figure class="pagina-site" role="tabpanel" id="pagina-relat-2" aria-labelledby="aba-relat-2">
             <picture>
               <source media="(max-width: 900px)" srcset="/conheca/img/rel-perdidos-cel.jpg" width="800" height="600" />
               <img src="/conheca/img/rel-perdidos.jpg" width="1700" height="1157" loading="lazy" alt="Negociações perdidas: total, valor que escapou, principal motivo, motivos de perda e perdas por vendedor" />
@@ -1295,7 +1277,7 @@
 
     <div class="beneficios-site">
       <div class="beneficio rev"><b>Lucro de cada venda</b><span>Faturamento, lucro e margem na tela, sem fechar planilha no dia 30.</span></div>
-      <div class="beneficio rev d1"><b>Nada parado escondido</b><span>O caminhão que passou do ponto aparece em vermelho, com os dias de pátio.</span></div>
+      <div class="beneficio rev d1"><b>Financiamento e consórcio contam</b><span>O que a loja ganha com financiamento e consórcio aparece separado do caminhão.</span></div>
       <div class="beneficio rev d2"><b>Compra mais certa</b><span>Custo contra preço de cada marca: você sabe onde ganha mais.</span></div>
       <div class="beneficio rev d3"><b>Venda perdida tem motivo</b><span>Quem perdeu, quanto valia e por quê — para não perder de novo.</span></div>
     </div>
@@ -1307,60 +1289,62 @@
   <div class="wrap">
     <div class="centrado">
       <p class="olho rev">Atendimento e equipe</p>
-      <h2 class="rev d1">Nenhuma venda <span class="acento">escapa</span>.</h2>
-      <p class="conversa rev d2">O WhatsApp de todo vendedor, o funil e o pós-venda num lugar só — o sistema <strong>avisa quem está na hora de trocar de caminhão</strong> e mostra, no fim do mês, <strong>quem vendeu o quê e quanto ganhou</strong>. Sem planilha, sem cobrar relatório de ninguém.</p>
+      <h2 class="rev d1">Nenhuma venda <span class="laranja">escapa</span>.</h2>
+      <p class="conversa rev d2">O WhatsApp de cada vendedor, o funil e a comissão num lugar só. <strong>O sistema avisa quem está na hora de trocar de caminhão.</strong></p>
     </div>
 
-    <div class="linhas-venda">
-      <div class="linha-venda rev">
-        <div class="midia"><img src="/conheca/img/crm-whatsapp.jpg" loading="lazy" alt="WhatsApp de cada vendedor dentro do CRM" /></div>
-        <div>
-          <div class="num-bloco">01</div>
-          <h3>O WhatsApp de cada vendedor, dentro do sistema</h3>
-          <p>Cada vendedor conecta o número dele. Toda conversa vira registro, com etiqueta, funil e histórico — <strong>e nada some quando o vendedor sai</strong>. O dono enxerga tudo.</p>
-          <span class="etiqueta-mini">Conecta em 90 segundos, via QR code</span>
+    <div class="vitrine-site rev" id="vitrine-venda">
+      <div class="seletor-site" role="tablist" aria-label="Atendimento e equipe no Via Pesados">
+        <button class="aba-site" type="button" role="tab" id="aba-venda-0" aria-controls="pagina-venda-0" aria-selected="true" tabindex="0" data-url="Via CRM — WhatsApp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.4A8.4 8.4 0 1 1 21 11.5z"/></svg><span class="longo">WhatsApp da equipe</span><span class="curto">WhatsApp</span><i class="tempo" aria-hidden="true"></i></button>
+        <button class="aba-site" type="button" role="tab" id="aba-venda-1" aria-controls="pagina-venda-1" aria-selected="false" tabindex="-1" data-url="Via CRM — Funil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5z"/></svg><span class="longo">Funil de vendas</span><span class="curto">Funil</span><i class="tempo" aria-hidden="true"></i></button>
+        <button class="aba-site" type="button" role="tab" id="aba-venda-2" aria-controls="pagina-venda-2" aria-selected="false" tabindex="-1" data-url="Via CRM — Recorrência"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg><span class="longo">Hora de trocar</span><span class="curto">Troca</span><i class="tempo" aria-hidden="true"></i></button>
+        <button class="aba-site" type="button" role="tab" id="aba-venda-3" aria-controls="pagina-venda-3" aria-selected="false" tabindex="-1" data-url="Vendas — Este mês"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="6"/><path d="M8.2 13.2 7 22l5-3 5 3-1.2-8.8"/></svg><span class="longo">Vendas e comissão</span><span class="curto">Comissão</span><i class="tempo" aria-hidden="true"></i></button>
+      </div>
+      <div class="navegador navegador-site">
+        <div class="barra">
+          <span class="bola"></span><span class="bola"></span><span class="bola"></span>
+          <span class="url">Via CRM — WhatsApp</span>
+        </div>
+        <div class="paginas-site paginas-venda">
+          <figure class="pagina-site agora" role="tabpanel" id="pagina-venda-0" aria-labelledby="aba-venda-0">
+            <picture>
+              <source media="(max-width: 900px)" srcset="/conheca/img/crm-whatsapp-cel.jpg" width="800" height="600" />
+              <img src="/conheca/img/crm-whatsapp.jpg" width="2000" height="1250" loading="lazy" alt="O WhatsApp de cada vendedor dentro do CRM, com a lista de conversas e um fluxo de fotos enviado" />
+            </picture>
+            <figcaption><b>WhatsApp da equipe.</b> Cada vendedor no próprio número, dentro do sistema — e a conversa fica com a loja.</figcaption>
+          </figure>
+          <figure class="pagina-site" role="tabpanel" id="pagina-venda-1" aria-labelledby="aba-venda-1">
+            <picture>
+              <source media="(max-width: 900px)" srcset="/conheca/img/funil-cel.jpg" width="800" height="600" />
+              <img src="/conheca/img/funil.jpg" width="2000" height="1250" loading="lazy" alt="Funil de vendas com as etapas interessado, quente, finalizando, ficha de financiamento e fechado, cada uma com o valor somado" />
+            </picture>
+            <figcaption><b>Funil de vendas.</b> Cada cliente numa etapa, com o valor somado: você sabe onde está o dinheiro do mês.</figcaption>
+          </figure>
+          <figure class="pagina-site" role="tabpanel" id="pagina-venda-2" aria-labelledby="aba-venda-2">
+            <picture>
+              <source media="(max-width: 900px)" srcset="/conheca/img/recorrencia-cel.jpg" width="800" height="600" />
+              <img src="/conheca/img/recorrencia.jpg" width="2000" height="1250" loading="lazy" alt="Lista de clientes na hora de trocar de caminhão, com o motivo e os caminhões do pátio que combinam com cada um" />
+            </picture>
+            <figcaption><b>Hora de trocar.</b> O sistema avisa quem está na hora de trocar e mostra os caminhões do pátio que combinam.</figcaption>
+          </figure>
+          <figure class="pagina-site" role="tabpanel" id="pagina-venda-3" aria-labelledby="aba-venda-3">
+            <picture>
+              <source media="(max-width: 900px)" srcset="/conheca/img/vendas-cel.jpg" width="800" height="600" />
+              <img src="/conheca/img/vendas.jpg" width="2000" height="1250" loading="lazy" alt="Vendas do mês com vendedor, canal de origem, pagamento, valor, comissão e lucro" />
+            </picture>
+            <figcaption><b>Vendas e comissão.</b> Quem vendeu, por qual canal, a comissão e o lucro de cada venda.</figcaption>
+          </figure>
         </div>
       </div>
+      <p class="legenda-pagina" aria-live="polite"><b>WhatsApp da equipe.</b> Cada vendedor no próprio número, dentro do sistema — e a conversa fica com a loja.</p>
+      <p class="legenda-img legenda-site">Telas reais do Via Pesados, com os dados de uma loja de demonstração.</p>
+    </div>
 
-      <div class="linha-venda rev">
-        <div class="midia"><img src="/conheca/img/funil.jpg" loading="lazy" alt="Funil de vendas" /></div>
-        <div>
-          <div class="num-bloco">02</div>
-          <h3>Funil que arrasta a negociação para frente</h3>
-          <p>Interessado, quente, finalizando, ficha de financiamento, fechado. Cada cliente numa coluna, cada coluna com valor somado. <strong>Bateu o olho, sabe onde está o dinheiro do mês.</strong></p>
-          <span class="etiqueta-mini">Funil com valor por etapa</span>
-        </div>
-      </div>
-
-      <div class="linha-venda rev">
-        <div class="midia"><img src="/conheca/img/recorrencia.jpg" loading="lazy" alt="Recorrência: quem está na hora de trocar de caminhão" /></div>
-        <div>
-          <div class="num-bloco">03</div>
-          <h3>O sistema avisa quem está na hora de trocar</h3>
-          <p>Quem comprou há 8 meses está na janela de troca — e o Via Pesados cruza o histórico de cada cliente com o seu pátio de hoje: <strong>“este cliente combina com estas máquinas, por estes motivos”.</strong> Venda que nasce dormindo no seu cadastro.</p>
-          <span class="etiqueta-mini">Recorrência automática</span>
-        </div>
-      </div>
-
-      <div class="linha-venda rev">
-        <div class="midia"><img src="/conheca/img/veiculo.jpg" loading="lazy" alt="Painel do veículo" /></div>
-        <div>
-          <div class="num-bloco">04</div>
-          <h3>Cada caminhão com dossiê completo</h3>
-          <p>Dias em estoque, margem, custo total, fotos, documentos, quem já recebeu o veículo. <strong>418 dias parado? O painel te cutuca: urgente girar.</strong></p>
-          <span class="etiqueta-mini">Etiquetas saem sozinhas da ficha</span>
-        </div>
-      </div>
-
-      <div class="linha-venda rev">
-        <div class="midia"><img src="/conheca/img/vendas.jpg" loading="lazy" alt="Vendas do mês com vendedor, canal de origem, comissão e lucro" /></div>
-        <div>
-          <div class="num-bloco">05</div>
-          <h3>A equipe inteira num quadro só</h3>
-          <p>Venda por venda: <strong>quem vendeu, por qual canal o cliente chegou, quanto é de comissão e quanto sobrou de lucro</strong>. A comissão sai calculada da própria venda — ninguém precisa fechar planilha no dia 30, e dá para ver qual vendedor e qual canal estão trazendo dinheiro.</p>
-          <span class="etiqueta-mini">Comissão por vendedor, tirada da venda</span>
-        </div>
-      </div>
+    <div class="beneficios-site">
+      <div class="beneficio rev"><b>Nada some quando o vendedor sai</b><span>As conversas ficam na loja, com etiqueta e histórico.</span></div>
+      <div class="beneficio rev d1"><b>Conecta em 90 segundos</b><span>O vendedor lê um QR code e o WhatsApp dele já está no sistema.</span></div>
+      <div class="beneficio rev d2"><b>Venda que nasce do cadastro</b><span>Quem está na hora de trocar aparece sozinho, com os caminhões certos.</span></div>
+      <div class="beneficio rev d3"><b>Comissão sem planilha</b><span>Calculada da própria venda. No dia 30, já está pronta.</span></div>
     </div>
   </div>
 </section>
