@@ -74,6 +74,15 @@ Deno.serve(async (req) => {
           limite: n.messagingLimit ?? null,
           situacao: n.status ?? null,
           selo_oficial: n.isOfficialBusinessAccount ?? null,
+          /* Coexistência: o número também no app WhatsApp Business do celular. */
+          no_app: (n as any).isOnBizApp ?? null,
+          /* A revisão do nome: o que foi pedido, a decisão e o motivo. */
+          nome_pedido: (n as any).requestedVerifiedName ?? null,
+          nome_decisao: (n as any).decision ?? null,
+          nome_motivo_recusa: (n as any).rejectionReason ?? null,
+          /* Desde out/2025 o limite é da empresa toda, não do número. */
+          limite_da_empresa: (n as any).whatsappBusinessManagerMessagingLimit ?? null,
+          vazao: (n as any).throughputLevel ?? null,
         };
       } catch (e) {
         erroNumero = e instanceof Error ? e.message : 'não consegui ler o número';
