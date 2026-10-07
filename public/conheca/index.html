@@ -8,7 +8,8 @@
 <meta property="og:type" content="website" />
 <meta property="og:title" content="Via Pesados — O único sistema do Brasil para lojas de pesados" />
 <meta property="og:description" content="O único sistema do Brasil feito para lojas de veículos pesados. Anuncie em todos os canais num clique, atenda pelo WhatsApp e venda mais caminhões." />
-<meta property="og:url" content="https://viapesados.com.br/conheca" />
+<meta property="og:url" content="https://viapesados.com.br/" />
+<link rel="canonical" href="https://viapesados.com.br/" />
 <meta property="og:site_name" content="Via Pesados" />
 <meta property="og:image" content="https://viapesados.com.br/conheca/img/crm-whatsapp.jpg" />
 <meta name="twitter:card" content="summary_large_image" />
@@ -20,7 +21,8 @@
   "@graph": [
     { "@type": "WebSite", "name": "Via Pesados", "url": "https://viapesados.com.br/" },
     { "@type": "Organization", "name": "Via Pesados", "url": "https://viapesados.com.br/",
-      "logo": "https://viapesados.com.br/favicon.png" }
+      "logo": "https://viapesados.com.br/favicon.png" },
+    {"@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "O que é o Via Pesados?", "acceptedAnswer": {"@type": "Answer", "text": "Um sistema de gestão feito só para lojas de caminhões, carretas e implementos. Estoque, anúncios, WhatsApp da equipe, site e financeiro num lugar só, para você parar de pular de planilha em planilha e vender mais rápido."}}, {"@type": "Question", "name": "Qual o melhor sistema para loja de caminhão?", "acceptedAnswer": {"@type": "Answer", "text": "O que foi feito para o seu estoque. O Via Pesados nasceu para pesados: a ficha técnica pergunta o que importa em cada caminhão, e o anúncio sai pronto para os canais onde o comprador procura."}}, {"@type": "Question", "name": "O sistema anuncia no Mercado Livre, Instagram e Facebook?", "acceptedAnswer": {"@type": "Answer", "text": "Sim. Pela conexão oficial de cada canal, o caminhão vai num clique para a conta da sua loja, e o anúncio se atualiza sozinho quando muda preço ou foto."}}, {"@type": "Question", "name": "Preciso pagar um site à parte?", "acceptedAnswer": {"@type": "Answer", "text": "Não. O site vem no sistema, com a sua marca, e se atualiza sozinho: cadastrou, está no site; vendeu, sai."}}, {"@type": "Question", "name": "Cada vendedor usa o próprio WhatsApp?", "acceptedAnswer": {"@type": "Answer", "text": "Sim. O vendedor lê um QR code e o número dele entra no sistema em 90 segundos. As conversas ficam com a loja, mesmo quando ele sai."}}, {"@type": "Question", "name": "Dá para ver o lucro de cada venda?", "acceptedAnswer": {"@type": "Answer", "text": "Dá. Cada compra, despesa e venda vira número sozinho: lucro, margem, as marcas que compensam e as vendas perdidas, sem planilha no fim do mês."}}, {"@type": "Question", "name": "Como eu começo?", "acceptedAnswer": {"@type": "Answer", "text": "Chame no WhatsApp. Em quinze minutos você vê o sistema rodando com os seus caminhões, sem cartão e sem compromisso."}}]}
   ]
 }
 </script>
@@ -112,6 +114,8 @@
   /* O título do herói recua para um cinza claro e o que importa fica em
      branco cheio. Sem isso o destaque não existia: o .acento é branco e o
      título já era quase branco — a diferença não se via. */
+  /* a linha que diz o que é, com as palavras de quem procura no Google */
+  .heroi .busca-heroi { justify-content: center; margin: 0 auto 18px; }
   .heroi h1 { font-size: var(--pico); line-height: 1.04; max-width: 20ch; margin: 0 auto 26px; color: #8e8c97; }
   .heroi h1 .acento { color: #fff; }
   .heroi h1 .laranja { color: var(--laranja); }
@@ -691,6 +695,7 @@
      branco e, embaixo, o que ela resolve. Só o que existe no sistema —
      sem "hora de trocar" e sem comissão, que ele tirou da página. */
   #sistema h2 .laranja { color: var(--laranja); }
+  #perguntas h2 .laranja { color: var(--laranja); }
   .funcoes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 54px; }
   .grupo-funcoes {
     border: 1px solid var(--linha); border-radius: var(--raio); padding: 26px 24px 30px;
@@ -727,10 +732,30 @@
   .cta-final .btn-zap:hover { background: #08351b; }
   .cta-final .mini-nota { margin-top: 18px; font-size: .85rem; color: #5A2D00; font-weight: 600; }
 
+  /* ── perguntas frequentes ───────────────────────────────────────────── */
+  .perguntas { max-width: 820px; margin: clamp(40px, 6vh, 64px) auto 0; display: grid; gap: 12px; }
+  .pergunta { border: 1px solid var(--linha); background: var(--cartao); border-radius: 18px; }
+  .pergunta summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    padding: 22px 24px; font-weight: 700; font-size: 1.08rem; letter-spacing: -.01em; color: var(--claro);
+  }
+  .pergunta summary::-webkit-details-marker { display: none; }
+  .pergunta summary::after {
+    content: ""; flex: none; width: 12px; height: 12px; margin-right: 4px;
+    border-right: 2px solid var(--laranja); border-bottom: 2px solid var(--laranja);
+    transform: rotate(45deg) translateY(-3px); transition: transform .25s ease;
+  }
+  .pergunta[open] summary::after { transform: rotate(-135deg) translateY(-3px); }
+  .pergunta summary:focus-visible { outline: 2px solid var(--laranja); outline-offset: 2px; border-radius: 18px; }
+  .pergunta p { color: var(--cinza); padding: 0 24px 22px; max-width: 64ch; line-height: 1.6; }
+
   footer { padding: 40px 0 56px; border-top: 1px solid var(--linha); }
   footer .wrap { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
   footer img { height: 46px; }
   footer p { color: var(--cinza-escuro); font-size: .85rem; }
+  .links-rodape { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 10px 24px; padding-top: 18px; border-top: 1px solid var(--linha); }
+  .links-rodape a { color: var(--cinza); font-size: .85rem; }
+  .links-rodape a:hover, .links-rodape a:focus-visible { color: var(--claro); }
 
   .zap-flutuante {
     position: fixed; right: 20px; bottom: 20px; z-index: 70;
@@ -806,6 +831,7 @@
 <section class="heroi" id="inicio">
   <div class="wrap">
     <img class="marca rev" src="/conheca/img/via-icon-white.png" alt="Via Pesados" />
+    <p class="olho busca-heroi rev">Sistema de gestão para lojas de caminhões e carretas</p>
     <h1 class="rev d1">Feito para <span class="acento">poupar tempo</span>.<br />E <span class="laranja">vender mais</span>.</h1>
     <p class="sub rev d2">O único sistema feito só para lojas de caminhões e carretas.</p>
     <div class="acoes rev d3">
@@ -1466,6 +1492,47 @@
   </div>
 </section>
 
+<!-- PERGUNTAS -->
+<section class="secao" id="perguntas">
+  <div class="wrap">
+    <div class="centrado">
+      <p class="olho rev">Perguntas frequentes</p>
+      <h2 class="rev d1">O que o lojista pergunta <span class="laranja">antes de começar</span>.</h2>
+      <p class="conversa rev d2">Respostas curtas. O resto, a gente mostra rodando.</p>
+    </div>
+    <div class="perguntas">
+      <details class="pergunta rev">
+        <summary>O que é o Via Pesados?</summary>
+        <p>Um sistema de gestão feito só para lojas de caminhões, carretas e implementos. Estoque, anúncios, WhatsApp da equipe, site e financeiro num lugar só, para você parar de pular de planilha em planilha e vender mais rápido.</p>
+      </details>
+      <details class="pergunta rev">
+        <summary>Qual o melhor sistema para loja de caminhão?</summary>
+        <p>O que foi feito para o seu estoque. O Via Pesados nasceu para pesados: a ficha técnica pergunta o que importa em cada caminhão, e o anúncio sai pronto para os canais onde o comprador procura.</p>
+      </details>
+      <details class="pergunta rev">
+        <summary>O sistema anuncia no Mercado Livre, Instagram e Facebook?</summary>
+        <p>Sim. Pela conexão oficial de cada canal, o caminhão vai num clique para a conta da sua loja, e o anúncio se atualiza sozinho quando muda preço ou foto.</p>
+      </details>
+      <details class="pergunta rev">
+        <summary>Preciso pagar um site à parte?</summary>
+        <p>Não. O site vem no sistema, com a sua marca, e se atualiza sozinho: cadastrou, está no site; vendeu, sai.</p>
+      </details>
+      <details class="pergunta rev">
+        <summary>Cada vendedor usa o próprio WhatsApp?</summary>
+        <p>Sim. O vendedor lê um QR code e o número dele entra no sistema em 90 segundos. As conversas ficam com a loja, mesmo quando ele sai.</p>
+      </details>
+      <details class="pergunta rev">
+        <summary>Dá para ver o lucro de cada venda?</summary>
+        <p>Dá. Cada compra, despesa e venda vira número sozinho: lucro, margem, as marcas que compensam e as vendas perdidas, sem planilha no fim do mês.</p>
+      </details>
+      <details class="pergunta rev">
+        <summary>Como eu começo?</summary>
+        <p>Chame no WhatsApp. Em quinze minutos você vê o sistema rodando com os seus caminhões, sem cartão e sem compromisso.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
 <!-- CTA FINAL -->
 <section class="cta-final" id="contato">
   <div class="wrap">
@@ -1484,6 +1551,13 @@
   <div class="wrap">
     <img src="/conheca/img/via-icon-white.png" alt="Via Pesados" />
     <p>Feito exclusivamente para o mercado de pesados · viapesados.com.br</p>
+    <nav class="links-rodape" aria-label="Para a sua loja">
+      <a href="/sistema-para-loja-de-caminhao">Sistema para loja de caminhão</a>
+      <a href="/sistema-para-revenda-de-carretas">Sistema para revenda de carretas</a>
+      <a href="/crm-para-loja-de-caminhoes">CRM para loja de caminhões</a>
+      <a href="/site-para-loja-de-caminhao">Site para loja de caminhão</a>
+      <a href="/anunciar-caminhao-no-mercado-livre">Anunciar caminhão no Mercado Livre</a>
+    </nav>
   </div>
 </footer>
 
