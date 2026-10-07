@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
-  configYCloud, faltaNaYCloud, listarTemplates, listarWebhooks, listarNumeros, lerPerfil, ycloudPelaMetade,
+  configYCloud, faltaNaYCloud, listarTemplates, listarWebhooks, listarNumeros, lerNumero, lerPerfil, ycloudPelaMetade,
 } from '../_shared/ycloud.ts';
 
 /**
@@ -55,15 +55,21 @@ Deno.serve(async (req) => {
       let numero: unknown = null;
       let erroNumero: string | null = null;
       try {
-        const nums = await listarNumeros(ycloud);
-        const n = nums.find((x) => (x.phoneNumber ?? '').replace(/\D/g, '').endsWith(ycloud.numero.replace(/\D/g, '')))
-          ?? nums[0] ?? null;
+        /* O número pedido diretamente vem mais fresco que a listagem; a
+           listagem fica de reserva. */
+        const n = await lerNumero(ycloud).catch(async () => {
+          const nums = await listarNumeros(ycloud);
+          return nums.find((x) => (x.phoneNumber ?? '').replace(/\D/g, '').endsWith(ycloud.numero.replace(/\D/g, '')))
+            ?? nums[0] ?? null;
+        });
         numero = n && {
           telefone: n.phoneNumber,
           nome_exibicao: n.verifiedName ?? n.displayName ?? null,
           /* APPROVED é o que faz quem recebe ler "Via Pesados" no lugar
              do número. Sem isso, a mensagem chega como desconhecido. */
           nome_status: n.nameStatus ?? null,
+          nome_novo: n.newName ?? null,
+          nome_novo_status: n.newNameStatus ?? null,
           qualidade: n.qualityRating ?? null,
           limite: n.messagingLimit ?? null,
           situacao: n.status ?? null,

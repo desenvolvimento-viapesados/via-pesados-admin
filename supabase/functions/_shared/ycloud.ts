@@ -198,6 +198,11 @@ export type NumeroYCloud = {
   verifiedName?: string;
   displayName?: string;
   nameStatus?: string;
+  /* Nome enviado para revisão e o status dele. Aprovado não basta: a Meta
+     só passa a mostrar o nome novo depois que o número é registrado de
+     novo, em até 14 dias. */
+  newName?: string;
+  newNameStatus?: string;
   qualityRating?: string;
   messagingLimit?: string;
   status?: string;
@@ -216,6 +221,12 @@ export type NumeroYCloud = {
 export async function listarNumeros(cfg: Config): Promise<NumeroYCloud[]> {
   const d = await chamar(cfg, `/whatsapp/phoneNumbers?filterWabaId=${encodeURIComponent(cfg.waba)}&limit=50`);
   return (d?.items ?? d?.data ?? []) as NumeroYCloud[];
+}
+
+/** Um número só, pedido diretamente (a listagem pode vir de cache). */
+export async function lerNumero(cfg: Config): Promise<NumeroYCloud> {
+  const tel = cfg.numero.startsWith('+') ? cfg.numero : `+${cfg.numero}`;
+  return await chamar(cfg, `/whatsapp/phoneNumbers/${encodeURIComponent(cfg.waba)}/${encodeURIComponent(tel)}`) as NumeroYCloud;
 }
 
 export type PerfilDoNumero = {
