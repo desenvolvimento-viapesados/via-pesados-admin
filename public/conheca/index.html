@@ -537,7 +537,7 @@
   .passos-envio li:nth-child(n+3).agora small, .passos-envio li:nth-child(n+3).feito small { color: var(--zap); }
   .nota-envio { margin-top: 18px; text-align: center; color: var(--cinza-escuro); font-size: .78rem; }
 
-  .pilares-envio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: clamp(56px, 8vh, 96px); }
+  .pilares-envio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: clamp(56px, 8vh, 96px); }
 
   @media (max-width: 1000px) {
     /* o notebook ao lado da janela ficaria miúdo: empilha, com o fio em pé */
@@ -632,10 +632,12 @@
   .legenda-pagina { min-height: 3.1em; max-width: 68ch; margin: 20px auto 0; text-align: center; color: var(--cinza); font-size: .98rem; line-height: 1.55; }
   .legenda-pagina b { color: var(--claro); }
   .legenda-site { margin-top: 8px; }
-  .beneficios-site { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: clamp(70px, 10vh, 110px); }
-  .beneficio { border: 1px solid var(--linha); background: var(--cartao); border-radius: 16px; padding: 20px; }
-  .beneficio b { display: block; font-size: .98rem; margin-bottom: 5px; }
-  .beneficio span { color: var(--cinza); font-size: .86rem; line-height: 1.45; display: block; }
+  /* os cartões de benefício: maiores a pedido ("quero que esses
+     quadradinhos, todos aumentem") — mais ar por dentro, letra maior */
+  .beneficios-site { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: clamp(70px, 10vh, 110px); }
+  .beneficio { border: 1px solid var(--linha); background: var(--cartao); border-radius: var(--raio); padding: clamp(26px, 2.6vw, 34px) clamp(22px, 2.2vw, 30px); }
+  .beneficio b { display: block; font-size: clamp(1.12rem, 1.5vw, 1.3rem); line-height: 1.25; letter-spacing: -.01em; margin-bottom: 10px; }
+  .beneficio span { color: var(--cinza); font-size: clamp(.98rem, 1.15vw, 1.06rem); line-height: 1.5; display: block; }
 
   /* ── simulador de financiamento: o PDF com a marca da loja ────────────
      Só a página principal do PDF, em papel e grande, para ler sem clicar —
