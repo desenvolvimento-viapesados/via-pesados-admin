@@ -632,12 +632,13 @@
   .legenda-pagina { min-height: 3.1em; max-width: 68ch; margin: 20px auto 0; text-align: center; color: var(--cinza); font-size: .98rem; line-height: 1.55; }
   .legenda-pagina b { color: var(--claro); }
   .legenda-site { margin-top: 8px; }
-  /* os cartões de benefício: maiores a pedido ("quero que esses
-     quadradinhos, todos aumentem") — mais ar por dentro, letra maior */
-  .beneficios-site { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: clamp(70px, 10vh, 110px); }
-  .beneficio { border: 1px solid var(--linha); background: var(--cartao); border-radius: var(--raio); padding: clamp(26px, 2.6vw, 34px) clamp(22px, 2.2vw, 30px); }
-  .beneficio b { display: block; font-size: clamp(1.12rem, 1.5vw, 1.3rem); line-height: 1.25; letter-spacing: -.01em; margin-bottom: 10px; }
-  .beneficio span { color: var(--cinza); font-size: clamp(.98rem, 1.15vw, 1.06rem); line-height: 1.5; display: block; }
+  /* os cartões de benefício: ele pediu duas vezes que aumentassem. Quatro
+     numa linha ficavam com 280px e letra de rodapé; agora são dois por
+     linha, com título e texto grandes. */
+  .beneficios-site { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: clamp(70px, 10vh, 110px); }
+  .beneficio { border: 1px solid var(--linha); background: var(--cartao); border-radius: var(--raio); padding: clamp(28px, 3.4vw, 46px) clamp(24px, 3.2vw, 42px); }
+  .beneficio b { display: block; font-size: clamp(1.3rem, 2.1vw, 1.7rem); line-height: 1.2; letter-spacing: -.015em; margin-bottom: 12px; }
+  .beneficio span { color: var(--cinza); font-size: clamp(1.04rem, 1.4vw, 1.22rem); line-height: 1.5; display: block; }
 
   /* ── simulador de financiamento: o PDF com a marca da loja ────────────
      Só a página principal do PDF, em papel e grande, para ler sem clicar —
@@ -670,7 +671,7 @@
   #relatorios h2 .laranja { color: var(--laranja); }
   .paginas-site.paginas-relat { aspect-ratio: 1900 / 1266; background: #0b0b0c; }
   .paginas-site.paginas-venda { aspect-ratio: 2000 / 1250; background: #0b0b0c; }
-  #venda h2 .laranja { color: var(--laranja); }
+  #venda h2 .laranja, #oportunidades h2 .laranja { color: var(--laranja); }
 
   /* ── o sistema inteiro, escrito ──────────────────────────────────────
      Era uma grade de prints miúdos; ele pediu "escrito, de forma bonita,
@@ -737,7 +738,6 @@
   /* ── responsivo ─────────────────────────────────────────────────────── */
   @media (max-width: 900px) {
     .funcoes { grid-template-columns: 1fr 1fr; }
-    .beneficios-site { grid-template-columns: 1fr 1fr; }
     .orbita { --disco: 58px; }
     .paginas-site { aspect-ratio: 780 / 1440; }
     .paginas-site.paginas-relat, .paginas-site.paginas-venda { aspect-ratio: 4 / 3; }
@@ -1351,6 +1351,55 @@
 </section>
 
 <!-- O SISTEMA INTEIRO -->
+<!-- OPORTUNIDADES — possíveis negociações e recorrência -->
+<section class="secao" id="oportunidades">
+  <div class="wrap">
+    <div class="centrado">
+      <p class="olho rev">Vendas na sua base</p>
+      <h2 class="rev d1">O sistema acha o comprador. <span class="laranja">Você só chama.</span></h2>
+      <p class="conversa rev d2">Chegou caminhão, ele mostra quem procura um igual. <strong>E avisa quem comprou há meses e já está na hora de trocar.</strong></p>
+    </div>
+
+    <div class="vitrine-site rev" id="vitrine-oport">
+      <div class="seletor-site" role="tablist" aria-label="Possíveis negociações e recorrência no Via Pesados">
+        <button class="aba-site" type="button" role="tab" id="aba-oport-0" aria-controls="pagina-oport-0" aria-selected="true" tabindex="0" data-url="Via CRM — Possíveis negociações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m16 11 2 2 4-4"/></svg><span class="longo">Possíveis negociações</span><span class="curto">Possíveis</span><i class="tempo" aria-hidden="true"></i></button>
+        <button class="aba-site" type="button" role="tab" id="aba-oport-1" aria-controls="pagina-oport-1" aria-selected="false" tabindex="-1" data-url="Via CRM — Recorrência"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg><span class="longo">Recorrência</span><span class="curto">Recorrência</span><i class="tempo" aria-hidden="true"></i></button>
+      </div>
+      <div class="navegador navegador-site">
+        <div class="barra">
+          <span class="bola"></span><span class="bola"></span><span class="bola"></span>
+          <span class="url">Via CRM — Possíveis negociações</span>
+        </div>
+        <div class="paginas-site paginas-venda">
+          <figure class="pagina-site agora" role="tabpanel" id="pagina-oport-0" aria-labelledby="aba-oport-0">
+            <picture>
+              <source media="(max-width: 900px)" srcset="/conheca/img/possiveis-cel.jpg" width="800" height="600" />
+              <img src="/conheca/img/possiveis.jpg" width="2000" height="1250" loading="lazy" alt="Possíveis negociações: o Scania R 540 do pátio com os 32 contatos que procuram um caminhão igual, cada um com o WhatsApp a um toque" />
+            </picture>
+            <figcaption><b>Possíveis negociações.</b> Para cada caminhão do pátio, os contatos que procuram um igual — e o WhatsApp de cada um a um toque.</figcaption>
+          </figure>
+          <figure class="pagina-site" role="tabpanel" id="pagina-oport-1" aria-labelledby="aba-oport-1">
+            <picture>
+              <source media="(max-width: 900px)" srcset="/conheca/img/recorrencia-cel.jpg" width="800" height="600" />
+              <img src="/conheca/img/recorrencia.jpg" width="2000" height="1250" loading="lazy" alt="Recorrência: clientes na hora de trocar de caminhão, com o motivo e os caminhões do pátio que combinam com cada um" />
+            </picture>
+            <figcaption><b>Recorrência.</b> Quem comprou e está na hora de trocar, com os caminhões do seu pátio que combinam com ele.</figcaption>
+          </figure>
+        </div>
+      </div>
+      <p class="legenda-pagina" aria-live="polite"><b>Possíveis negociações.</b> Para cada caminhão do pátio, os contatos que procuram um igual — e o WhatsApp de cada um a um toque.</p>
+      <p class="legenda-img legenda-site">Telas reais do Via Pesados, com os dados de uma loja de demonstração.</p>
+    </div>
+
+    <div class="beneficios-site">
+      <div class="beneficio rev"><b>Caminhão novo, comprador pronto</b><span>Chegou no pátio, o sistema já lista quem procura um igual.</span></div>
+      <div class="beneficio rev d1"><b>Quem só pediu preço também conta</b><span>Contatos que nunca compraram viram negociação.</span></div>
+      <div class="beneficio rev d2"><b>Hora de trocar, no tempo certo</b><span>Quem comprou há meses aparece antes de outra loja ligar.</span></div>
+      <div class="beneficio rev d3"><b>Um toque e você chama</b><span>O WhatsApp de cada contato direto da lista.</span></div>
+    </div>
+  </div>
+</section>
+
 <section class="secao" id="sistema">
   <div class="wrap">
     <div class="centrado">
