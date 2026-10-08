@@ -183,6 +183,9 @@ Deno.serve(async (req) => {
         email: dados?.email || cli!.email || undefined,
         mobilePhone: soDigitos(dados?.fone ?? cli!.whatsapp) || undefined,
         externalReference: cli!.id,
+        /* Sem os avisos do próprio Asaas (e-mail, SMS): toda comunicação
+           com o lojista sai pelo WhatsApp da Via Pesados. */
+        notificationDisabled: true,
       });
       await db.from('clients').update({ asaas_customer_id: novo.id }).eq('id', cli!.id);
       return novo.id as string;

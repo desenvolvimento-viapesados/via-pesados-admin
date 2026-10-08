@@ -104,7 +104,10 @@ Deno.serve(async (req) => {
       value: mensalidade,
       dueDateLimitDays: Number(vencimento_dias) || 7,
       externalReference: cliente.id,  // é por aqui que o webhook reencontra o cliente
-      notificationEnabled: true,      // o Asaas avisa o lojista todo mês
+      /* Toda comunicação com o lojista é pelo WhatsApp da Via Pesados
+         (asaas-webhook, cobranca-lembrete). Com isto ligado, o próprio
+         Asaas mandava e-mail e SMS de cobrança em paralelo. */
+      notificationEnabled: false,
     });
 
     await db.from('clients').update({
