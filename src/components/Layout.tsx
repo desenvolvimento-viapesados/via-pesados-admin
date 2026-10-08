@@ -3,17 +3,19 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Sun, Moon, LogOut } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
+import { secaoDaRota, voltarDe } from '@/lib/secoes';
 import viaPesadosLogoLight from '@/assets/via-pesados-icon-color.png';
 import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
 
 const PAGE_TITLES: Record<string, string> = {
   '/clientes':   'Clientes',
-  '/pagamentos': 'Pagamentos',
-  '/financeiro': 'Financeiro',
-  '/tickets':    'Suporte',
+  '/pagamentos': 'Recebimentos',
+  '/financeiro': 'Caixa',
+  '/tickets':    'Chamados',
   '/equipe':     'Equipe',
   '/relatorios': 'Relatórios',
-  '/whatsapp':   'WhatsApp',
+  '/whatsapp':   'Canal oficial',
+  '/metas':      'Metas',
 };
 
 // Telas que trazem o próprio cabeçalho. Comparação por prefixo porque a
@@ -34,9 +36,15 @@ export function Layout({ children }: { children: ReactNode }) {
 
   if (isHome || isFullPage) return <>{children}</>;
 
-  const title = Object.entries(PAGE_TITLES).find(
-    ([path]) => location.pathname === path || location.pathname.startsWith(path + '/')
-  )?.[1] ?? '';
+  /* Na tela de seção o título é a própria seção; nas outras, o nome da
+     tela. O "voltar" sobe um degrau: ficha → lista → seção → início. */
+  const title = location.pathname.startsWith('/secao/')
+    ? ''
+    : Object.entries(PAGE_TITLES).find(
+        ([path]) => location.pathname === path || location.pathname.startsWith(path + '/')
+      )?.[1] ?? '';
+  const voltar = voltarDe(location.pathname);
+  const secao = secaoDaRota(location.pathname);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -46,11 +54,11 @@ export function Layout({ children }: { children: ReactNode }) {
 
           {/* Esquerda: voltar */}
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate(voltar.para)}
             className="flex items-center gap-1.5 text-[13px] text-foreground/40 hover:text-foreground transition-colors group z-10"
           >
             <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
-            <span>Início</span>
+            <span>{voltar.rotulo}</span>
           </button>
 
           {/* Centro absoluto: logo VP */}
@@ -65,7 +73,10 @@ export function Layout({ children }: { children: ReactNode }) {
           {/* Direita: título + ações */}
           <div className="ml-auto flex items-center gap-2 z-10">
             {title && (
-              <span className="text-[13px] font-medium text-foreground/60 hidden sm:block">{title}</span>
+              <span className="text-[13px] font-medium text-foreground/60 hidden sm:block">
+                {secao && <span className="text-foreground/30 font-normal">{secao.titulo} · </span>}
+                {title}
+              </span>
             )}
             <button
               onClick={toggleTheme}

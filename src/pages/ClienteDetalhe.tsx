@@ -694,21 +694,38 @@ export default function ClienteDetalhe() {
                 }
               />
               <Panel className="divide-y divide-black/[0.05] dark:divide-white/[0.05] overflow-hidden">
-                {etapasAbertas.map((e) => (
-                  <div key={e.chave} className="flex items-center gap-3 px-4 py-2.5">
-                    <span className="h-4 w-4 rounded-md border border-black/[0.15] dark:border-white/[0.2] shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[12.5px] text-foreground/70">{e.titulo}</p>
-                      <p className="text-[10.5px] text-foreground/35 truncate">{e.porque}</p>
-                    </div>
-                    <span
-                      title={e.origem === 'mao' ? 'Depende de alguém marcar' : 'O painel descobre sozinho'}
-                      className="shrink-0 text-foreground/25"
+                {etapasAbertas.map((e) => {
+                  /* As etapas que se resolvem aqui mesmo abrem o diálogo
+                     delas. O de domínio existia e nunca era aberto. */
+                  const resolver =
+                    e.chave === 'dominio_conectado' && client.lojista_company_id ? () => setDialog('dominio_conectado')
+                    : e.chave === 'sistema_criado' ? () => setDialog('sistema_criado')
+                    : null;
+                  const Linha = resolver ? 'button' : 'div';
+                  return (
+                    <Linha
+                      key={e.chave}
+                      {...(resolver ? { onClick: resolver, type: 'button' as const } : {})}
+                      className={cn('w-full text-left flex items-center gap-3 px-4 py-2.5',
+                        resolver && 'hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors group')}
                     >
-                      {e.origem === 'mao' ? <Hand className="h-3 w-3" /> : <Database className="h-3 w-3" />}
-                    </span>
-                  </div>
-                ))}
+                      <span className="h-4 w-4 rounded-md border border-black/[0.15] dark:border-white/[0.2] shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12.5px] text-foreground/70">{e.titulo}</p>
+                        <p className="text-[10.5px] text-foreground/35 truncate">{e.porque}</p>
+                      </div>
+                      {resolver && (
+                        <span className="shrink-0 text-[11px] text-primary/70 group-hover:text-primary">Resolver</span>
+                      )}
+                      <span
+                        title={e.origem === 'mao' ? 'Depende de alguém marcar' : 'O painel descobre sozinho'}
+                        className="shrink-0 text-foreground/25"
+                      >
+                        {e.origem === 'mao' ? <Hand className="h-3 w-3" /> : <Database className="h-3 w-3" />}
+                      </span>
+                    </Linha>
+                  );
+                })}
               </Panel>
               {client.status === 'onboarding' && (
                 <button

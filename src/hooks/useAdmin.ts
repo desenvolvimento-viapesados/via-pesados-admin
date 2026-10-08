@@ -1090,7 +1090,6 @@ export const useCrmCounts = () => {
       meetings.filter((m) => m.status === 'agendada' || m.status === 'realizada')
         .map((m) => m.prospect_id).filter(Boolean) as string[],
     );
-    const withDemo = new Set(demos.map((d) => d.prospect_id).filter(Boolean) as string[]);
     const converted = new Set(clients.map((c) => c.prospect_id).filter(Boolean) as string[]);
 
     const today = new Date();
@@ -1101,12 +1100,11 @@ export const useCrmCounts = () => {
 
     return {
       funil: active.length,
-      // Reuniões e Amostras deixaram de ser abas; a contagem fica para quando
-      // voltarem. Conexão virou consequência do Vendido, não etapa própria.
       reunioes:
         prospects.filter((p) => p.stage === 'reuniao' && !scheduled.has(p.id)).length +
         meetings.filter((m) => m.status === 'agendada' && sameDay(m.scheduled_at)).length,
-      amostras: demos.filter((d) => !d.prospect_id || withDemo.has(d.prospect_id)).length * 0,
+      /* Amostra em uso: ainda não virou cliente nem foi descartada. */
+      amostras: demos.filter((d) => d.status !== 'convertida' && d.status !== 'descartada').length,
       conexao:
         prospects.filter((p) => p.stage === 'vendido' && !converted.has(p.id)).length +
         clients.filter((c) => c.status === 'onboarding').length,

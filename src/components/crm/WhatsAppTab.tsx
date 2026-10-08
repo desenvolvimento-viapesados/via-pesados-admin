@@ -46,6 +46,11 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
   const [busca, setBusca] = useState('');
   const [texto, setTexto] = useState('');
   const [qr, setQr] = useState<{ instancia: Instancia; imagem: string | null; codigo: string | null } | null>(null);
+  /* O cadastro de número abre pelo "+ Número" do topo (newOpen, que é do
+     CRM) e pelo "Adicionar número da equipe" do seletor, que é daqui. Este
+     chamava onCloseNew — fechava em vez de abrir. */
+  const [novoAqui, setNovoAqui] = useState(false);
+  const fecharNovo = () => { setNovoAqui(false); onCloseNew(); };
 
   const { data: conversas = [], isLoading: carregandoConv } = useConversas(instanciaId);
   const { data: mensagens = [] } = useMensagens(conversaId);
@@ -121,7 +126,7 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
             instancias={instancias}
             selecionada={instanciaId}
             onSelecionar={(id) => { setInstanciaId(id); setConversaId(null); }}
-            onNovo={onCloseNew}
+            onNovo={() => setNovoAqui(true)}
             onConectar={conectar}
           />
           <div className="relative">
@@ -258,7 +263,7 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
       </div>
 
       <QrDialog qr={qr} onClose={() => setQr(null)} onRefazer={conectar} />
-      <NovoNumeroDialog open={newOpen} onClose={onCloseNew} />
+      <NovoNumeroDialog open={newOpen || novoAqui} onClose={fecharNovo} />
     </div>
   );
 }

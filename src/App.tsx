@@ -26,6 +26,7 @@ const Cobranca       = lazy(() => import('@/pages/Cobranca'));
 const Onboarding     = lazy(() => import('@/pages/Onboarding'));
 const Whatsapp       = lazy(() => import('@/pages/Whatsapp'));
 const Metas          = lazy(() => import('@/pages/Metas'));
+const Secao          = lazy(() => import('@/pages/Secao'));
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -87,6 +88,7 @@ const Gate = () => {
       <Suspense fallback={<Loader />}>
         <Routes>
           <Route path="/"              index element={<Home />} />
+          <Route path="/secao/:chave"  element={<Secao />} />
           <Route path="/crm"           element={<Crm />} />
           <Route path="/crm/prospect/:id" element={<ProspectDetalhe />} />
           <Route path="/crm/venda/:id" element={<RegistrarVenda />} />

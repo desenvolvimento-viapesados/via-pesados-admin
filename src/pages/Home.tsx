@@ -1,62 +1,76 @@
-import { type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Users, DollarSign, CreditCard, MessageSquare, BarChart3, ChevronRight,
-  UserCheck, LogOut, Sun, Moon, ExternalLink, Target,
-} from 'lucide-react';
+import { ChevronRight, LogOut, Sun, Moon, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCrmCounts, useTickets, useClients, usePayments, brl } from '@/hooks/useAdmin';
+import { useClients, usePayments, brl } from '@/hooks/useAdmin';
 import { mrrDaCarteira } from '@/lib/mrr';
+import { SECOES, type Secao, type ChaveDaSecao } from '@/lib/secoes';
+import { useIndicadores, type Indicador } from '@/hooks/useIndicadores';
 import { useMemo } from 'react';
 import { InitialAvatar } from '@/components/admin/ui';
 import { LOJISTA_APP_URL } from '@/integrations/supabase/client';
 import viaPesadosLogoLight from '@/assets/via-pesados-icon-color.png';
 import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
 
-/* ── Tile de módulo ─────────────────────────────────────────── */
-const ModuleTile = ({
-  label, description, icon, onClick, badge,
-}: {
-  label: string;
-  description: string;
-  icon: ReactNode;
-  onClick: () => void;
-  badge?: number;
-}) => (
-  <button
-    onClick={onClick}
-    className={cn(
-      'group relative flex flex-col items-start gap-3 p-4 rounded-2xl w-full text-left transition-all duration-200',
-      'bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.07] dark:border-white/[0.08]',
-      'hover:bg-black/[0.06] dark:hover:bg-white/[0.07] hover:border-black/[0.13] dark:hover:border-white/[0.16]',
-      'hover:shadow-lg hover:shadow-black/20 cursor-pointer',
-    )}
-  >
-    {badge !== undefined && badge > 0 && (
-      <span className="absolute top-3 right-3 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-        {badge}
-      </span>
-    )}
-    <div className="text-foreground/60 group-hover:text-primary transition-colors duration-200">
-      <div className="[&>svg]:h-5 [&>svg]:w-5 [&>svg]:stroke-[1.5]">{icon}</div>
-    </div>
-    <div>
-      <p className="text-[13px] font-medium text-foreground leading-tight">{label}</p>
-      <p className="text-[11px] text-foreground/40 leading-snug mt-0.5">{description}</p>
-    </div>
-  </button>
-);
+/* ── Cartão de seção ────────────────────────────────────────
+   A Home mostra as seis seções do painel (lib/secoes.ts). Cada cartão traz
+   o número que mais importa naquela seção; clicar abre a tela da seção,
+   com as subseções. */
+
+/* O número que cada seção mostra na Home. */
+const RESUMO_DA_SECAO: Record<ChaveDaSecao, string> = {
+  comercial: 'funil',
+  clientes: 'clientes',
+  financeiro: 'atraso',
+  suporte: 'chamados',
+  operacao: 'numeros',
+  gestao: 'equipe',
+};
+
+const CartaoDeSecao = ({ secao, resumo, onClick }: { secao: Secao; resumo?: Indicador; onClick: () => void }) => {
+  const Icone = secao.icone;
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'group relative flex flex-col items-start gap-4 p-5 rounded-2xl w-full text-left transition-all duration-200',
+        'bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.07] dark:border-white/[0.08]',
+        'hover:bg-black/[0.06] dark:hover:bg-white/[0.07] hover:border-black/[0.13] dark:hover:border-white/[0.16]',
+        'hover:shadow-lg hover:shadow-black/20 cursor-pointer',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
+      )}
+    >
+      <div className="w-full flex items-start justify-between">
+        <span className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+          <Icone className="h-[18px] w-[18px] stroke-[1.75]" />
+        </span>
+        <ChevronRight className="h-4 w-4 text-foreground/20 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[15px] font-semibold text-foreground leading-tight">{secao.titulo}</p>
+        <p className="text-[12px] text-foreground/45 leading-snug mt-1">{secao.descricao}</p>
+      </div>
+      {resumo && (
+        <p className="mt-auto flex items-baseline gap-1.5 min-w-0">
+          <span className={cn(
+            'text-[19px] font-bold tabular-nums leading-none',
+            resumo.alerta ? 'text-amber-500' : 'text-foreground',
+          )}>
+            {resumo.valor}
+          </span>
+          <span className="text-[11px] text-foreground/40 truncate">{resumo.rotulo}</span>
+        </p>
+      )}
+    </button>
+  );
+};
 
 /* ── Home ───────────────────────────────────────────────────── */
 export default function Home() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { member, user, signOut } = useAuth();
-
-  const { data: tickets = [] } = useTickets();
-  const openTickets = tickets.filter((t) => t.status !== 'resolvido').length;
 
   const displayName = member?.full_name || user?.email?.split('@')[0] || 'Usuário';
   const firstName = displayName.split(' ')[0];
@@ -70,7 +84,7 @@ export default function Home() {
     return d.charAt(0).toUpperCase() + d.slice(1);
   })();
 
-  const counts = useCrmCounts();
+  const indicadores = useIndicadores();
 
   /* Só o MRR fica na abertura. O panorama da base instalada mora em
      Clientes e em Relatórios, que é onde alguém vai atrás dele — repetido
@@ -157,66 +171,22 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── Hero: Via CRM ──────────────────────────────────── */}
-        <div>
-          <button
-            onClick={() => navigate('/crm')}
-            className={cn(
-              'group w-full rounded-2xl overflow-hidden border transition-all duration-200 text-left',
-              'border-black/[0.07] dark:border-white/[0.08] bg-black/[0.03] dark:bg-white/[0.03]',
-              'hover:bg-black/[0.06] dark:hover:bg-white/[0.06] hover:border-black/[0.13] dark:hover:border-white/[0.14]',
-              'hover:shadow-xl hover:shadow-black/10 dark:hover:shadow-black/30',
-            )}
-          >
-            <div className="px-6 pt-6 pb-5 flex items-center gap-4">
-              <div className="min-w-0 flex-1">
-                <p className="text-[18px] sm:text-[20px] font-bold text-foreground tracking-tight leading-tight">Via CRM</p>
-                <p className="text-[12px] text-foreground/45 mt-0.5 font-light">
-                  Prospects, reuniões, amostras e novas vendas — do primeiro contato ao sistema no ar
-                </p>
-              </div>
-              <div className="text-right shrink-0 hidden sm:block">
-                <p className="text-[10px] text-foreground/35">Pipeline</p>
-                <p className="text-[17px] font-bold text-primary tabular-nums leading-tight">
-                  {brl(counts.pipeline)}<span className="text-[10px] font-normal text-foreground/35 ml-0.5">/mês</span>
-                </p>
-              </div>
-              <ChevronRight className="h-5 w-5 text-foreground/20 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
-            </div>
-
-            {/* Resumo por etapa do CRM */}
-            <div className="grid grid-cols-4 border-t border-black/[0.06] dark:border-white/[0.06] divide-x divide-black/[0.06] dark:divide-white/[0.06]">
-              {[
-                { label: 'Prospects', value: counts.funil },
-                { label: 'Reuniões', value: counts.reunioes },
-                { label: 'Amostras', value: counts.amostras },
-                { label: 'Em conexão', value: counts.conexao },
-              ].map(({ label, value }) => (
-                <div key={label} className="px-3 py-2.5 text-center">
-                  <p className="text-[17px] font-bold text-foreground tabular-nums leading-none">{value}</p>
-                  <p className="text-[10px] text-foreground/35 mt-1 leading-none">{label}</p>
-                </div>
-              ))}
-            </div>
-          </button>
-
-        </div>
-
-        {/* ── Módulos ────────────────────────────────────────── */}
+        {/* ── Seções ────────────────────────────────────────── */}
         <div>
           <div className="flex items-center gap-3 mb-4">
-            <p className="text-[11px] font-semibold tracking-widest uppercase text-foreground/30">Módulos</p>
+            <p className="text-[11px] font-semibold tracking-widest uppercase text-foreground/30">Seções</p>
             <div className="flex-1 h-px bg-black/[0.06] dark:bg-white/[0.06]" />
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-            <ModuleTile label="Clientes"   description="Carteira e contas"        icon={<Users />}         onClick={() => navigate('/clientes')} />
-            <ModuleTile label="Pagamentos" description="Cobranças e recebimentos" icon={<CreditCard />}    onClick={() => navigate('/pagamentos')} />
-            <ModuleTile label="Financeiro" description="Entradas, saídas e vencimentos"     icon={<DollarSign />}    onClick={() => navigate('/financeiro')} />
-            <ModuleTile label="Suporte"    description="Tickets dos clientes"     icon={<MessageSquare />} onClick={() => navigate('/tickets')} badge={openTickets} />
-            <ModuleTile label="Relatórios" description="Recorrência, funil e caixa"  icon={<BarChart3 />}     onClick={() => navigate('/relatorios')} />
-            <ModuleTile label="Metas"      description="Norte, OKR e horizonte"   icon={<Target />}        onClick={() => navigate('/metas')} />
-            <ModuleTile label="Equipe"     description="Membros e acessos"        icon={<UserCheck />}     onClick={() => navigate('/equipe')} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {SECOES.map((secao) => (
+              <CartaoDeSecao
+                key={secao.chave}
+                secao={secao}
+                resumo={indicadores[RESUMO_DA_SECAO[secao.chave]]}
+                onClick={() => navigate(`/secao/${secao.chave}`)}
+              />
+            ))}
           </div>
         </div>
       </main>

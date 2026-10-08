@@ -15,10 +15,10 @@ import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
 type TabKey = 'whatsapp' | 'funil' | 'reunioes' | 'amostras' | 'conexao';
 
 /**
- * Por enquanto só o Funil. Reunião, Amostra e Conexão deixaram de ser etapas
- * separadas: reunião virou coluna, e a conexão acontece quando o prospect vai
- * para Vendido. As telas continuam no código — para devolver qualquer uma,
- * basta reinserir a linha aqui; a barra de abas volta a aparecer sozinha.
+ * As abas do Comercial. Reuniões, Amostras e Implantação tinham saído da
+ * barra (o funil ganhou a coluna Reunião e a conexão nasce do Vendido), mas
+ * as telas continuavam no código sem caminho. Voltaram em 2026-10-08 como
+ * subseções do Comercial (lib/secoes.ts) — a Home leva direto a cada uma.
  */
 /* A marca do WhatsApp em traço único, com fill currentColor: assim ela
    acende em laranja com a aba ativa e apaga com as outras, como todo ícone
@@ -37,6 +37,9 @@ const TABS: { key: TabKey; label: string; newLabel: string; icon: IconeDaAba }[]
   // quer ver quem escreveu, não o funil.
   { key: 'whatsapp', label: 'WhatsApp', newLabel: 'Número',   icon: IconeWhatsApp },
   { key: 'funil',    label: 'Funil',    newLabel: 'Prospect', icon: Kanban },
+  { key: 'reunioes', label: 'Reuniões', newLabel: 'Reunião',  icon: CalendarDays },
+  { key: 'amostras', label: 'Amostras', newLabel: 'Amostra',  icon: MonitorPlay },
+  { key: 'conexao',  label: 'Implantação', newLabel: 'Venda', icon: Rocket },
 ];
 
 const isTab = (v: string | null): v is TabKey => TABS.some((t) => t.key === v);
@@ -82,11 +85,11 @@ export default function Crm() {
       <header className="sticky top-0 z-40 border-b border-border/40 bg-background/95 backdrop-blur-xl">
         <div className="relative w-full flex h-20 items-center px-4 sm:px-6">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/secao/comercial')}
             className="flex items-center gap-1.5 text-[13px] text-foreground/40 hover:text-foreground transition-colors group z-10"
           >
             <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
-            <span>Início</span>
+            <span>Comercial</span>
           </button>
 
           <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none select-none">
