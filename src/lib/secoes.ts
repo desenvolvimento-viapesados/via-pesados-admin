@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Briefcase, Users, Wallet, LifeBuoy, Server, Compass,
   MessageCircle, Kanban, CalendarDays, MonitorPlay, Rocket, FilePlus2,
-  AlertTriangle, CreditCard, Landmark, Ticket, Radio, ExternalLink,
+  AlertTriangle, CreditCard, Landmark, Ticket, Radio, ExternalLink, Layers, HeartPulse,
   Target, BarChart3, UserCheck,
 } from 'lucide-react';
 
@@ -69,11 +69,12 @@ export const SECOES: Secao[] = [
     titulo: 'Financeiro',
     descricao: 'O que entra, o que sai e o que está atrasado',
     icone: Wallet,
-    rotas: ['/pagamentos', '/financeiro', '/inadimplencia'],
+    rotas: ['/pagamentos', '/financeiro', '/inadimplencia', '/planos'],
     subsecoes: [
       { chave: 'inadimplencia', titulo: 'Inadimplência', descricao: 'Quem está devendo, há quanto tempo e o que já foi avisado', rota: '/inadimplencia', icone: AlertTriangle, indicador: 'atraso' },
       { chave: 'recebimentos', titulo: 'Recebimentos', descricao: 'As mensalidades dos clientes: pago, a receber e atrasado', rota: '/pagamentos', icone: CreditCard, indicador: 'receber' },
       { chave: 'caixa', titulo: 'Caixa da Via Pesados', descricao: 'Entradas, saídas e vencimentos da empresa', rota: '/financeiro', icone: Landmark, indicador: 'caixa' },
+      { chave: 'planos', titulo: 'Planos e preços', descricao: 'O que a Via Pesados vende e quantos clientes em cada plano', rota: '/planos', icone: Layers },
     ],
   },
   {
@@ -92,8 +93,9 @@ export const SECOES: Secao[] = [
     titulo: 'Operação',
     descricao: 'O que mantém a plataforma no ar',
     icone: Server,
-    rotas: ['/whatsapp'],
+    rotas: ['/whatsapp', '/saude'],
     subsecoes: [
+      { chave: 'saude', titulo: 'Saúde da plataforma', descricao: 'Canal oficial, números da equipe, Asaas, nota fiscal e publicação, conferidos agora', rota: '/saude', icone: HeartPulse },
       { chave: 'canal-oficial', titulo: 'Canal oficial do WhatsApp', descricao: 'O número dos avisos automáticos e os modelos aprovados', rota: '/whatsapp', icone: Radio },
       { chave: 'sistema-lojista', titulo: 'Sistema lojista', descricao: 'Abrir o sistema que os clientes usam', rota: '', icone: ExternalLink, externa: true },
     ],

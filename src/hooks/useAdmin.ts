@@ -216,6 +216,31 @@ export const usePlans = () =>
     staleTime: 5 * 60_000,
   });
 
+/** Todos os planos, inclusive os desativados — para a tela de Planos. */
+export const useTodosPlanos = () =>
+  useQuery({
+    queryKey: ['plans', 'todos'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('plans').select('*').order('sort').order('monthly_value');
+      if (error) throw error;
+      return data as Plan[];
+    },
+  });
+
+export const useSalvarPlano = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...campos }: Partial<Plan> & { name: string; monthly_value: number }) => {
+      const linha = { ...campos, updated_at: new Date().toISOString() };
+      const { error } = id
+        ? await supabase.from('plans').update(linha).eq('id', id)
+        : await supabase.from('plans').insert(linha);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['plans'] }),
+  });
+};
+
 /**
  * Gera o link de cobrança mensal recorrente do cliente no Asaas.
  *
@@ -995,6 +1020,41 @@ export const useUpdateTicket = () => {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tickets'] }),
+  });
+};
+
+export interface TicketMensagem {
+  id: string;
+  ticket_id: string;
+  author_id: string | null;
+  content: string;
+  created_at: string;
+}
+
+/** O histórico do atendimento de um chamado (respostas e anotações da equipe). */
+export const useTicketMensagens = (ticketId: string | null) =>
+  useQuery({
+    queryKey: ['ticket-mensagens', ticketId],
+    enabled: !!ticketId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ticket_mensagens')
+        .select('*')
+        .eq('ticket_id', ticketId!)
+        .order('created_at');
+      if (error) throw error;
+      return data as TicketMensagem[];
+    },
+  });
+
+export const useCreateTicketMensagem = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { ticket_id: string; author_id: string | null; content: string }) => {
+      const { error } = await supabase.from('ticket_mensagens').insert(input);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['ticket-mensagens', v.ticket_id] }),
   });
 };
 

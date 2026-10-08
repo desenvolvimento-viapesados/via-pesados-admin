@@ -44,6 +44,20 @@ Deno.serve(async (req) => {
         falhas_penalizadas: det?.penalizedRequestsCount ?? null,
       });
     }
+    /* `?so=webhooks`: só a leitura acima. É o que a tela de Saúde da
+       plataforma usa a cada abertura — as sondas abaixo (tokenização e
+       assinatura com corpo incompleto) ficam para quando alguém pedir. */
+    if (new URL(req.url).searchParams.get('so') === 'webhooks') {
+      return json(200, {
+        ok: true,
+        ambiente: base.includes('sandbox') ? 'sandbox' : 'producao',
+        total: hooks.length,
+        webhooks: hooks.map((h, i) => ({
+          nome: h.name, ativo: h.enabled, ...(detalhes[i] as Record<string, unknown>),
+        })),
+      });
+    }
+
     /* Pix Automático é liberado por conta, igual à tokenização de cartão.
        Uma listagem (leitura pura) já diz se está disponível: conta sem
        elegibilidade responde erro em vez de lista vazia. */

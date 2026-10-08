@@ -12,6 +12,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/pagamentos': 'Recebimentos',
   '/financeiro': 'Caixa',
   '/inadimplencia': 'Inadimplência',
+  '/planos':     'Planos e preços',
+  '/saude':      'Saúde da plataforma',
   '/tickets':    'Chamados',
   '/equipe':     'Equipe',
   '/relatorios': 'Relatórios',

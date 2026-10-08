@@ -231,6 +231,46 @@ function AssinaturaDialog({
   );
 }
 
+/* ── Plano do cliente ───────────────────────────────────────────
+   O plano é a tabela; a mensalidade do cliente é a da ficha (pode ter
+   desconto). Trocar o plano aqui não mexe na cobrança do Asaas. */
+function PlanoDoCliente({ client }: { client: Client }) {
+  const { data: planos = [] } = usePlans();
+  const update = useUpdateClient();
+  const plano = planos.find((p) => p.id === client.plan_id);
+  const trocar = async (id: string) => {
+    const escolhido = planos.find((p) => p.id === id) ?? null;
+    try {
+      await update.mutateAsync({ id: client.id, plan_id: escolhido?.id ?? null, plan: escolhido?.name ?? null });
+      toast.success(escolhido ? `Plano ${escolhido.name}` : 'Plano removido');
+    } catch {
+      toast.error('Não consegui trocar o plano');
+    }
+  };
+  const diferente = plano && client.mrr != null && Number(client.mrr) !== Number(plano.monthly_value);
+  return (
+    <div className="rounded-2xl border border-black/[0.07] dark:border-white/[0.08] p-4 flex items-center gap-3">
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] text-foreground/40">Plano</p>
+        <select
+          className="mt-1 w-full h-9 px-2.5 rounded-lg bg-background border border-black/[0.1] dark:border-white/[0.1] text-[13px] text-foreground focus:outline-none focus:border-primary/50"
+          value={client.plan_id ?? ''}
+          onChange={(e) => trocar(e.target.value)}
+          disabled={update.isPending}
+        >
+          <option value="">Sem plano</option>
+          {planos.map((p) => <option key={p.id} value={p.id}>{p.name} — {brlFull(p.monthly_value)}/mês</option>)}
+        </select>
+        {diferente && (
+          <p className="text-[10.5px] text-foreground/40 mt-1.5">
+            Mensalidade deste cliente: {brlFull(Number(client.mrr))} (o plano custa {brlFull(plano!.monthly_value)}).
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── Dialog: configurar cobrança ────────────────────────────── */
 function PaymentDialog({
   client, onDone, onClose,
@@ -899,6 +939,8 @@ export default function ClienteDetalhe() {
               </div>
               <ChevronRight className="h-4 w-4 text-foreground/30 shrink-0" />
             </button>
+
+            <PlanoDoCliente client={client} />
 
             <div>
               <SectionHeader
