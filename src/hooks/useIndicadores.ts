@@ -44,6 +44,10 @@ export function useIndicadores(): Record<string, Indicador> {
     );
     const valorAtrasado = atrasados.reduce((s, p) => s + (p.amount ?? 0), 0);
 
+    const aReceber = pagamentos
+      .filter((p) => p.status === 'pendente' && p.due_date >= hoje)
+      .reduce((s, p) => s + (p.amount ?? 0), 0);
+
     const abertos = chamados.filter((t) => t.status !== 'resolvido').length;
 
     const proximas = reunioes.filter(
@@ -74,6 +78,7 @@ export function useIndicadores(): Record<string, Indicador> {
         rotulo: valorAtrasado > 0 ? `em atraso · ${atrasados.length} ${atrasados.length === 1 ? 'fatura' : 'faturas'}` : 'nenhuma fatura atrasada',
         alerta: valorAtrasado > 0,
       },
+      receber: { valor: brl(aReceber), rotulo: 'a receber' },
       caixa: {
         valor: `${vencidos}`,
         rotulo: vencidos === 1 ? 'lançamento vencido' : 'lançamentos vencidos',

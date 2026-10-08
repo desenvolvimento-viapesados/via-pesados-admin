@@ -11,11 +11,11 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   useClient, useUpdateClient, useOnboardingTasks, useToggleTask,
-  useContracts, useCreateContract, usePayments, useCreatePayment,
+  useContracts, useCreateContract, useUpdateContract, usePayments, useCreatePayment,
   useActivities, useCreateActivity,
   provisionCompany, adotarAmostra, useDemos, useUpdateDemo, updateCompanyBranding, uploadLogo, slugify, genPassword,
   setCompanyChannels,
-  brlFull, brl, type Client, type OnboardingTask,
+  brlFull, brl, type Client, type OnboardingTask, type Contract,
   usePlans, useCriarAssinaturaAsaas, useClientUsage, auditarAnuncios,
 } from '@/hooks/useAdmin';
 import {
@@ -148,6 +148,82 @@ function ContractDialog({
           >
             {create.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
             Registrar contrato
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ── Dialog: contrato assinado ──────────────────────────────────
+   O contrato nascia como rascunho e nunca mudava: a etapa "Contrato
+   assinado" da ficha e o tempo de entrega dos relatórios dependem de
+   `clients.contract_signed_at`, que nenhuma tela carimbava. */
+const hojeISO = () => new Date().toISOString().slice(0, 10);
+
+function AssinaturaDialog({
+  client, contrato, onClose,
+}: {
+  client: Client;
+  contrato: Contract;
+  onClose: () => void;
+}) {
+  const atualizar = useUpdateContract();
+  const atualizarCliente = useUpdateClient();
+  const [data, setData] = useState(hojeISO());
+  const [arquivo, setArquivo] = useState(contrato.file_url ?? '');
+
+  const salvar = async () => {
+    if (!data || data > hojeISO()) {
+      toast.error('Informe a data em que o contrato foi assinado (hoje ou antes).');
+      return;
+    }
+    const assinadoEm = new Date(`${data}T12:00:00`).toISOString();
+    try {
+      await atualizar.mutateAsync({
+        id: contrato.id,
+        status: 'assinado',
+        signed_at: assinadoEm,
+        sent_at: contrato.sent_at ?? assinadoEm,
+        file_url: arquivo.trim() || null,
+      });
+      /* A ficha guarda a PRIMEIRA assinatura: um aditivo assinado depois
+         não muda quando o cliente fechou. */
+      const atual = client.contract_signed_at;
+      if (!atual || assinadoEm < atual) {
+        await atualizarCliente.mutateAsync({ id: client.id, contract_signed_at: assinadoEm });
+      }
+      toast.success('Contrato marcado como assinado');
+      onClose();
+    } catch {
+      toast.error('Não consegui salvar. Tente de novo.');
+    }
+  };
+
+  const salvando = atualizar.isPending || atualizarCliente.isPending;
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md bg-background border-black/[0.1] dark:border-white/[0.1] rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-[15px] font-semibold">Contrato assinado</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 pt-1">
+          <p className="text-[12px] text-foreground/50 leading-snug">{contrato.title}</p>
+          <label className="block space-y-1">
+            <span className="text-[11px] text-foreground/45">Assinado em</span>
+            <input className={inputCls} type="date" max={hojeISO()} value={data} onChange={(e) => setData(e.target.value)} />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-[11px] text-foreground/45">Link do contrato assinado (opcional)</span>
+            <input className={inputCls} placeholder="Drive, Docusign, Clicksign…" value={arquivo} onChange={(e) => setArquivo(e.target.value)} />
+          </label>
+          <button
+            onClick={salvar}
+            disabled={salvando}
+            className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {salvando && <Loader2 className="h-4 w-4 animate-spin" />}
+            Marcar como assinado
           </button>
         </div>
       </DialogContent>
@@ -381,6 +457,7 @@ export default function ClienteDetalhe() {
   const { data: client, isLoading } = useClient(id);
   const { data: tasks = [] } = useOnboardingTasks(id);
   const { data: contracts = [] } = useContracts(id);
+  const [assinando, setAssinando] = useState<Contract | null>(null);
   const { data: payments = [] } = usePayments(id);
   const { data: activities = [] } = useActivities({ clientId: id });
 
@@ -697,9 +774,12 @@ export default function ClienteDetalhe() {
                 {etapasAbertas.map((e) => {
                   /* As etapas que se resolvem aqui mesmo abrem o diálogo
                      delas. O de domínio existia e nunca era aberto. */
+                  const pendente = contracts.find((c) => c.status === 'rascunho' || c.status === 'enviado');
                   const resolver =
                     e.chave === 'dominio_conectado' && client.lojista_company_id ? () => setDialog('dominio_conectado')
                     : e.chave === 'sistema_criado' ? () => setDialog('sistema_criado')
+                    : e.chave === 'contrato_assinado'
+                      ? (pendente ? () => setAssinando(pendente) : () => setDialog('contrato_gerado'))
                     : null;
                   const Linha = resolver ? 'button' : 'div';
                   return (
@@ -877,8 +957,19 @@ export default function ClienteDetalhe() {
                       <FileText className="h-3.5 w-3.5 text-foreground/30 shrink-0" />
                       <div className="min-w-0 flex-1">
                         <p className="text-[12px] font-medium text-foreground truncate">{c.title}</p>
-                        <p className="text-[10.5px] text-foreground/35">{brlFull(c.value)} · {c.recurrence}</p>
+                        <p className="text-[10.5px] text-foreground/35">
+                          {brlFull(c.value)} · {c.recurrence}
+                          {c.status === 'assinado' && c.signed_at && ` · assinado em ${new Date(c.signed_at).toLocaleDateString('pt-BR')}`}
+                        </p>
                       </div>
+                      {(c.status === 'rascunho' || c.status === 'enviado') && (
+                        <button
+                          onClick={() => setAssinando(c)}
+                          className="text-[11px] font-semibold text-primary hover:opacity-70 shrink-0"
+                        >
+                          Assinado?
+                        </button>
+                      )}
                       {c.file_url && (
                         <a href={c.file_url} target="_blank" rel="noopener noreferrer" className="text-foreground/30 hover:text-primary">
                           <ExternalLink className="h-3.5 w-3.5" />
@@ -995,6 +1086,7 @@ export default function ClienteDetalhe() {
       )}
 
       {/* ── Dialogs de etapa ──────────────────────────────────── */}
+      {assinando && <AssinaturaDialog client={client} contrato={assinando} onClose={() => setAssinando(null)} />}
       {dialog === 'contrato_gerado' && (
         <ContractDialog client={client} onDone={() => markTask('contrato_gerado')} onClose={() => setDialog(null)} />
       )}

@@ -69,9 +69,10 @@ export const SECOES: Secao[] = [
     titulo: 'Financeiro',
     descricao: 'O que entra, o que sai e o que está atrasado',
     icone: Wallet,
-    rotas: ['/pagamentos', '/financeiro'],
+    rotas: ['/pagamentos', '/financeiro', '/inadimplencia'],
     subsecoes: [
-      { chave: 'recebimentos', titulo: 'Recebimentos', descricao: 'As mensalidades dos clientes: pago, a receber e atrasado', rota: '/pagamentos', icone: CreditCard, indicador: 'atraso' },
+      { chave: 'inadimplencia', titulo: 'Inadimplência', descricao: 'Quem está devendo, há quanto tempo e o que já foi avisado', rota: '/inadimplencia', icone: AlertTriangle, indicador: 'atraso' },
+      { chave: 'recebimentos', titulo: 'Recebimentos', descricao: 'As mensalidades dos clientes: pago, a receber e atrasado', rota: '/pagamentos', icone: CreditCard, indicador: 'receber' },
       { chave: 'caixa', titulo: 'Caixa da Via Pesados', descricao: 'Entradas, saídas e vencimentos da empresa', rota: '/financeiro', icone: Landmark, indicador: 'caixa' },
     ],
   },
