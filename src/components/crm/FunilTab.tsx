@@ -1,14 +1,15 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Trophy, XCircle, Loader2, Phone, MapPin, CalendarPlus, MonitorPlay, MessageCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
-  useProspects, useCreateProspect, useUpdateProspect, useChannels,
+  useProspects, useCreateProspect, useUpdateProspect, useChannels, useDemos,
   brl, type Prospect, type ProspectStage,
 } from '@/hooks/useAdmin';
+import { FUNIS, ehFunil, funilDoCanal, rotuloDoFunil, type ChaveDoFunil } from '@/lib/funis';
 import { AgendarReuniaoDialog } from './AgendarReuniaoDialog';
 import { CidadeUF } from './CidadeUF';
 import { mascaraTelefone, soDigitos, mascaraMoeda, valorDaMoeda } from '@/lib/mascaras';
@@ -27,7 +28,7 @@ const inputCls =
   'w-full h-10 px-3 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50 transition-colors';
 
 /* ── Novo prospect ──────────────────────────────────────────── */
-function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function NewProspectDialog({ open, onClose, funilInicial }: { open: boolean; onClose: () => void; funilInicial: ChaveDoFunil }) {
   const { member } = useAuth();
   const create = useCreateProspect();
   const { data: canais = [] } = useChannels();
@@ -35,6 +36,16 @@ function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => vo
     company_name: '', contact_name: '', whatsapp: '',
     city: '', state: '', channel_id: '', source: '', proposal_value: '',
   });
+  /* O funil abre no que está na tela; escolher o canal sugere o funil dele
+     (Instagram → Anúncios, Indicação → Indicação) até alguém trocar à mão. */
+  const [funil, setFunil] = useState<ChaveDoFunil>(funilInicial);
+  const [funilEscolhido, setFunilEscolhido] = useState(false);
+  useEffect(() => { if (open) { setFunil(funilInicial); setFunilEscolhido(false); } }, [open, funilInicial]);
+  useEffect(() => {
+    if (funilEscolhido || !form.channel_id) return;
+    const canal = canais.find((c) => c.id === form.channel_id);
+    if (canal && funilInicial === 'fria') setFunil(funilDoCanal(canal.slug));
+  }, [form.channel_id, canais, funilEscolhido, funilInicial]);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -66,6 +77,7 @@ function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => vo
         city: form.city || null,
         state: form.state || null,
         channel_id: form.channel_id,
+        funil,
         source: form.source || null,
         proposal_value: valorDaMoeda(form.proposal_value),
         owner_id: member?.id ?? null,
@@ -95,10 +107,15 @@ function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => vo
             cidade={form.city}
             onChange={({ uf, cidade }) => setForm((f) => ({ ...f, state: uf, city: cidade }))}
           />
-          <select className={inputCls} value={form.channel_id} onChange={(e) => set('channel_id', e.target.value)}>
-            <option value="">Por onde chegou? *</option>
-            {canais.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          <div className="grid grid-cols-2 gap-2.5">
+            <select className={inputCls} value={form.channel_id} onChange={(e) => set('channel_id', e.target.value)}>
+              <option value="">Por onde chegou? *</option>
+              {canais.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <select className={inputCls} value={funil} onChange={(e) => { setFunil(e.target.value as ChaveDoFunil); setFunilEscolhido(true); }}>
+              {FUNIS.map((f) => <option key={f.chave} value={f.chave}>Funil: {f.rotulo}</option>)}
+            </select>
+          </div>
           <div className="grid grid-cols-2 gap-2.5">
             <input className={inputCls} placeholder="Mensalidade (R$)" inputMode="numeric" value={form.proposal_value} onChange={(e) => set('proposal_value', mascaraMoeda(e.target.value))} />
             <input className={inputCls} placeholder="Detalhe: campanha, quem indicou…" value={form.source} onChange={(e) => set('source', e.target.value)} />
@@ -120,10 +137,38 @@ function NewProspectDialog({ open, onClose }: { open: boolean; onClose: () => vo
 /* ── Aba ────────────────────────────────────────────────────── */
 export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew: () => void }) {
   const navigate = useNavigate();
-  const { data: prospects = [], isLoading } = useProspects();
+  const { data: todos = [], isLoading } = useProspects();
+  const { data: amostras = [] } = useDemos();
   const update = useUpdateProspect();
   const [reuniaoPara, setReuniaoPara] = useState<Prospect | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+
+  /* Qual funil está na tela: ?funil=fria|anuncios|indicacao, ou todos. */
+  const [params, setParams] = useSearchParams();
+  const funilAtual: ChaveDoFunil | 'todos' = ehFunil(params.get('funil')) ? (params.get('funil') as ChaveDoFunil) : 'todos';
+  const escolherFunil = (f: ChaveDoFunil | 'todos') => {
+    const novo = new URLSearchParams(params);
+    if (f === 'todos') novo.delete('funil'); else novo.set('funil', f);
+    setParams(novo, { replace: true });
+  };
+
+  const prospects = useMemo(
+    () => (funilAtual === 'todos' ? todos : todos.filter((p) => (p.funil ?? 'fria') === funilAtual)),
+    [todos, funilAtual],
+  );
+  /* Contagem e valor de cada funil, só dos que estão andando (não vendido). */
+  const resumo = useMemo(() => {
+    const ativos = todos.filter((p) => p.stage === 'contato' || p.stage === 'oportunidade' || p.stage === 'reuniao');
+    const de = (f?: ChaveDoFunil) => {
+      const l = f ? ativos.filter((p) => (p.funil ?? 'fria') === f) : ativos;
+      return { qtd: l.length, valor: l.reduce((s, p) => s + (p.proposal_value ?? 0), 0) };
+    };
+    return { todos: de(), fria: de('fria'), anuncios: de('anuncios'), indicacao: de('indicacao') };
+  }, [todos]);
+  const comAmostra = useMemo(
+    () => new Set(amostras.filter((a) => a.prospect_id && a.status !== 'descartada').map((a) => a.prospect_id!)),
+    [amostras],
+  );
 
   const byStage = useMemo(() => {
     const map: Record<string, Prospect[]> = {};
@@ -172,8 +217,38 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
     );
   }
 
+  const OPCOES: { chave: ChaveDoFunil | 'todos'; rotulo: string }[] = [
+    { chave: 'todos', rotulo: 'Todos' },
+    ...FUNIS,
+  ];
+
   return (
     <>
+      {/* Os três funis, separados, e o "Todos" que junta. */}
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+        {OPCOES.map(({ chave, rotulo }) => {
+          const r = resumo[chave];
+          const ativo = funilAtual === chave;
+          return (
+            <button
+              key={chave}
+              onClick={() => escolherFunil(chave)}
+              className={cn(
+                'shrink-0 rounded-xl border px-3.5 py-2 text-left transition-colors',
+                ativo
+                  ? 'border-primary/40 bg-primary/10'
+                  : 'border-black/[0.07] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.02] hover:bg-black/[0.04] dark:hover:bg-white/[0.05]',
+              )}
+            >
+              <p className={cn('text-[12.5px] font-semibold leading-tight', ativo ? 'text-primary' : 'text-foreground/80')}>{rotulo}</p>
+              <p className="text-[10.5px] text-foreground/40 mt-0.5 tabular-nums">
+                {r.qtd} {r.qtd === 1 ? 'prospect' : 'prospects'}{r.valor > 0 ? ` · ${brl(r.valor)}/mês` : ''}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="overflow-x-auto pb-4">
         <div className="flex gap-3 min-w-max">
           {PIPELINE.map(({ key, label }) => {
@@ -212,6 +287,20 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
                     >
                       <p className="text-[12.5px] font-semibold text-foreground leading-tight">{p.company_name}</p>
                       {p.contact_name && <p className="text-[11px] text-foreground/45 mt-0.5">{p.contact_name}</p>}
+                      {(funilAtual === 'todos' || comAmostra.has(p.id)) && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {funilAtual === 'todos' && (
+                            <span className="text-[9.5px] font-medium rounded-full px-1.5 py-px bg-black/[0.05] dark:bg-white/[0.07] text-foreground/50">
+                              {rotuloDoFunil(p.funil)}
+                            </span>
+                          )}
+                          {comAmostra.has(p.id) && (
+                            <span className="text-[9.5px] font-medium rounded-full px-1.5 py-px bg-primary/10 text-primary inline-flex items-center gap-0.5">
+                              <MonitorPlay className="h-2.5 w-2.5" /> amostra
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <div className="flex items-center justify-between mt-2">
                         <p className="text-[11.5px] font-semibold text-primary tabular-nums">
                           {p.proposal_value ? `${brl(p.proposal_value)}/mês` : '—'}
@@ -232,7 +321,7 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
         </div>
       </div>
 
-      <NewProspectDialog open={newOpen} onClose={onCloseNew} />
+      <NewProspectDialog open={newOpen} onClose={onCloseNew} funilInicial={funilAtual === 'todos' ? 'fria' : funilAtual} />
       {reuniaoPara && (
         <AgendarReuniaoDialog
           prospect={reuniaoPara}

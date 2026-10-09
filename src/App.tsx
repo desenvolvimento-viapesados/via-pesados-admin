@@ -26,7 +26,6 @@ const Cobranca       = lazy(() => import('@/pages/Cobranca'));
 const Onboarding     = lazy(() => import('@/pages/Onboarding'));
 const Whatsapp       = lazy(() => import('@/pages/Whatsapp'));
 const Metas          = lazy(() => import('@/pages/Metas'));
-const Inadimplencia  = lazy(() => import('@/pages/Inadimplencia'));
 const Planos         = lazy(() => import('@/pages/Planos'));
 const Saude          = lazy(() => import('@/pages/Saude'));
 
@@ -102,7 +101,7 @@ const Gate = () => {
           <Route path="/clientes/:id/onboarding" element={<Onboarding />} />
           <Route path="/pagamentos"    element={<Pagamentos />} />
           <Route path="/financeiro"    element={<Financeiro />} />
-          <Route path="/inadimplencia" element={<Inadimplencia />} />
+          <Route path="/inadimplencia" element={<Navigate to="/pagamentos?aba=inadimplencia" replace />} />
           <Route path="/planos"        element={<Planos />} />
           <Route path="/saude"         element={<Saude />} />
           <Route path="/tickets"       element={<Tickets />} />
@@ -114,7 +113,7 @@ const Gate = () => {
           {/* rotas antigas — agora vivem dentro do CRM */}
           <Route path="/funil"     element={<Navigate to="/crm?tab=funil" replace />} />
           <Route path="/reunioes"  element={<Navigate to="/crm?tab=reunioes" replace />} />
-          <Route path="/amostras"  element={<Navigate to="/crm?tab=amostras" replace />} />
+          <Route path="/amostras"  element={<Navigate to="/crm?tab=funil" replace />} />
         </Routes>
       </Suspense>
     </Layout>

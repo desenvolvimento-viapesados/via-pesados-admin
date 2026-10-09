@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Users, DollarSign, CreditCard, MessageSquare, BarChart3, ChevronRight,
   UserCheck, LogOut, Sun, Moon, ExternalLink, Target,
-  AlertTriangle, Layers, Radio, HeartPulse,
+  Layers, HeartPulse,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
@@ -83,8 +83,8 @@ export default function Home() {
   const { data: clientes = [] } = useClients();
   const { data: pagamentos = [] } = usePayments();
   const dinheiro = useMemo(() => mrrDaCarteira(clientes, pagamentos), [clientes, pagamentos]);
-  /* Quantos clientes estão com fatura vencida — o número do botão de
-     Inadimplência, como o de chamados abertos no Suporte. */
+  /* Quantos clientes estão com fatura vencida — o número no botão de
+     Pagamentos, como o de chamados abertos no Suporte. */
   const devendo = useMemo(
     () => inadimplentes(pagamentos, clientes, [], new Date().toISOString().slice(0, 10)).length,
     [clientes, pagamentos],
@@ -219,15 +219,13 @@ export default function Home() {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <ModuleTile label="Clientes"      description="Carteira e contas"              icon={<Users />}         onClick={() => navigate('/clientes')} />
-            <ModuleTile label="Pagamentos"    description="Cobranças e recebimentos"       icon={<CreditCard />}    onClick={() => navigate('/pagamentos')} />
-            <ModuleTile label="Inadimplência" description="Quem está devendo e há quanto"  icon={<AlertTriangle />} onClick={() => navigate('/inadimplencia')} badge={devendo} />
+            <ModuleTile label="Pagamentos"    description="Cobranças e inadimplência"      icon={<CreditCard />}    onClick={() => navigate('/pagamentos')} badge={devendo} />
             <ModuleTile label="Financeiro"    description="Entradas, saídas e vencimentos" icon={<DollarSign />}    onClick={() => navigate('/financeiro')} />
             <ModuleTile label="Planos"        description="Planos e preços"                icon={<Layers />}        onClick={() => navigate('/planos')} />
             <ModuleTile label="Suporte"       description="Chamados dos clientes"          icon={<MessageSquare />} onClick={() => navigate('/tickets')} badge={openTickets} />
             <ModuleTile label="Relatórios"    description="Recorrência, funil e caixa"     icon={<BarChart3 />}     onClick={() => navigate('/relatorios')} />
             <ModuleTile label="Metas"         description="Norte, OKR e horizonte"         icon={<Target />}        onClick={() => navigate('/metas')} />
             <ModuleTile label="Equipe"        description="Membros e acessos"              icon={<UserCheck />}     onClick={() => navigate('/equipe')} />
-            <ModuleTile label="Canal oficial" description="WhatsApp dos avisos automáticos" icon={<Radio />}        onClick={() => navigate('/whatsapp')} />
             <ModuleTile label="Saúde"         description="Se a plataforma está no ar"     icon={<HeartPulse />}    onClick={() => navigate('/saude')} />
           </div>
         </div>

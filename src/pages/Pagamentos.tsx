@@ -1,12 +1,48 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import Inadimplencia from '@/pages/Inadimplencia';
 import { CreditCard, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { usePayments, useUpdatePayment, brlFull, type Payment } from '@/hooks/useAdmin';
 import { StatusBadge, EmptyState, Panel, Kpi } from '@/components/admin/ui';
 
+/* Duas abas: as cobranças (todas) e a inadimplência (quem está devendo,
+   com o último aviso e o link da fatura). A inadimplência era um módulo
+   próprio na Home; o dono preferiu aqui dentro. */
 export default function Pagamentos() {
+  const [params, setParams] = useSearchParams();
+  const aba = params.get('aba') === 'inadimplencia' ? 'inadimplencia' : 'cobrancas';
+  const trocar = (a: 'cobrancas' | 'inadimplencia') =>
+    setParams(a === 'cobrancas' ? {} : { aba: a }, { replace: true });
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-[22px] font-bold tracking-tight text-foreground">Pagamentos</h1>
+        <p className="text-[12px] text-foreground/40 mt-0.5">Cobranças, recebimentos e quem está devendo</p>
+      </div>
+      <div className="flex gap-1 border-b border-black/[0.06] dark:border-white/[0.06]">
+        {([['cobrancas', 'Cobranças'], ['inadimplencia', 'Inadimplência']] as const).map(([k, rotulo]) => (
+          <button
+            key={k}
+            onClick={() => trocar(k)}
+            className={cn(
+              'relative h-10 px-3.5 text-[12.5px] transition-colors',
+              aba === k ? 'text-foreground font-semibold' : 'text-foreground/45 font-medium hover:text-foreground/75',
+            )}
+          >
+            {rotulo}
+            <span className={cn('absolute inset-x-2.5 -bottom-px h-[3px] rounded-full', aba === k ? 'bg-primary' : 'bg-transparent')} />
+          </button>
+        ))}
+      </div>
+      {aba === 'cobrancas' ? <Cobrancas /> : <Inadimplencia embutida />}
+    </div>
+  );
+}
+
+function Cobrancas() {
   const navigate = useNavigate();
   const { data: payments = [], isLoading } = usePayments();
   const update = useUpdatePayment();
@@ -57,10 +93,6 @@ export default function Pagamentos() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-[22px] font-bold tracking-tight text-foreground">Pagamentos</h1>
-        <p className="text-[12px] text-foreground/40 mt-0.5">Cobranças e recebimentos dos clientes</p>
-      </div>
 
       <div className="grid grid-cols-3 gap-3">
         <Kpi label="Recebido no mês" value={brlFull(stats.received)} accent="text-emerald-500" />

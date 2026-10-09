@@ -1,6 +1,7 @@
+import { useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Loader2, Send, Search, Plus, QrCode, RefreshCw, ChevronDown, Check, Settings2,
+  Loader2, Send, Search, Plus, QrCode, RefreshCw, ChevronDown, Check, Settings2, Radio,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -286,6 +287,7 @@ function SeletorDeNumero({
   onNovo: () => void;
   onConectar: (i: Instancia) => void;
 }) {
+  const navigate = useNavigate();
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
 
@@ -330,6 +332,17 @@ function SeletorDeNumero({
             );
           })}
           <div className="h-px bg-black/[0.06] dark:bg-white/[0.06] my-1.5 mx-3" />
+          {/* O canal oficial (avisos automáticos, modelos, diagnóstico) mora
+              aqui, junto dos outros números — todo WhatsApp fica no CRM. */}
+          <button
+            onClick={() => { setAberto(false); navigate('/whatsapp'); }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors"
+          >
+            <span className="h-8 w-8 rounded-full bg-black/[0.05] dark:bg-white/[0.07] flex items-center justify-center shrink-0">
+              <Radio className="h-3.5 w-3.5 text-foreground/40" />
+            </span>
+            <span className="text-[13.5px] text-foreground/50">Canal oficial: modelos e diagnóstico</span>
+          </button>
           <button
             onClick={() => { onNovo(); setAberto(false); }}
             className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors"

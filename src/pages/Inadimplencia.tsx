@@ -34,7 +34,7 @@ function useAvisosDeCobranca() {
   });
 }
 
-export default function Inadimplencia() {
+export default function Inadimplencia({ embutida = false }: { embutida?: boolean }) {
   const navigate = useNavigate();
   const { data: clientes = [], isLoading: c1 } = useClients();
   const { data: faturas = [], isLoading: c2 } = usePayments();
@@ -65,10 +65,12 @@ export default function Inadimplencia() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-[22px] font-bold tracking-tight text-foreground">Inadimplência</h1>
-        <p className="text-[12px] text-foreground/40 mt-0.5">Quem está devendo, há quanto tempo e o que já foi avisado</p>
-      </div>
+      {!embutida && (
+        <div>
+          <h1 className="text-[22px] font-bold tracking-tight text-foreground">Inadimplência</h1>
+          <p className="text-[12px] text-foreground/40 mt-0.5">Quem está devendo, há quanto tempo e o que já foi avisado</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-3">
         <Kpi label="Em atraso" value={brlFull(total)} accent={total > 0 ? 'text-red-400' : 'text-emerald-500'} />

@@ -1,23 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Kanban, CalendarDays, MonitorPlay, Rocket } from 'lucide-react';
+import { ArrowLeft, Plus, Kanban, CalendarDays, Rocket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useCrmCounts, brl } from '@/hooks/useAdmin';
 import { FunilTab } from '@/components/crm/FunilTab';
 import { ReunioesTab } from '@/components/crm/ReunioesTab';
-import { AmostrasTab } from '@/components/crm/AmostrasTab';
 import { ConexaoTab } from '@/components/crm/ConexaoTab';
 import { WhatsAppTab } from '@/components/crm/WhatsAppTab';
 import viaPesadosLogoLight from '@/assets/via-pesados-icon-color.png';
 import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
 
-type TabKey = 'whatsapp' | 'funil' | 'reunioes' | 'amostras' | 'conexao';
+type TabKey = 'whatsapp' | 'funil' | 'reunioes' | 'conexao';
 
 /**
- * As abas do CRM. Reuniões, Amostras e Implantação tinham saído da barra (o
- * funil ganhou a coluna Reunião e a conexão nasce do Vendido), mas as telas
- * continuavam no código sem caminho; voltaram em 2026-10-08.
+ * As abas do CRM. A amostra não tem aba: mora na ficha do prospect (clicar
+ * no card do funil), onde se cria, edita e apresenta — o card mostra o selo
+ * "amostra" de quem já tem.
  */
 /* A marca do WhatsApp em traço único, com fill currentColor: assim ela
    acende em laranja com a aba ativa e apaga com as outras, como todo ícone
@@ -37,7 +36,6 @@ const TABS: { key: TabKey; label: string; newLabel: string; icon: IconeDaAba }[]
   { key: 'whatsapp', label: 'WhatsApp', newLabel: 'Número',   icon: IconeWhatsApp },
   { key: 'funil',    label: 'Funil',    newLabel: 'Prospect', icon: Kanban },
   { key: 'reunioes', label: 'Reuniões', newLabel: 'Reunião',  icon: CalendarDays },
-  { key: 'amostras', label: 'Amostras', newLabel: 'Amostra',  icon: MonitorPlay },
   { key: 'conexao',  label: 'Implantação', newLabel: 'Venda', icon: Rocket },
 ];
 
@@ -161,7 +159,6 @@ export default function Crm() {
         {tab === 'whatsapp' && <WhatsAppTab newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'funil'    && <FunilTab    newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'reunioes' && <ReunioesTab newOpen={newOpen} onCloseNew={closeNew} defaultProspectId={defaultProspect} />}
-        {tab === 'amostras' && <AmostrasTab newOpen={newOpen} onCloseNew={closeNew} defaultProspectId={defaultProspect} />}
         {tab === 'conexao'  && <ConexaoTab  newOpen={newOpen} onCloseNew={closeNew} />}
       </main>
     </div>

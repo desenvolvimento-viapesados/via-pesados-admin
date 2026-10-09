@@ -17,6 +17,8 @@ export interface Prospect {
   /** Detalhe livre: a campanha, quem indicou, qual feira. A CATEGORIA é channel_id. */
   source: string | null;
   channel_id: string | null;
+  /** Prospecção fria, anúncios ou indicação (lib/funis.ts). */
+  funil: 'fria' | 'anuncios' | 'indicacao';
   stage: ProspectStage;
   proposal_value: number | null;
   plan: string | null;

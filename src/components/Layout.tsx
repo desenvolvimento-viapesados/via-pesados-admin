@@ -13,7 +13,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/tickets':    'Suporte',
   '/equipe':     'Equipe',
   '/relatorios': 'Relatórios',
-  '/whatsapp':   'WhatsApp',
+  '/whatsapp':   'Canal oficial do WhatsApp',
   '/metas':      'Metas',
   '/inadimplencia': 'Inadimplência',
   '/planos':     'Planos e preços',
@@ -27,6 +27,8 @@ function voltarDe(pathname: string): { para: string; rotulo: string } {
   const sub = pathname.match(/^\/clientes\/([^/]+)\/(cobranca|onboarding)/);
   if (sub) return { para: `/clientes/${sub[1]}`, rotulo: 'Cliente' };
   if (/^\/clientes\/[^/]+$/.test(pathname)) return { para: '/clientes', rotulo: 'Clientes' };
+  // O canal oficial é aberto pelo WhatsApp do CRM e volta para lá.
+  if (pathname === '/whatsapp') return { para: '/crm?tab=whatsapp', rotulo: 'CRM' };
   return { para: '/', rotulo: 'Início' };
 }
 
