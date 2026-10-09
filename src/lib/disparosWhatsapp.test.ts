@@ -47,6 +47,17 @@ const GATILHOS: Record<string, Parameters<typeof conferirParams>[1]> = {
     body: ['Walker', 'iTruck Caminhões'],
     urlSuffix: 'convite123',
   },
+  cobranca_risco_suspensao: {
+    body: ['Walker', 'outubro', 'R$ 10,00', '14/10/2026', '16/10'],
+    urlSuffix: 'tok123',
+  },
+  painel_suspenso: {
+    body: ['Walker', 'iTruck Caminhões', 'outubro'],
+    urlSuffix: 'tok123',
+  },
+  painel_suspenso_tempo: { body: ['Walker'], urlSuffix: 'tok123' },
+  painel_suspenso_equipe: { body: ['Walker'], urlSuffix: 'tok123' },
+  painel_liberado: { body: ['Walker', 'iTruck Caminhões'] },
   nota_fiscal_emitida: {
     documento: { link: 'https://exemplo/nf.pdf', filename: 'NFS-e 1 — Via Pesados.pdf' },
     body: ['Walker', 'setembro', '1', 'R$ 10,00'],

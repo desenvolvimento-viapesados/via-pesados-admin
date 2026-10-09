@@ -1,4 +1,4 @@
-/* Os 11 modelos aprovados, como estavam na WABA 2088077995129091 antes de a
+/* Os 11 modelos originais (mais os 5 da régua de suspensão, no fim), como estavam na WABA 2088077995129091 antes de a
    Meta desabilitá-la em 14/09/2026.
    
    Existem aqui porque template pertence a uma WABA e não migra junto com o
@@ -342,6 +342,157 @@ export const MODELOS: Modelo[] = [
       "url": "https://viapesados.com.br/lojista"
      }
     ]
+   }
+  ]
+ },
+ /* Régua de suspensão (09/10/2026): aviso de risco no dia seguinte ao vencimento,
+    painel suspenso, os dois de reconquista (tempo e equipe) e a liberação. */
+ {
+  "name": "cobranca_risco_suspensao",
+  "language": "pt_BR",
+  "category": "UTILITY",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Olá, {{1}}. A mensalidade de {{2}}, no valor de {{3}}, venceu em {{4}} e ainda está em aberto.\n\nVocê está correndo o risco de perder o acesso ao painel amanhã, {{5}}: sem ele, nada de cadastrar veículo, publicar nos canais ou acompanhar as negociações da sua equipe.\n\nPague pelo link abaixo. No Pix, leva segundos.",
+    "example": {
+     "body_text": [
+      [
+       "Walker",
+       "outubro",
+       "R$ 600,00",
+       "14/10/2026",
+       "16/10"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "URL",
+      "text": "Pagar agora",
+      "url": "https://viapesados.com.br/bemvindo/{{1}}",
+      "example": [
+       "https://viapesados.com.br/bemvindo/exemplo123"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "painel_suspenso",
+  "language": "pt_BR",
+  "category": "UTILITY",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Olá, {{1}}. O painel da {{2}} foi suspenso porque a mensalidade de {{3}} não foi paga.\n\nSeu site e seus anúncios continuam no ar, mas sem o painel não dá para cadastrar veículo, publicar nos canais nem acompanhar as negociações da equipe. Pagou, o painel volta na hora.",
+    "example": {
+     "body_text": [
+      [
+       "Walker",
+       "iTruck Caminhões",
+       "outubro"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "URL",
+      "text": "Pagar e liberar",
+      "url": "https://viapesados.com.br/bemvindo/{{1}}",
+      "example": [
+       "https://viapesados.com.br/bemvindo/exemplo123"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "painel_suspenso_tempo",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Olá, {{1}}. Sem o painel, cada veículo novo precisa ser anunciado na mão: no Facebook, no Instagram e no Mercado Livre, um por um.\n\nCom o painel, é um cadastro só e ele sai em todos. Regularize e volte a anunciar em minutos.",
+    "example": {
+     "body_text": [
+      [
+       "Walker"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "URL",
+      "text": "Regularizar",
+      "url": "https://viapesados.com.br/bemvindo/{{1}}",
+      "example": [
+       "https://viapesados.com.br/bemvindo/exemplo123"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "painel_suspenso_equipe",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Olá, {{1}}. Sem o painel, sua equipe volta a trabalhar cada um no seu WhatsApp: ninguém vê quem atendeu quem, o que foi combinado nem em que pé está cada negociação.\n\nRegularize a mensalidade e a equipe volta a trabalhar junta, no mesmo lugar.",
+    "example": {
+     "body_text": [
+      [
+       "Walker"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "URL",
+      "text": "Regularizar",
+      "url": "https://viapesados.com.br/bemvindo/{{1}}",
+      "example": [
+       "https://viapesados.com.br/bemvindo/exemplo123"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "painel_liberado",
+  "language": "pt_BR",
+  "category": "UTILITY",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Pronto, {{1}}: o pagamento foi confirmado e o painel da {{2}} já está liberado.\n\nÉ só entrar normalmente.",
+    "example": {
+     "body_text": [
+      [
+       "Walker",
+       "iTruck Caminhões"
+      ]
+     ]
+    }
    }
   ]
  }

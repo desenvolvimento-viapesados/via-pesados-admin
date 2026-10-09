@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { enviarTemplate, diaMes, brl, primeiroNome, mesDe, dataBR } from '../_shared/wa.ts';
+import { enviarTemplate, diaMes, brl, primeiroNome, mesDe, dataBR, modeloAprovado } from '../_shared/wa.ts';
 import { hojeBRT, somarDias, hojeEnviaMensalidade, passouDaTolerancia, DIAS_DE_TOLERANCIA } from '../_shared/regua.ts';
 import { statusNoAsaas } from '../_shared/ciclo.ts';
 import { pedirAoLojista, linkDePagamento } from '../_shared/licenca.ts';
@@ -33,7 +33,7 @@ type Cobranca = {
   asaas_payment_id: string | null; asaas_subscription_id: string | null;
 };
 type Cliente = {
-  id: string; contact_name: string | null; whatsapp: string | null; checkout_token: string | null;
+  id: string; contact_name: string | null; company_name: string | null; whatsapp: string | null; checkout_token: string | null;
   status: string; lojista_company_id: string | null; acesso_suspenso_em: string | null;
   acesso_liberado_ate: string | null;
 };
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
   const todos = [...new Set([...idsClientes, ...(suspensos ?? []).map((c: { id: string }) => c.id)])];
   const { data: clientes } = todos.length
     ? await db.from('clients')
-      .select('id, contact_name, whatsapp, checkout_token, status, lojista_company_id, acesso_suspenso_em, acesso_liberado_ate')
+      .select('id, contact_name, company_name, whatsapp, checkout_token, status, lojista_company_id, acesso_suspenso_em, acesso_liberado_ate')
       .in('id', todos)
     : { data: [] };
   const porId = new Map((clientes ?? []).map((c: Cliente) => [c.id, c]));
@@ -134,19 +134,59 @@ Deno.serve(async (req) => {
           venceu_em: vencida.due_date,
           link_pagamento: linkDePagamento(c.checkout_token),
         });
+        let aviso: unknown = null;
         if (r.ok) {
           await db.from('clients').update({ acesso_suspenso_em: new Date().toISOString() }).eq('id', cid);
           await db.from('activities').insert({
             client_id: cid, kind: 'nota',
             content: `Acesso ao sistema suspenso automaticamente: mensalidade de ${dataBR(vencida.due_date)} sem pagamento após ${DIAS_DE_TOLERANCIA} dias.`,
           });
+          if (await modeloAprovado('painel_suspenso')) {
+            aviso = await enviarTemplate(db, {
+              para: c.whatsapp,
+              template: 'painel_suspenso',
+              client_id: c.id,
+              chave: `suspenso:${vencida.asaas_payment_id ?? vencida.id}`,
+              params: {
+                body: [primeiroNome(c.contact_name), c.company_name ?? 'sua loja', mesDe(vencida.due_date)],
+                urlSuffix: c.checkout_token ?? '',
+              },
+              condicao: vencida.asaas_payment_id ? { tipo: 'cobranca_aberta', asaas_payment_id: vencida.asaas_payment_id } : null,
+            });
+          }
         }
-        resultados.push({ cliente: cid, etapa: 'corte', vence: vencida.due_date, ...r });
+        resultados.push({ cliente: cid, etapa: 'corte', vence: vencida.due_date, ...r, aviso });
       }
     }
   }
 
-  /* 4. Liberação: suspenso que não deve mais nada vencido além da tolerância. */
+  /* 3b. Reconquista — só com o painel suspenso e a fatura ainda aberta.
+     Fala do que o lojista perde sem o painel (tempo, equipe), nunca de
+     número que pode estar errado. 3 dias depois do vencimento, o tempo;
+     7 dias depois, a equipe. Uma vez cada, pela chave. */
+  for (const cid of idsClientes) {
+    const c = porId.get(cid);
+    if (!c?.acesso_suspenso_em || c.status === 'cancelado' || c.status === 'pausado') continue;
+    const vencida = (abertas ?? []).find((p: Cobranca) => p.client_id === cid && passouDaTolerancia(p.due_date, hoje));
+    if (!vencida) continue;
+    const etapa = hoje >= somarDias(vencida.due_date, 7) ? 'painel_suspenso_equipe'
+      : hoje >= somarDias(vencida.due_date, 3) ? 'painel_suspenso_tempo'
+      : null;
+    if (!etapa || !await modeloAprovado(etapa) || !await reconfere(vencida)) continue;
+    const r = await enviarTemplate(db, {
+      para: c.whatsapp,
+      template: etapa,
+      client_id: c.id,
+      chave: `${etapa}:${vencida.asaas_payment_id ?? vencida.id}`,
+      params: { body: [primeiroNome(c.contact_name)], urlSuffix: c.checkout_token ?? '' },
+      condicao: vencida.asaas_payment_id ? { tipo: 'cobranca_aberta', asaas_payment_id: vencida.asaas_payment_id } : null,
+    });
+    resultados.push({ cliente: cid, etapa, ...r });
+  }
+
+  /* 4. Liberação: suspenso que não deve mais nada vencido além da tolerância.
+     Sem mensagem: aqui a liberação pode não ter sido pagamento (fatura
+     cancelada, por exemplo) — "pagamento confirmado" seria mentira. */
   for (const s of suspensos ?? []) {
     const c = porId.get(s.id);
     if (!c?.lojista_company_id) continue;

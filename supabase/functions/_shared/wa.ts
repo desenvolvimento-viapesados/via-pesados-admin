@@ -26,7 +26,7 @@
  * `components` do template são idênticos.
  */
 
-import { configYCloud, enviarPorYCloud, ycloudPelaMetade } from './ycloud.ts';
+import { configYCloud, enviarPorYCloud, ycloudPelaMetade, listarTemplates } from './ycloud.ts';
 import { conferirParams } from './conferirParams.ts';
 import { dentroDaJanela, proximaAbertura } from './regua.ts';
 
@@ -102,6 +102,32 @@ export const primeiroNome = (n: string | null | undefined) =>
 
 function textos(vals: string[]) {
   return vals.map((t) => ({ type: 'text', text: String(t ?? '') }));
+}
+
+/* Os modelos aprovados na conta, lidos no máximo a cada 10 minutos. */
+let aprovadosEm = 0;
+let aprovados: Set<string> = new Set();
+
+/**
+ * O modelo já pode ser usado? Modelo em análise ou reprovado NÃO pode ir
+ * para enviarTemplate: a recusa grava erro em wa_envios, e a trava de
+ * repetição faria aquele evento nunca mais sair. Quem usa modelo novo
+ * pergunta aqui e, se ainda não foi aprovado, segue com o antigo.
+ * Na dúvida (YCloud fora), responde que não.
+ */
+export async function modeloAprovado(nome: string): Promise<boolean> {
+  if (Date.now() - aprovadosEm > 10 * 60 * 1000) {
+    const cfg = configYCloud();
+    try {
+      aprovados = cfg
+        ? new Set((await listarTemplates(cfg)).filter((t) => t.status === 'APPROVED').map((t) => t.name))
+        : new Set();
+      aprovadosEm = Date.now();
+    } catch {
+      return false;
+    }
+  }
+  return aprovados.has(nome);
 }
 
 /**
