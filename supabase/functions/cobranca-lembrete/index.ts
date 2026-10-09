@@ -14,8 +14,8 @@ import { pedirAoLojista, linkDePagamento } from '../_shared/licenca.ts';
  *  2. VENCE AMANHÃ: o lembrete da véspera.
  *     (No dia seguinte ao vencimento sai o lembrete brando, "em atraso",
  *     pelo webhook do Asaas.)
- *  2b. RISCO: no segundo dia, o aviso "você corre o risco de perder o
- *     acesso amanhã".
+ *  2b. RISCO: no segundo dia, o aviso "você está correndo o risco de
+ *     perder o painel e o site amanhã".
  *  3. CORTE: no terceiro dia sem pagamento sai TUDO do ar — painel e site
  *     (o site fica só com as duas logos; nada é apagado). Antes de cortar,
  *     pergunta ao Asaas: o nosso registro pode estar atrasado, e cortar
@@ -127,11 +127,11 @@ Deno.serve(async (req) => {
        ainda não foi cortado. {{5}} é o dia do corte. */
     const vespera = dele.find((p: Cobranca) => somarDias(p.due_date, DIAS_DE_TOLERANCIA - 1) === hoje);
     if (vespera && c.lojista_company_id && !c.acesso_suspenso_em
-        && await modeloAprovado('cobranca_risco_suspensao') && await reconfere(vespera)) {
+        && await modeloAprovado('cobranca_risco_corte') && await reconfere(vespera)) {
       const corte = somarDias(vespera.due_date, DIAS_DE_TOLERANCIA);
       const r = await enviarTemplate(db, {
         para: c.whatsapp,
-        template: 'cobranca_risco_suspensao',
+        template: 'cobranca_risco_corte',
         client_id: c.id,
         chave: `risco:${vespera.asaas_payment_id ?? vespera.id}`,
         params: {

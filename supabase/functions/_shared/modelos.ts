@@ -348,13 +348,13 @@ export const MODELOS: Modelo[] = [
  /* Régua de suspensão (09/10/2026): aviso de risco no dia seguinte ao vencimento,
     painel suspenso, os dois de reconquista (tempo e equipe) e a liberação. */
  {
-  "name": "cobranca_risco_suspensao",
+  "name": "cobranca_risco_corte",
   "language": "pt_BR",
   "category": "UTILITY",
   "components": [
    {
     "type": "BODY",
-    "text": "Olá, {{1}}. A mensalidade de {{2}}, no valor de {{3}}, venceu em {{4}} e ainda está em aberto.\n\nVocê está correndo o risco de perder o acesso ao painel amanhã, {{5}}: sem ele, nada de cadastrar veículo, publicar nos canais ou acompanhar as negociações da sua equipe.\n\nPague pelo link abaixo. No Pix, leva segundos.",
+    "text": "Olá, {{1}}. A mensalidade de {{2}}, no valor de {{3}}, venceu em {{4}} e ainda está em aberto.\n\nVocê está correndo o risco de perder o painel e o site amanhã, {{5}}: sem eles, nada de cadastrar veículo, publicar nos canais, acompanhar as negociações da equipe ou receber clientes pelo site.\n\nPague pelo link abaixo. No Pix, leva segundos.",
     "example": {
      "body_text": [
       [
@@ -362,7 +362,7 @@ export const MODELOS: Modelo[] = [
        "outubro",
        "R$ 600,00",
        "14/10/2026",
-       "16/10"
+       "17/10"
       ]
      ]
     }

@@ -47,8 +47,8 @@ const GATILHOS: Record<string, Parameters<typeof conferirParams>[1]> = {
     body: ['Walker', 'iTruck Caminhões'],
     urlSuffix: 'convite123',
   },
-  cobranca_risco_suspensao: {
-    body: ['Walker', 'outubro', 'R$ 10,00', '14/10/2026', '16/10'],
+  cobranca_risco_corte: {
+    body: ['Walker', 'outubro', 'R$ 10,00', '14/10/2026', '17/10'],
     urlSuffix: 'tok123',
   },
   loja_fora_do_ar: {
