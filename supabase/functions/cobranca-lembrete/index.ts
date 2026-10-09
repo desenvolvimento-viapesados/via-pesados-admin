@@ -160,6 +160,7 @@ Deno.serve(async (req) => {
           motivo: `mensalidade vencida em ${dataBR(vencida.due_date)} sem pagamento após ${DIAS_DE_TOLERANCIA} dias de tolerância`,
           venceu_em: vencida.due_date,
           link_pagamento: linkDePagamento(c.checkout_token),
+          valor: Number(vencida.amount),
         });
         let aviso: unknown = null;
         if (r.ok) {

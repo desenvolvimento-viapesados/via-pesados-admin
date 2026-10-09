@@ -25,6 +25,8 @@ export async function pedirAoLojista(corpo: {
   motivo?: string;
   venceu_em?: string | null;
   link_pagamento?: string | null;
+  /** O valor em aberto — o pop-up do lojista mostra ao administrador. */
+  valor?: number | null;
 }): Promise<{ ok: boolean; motivo?: string }> {
   const segredo = Deno.env.get('LICENCA_SEGREDO');
   if (!segredo) return { ok: false, motivo: 'LICENCA_SEGREDO não configurado' };
