@@ -11,7 +11,7 @@
  */
 
 const LOJISTA_FUNCTIONS = 'https://ljjkerbczuwmxdbnxfes.supabase.co/functions/v1';
-const PAGINA_DE_PAGAMENTO = 'https://viapesados.com.br/lojista/bemvindo';
+const PAGINA_DE_PAGAMENTO = 'https://viapesados.com.br/bemvindo'; // o mesmo endereço do botão das mensagens de cobrança
 
 export const linkDePagamento = (checkoutToken: string | null | undefined) =>
   checkoutToken ? `${PAGINA_DE_PAGAMENTO}/${checkoutToken}` : null;
