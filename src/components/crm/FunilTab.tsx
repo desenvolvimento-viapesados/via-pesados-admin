@@ -224,29 +224,43 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
 
   return (
     <>
-      {/* Os três funis, separados, e o "Todos" que junta. */}
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-        {OPCOES.map(({ chave, rotulo }) => {
-          const r = resumo[chave];
-          const ativo = funilAtual === chave;
-          return (
-            <button
-              key={chave}
-              onClick={() => escolherFunil(chave)}
-              className={cn(
-                'shrink-0 rounded-xl border px-3.5 py-2 text-left transition-colors',
-                ativo
-                  ? 'border-primary/40 bg-primary/10'
-                  : 'border-black/[0.07] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.02] hover:bg-black/[0.04] dark:hover:bg-white/[0.05]',
-              )}
-            >
-              <p className={cn('text-[12.5px] font-semibold leading-tight', ativo ? 'text-primary' : 'text-foreground/80')}>{rotulo}</p>
-              <p className="text-[10.5px] text-foreground/40 mt-0.5 tabular-nums">
-                {r.qtd} {r.qtd === 1 ? 'prospect' : 'prospects'}{r.valor > 0 ? ` · ${brl(r.valor)}/mês` : ''}
-              </p>
-            </button>
-          );
-        })}
+      {/* Os três funis, separados, e o "Todos" que junta. Mesma linguagem
+          das abas do CRM: texto, contador e o filete laranja de 3px na
+          ativa — o laranja cheio fica só para o botão de ação. */}
+      <div className="flex items-end gap-3 mb-4 border-b border-black/[0.06] dark:border-white/[0.06]">
+        <div className="flex items-end gap-0.5 overflow-x-auto -mb-px" style={{ scrollbarWidth: 'none' }}>
+          {OPCOES.map(({ chave, rotulo }) => {
+            const r = resumo[chave];
+            const ativo = funilAtual === chave;
+            return (
+              <button
+                key={chave}
+                onClick={() => escolherFunil(chave)}
+                className={cn(
+                  'group relative h-10 px-3 text-[12.5px] whitespace-nowrap transition-colors flex items-center gap-1.5',
+                  ativo ? 'text-foreground font-semibold' : 'text-foreground/40 font-medium hover:text-foreground/75',
+                )}
+              >
+                {rotulo}
+                <span className={cn(
+                  'text-[10px] font-semibold rounded-full px-1.5 py-px tabular-nums transition-colors',
+                  ativo ? 'bg-primary/15 text-primary' : 'bg-black/[0.05] dark:bg-white/[0.07] text-foreground/45',
+                )}>
+                  {r.qtd}
+                </span>
+                <span className={cn(
+                  'absolute inset-x-2 bottom-0 h-[3px] rounded-full transition-all',
+                  ativo ? 'bg-primary' : 'bg-transparent group-hover:bg-foreground/10',
+                )} />
+              </button>
+            );
+          })}
+        </div>
+        {resumo[funilAtual].valor > 0 && (
+          <p className="ml-auto mb-2.5 text-[11.5px] text-foreground/40 whitespace-nowrap hidden sm:block">
+            <span className="font-semibold text-foreground/70 tabular-nums">{brl(resumo[funilAtual].valor)}</span>/mês em negociação
+          </p>
+        )}
       </div>
 
       <div className="overflow-x-auto pb-4">

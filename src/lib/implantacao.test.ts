@@ -8,12 +8,17 @@ const saude = (o: Partial<Parameters<typeof fatosDaSaude>[0] & object> = {}) => 
 });
 
 describe('implantação', () => {
-  it('cliente recém-vendido: o próximo passo é o contrato, e é nosso', () => {
-    const etapas = etapasDoCliente({}, null);
+  it('chegou à implantação (pagou e assinou): o primeiro passo é criar o sistema, e é nosso', () => {
+    const etapas = etapasDoCliente({ contract_signed_at: 'x', pagou: true }, null);
     const p = proximoPasso(etapas)!;
-    expect(p.chave).toBe('contrato_assinado');
+    expect(p.chave).toBe('sistema_criado');
     expect(p.dono).toBe('nos');
-    expect(p.rota('c1')).toBe('/clientes/c1?resolver=contrato_assinado');
+    expect(p.rota('c1')).toBe('/clientes/c1?resolver=sistema_criado');
+  });
+
+  it('contrato e pagamento não são etapas da implantação', () => {
+    expect(ORDEM_DA_IMPLANTACAO).not.toContain('contrato_assinado');
+    expect(ORDEM_DA_IMPLANTACAO).not.toContain('pagamento_recebido');
   });
 
   it('com sistema e acesso, falta estoque: a bola está com o cliente', () => {
@@ -44,9 +49,11 @@ describe('implantação', () => {
   });
 
   it('quem entra na lista', () => {
-    const semAnuncio = etapasDoCliente({ lojista_company_id: 'e1' }, fatosDaSaude(saude()));
-    const anunciando = etapasDoCliente({ lojista_company_id: 'e1' }, fatosDaSaude(saude({ veiculos_anunciados: 2 })));
-    const semPonte = etapasDoCliente({ lojista_company_id: 'e1' }, null);
+    const semAnuncio = etapasDoCliente({ lojista_company_id: 'e1', pagou: true }, fatosDaSaude(saude()));
+    const anunciando = etapasDoCliente({ lojista_company_id: 'e1', pagou: true }, fatosDaSaude(saude({ veiculos_anunciados: 2 })));
+    const semPonte = etapasDoCliente({ lojista_company_id: 'e1', pagou: true }, null);
+    const naoPagou = etapasDoCliente({ lojista_company_id: 'e1' }, fatosDaSaude(saude()));
+    expect(estaImplantando('onboarding', naoPagou)).toBe(false); // ainda no fechamento
     expect(estaImplantando('onboarding', anunciando)).toBe(true);
     expect(estaImplantando('ativo', semAnuncio)).toBe(true);
     expect(estaImplantando('ativo', anunciando)).toBe(false);

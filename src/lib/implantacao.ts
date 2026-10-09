@@ -3,7 +3,11 @@ import type { Etapa, FatosDoSistema } from './estadoDoCliente';
 /* A implantação, do jeito que a equipe precisa ler: em que passo cada
    cliente está, com quem a bola está agora e o botão que resolve. As
    etapas continuam vindo de `estadoDoCliente` — aqui só se decide a
-   ORDEM em que elas são cobradas e o que cada uma pede de quem. */
+   ORDEM em que elas são cobradas e o que cada uma pede de quem.
+
+   Contrato e primeiro pagamento NÃO são etapas daqui (regra do dono,
+   09/10/2026): eles acontecem no fechamento, logo depois de registrar a
+   venda no funil. Quem chega à implantação já vendeu, assinou e pagou. */
 
 /** O que a visão de empresa (client-usage-metrics) devolve, no que importa aqui. */
 export type SaudeResumida = {
@@ -53,8 +57,6 @@ export type Passo = {
    cliente já anuncia e vende, e esperar o DNS de alguém não pode travar o
    resto da fila. */
 export const ORDEM_DA_IMPLANTACAO = [
-  'contrato_assinado',
-  'pagamento_recebido',
   'sistema_criado',
   'acesso_liberado',
   'dados_importados',
@@ -65,17 +67,6 @@ export const ORDEM_DA_IMPLANTACAO = [
 ] as const;
 
 export const PASSOS: Record<(typeof ORDEM_DA_IMPLANTACAO)[number], Passo> = {
-  contrato_assinado: {
-    acao: 'Registrar a assinatura do contrato',
-    dono: 'nos',
-    rota: (id) => `/clientes/${id}?resolver=contrato_assinado`,
-  },
-  pagamento_recebido: {
-    acao: 'Receber o primeiro pagamento',
-    dono: 'cliente',
-    rota: (id) => `/clientes/${id}/cobranca`,
-    lembrete: 'para liberar o seu sistema, falta só o primeiro pagamento. O link está na fatura que enviamos — qualquer dúvida, é só me chamar por aqui.',
-  },
   sistema_criado: {
     acao: 'Criar o sistema',
     dono: 'nos',
@@ -135,11 +126,14 @@ export type Ritmo = 'em_dia' | 'atencao' | 'atrasado';
 export const ritmoDaImplantacao = (dias: number): Ritmo => (dias <= 7 ? 'em_dia' : dias <= 14 ? 'atencao' : 'atrasado');
 
 /**
- * Quem aparece na implantação: quem ainda está em `onboarding`, e quem já
- * foi marcado ativo mas não chegou a anunciar (o rótulo mudou, a loja não).
+ * Quem aparece na implantação: quem já pagou e ainda está em `onboarding`,
+ * e quem já foi marcado ativo mas não chegou a anunciar (o rótulo mudou, a
+ * loja não). Sem o primeiro pagamento a venda ainda está no fechamento.
  * Cancelado e pausado ficam de fora — não há o que implantar.
  */
 export function estaImplantando(status: string, etapas: Etapa[]): boolean {
+  const pagou = etapas.find((e) => e.chave === 'pagamento_recebido')?.feito === true;
+  if (!pagou) return false;
   if (status === 'onboarding') return true;
   if (status !== 'ativo' && status !== 'inadimplente') return false;
   const anunciando = etapas.find((e) => e.chave === 'go_live');

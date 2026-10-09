@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useClients, useCompaniesHealth, usePayments, useProspects, type Client, type Prospect } from '@/hooks/useAdmin';
+import { useClients, useCompaniesHealth, usePayments, type Client } from '@/hooks/useAdmin';
 import { etapasDoCliente, progresso, type Etapa } from '@/lib/estadoDoCliente';
 import {
   fatosDaSaude, proximoPasso, diasDesde, ritmoDaImplantacao, estaImplantando, type Ritmo,
@@ -45,7 +45,6 @@ export const naoSei = (porque: string | undefined) => !!porque?.startsWith('Aind
 export function useImplantacao({ lerSistemas = true }: { lerSistemas?: boolean } = {}) {
   const { data: clientes = [], isLoading: c1 } = useClients();
   const { data: pagamentos = [], isLoading: c2 } = usePayments();
-  const { data: prospects = [] } = useProspects();
   const { data: tarefas = [] } = useTarefasDeTodos();
   const ids = useMemo(
     () => (lerSistemas ? clientes.filter((c) => c.lojista_company_id && c.status !== 'cancelado').map((c) => c.lojista_company_id!) : []),
@@ -84,21 +83,10 @@ export function useImplantacao({ lerSistemas = true }: { lerSistemas?: boolean }
       .filter((i) => estaImplantando(i.cliente.status, i.etapas))
       .sort((a, b) => b.dias - a.dias);
 
-    /* No ar e anunciando, mas com etapa em aberto — a assinatura que nunca
-       foi registrada, o treinamento que ninguém marcou. Domínio sozinho não
-       conta: com o endereço padrão a loja vende igual. */
-    const noArComPendencia = itens.filter((i) =>
-      !implantando.includes(i)
-      && i.cliente.status !== 'onboarding'
-      && i.passo !== null
-      && i.passo.chave !== 'dominio_conectado'
-      && !naoSei(i.passo.porque));
-
-    const convertidos = new Set(clientes.map((c) => c.prospect_id).filter(Boolean));
-    const vendasParaRegistrar: Prospect[] = prospects.filter((p) => p.stage === 'vendido' && !convertidos.has(p.id));
-
+    // Quem ainda está implantando não "entrou no ar" — fica só na lista de cima.
+    const implantandoIds = new Set(implantando.map((i) => i.cliente.id));
     const noArRecentes = clientes
-      .filter((c) => c.status === 'ativo' && c.activated_at && diasDesde(c.activated_at, agora) <= 30)
+      .filter((c) => c.status === 'ativo' && c.activated_at && diasDesde(c.activated_at, agora) <= 30 && !implantandoIds.has(c.id))
       .sort((a, b) => (b.activated_at ?? '').localeCompare(a.activated_at ?? ''));
 
     return {
@@ -106,12 +94,10 @@ export function useImplantacao({ lerSistemas = true }: { lerSistemas?: boolean }
       lendoSistemas: saudeQuery.isFetching && !saudeQuery.isSuccess,
       ponteFalhou: saudeQuery.isError,
       implantando,
-      noArComPendencia,
-      vendasParaRegistrar,
       noArRecentes,
       comAGente: implantando.filter((i) => i.passo?.dono === 'nos').length,
       comOCliente: implantando.filter((i) => i.passo?.dono === 'cliente').length,
       atrasados: implantando.filter((i) => i.ritmo === 'atrasado').length,
     };
-  }, [clientes, pagamentos, prospects, tarefas, saudeQuery.data, saudeQuery.isSuccess, saudeQuery.isFetching, saudeQuery.isError, c1, c2]);
+  }, [clientes, pagamentos, tarefas, saudeQuery.data, saudeQuery.isSuccess, saudeQuery.isFetching, saudeQuery.isError, c1, c2]);
 }

@@ -95,8 +95,7 @@ export default function Home() {
      painel sabe sozinho (contrato, cobrança, sistema criado). O retrato
      completo — acesso, estoque, canal, anúncio — é na própria seção. */
   const implantacao = useImplantacao({ lerSistemas: false });
-  const agora = [...implantacao.implantando, ...implantacao.noArComPendencia]
-    .find((i) => i.passo && !naoSei(i.passo.porque));
+  const agora = implantacao.implantando.find((i) => i.passo && !naoSei(i.passo.porque));
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -230,14 +229,14 @@ export default function Home() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-[18px] sm:text-[20px] font-bold text-foreground tracking-tight leading-tight">Implantação</p>
-                <p className="text-[12px] text-foreground/45 mt-0.5 font-light">Do contrato ao primeiro anúncio no ar — o que falta, e com quem</p>
+                <p className="text-[12px] text-foreground/45 mt-0.5 font-light">Do contrato assinado ao primeiro anúncio no ar — o que falta, e com quem</p>
               </div>
               <ChevronRight className="h-5 w-5 text-foreground/20 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
             </div>
             <div className="grid grid-cols-3 border-t border-primary/15 divide-x divide-primary/15">
               {[
-                { label: 'Vendas para registrar', value: implantacao.vendasParaRegistrar.length },
                 { label: 'Implantando', value: implantacao.implantando.length },
+                { label: 'No ar há menos de 30 dias', value: implantacao.noArRecentes.length },
                 { label: 'Passou de 2 semanas', value: implantacao.atrasados },
               ].map(({ label, value }) => (
                 <div key={label} className="px-3 py-2.5 text-center">
