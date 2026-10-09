@@ -2,7 +2,7 @@
 
 **Licença de uso de software (SaaS) e prestação de serviços de tecnologia**
 
-*Minuta v3 — 09/10/2026. Os campos entre `{{ }}` são preenchidos pelo sistema no fechamento da venda.*
+*Minuta v4 — 09/10/2026. Os campos entre `{{ }}` são preenchidos pelo sistema no fechamento da venda.*
 
 ---
 
@@ -14,7 +14,6 @@
 | **CONTRATANTE** | `{{razao_social}}`, CNPJ `{{cnpj}}`, com sede em `{{endereco}}` |
 | **Representante legal do CONTRATANTE** | `{{representante_nome}}`, CPF `{{representante_cpf}}` |
 | **WhatsApp oficial do CONTRATANTE** (para avisos, cobranças e notificações deste contrato) | `{{whatsapp}}` |
-| **E-mail do CONTRATANTE** (apenas para recuperação de senha) | `{{email}}` |
 | **Plano** | Plano único Via Pesados, com todas as funcionalidades e canais de venda da Plataforma (Anexo I) |
 | **Mensalidade** | R$ `{{valor_mensal}}` (`{{valor_extenso}}`) |
 | **Vencimento** | Todo dia `{{dia_vencimento}}`, que é o dia da Data de Implantação |
@@ -169,9 +168,7 @@ As partes acima qualificadas celebram este Contrato, que se rege pelas cláusula
 
 14.1. **As partes elegem o WhatsApp como meio oficial de comunicação deste Contrato**: avisos, cobranças, notas fiscais, notificações de suspensão, alterações e rescisão são válidos quando enviados ao WhatsApp oficial do CONTRATANTE indicado no Quadro-Resumo, ou recebidos dele pela CONTRATADA.
 
-14.2. O e-mail do CONTRATANTE é usado apenas para recuperação de senha e, subsidiariamente, quando o WhatsApp oficial estiver indisponível.
-
-14.3. Cabe ao CONTRATANTE informar imediatamente qualquer troca do WhatsApp oficial. Até essa informação, as comunicações enviadas ao número cadastrado são válidas.
+14.2. Cabe ao CONTRATANTE informar imediatamente qualquer troca do WhatsApp oficial. Até essa informação, as comunicações enviadas ao número cadastrado são válidas.
 
 ## 15. ASSINATURA ELETRÔNICA
 
