@@ -1142,7 +1142,6 @@ export const useCrmCounts = () => {
   const { data: prospects = [] } = useProspects();
   const { data: meetings = [] } = useMeetings();
   const { data: demos = [] } = useDemos();
-  const { data: clients = [] } = useClients();
 
   return useMemo(() => {
     const activeStages = new Set<ProspectStage>(['contato', 'oportunidade', 'reuniao']);
@@ -1152,7 +1151,6 @@ export const useCrmCounts = () => {
       meetings.filter((m) => m.status === 'agendada' || m.status === 'realizada')
         .map((m) => m.prospect_id).filter(Boolean) as string[],
     );
-    const converted = new Set(clients.map((c) => c.prospect_id).filter(Boolean) as string[]);
 
     const today = new Date();
     const sameDay = (iso: string) => {
@@ -1167,9 +1165,6 @@ export const useCrmCounts = () => {
         meetings.filter((m) => m.status === 'agendada' && sameDay(m.scheduled_at)).length,
       /* Amostra em uso: ainda não virou cliente nem foi descartada. */
       amostras: demos.filter((d) => d.status !== 'convertida' && d.status !== 'descartada').length,
-      conexao:
-        prospects.filter((p) => p.stage === 'vendido' && !converted.has(p.id)).length +
-        clients.filter((c) => c.status === 'onboarding').length,
       pipeline: active.reduce((s, p) => s + (p.proposal_value ?? 0), 0),
       /* MRR saiu daqui de propósito. Somava o `mrr` de quem tinha o
          rótulo `ativo`, e rótulo é campo que alguém troca à mão: a
@@ -1177,7 +1172,7 @@ export const useCrmCounts = () => {
          anunciou R$ 0 com o dinheiro entrando. A conta agora é uma só, em
          `lib/mrr.ts`, e pergunta se a fatura foi paga. */
     };
-  }, [prospects, meetings, demos, clients]);
+  }, [prospects, meetings, demos]);
 };
 
 /* ═══ Utilidades ══════════════════════════════════════════════ */

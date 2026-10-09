@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Loader2, Check, FileText, CreditCard, Rocket, Globe, Upload,
   Copy, ExternalLink, Phone, Mail, MapPin, Plus, StickyNote,
@@ -496,8 +496,9 @@ export default function ClienteDetalhe() {
   const { member, isAdmin } = useAuth();
   const { data: client, isLoading } = useClient(id);
   const { data: tasks = [] } = useOnboardingTasks(id);
-  const { data: contracts = [] } = useContracts(id);
+  const { data: contracts = [], isFetched: contratosLidos } = useContracts(id);
   const [assinando, setAssinando] = useState<Contract | null>(null);
+  const [params, setParams] = useSearchParams();
   const { data: payments = [] } = usePayments(id);
   const { data: activities = [] } = useActivities({ clientId: id });
 
@@ -564,6 +565,25 @@ export default function ClienteDetalhe() {
      do cliente parou de abrir. O `enabled` de dentro já cuida de não
      chamar nada enquanto o cliente não chegou. */
   const usoQuery = useClientUsage(client);
+
+  /* `?resolver=etapa` chega da Implantação: abre direto o diálogo que
+     resolve, em vez de deixar a pessoa procurar o botão na ficha. */
+  const pedido = params.get('resolver');
+  useEffect(() => {
+    if (!pedido || !client || !contratosLidos) return;
+    const pendente = contracts.find((c) => c.status === 'rascunho' || c.status === 'enviado');
+    if (pedido === 'contrato_assinado') {
+      if (pendente) setAssinando(pendente); else setDialog('contrato_gerado');
+    } else if (pedido === 'sistema_criado') {
+      setDialog('sistema_criado');
+    } else if (pedido === 'dominio_conectado' && client.lojista_company_id) {
+      setDialog('dominio_conectado');
+    }
+    const resto = new URLSearchParams(params);
+    resto.delete('resolver');
+    setParams(resto, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedido, client?.id, contratosLidos]);
 
   if (isLoading || !client) {
     return (

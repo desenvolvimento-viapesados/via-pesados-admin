@@ -18,6 +18,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/inadimplencia': 'Inadimplência',
   '/planos':     'Planos e preços',
   '/saude':      'Saúde da plataforma',
+  '/implantacao': 'Implantação',
 };
 
 /* O "voltar" vai para o Início, como sempre foi — menos dentro de um

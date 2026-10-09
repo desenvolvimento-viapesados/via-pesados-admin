@@ -13,6 +13,7 @@ import DevFicha from '@/pages/DevFicha';
 
 const Home           = lazy(() => import('@/pages/Home'));
 const Crm            = lazy(() => import('@/pages/Crm'));
+const Implantacao    = lazy(() => import('@/pages/Implantacao'));
 const Clientes       = lazy(() => import('@/pages/Clientes'));
 const ClienteDetalhe = lazy(() => import('@/pages/ClienteDetalhe'));
 const Pagamentos     = lazy(() => import('@/pages/Pagamentos'));
@@ -95,6 +96,7 @@ const Gate = () => {
           <Route path="/crm/prospect/:id" element={<ProspectDetalhe />} />
           <Route path="/crm/venda/:id" element={<RegistrarVenda />} />
           <Route path="/crm/venda"     element={<RegistrarVenda />} />
+          <Route path="/implantacao"   element={<Implantacao />} />
           <Route path="/clientes"      element={<Clientes />} />
           <Route path="/clientes/:id"  element={<ClienteDetalhe />} />
           <Route path="/clientes/:id/cobranca" element={<Cobranca />} />

@@ -1,17 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Kanban, CalendarDays, Rocket } from 'lucide-react';
+import { ArrowLeft, Plus, Kanban, CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useCrmCounts, brl } from '@/hooks/useAdmin';
 import { FunilTab } from '@/components/crm/FunilTab';
 import { AgendaTab } from '@/components/crm/AgendaTab';
-import { ConexaoTab } from '@/components/crm/ConexaoTab';
 import { WhatsAppTab } from '@/components/crm/WhatsAppTab';
 import viaPesadosLogoLight from '@/assets/via-pesados-icon-color.png';
 import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
 
-type TabKey = 'whatsapp' | 'funil' | 'reunioes' | 'conexao';
+type TabKey = 'whatsapp' | 'funil' | 'reunioes';
 
 /**
  * As abas do CRM. A amostra não tem aba: mora na ficha do prospect (clicar
@@ -36,7 +35,6 @@ const TABS: { key: TabKey; label: string; newLabel: string; icon: IconeDaAba }[]
   { key: 'whatsapp', label: 'WhatsApp', newLabel: 'Número',   icon: IconeWhatsApp },
   { key: 'funil',    label: 'Funil',    newLabel: 'Prospect', icon: Kanban },
   { key: 'reunioes', label: 'Agenda',   newLabel: 'Reunião',  icon: CalendarDays },
-  { key: 'conexao',  label: 'Implantação', newLabel: 'Venda', icon: Rocket },
 ];
 
 const isTab = (v: string | null): v is TabKey => TABS.some((t) => t.key === v);
@@ -54,6 +52,8 @@ export default function Crm() {
   // URL manda: permite deep link da Home e do card de prospect
   useEffect(() => {
     const t = params.get('tab');
+    // A implantação saiu do CRM e virou seção própria.
+    if (t === 'conexao') { navigate('/implantacao', { replace: true }); return; }
     if (isTab(t)) setTab(t);
     if (params.get('new') === '1') {
       setNewOpen(true);
@@ -159,7 +159,6 @@ export default function Crm() {
         {tab === 'whatsapp' && <WhatsAppTab newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'funil'    && <FunilTab    newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'reunioes' && <AgendaTab   newOpen={newOpen} onCloseNew={closeNew} defaultProspectId={defaultProspect} />}
-        {tab === 'conexao'  && <ConexaoTab  newOpen={newOpen} onCloseNew={closeNew} />}
       </main>
     </div>
   );

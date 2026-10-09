@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Users, DollarSign, CreditCard, MessageSquare, BarChart3, ChevronRight,
   UserCheck, LogOut, Sun, Moon, ExternalLink, Target,
-  Layers, HeartPulse,
+  Layers, HeartPulse, Rocket, ArrowRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCrmCounts, useTickets, useClients, usePayments, brl } from '@/hooks/useAdmin';
 import { mrrDaCarteira } from '@/lib/mrr';
 import { inadimplentes } from '@/lib/inadimplencia';
+import { useImplantacao, naoSei } from '@/hooks/useImplantacao';
 import { useMemo } from 'react';
 import { InitialAvatar } from '@/components/admin/ui';
 import { LOJISTA_APP_URL } from '@/integrations/supabase/client';
@@ -89,6 +90,13 @@ export default function Home() {
     () => inadimplentes(pagamentos, clientes, [], new Date().toISOString().slice(0, 10)).length,
     [clientes, pagamentos],
   );
+
+  /* Implantação sem ler o sistema dos clientes: a Home fica com o que o
+     painel sabe sozinho (contrato, cobrança, sistema criado). O retrato
+     completo — acesso, estoque, canal, anúncio — é na própria seção. */
+  const implantacao = useImplantacao({ lerSistemas: false });
+  const agora = [...implantacao.implantando, ...implantacao.noArComPendencia]
+    .find((i) => i.passo && !naoSei(i.passo.porque));
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -180,7 +188,7 @@ export default function Home() {
               <div className="min-w-0 flex-1">
                 <p className="text-[18px] sm:text-[20px] font-bold text-foreground tracking-tight leading-tight">Via CRM</p>
                 <p className="text-[12px] text-foreground/45 mt-0.5 font-light">
-                  Prospects, reuniões, amostras e novas vendas — do primeiro contato ao sistema no ar
+                  WhatsApp, funil e agenda — do primeiro contato à venda
                 </p>
               </div>
               <div className="text-right shrink-0 hidden sm:block">
@@ -193,12 +201,11 @@ export default function Home() {
             </div>
 
             {/* Resumo por etapa do CRM */}
-            <div className="grid grid-cols-4 border-t border-black/[0.06] dark:border-white/[0.06] divide-x divide-black/[0.06] dark:divide-white/[0.06]">
+            <div className="grid grid-cols-3 border-t border-black/[0.06] dark:border-white/[0.06] divide-x divide-black/[0.06] dark:divide-white/[0.06]">
               {[
                 { label: 'Prospects', value: counts.funil },
                 { label: 'Reuniões', value: counts.reunioes },
                 { label: 'Amostras', value: counts.amostras },
-                { label: 'Em conexão', value: counts.conexao },
               ].map(({ label, value }) => (
                 <div key={label} className="px-3 py-2.5 text-center">
                   <p className="text-[17px] font-bold text-foreground tabular-nums leading-none">{value}</p>
@@ -208,6 +215,46 @@ export default function Home() {
             </div>
           </button>
 
+          {/* ── Implantação: a venda até o primeiro anúncio no ar ── */}
+          <button
+            onClick={() => navigate('/implantacao')}
+            className={cn(
+              'group mt-3 w-full rounded-2xl overflow-hidden border transition-all duration-200 text-left',
+              'border-primary/25 bg-primary/[0.05] hover:bg-primary/[0.09] hover:border-primary/40',
+              'hover:shadow-xl hover:shadow-black/10 dark:hover:shadow-black/30',
+            )}
+          >
+            <div className="px-6 pt-5 pb-4 flex items-center gap-4">
+              <span className="h-10 w-10 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
+                <Rocket className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[18px] sm:text-[20px] font-bold text-foreground tracking-tight leading-tight">Implantação</p>
+                <p className="text-[12px] text-foreground/45 mt-0.5 font-light">Do contrato ao primeiro anúncio no ar — o que falta, e com quem</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-foreground/20 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+            </div>
+            <div className="grid grid-cols-3 border-t border-primary/15 divide-x divide-primary/15">
+              {[
+                { label: 'Vendas para registrar', value: implantacao.vendasParaRegistrar.length },
+                { label: 'Implantando', value: implantacao.implantando.length },
+                { label: 'Passou de 2 semanas', value: implantacao.atrasados },
+              ].map(({ label, value }) => (
+                <div key={label} className="px-3 py-2.5 text-center">
+                  <p className={cn('text-[17px] font-bold tabular-nums leading-none', label.startsWith('Passou') && value > 0 ? 'text-red-500' : 'text-foreground')}>{value}</p>
+                  <p className="text-[10px] text-foreground/35 mt-1 leading-none">{label}</p>
+                </div>
+              ))}
+            </div>
+            {agora?.passo && (
+              <div className="px-6 py-2.5 border-t border-primary/15 flex items-center gap-2 text-[12px]">
+                <ArrowRight className="h-3.5 w-3.5 text-primary shrink-0" />
+                <span className="text-foreground/45 shrink-0">Agora:</span>
+                <span className="font-semibold text-foreground truncate">{agora.cliente.company_name}</span>
+                <span className="text-foreground/55 truncate">— {agora.passo.acao.charAt(0).toLowerCase() + agora.passo.acao.slice(1)}</span>
+              </div>
+            )}
+          </button>
         </div>
 
         {/* ── Módulos ────────────────────────────────────────── */}
