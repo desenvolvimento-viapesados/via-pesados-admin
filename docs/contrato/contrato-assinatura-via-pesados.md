@@ -2,7 +2,7 @@
 
 **Licença de uso de software (SaaS) e prestação de serviços de tecnologia**
 
-*Minuta v4 — 09/10/2026. Os campos entre `{{ }}` são preenchidos pelo sistema no fechamento da venda.*
+*Minuta v5 — 09/10/2026. Os campos entre `{{ }}` são preenchidos pelo sistema no fechamento da venda.*
 
 ---
 
@@ -13,7 +13,6 @@
 | **CONTRATADA** | **VIA PESADOS E SISTEMAS LTDA**, nome fantasia **Via Pesados**, CNPJ 68.835.124/0001-20, com sede na Rua Vinte e Quatro, 329, Santos Dumont, Governador Valadares/MG, CEP 35.022-300 |
 | **CONTRATANTE** | `{{razao_social}}`, CNPJ `{{cnpj}}`, com sede em `{{endereco}}` |
 | **Representante legal do CONTRATANTE** | `{{representante_nome}}`, CPF `{{representante_cpf}}` |
-| **WhatsApp oficial do CONTRATANTE** (para avisos, cobranças e notificações deste contrato) | `{{whatsapp}}` |
 | **Plano** | Plano único Via Pesados, com todas as funcionalidades e canais de venda da Plataforma (Anexo I) |
 | **Mensalidade** | R$ `{{valor_mensal}}` (`{{valor_extenso}}`) |
 | **Vencimento** | Todo dia `{{dia_vencimento}}`, que é o dia da Data de Implantação |
@@ -39,6 +38,8 @@ As partes acima qualificadas celebram este Contrato, que se rege pelas cláusula
 1.5. **Data de Implantação**: o dia em que a CONTRATADA entrega a Plataforma configurada e libera o primeiro acesso ao CONTRATANTE. É dela que se contam os períodos mensais e o dia de vencimento.
 
 1.6. **Período mensal**: cada intervalo de um mês contado a partir da Data de Implantação (por exemplo, de 14/10 a 14/11). Nos meses sem o dia correspondente, o período termina no último dia do mês.
+
+1.7. **WhatsApp oficial do CONTRATANTE**: o número de WhatsApp pelo qual o representante do CONTRATANTE recebeu e assinou este Contrato, ou outro que o CONTRATANTE vier a informar à CONTRATADA.
 
 ## 2. OBJETO
 
@@ -104,7 +105,7 @@ As partes acima qualificadas celebram este Contrato, que se rege pelas cláusula
 
 7.1. Pagar as mensalidades em dia.
 
-7.2. Manter atualizados os dados do Quadro-Resumo, em especial o WhatsApp oficial.
+7.2. Manter atualizados os dados do Quadro-Resumo e o seu WhatsApp oficial.
 
 7.3. Responder pela veracidade, legalidade e regularidade do conteúdo que cadastra e publica: preços, fotos, descrições, documentação e condições dos veículos, bem como pelo cumprimento das normas de defesa do consumidor perante seus próprios clientes.
 
@@ -166,15 +167,15 @@ As partes acima qualificadas celebram este Contrato, que se rege pelas cláusula
 
 ## 14. COMUNICAÇÕES
 
-14.1. **As partes elegem o WhatsApp como meio oficial de comunicação deste Contrato**: avisos, cobranças, notas fiscais, notificações de suspensão, alterações e rescisão são válidos quando enviados ao WhatsApp oficial do CONTRATANTE indicado no Quadro-Resumo, ou recebidos dele pela CONTRATADA.
+14.1. **As partes elegem o WhatsApp como meio oficial de comunicação deste Contrato**: avisos, cobranças, notas fiscais, notificações de suspensão, alterações e rescisão são válidos quando enviados ao WhatsApp oficial do CONTRATANTE (Cláusula 1.7), ou recebidos dele pela CONTRATADA.
 
 14.2. Cabe ao CONTRATANTE informar imediatamente qualquer troca do WhatsApp oficial. Até essa informação, as comunicações enviadas ao número cadastrado são válidas.
 
 ## 15. ASSINATURA ELETRÔNICA
 
-15.1. As partes admitem a assinatura deste Contrato por meio eletrônico, com aceite registrado na Plataforma e confirmação por código enviado ao WhatsApp oficial do CONTRATANTE ou por provedor de assinatura eletrônica. Reconhecem esse meio como válido e suficiente para comprovar a autoria e a integridade do documento, nos termos do art. 10, § 2º, da Medida Provisória nº 2.200-2/2001, do art. 107 do Código Civil e da Lei nº 14.063/2020.
+15.1. As partes admitem a assinatura deste Contrato por meio eletrônico, com aceite registrado na Plataforma a partir de link exclusivo enviado ao WhatsApp oficial do CONTRATANTE, ou por provedor de assinatura eletrônica. Reconhecem esse meio como válido e suficiente para comprovar a autoria e a integridade do documento, nos termos do art. 10, § 2º, da Medida Provisória nº 2.200-2/2001, do art. 107 do Código Civil e da Lei nº 14.063/2020.
 
-15.2. O registro do aceite reúne a versão e o código de integridade (hash) do documento, a data e a hora, o endereço IP, o dispositivo, o nome e o CPF do representante e a confirmação do código recebido. A CONTRATADA guarda esse registro e envia ao CONTRATANTE uma via do Contrato assinado.
+15.2. O registro do aceite reúne a versão e o código de integridade (hash) do documento, a data e a hora, o endereço IP, o dispositivo, o nome e o CPF do representante e o número de WhatsApp que recebeu o link. A CONTRATADA guarda esse registro e envia ao CONTRATANTE uma via do Contrato assinado.
 
 15.3. O representante que aceita declara ter poderes para obrigar o CONTRATANTE.
 
