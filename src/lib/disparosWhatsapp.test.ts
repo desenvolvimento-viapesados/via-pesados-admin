@@ -51,8 +51,8 @@ const GATILHOS: Record<string, Parameters<typeof conferirParams>[1]> = {
     body: ['Walker', 'outubro', 'R$ 10,00', '14/10/2026', '16/10'],
     urlSuffix: 'tok123',
   },
-  painel_suspenso: {
-    body: ['Walker', 'iTruck Caminhões', 'outubro'],
+  loja_fora_do_ar: {
+    body: ['Walker', 'outubro', 'iTruck Caminhões'],
     urlSuffix: 'tok123',
   },
   painel_suspenso_tempo: { body: ['Walker'], urlSuffix: 'tok123' },

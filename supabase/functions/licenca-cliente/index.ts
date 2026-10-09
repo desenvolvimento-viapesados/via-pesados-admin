@@ -10,8 +10,8 @@ import { hojeBRT, somarDias, DIAS_DE_TOLERANCIA } from '../_shared/regua.ts';
  *            move os vencimentos em aberto no Asaas para contar dela.
  *   liberar  { client_id }                 → devolve o acesso antes de o
  *            pagamento cair (promessa de pagamento, erro do banco...). Vale
- *            pela mesma tolerância de 2 dias: sem isso a rotina das 9h
- *            cortaria de novo na manhã seguinte.
+ *            pela mesma tolerância (DIAS_DE_TOLERANCIA): sem isso a rotina
+ *            das 9h cortaria de novo na manhã seguinte.
  *
  * Só membro ativo da equipe. O corte automático não passa por aqui — é da
  * rotina diária (cobranca-lembrete).

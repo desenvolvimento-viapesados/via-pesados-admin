@@ -37,12 +37,12 @@ describe('régua da mensalidade', () => {
     expect(somarMeses('2026-01-31', 2)).toBe('2026-03-31');
   });
 
-  it('mensalidade sai 5 dias antes; corte 2 dias depois do vencimento', () => {
+  it('mensalidade sai 5 dias antes; corte no terceiro dia depois do vencimento', () => {
     expect(hojeEnviaMensalidade('2026-10-14', '2026-10-08')).toBe(false);
     expect(hojeEnviaMensalidade('2026-10-14', '2026-10-09')).toBe(true);
     expect(hojeEnviaMensalidade('2026-10-14', '2026-10-14')).toBe(true);
     expect(hojeEnviaMensalidade('2026-10-14', '2026-10-15')).toBe(false);
-    expect(passouDaTolerancia('2026-10-14', '2026-10-15')).toBe(false);
-    expect(passouDaTolerancia('2026-10-14', '2026-10-16')).toBe(true);
+    expect(passouDaTolerancia('2026-10-14', '2026-10-16')).toBe(false);
+    expect(passouDaTolerancia('2026-10-14', '2026-10-17')).toBe(true);
   });
 });

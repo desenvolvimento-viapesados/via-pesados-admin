@@ -12,9 +12,14 @@ import { pedirAoLojista, linkDePagamento } from '../_shared/licenca.ts';
  *     mandava a de novembro com outubro ainda em aberto. Só a mais antiga
  *     em aberto é anunciada — é ela que o botão da mensagem abre.
  *  2. VENCE AMANHÃ: o lembrete da véspera.
- *  3. CORTE: venceu e passou a tolerância (2 dias) sem pagamento, o acesso
- *     ao sistema é suspenso. Antes de cortar, pergunta ao Asaas: o nosso
- *     registro pode estar atrasado, e cortar quem pagou é o pior erro aqui.
+ *     (No dia seguinte ao vencimento sai o lembrete brando, "em atraso",
+ *     pelo webhook do Asaas.)
+ *  2b. RISCO: no segundo dia, o aviso "você corre o risco de perder o
+ *     acesso amanhã".
+ *  3. CORTE: no terceiro dia sem pagamento sai TUDO do ar — painel e site
+ *     (o site fica só com as duas logos; nada é apagado). Antes de cortar,
+ *     pergunta ao Asaas: o nosso registro pode estar atrasado, e cortar
+ *     quem pagou é o pior erro aqui.
  *  4. LIBERAÇÃO: quem está suspenso e não deve mais nada volta — rede de
  *     segurança, caso o webhook do pagamento tenha se perdido.
  *
@@ -118,6 +123,28 @@ Deno.serve(async (req) => {
       resultados.push({ cliente: cid, etapa: 'vence_amanha', ...r });
     }
 
+    /* 2b. Aviso de risco — véspera do corte, só para quem tem sistema e
+       ainda não foi cortado. {{5}} é o dia do corte. */
+    const vespera = dele.find((p: Cobranca) => somarDias(p.due_date, DIAS_DE_TOLERANCIA - 1) === hoje);
+    if (vespera && c.lojista_company_id && !c.acesso_suspenso_em
+        && await modeloAprovado('cobranca_risco_suspensao') && await reconfere(vespera)) {
+      const corte = somarDias(vespera.due_date, DIAS_DE_TOLERANCIA);
+      const r = await enviarTemplate(db, {
+        para: c.whatsapp,
+        template: 'cobranca_risco_suspensao',
+        client_id: c.id,
+        chave: `risco:${vespera.asaas_payment_id ?? vespera.id}`,
+        params: {
+          body: [primeiroNome(c.contact_name), mesDe(vespera.due_date), brl(Number(vespera.amount)), dataBR(vespera.due_date), diaMes(corte)],
+          urlSuffix: c.checkout_token ?? '',
+        },
+        // "Amanhã" deixa de ser verdade quando vira o dia do corte.
+        validoAte: `${corte}T03:00:00Z`,
+        condicao: vespera.asaas_payment_id ? { tipo: 'cobranca_aberta', asaas_payment_id: vespera.asaas_payment_id } : null,
+      });
+      resultados.push({ cliente: cid, etapa: 'risco', ...r });
+    }
+
     /* 3. Corte depois da tolerância. */
     const vencida = dele.find((p: Cobranca) => passouDaTolerancia(p.due_date, hoje));
     // A equipe liberou na mão (promessa de pagamento): respeita o prazo dado.
@@ -141,14 +168,14 @@ Deno.serve(async (req) => {
             client_id: cid, kind: 'nota',
             content: `Acesso ao sistema suspenso automaticamente: mensalidade de ${dataBR(vencida.due_date)} sem pagamento após ${DIAS_DE_TOLERANCIA} dias.`,
           });
-          if (await modeloAprovado('painel_suspenso')) {
+          if (await modeloAprovado('loja_fora_do_ar')) {
             aviso = await enviarTemplate(db, {
               para: c.whatsapp,
-              template: 'painel_suspenso',
+              template: 'loja_fora_do_ar',
               client_id: c.id,
-              chave: `suspenso:${vencida.asaas_payment_id ?? vencida.id}`,
+              chave: `fora_do_ar:${vencida.asaas_payment_id ?? vencida.id}`,
               params: {
-                body: [primeiroNome(c.contact_name), c.company_name ?? 'sua loja', mesDe(vencida.due_date)],
+                body: [primeiroNome(c.contact_name), mesDe(vencida.due_date), c.company_name ?? 'sua loja'],
                 urlSuffix: c.checkout_token ?? '',
               },
               condicao: vencida.asaas_payment_id ? { tipo: 'cobranca_aberta', asaas_payment_id: vencida.asaas_payment_id } : null,
@@ -160,17 +187,18 @@ Deno.serve(async (req) => {
     }
   }
 
-  /* 3b. Reconquista — só com o painel suspenso e a fatura ainda aberta.
+  /* 3b. Reconquista — só com tudo fora do ar e a fatura ainda aberta.
      Fala do que o lojista perde sem o painel (tempo, equipe), nunca de
-     número que pode estar errado. 3 dias depois do vencimento, o tempo;
-     7 dias depois, a equipe. Uma vez cada, pela chave. */
+     número que pode estar errado. Um dia depois do corte, o tempo; cinco
+     dias depois, a equipe. Uma vez cada, pela chave. */
   for (const cid of idsClientes) {
     const c = porId.get(cid);
     if (!c?.acesso_suspenso_em || c.status === 'cancelado' || c.status === 'pausado') continue;
     const vencida = (abertas ?? []).find((p: Cobranca) => p.client_id === cid && passouDaTolerancia(p.due_date, hoje));
     if (!vencida) continue;
-    const etapa = hoje >= somarDias(vencida.due_date, 7) ? 'painel_suspenso_equipe'
-      : hoje >= somarDias(vencida.due_date, 3) ? 'painel_suspenso_tempo'
+    const corte = somarDias(vencida.due_date, DIAS_DE_TOLERANCIA);
+    const etapa = hoje >= somarDias(corte, 5) ? 'painel_suspenso_equipe'
+      : hoje >= somarDias(corte, 1) ? 'painel_suspenso_tempo'
       : null;
     if (!etapa || !await modeloAprovado(etapa) || !await reconfere(vencida)) continue;
     const r = await enviarTemplate(db, {

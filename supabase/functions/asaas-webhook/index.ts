@@ -1,9 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { enviarTemplate, mesDe, dataBR, brl, primeiroNome, proximoMes, diaMes, modeloAprovado } from '../_shared/wa.ts';
+import { enviarTemplate, mesDe, dataBR, brl, primeiroNome, proximoMes, modeloAprovado } from '../_shared/wa.ts';
 import { tentarNotasPendentes } from '../_shared/nota-aviso.ts';
 import { pedirAoLojista } from '../_shared/licenca.ts';
 import { alinharCiclo } from '../_shared/ciclo.ts';
-import { hojeBRT, passouDaTolerancia, somarDias, DIAS_DE_TOLERANCIA } from '../_shared/regua.ts';
+import { hojeBRT, passouDaTolerancia } from '../_shared/regua.ts';
 
 /**
  * Recebe os eventos de cobrança do Asaas e mantém `payments` em dia.
@@ -108,9 +108,6 @@ function paramsDoTemplate(
       return { header: [mes], body: [nome, mes, valor, venc], urlSuffix: token };
     case 'cobranca_em_atraso':
       return { body: [nome, mes, valor, venc], urlSuffix: token };
-    case 'cobranca_risco_suspensao':
-      // {{5}} é o dia do corte: vencimento + tolerância ("amanhã, 16/10").
-      return { body: [nome, mes, valor, venc, diaMes(somarDias(String(p.dueDate), DIAS_DE_TOLERANCIA))], urlSuffix: token };
     case 'pagamento_confirmado':
       // Sem botão: o único link seria de pagamento, e a cobrança já foi paga.
       return { body: [nome, mes, valor, proximoMes(p.dueDate)] };
@@ -227,14 +224,10 @@ Deno.serve(async (req) => {
        em dia é a obrigação desta função; a mensagem é o extra. Se a Meta
        estiver fora do ar, o Asaas não pode ficar sabendo. */
     let aviso: unknown = { ok: false, motivo: 'sem template para o evento' };
-    let template = TEMPLATE_POR_EVENTO[evento];
-    /* Mensalidade de quem tem sistema: o "em atraso" vira o aviso de risco
-       ("perde o painel amanhã") — desde que o modelo já esteja aprovado e o
-       painel ainda não esteja suspenso por outra fatura. */
-    if (template === 'cobranca_em_atraso' && p.subscription && cliente?.lojista_company_id
-        && !cliente.acesso_suspenso_em && await modeloAprovado('cobranca_risco_suspensao')) {
-      template = 'cobranca_risco_suspensao';
-    }
+    /* PAYMENT_OVERDUE chega no dia seguinte ao vencimento: é o lembrete
+       BRANDO ("em atraso", sistema segue no ar). O aviso de risco sai no
+       dia seguinte, pela rotina das 9h, e o corte no terceiro dia. */
+    const template = TEMPLATE_POR_EVENTO[evento];
     if (template && cliente) {
       try {
         aviso = await enviarTemplate(db, {
@@ -248,10 +241,6 @@ Deno.serve(async (req) => {
           params: paramsDoTemplate(template, p, cliente),
           // Se tiver de esperar as 08h, só sai se a cobrança continuar aberta.
           condicao: status === 'pago' ? null : { tipo: 'cobranca_aberta', asaas_payment_id: String(p.id) },
-          // "Amanhã" só é verdade até a véspera do corte.
-          validoAte: template === 'cobranca_risco_suspensao'
-            ? `${somarDias(String(p.dueDate), DIAS_DE_TOLERANCIA)}T03:00:00Z`
-            : null,
         });
       } catch (e) {
         console.error('asaas-webhook aviso:', e);

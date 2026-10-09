@@ -6,7 +6,7 @@ import { supabase, FUNCTIONS_URL } from '@/integrations/supabase/client';
 import { brlFull, type Client, type Payment } from '@/hooks/useAdmin';
 import { Panel, SectionHeader } from '@/components/admin/ui';
 import { licencaDoCliente, dataCurta } from '@/lib/licenca';
-import { hojeBRT } from '../../../supabase/functions/_shared/regua';
+import { hojeBRT, DIAS_DE_TOLERANCIA } from '../../../supabase/functions/_shared/regua';
 
 /**
  * A licença do cliente: de quando conta, até quando está paga, quando sai a
@@ -78,14 +78,14 @@ export function LicencaDoCliente({ client, payments }: { client: Client; payment
           <div className="rounded-xl bg-red-500/10 px-3 py-2.5 flex items-center gap-2.5 flex-wrap">
             <Lock className="h-4 w-4 text-red-500 shrink-0" />
             <p className="text-[12.5px] font-semibold text-red-500 flex-1 min-w-0">
-              Painel suspenso desde {dataCurta(client.acesso_suspenso_em)} — site e anúncios seguem no ar
+              Painel e site fora do ar desde {dataCurta(client.acesso_suspenso_em)} — nada foi apagado
             </p>
             <button
               onClick={liberar}
               disabled={salvando}
               className="h-8 px-3 rounded-lg bg-background border border-red-500/30 text-[12px] font-semibold text-red-500 hover:bg-red-500/10 disabled:opacity-50"
             >
-              Liberar por 2 dias
+              Liberar por {DIAS_DE_TOLERANCIA} dias
             </button>
           </div>
         )}
@@ -140,7 +140,7 @@ export function LicencaDoCliente({ client, payments }: { client: Client; payment
           <div className="rounded-xl bg-black/[0.03] dark:bg-white/[0.04] px-3 py-2.5 text-[12px] text-foreground/65 leading-relaxed">
             Próxima mensalidade: <strong className="text-foreground">{brlFull(l.proxima.valor)}</strong>, vence em{' '}
             <strong className={l.proxima.atrasada ? 'text-red-500' : 'text-foreground'}>{dataCurta(l.proxima.vence)}</strong>.
-            {' '}Vai no WhatsApp a partir de {dataCurta(l.mensagemEm)} (das 08h às 20h). Sem pagamento, o painel trava em {dataCurta(l.cortaEm)}.
+            {' '}Vai no WhatsApp a partir de {dataCurta(l.mensagemEm)} (das 08h às 20h). Sem pagamento, painel e site saem do ar em {dataCurta(l.cortaEm)}.
           </div>
         )}
       </Panel>

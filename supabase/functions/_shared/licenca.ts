@@ -6,8 +6,11 @@
  * com um segredo que existe nos dois lados (LICENCA_SEGREDO) — é chamada
  * de servidor para servidor, sem usuário logado (a rotina das 9h corta).
  *
- * O corte é só do PAINEL. Site e anúncios continuam no ar: `companies.status`
- * não é tocado, porque é por ele que o domínio do site é resolvido.
+ * O corte tira do ar o painel E o site (que fica só com as duas logos);
+ * nada é apagado. `companies.status` não é tocado: é por ele que o domínio
+ * é resolvido, e o lojista precisa continuar achando a tela de pagar.
+ * Anúncios já publicados nas contas do lojista (Facebook, ML) não são
+ * mexidos daqui — a conta é dele.
  */
 
 const LOJISTA_FUNCTIONS = 'https://ljjkerbczuwmxdbnxfes.supabase.co/functions/v1';

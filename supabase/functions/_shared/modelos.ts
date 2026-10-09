@@ -383,19 +383,19 @@ export const MODELOS: Modelo[] = [
   ]
  },
  {
-  "name": "painel_suspenso",
+  "name": "loja_fora_do_ar",
   "language": "pt_BR",
   "category": "UTILITY",
   "components": [
    {
     "type": "BODY",
-    "text": "Olá, {{1}}. O painel da {{2}} foi suspenso porque a mensalidade de {{3}} não foi paga.\n\nSeu site e seus anúncios continuam no ar, mas sem o painel não dá para cadastrar veículo, publicar nos canais nem acompanhar as negociações da equipe. Pagou, o painel volta na hora.",
+    "text": "Olá, {{1}}. Como a mensalidade de {{2}} não foi paga, o painel e o site da {{3}} foram tirados do ar.\n\nNada foi apagado: veículos, clientes e negociações continuam guardados. Assim que o pagamento cair, tudo volta na hora.",
     "example": {
      "body_text": [
       [
        "Walker",
-       "iTruck Caminhões",
-       "outubro"
+       "outubro",
+       "iTruck Caminhões"
       ]
      ]
     }
@@ -405,7 +405,7 @@ export const MODELOS: Modelo[] = [
     "buttons": [
      {
       "type": "URL",
-      "text": "Pagar e liberar",
+      "text": "Pagar e reativar",
       "url": "https://viapesados.com.br/bemvindo/{{1}}",
       "example": [
        "https://viapesados.com.br/bemvindo/exemplo123"

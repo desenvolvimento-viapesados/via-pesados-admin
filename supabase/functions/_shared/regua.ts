@@ -8,8 +8,9 @@
  *     mensalidade seguinte cobre de 14/10 a 14/11, e assim por diante.
  *  2. A mensalidade é enviada alguns dias ANTES do vencimento — não quando
  *     o Asaas cria a fatura, que é 40 dias antes e confunde quem recebe.
- *  3. Tolerância de 2 dias: venceu dia 14 e chegou dia 16 sem pagamento, o
- *     acesso ao sistema é cortado. Pagou, volta na hora.
+ *  3. Corte no TERCEIRO dia (revisto pelo dono no mesmo 09/10): venceu dia
+ *     14 → dia 15 um lembrete brando, dia 16 o aviso de risco, dia 17 sai
+ *     TUDO do ar — painel e site. Nada é apagado. Pagou, volta na hora.
  *  4. Nenhuma mensagem automática sai fora das 08h às 20h (Brasília). A
  *     que cair fora espera a próxima abertura.
  *
@@ -18,7 +19,7 @@
  */
 
 export const DIAS_ANTES_DA_MENSALIDADE = 5;
-export const DIAS_DE_TOLERANCIA = 2;
+export const DIAS_DE_TOLERANCIA = 3;
 export const JANELA_ABRE = 8;   // 08h00
 export const JANELA_FECHA = 20; // até 19h59
 
@@ -82,6 +83,6 @@ export function vencimentosDoCiclo(implantadoEm: string, pagas: number, emAberto
 export const hojeEnviaMensalidade = (vencimento: string, hoje: string) =>
   vencimento >= hoje && vencimento <= somarDias(hoje, DIAS_ANTES_DA_MENSALIDADE);
 
-/** Passou da tolerância? (venceu dia 14 → corta a partir do dia 16) */
+/** Passou da tolerância? (venceu dia 14 → corta a partir do dia 17) */
 export const passouDaTolerancia = (vencimento: string, hoje: string) =>
   hoje >= somarDias(vencimento, DIAS_DE_TOLERANCIA);
