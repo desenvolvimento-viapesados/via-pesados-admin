@@ -115,6 +115,12 @@ export interface Client {
   checkout_token: string | null;
   contract_signed_at: string | null;
   activated_at: string | null;
+  /** Data de implantação: o ciclo da mensalidade conta daqui (regua.ts). */
+  implantado_em: string | null;
+  /** Painel do lojista suspenso por mensalidade vencida além da tolerância. */
+  acesso_suspenso_em: string | null;
+  /** Liberado na mão pela equipe até esta data: a rotina não corta de novo. */
+  acesso_liberado_ate: string | null;
   canceled_at: string | null;
   notes: string | null;
   owner_id: string | null;
@@ -157,6 +163,8 @@ export interface Payment {
   status: 'pendente' | 'pago' | 'atrasado' | 'cancelado';
   method: 'pix' | 'boleto' | 'cartao' | 'transferencia' | 'outro' | null;
   invoice_url: string | null;
+  /** Preenchido quando a cobrança é uma mensalidade da assinatura. */
+  asaas_subscription_id?: string | null;
   created_at: string;
   client?: Pick<Client, 'id' | 'company_name'> | null;
 }

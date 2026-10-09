@@ -1,6 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { enviarTemplate, mesDe, dataBR, brl, primeiroNome, proximoMes } from '../_shared/wa.ts';
 import { tentarNotasPendentes } from '../_shared/nota-aviso.ts';
+import { pedirAoLojista } from '../_shared/licenca.ts';
+import { alinharCiclo } from '../_shared/ciclo.ts';
+import { hojeBRT, passouDaTolerancia } from '../_shared/regua.ts';
 
 /**
  * Recebe os eventos de cobrança do Asaas e mantém `payments` em dia.
@@ -71,9 +74,13 @@ function metodoNosso(billingType: unknown): string | null {
   }
 }
 
-/** Qual template cada evento dispara. Evento fora daqui não avisa ninguém. */
+/** Qual template cada evento dispara. Evento fora daqui não avisa ninguém.
+ *
+ * PAYMENT_CREATED saiu daqui em 09/10/2026: o Asaas cria a fatura da
+ * assinatura 40 dias antes do vencimento, e a iTruck recebeu a mensalidade
+ * de novembro à 01h25 com outubro ainda em aberto. A mensalidade agora é
+ * anunciada pela régua diária (cobranca-lembrete), 5 dias antes. */
 const TEMPLATE_POR_EVENTO: Record<string, string> = {
-  PAYMENT_CREATED: 'cobranca_mensal_disponivel',
   PAYMENT_OVERDUE: 'cobranca_em_atraso',
   PAYMENT_RECEIVED: 'pagamento_confirmado',
   PAYMENT_CONFIRMED: 'pagamento_confirmado',
@@ -135,13 +142,23 @@ Deno.serve(async (req) => {
 
     if (!p?.id) return json(200, { ok: true, ignorado: 'evento sem cobrança' });
 
-    const status = STATUS_POR_EVENTO[evento];
+    let status = STATUS_POR_EVENTO[evento];
     if (!status) return json(200, { ok: true, ignorado: evento });
+    /* Vencimento alterado numa cobrança já vencida continua vencida até o
+       Asaas dizer o contrário — o evento genérico não pode limpar o atraso. */
+    if ((evento === 'PAYMENT_UPDATED' || evento === 'PAYMENT_RESTORED') && String(p.status) === 'OVERDUE') {
+      status = 'atrasado';
+    }
 
     // Acha o cliente: primeiro pelo externalReference (que gravamos como o
     // nosso id), depois pelo id do cadastro no Asaas.
-    const CAMPOS = 'id, contact_name, company_name, whatsapp, checkout_token, status, activated_at';
-    let cliente: { id: string; contact_name: string | null; company_name: string | null; whatsapp: string | null; checkout_token: string | null; status: string | null; activated_at: string | null } | null = null;
+    const CAMPOS = 'id, contact_name, company_name, whatsapp, checkout_token, status, activated_at, lojista_company_id, acesso_suspenso_em, implantado_em, asaas_subscription_id';
+    let cliente: {
+      id: string; contact_name: string | null; company_name: string | null; whatsapp: string | null;
+      checkout_token: string | null; status: string | null; activated_at: string | null;
+      lojista_company_id: string | null; acesso_suspenso_em: string | null; implantado_em: string | null;
+      asaas_subscription_id: string | null;
+    } | null = null;
     const ref = String(p.externalReference ?? '').trim();
     if (/^[0-9a-f-]{36}$/i.test(ref)) {
       const { data } = await db.from('clients').select(CAMPOS).eq('id', ref).maybeSingle();
@@ -219,9 +236,40 @@ Deno.serve(async (req) => {
           // cada um pode sair uma vez só.
           chave: `${evento}:${p.id}`,
           params: paramsDoTemplate(template, p, cliente),
+          // Se tiver de esperar as 08h, só sai se a cobrança continuar aberta.
+          condicao: status === 'pago' ? null : { tipo: 'cobranca_aberta', asaas_payment_id: String(p.id) },
         });
       } catch (e) {
         console.error('asaas-webhook aviso:', e);
+      }
+    }
+
+    /* Pagou: o acesso volta na hora, sem esperar a rotina do dia seguinte.
+       Só libera se não sobrar outra mensalidade vencida além da tolerância. */
+    let acesso: unknown = null;
+    if (status === 'pago' && cliente?.acesso_suspenso_em && cliente.lojista_company_id) {
+      const { data: outras } = await db.from('payments').select('due_date')
+        .eq('client_id', clientId).in('status', ['pendente', 'atrasado']).not('asaas_subscription_id', 'is', null);
+      const hoje = hojeBRT();
+      const aindaDeve = (outras ?? []).some((o: { due_date: string }) => passouDaTolerancia(o.due_date, hoje));
+      if (!aindaDeve) {
+        acesso = await pedirAoLojista({ acao: 'liberar', company_id: cliente.lojista_company_id });
+        if ((acesso as { ok?: boolean })?.ok) {
+          await db.from('clients').update({ acesso_suspenso_em: null }).eq('id', clientId);
+          await db.from('activities').insert({ client_id: clientId, kind: 'nota', content: 'Acesso ao sistema liberado: mensalidade paga.' });
+        }
+      }
+    }
+
+    /* Primeira mensalidade paga de quem já tem data de implantação: o ciclo
+       passa a contar da implantação, não do vencimento que o checkout
+       inventou (hoje + 3 dias). */
+    let ciclo: unknown = null;
+    if (status === 'pago' && virou === 'ativo' && cliente?.implantado_em && (p.subscription || cliente.asaas_subscription_id)) {
+      try {
+        ciclo = await alinharCiclo(db, { id: clientId, asaas_subscription_id: p.subscription ?? cliente.asaas_subscription_id }, cliente.implantado_em);
+      } catch (e) {
+        ciclo = { erro: e instanceof Error ? e.message : 'falha ao alinhar' };
       }
     }
 
@@ -234,7 +282,7 @@ Deno.serve(async (req) => {
       catch (e) { notas = { erro: e instanceof Error ? e.message : 'falha' }; }
     }
 
-    return json(200, { ok: true, evento, status, client_id: clientId, virou, aviso, notas });
+    return json(200, { ok: true, evento, status, client_id: clientId, virou, aviso, notas, acesso, ciclo });
   } catch (err) {
     console.error('asaas-webhook:', err);
     /* Erro do PostgREST não é `Error`: é objeto com message/code/details, e

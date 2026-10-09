@@ -28,12 +28,22 @@
 
 import { configYCloud, enviarPorYCloud, ycloudPelaMetade } from './ycloud.ts';
 import { conferirParams } from './conferirParams.ts';
+import { dentroDaJanela, proximaAbertura } from './regua.ts';
 
 const GRAPH = 'https://graph.facebook.com/v21.0';
 
 export type Resultado =
   | { ok: true; message_id: string }
-  | { ok: false; motivo: string; inerte?: boolean; repetido?: boolean };
+  | { ok: false; motivo: string; inerte?: boolean; repetido?: boolean; agendado?: boolean; enviar_em?: string };
+
+/**
+ * O que precisa continuar verdadeiro para uma mensagem adiada ainda sair.
+ * Um "cobrança em atraso" que chega às 3h e espera as 8h não pode sair se o
+ * lojista pagou às 7h; um lembrete de reunião não sai se ela foi cancelada.
+ */
+export type Condicao =
+  | { tipo: 'cobranca_aberta'; asaas_payment_id: string }
+  | { tipo: 'reuniao_agendada'; meeting_id: string };
 
 /** Componente de corpo/cabeçalho: lista de textos, na ordem das variáveis. */
 export type Params = {
@@ -100,7 +110,13 @@ function textos(vals: string[]) {
  */
 export async function enviarTemplate(
   db: { from: (t: string) => any },
-  args: { para: string | null; template: string; params?: Params; chave: string; client_id?: string | null },
+  args: {
+    para: string | null; template: string; params?: Params; chave: string; client_id?: string | null;
+    /** Depois disto a mensagem perde o sentido: fora do horário, não espera. */
+    validoAte?: string | null;
+    /** Conferida de novo na hora de sair, se a mensagem tiver de esperar. */
+    condicao?: Condicao | null;
+  },
 ): Promise<Resultado> {
   const ycloud = configYCloud();
   const token = Deno.env.get('META_WABA_TOKEN');
@@ -133,6 +149,28 @@ export async function enviarTemplate(
   if (problemas.length) {
     console.error(`[wa] ${args.template} não bate com o modelo aprovado: ${problemas.join('; ')}`);
     return { ok: false, motivo: `${args.template}: ${problemas.join('; ')}` };
+  }
+
+  /* Fora das 08h–20h nada sai — regra do dono, sem exceção. A mensagem
+     vai para a fila e sai na próxima abertura (rotina wa-fila). Fica ANTES
+     da trava de wa_envios: a chave continua livre para quando a fila mandar. */
+  if (!dentroDaJanela()) {
+    const quando = proximaAbertura();
+    if (args.validoAte && quando > new Date(args.validoAte)) {
+      return { ok: false, motivo: 'fora do horário de envio, e às 08h já não faz sentido' };
+    }
+    const { error: erroFila } = await db.from('wa_fila').upsert({
+      template: args.template,
+      chave: args.chave,
+      client_id: args.client_id ?? null,
+      para,
+      params: args.params ?? {},
+      enviar_apos: quando.toISOString(),
+      valido_ate: args.validoAte ?? null,
+      condicao: args.condicao ?? null,
+    }, { onConflict: 'template,chave', ignoreDuplicates: true });
+    if (erroFila) return { ok: false, motivo: `fora do horário e não consegui agendar: ${erroFila.message}` };
+    return { ok: false, motivo: 'fora do horário de envio — sai às 08h', agendado: true, enviar_em: quando.toISOString() };
   }
 
   /* Trava de repetição ANTES de falar com a Meta: se o insert conflitar,

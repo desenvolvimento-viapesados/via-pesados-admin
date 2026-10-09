@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { LicencaDoCliente } from '@/components/admin/LicencaDoCliente';
 import {
   Loader2, Check, FileText, CreditCard, Rocket, Globe, Upload,
   Copy, ExternalLink, Phone, Mail, MapPin, Plus, StickyNote,
@@ -961,6 +962,8 @@ export default function ClienteDetalhe() {
             </button>
 
             <PlanoDoCliente client={client} />
+
+            <LicencaDoCliente client={client} payments={payments} />
 
             <div>
               <SectionHeader

@@ -76,6 +76,9 @@ Deno.serve(async (req) => {
         template: 'reuniao_confirmada',
         chave: `confirmada:${m.id}`,
         params: { body: [primeiroNome(x.p.contact_name), x.data, x.hora, x.atendente] },
+        // Fora das 08h–20h espera; confirmação depois do início não serve.
+        validoAte: m.scheduled_at,
+        condicao: { tipo: 'reuniao_agendada', meeting_id: m.id },
       });
       return json(200, { ok: true, ...r });
     }
@@ -99,6 +102,9 @@ Deno.serve(async (req) => {
         template: 'reuniao_lembrete',
         chave: `lembrete:${m.id}`,
         params: { body: [primeiroNome(x.p.contact_name), x.atendente, x.hora] },
+        // Reunião às 9h tem lembrete às 7h: espera as 8h, e só se ainda faltar 30 min.
+        validoAte: new Date(new Date(m.scheduled_at).getTime() - 30 * 60 * 1000).toISOString(),
+        condicao: { tipo: 'reuniao_agendada', meeting_id: m.id },
       });
       saida.push({ reuniao: m.id, ...r });
     }

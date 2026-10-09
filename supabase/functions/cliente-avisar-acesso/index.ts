@@ -1,6 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { enviarTemplate, primeiroNome } from '../_shared/wa.ts';
 import { tentarNotasPendentes } from '../_shared/nota-aviso.ts';
+import { alinharCiclo } from '../_shared/ciclo.ts';
+import { hojeBRT } from '../_shared/regua.ts';
 
 /**
  * Avisa o lojista de que o sistema está no ar.
@@ -42,7 +44,7 @@ Deno.serve(async (req) => {
     if (!client_id) return json(400, { error: 'client_id é obrigatório' });
 
     const { data: c } = await db.from('clients')
-      .select('id, company_name, contact_name, whatsapp, admin_email, lojista_company_id')
+      .select('id, company_name, contact_name, whatsapp, admin_email, lojista_company_id, implantado_em, asaas_subscription_id')
       .eq('id', client_id).maybeSingle();
     if (!c) return json(404, { error: 'cliente não encontrado' });
     if (!c.whatsapp) return json(400, { error: 'Cliente sem WhatsApp cadastrado.' });
@@ -81,7 +83,19 @@ Deno.serve(async (req) => {
          "já enviado" e a segunda tentativa nunca sairia. */
       chave: reenviar ? `acesso_liberado:${c.id}:${new Date().toISOString()}` : `acesso_liberado:${c.id}`,
       params: { body: [primeiroNome(c.contact_name), c.company_name], urlSuffix: convite.token },
+      // O link do convite vale 24h: se tiver de esperar as 08h, ainda serve.
+      validoAte: new Date(Date.now() + 23 * 3600_000).toISOString(),
     });
+
+    /* Sistema entregue = data de implantação. É dela que o ciclo conta
+       (regra do dono, 09/10/2026): implantou dia 14, a licença vale até o
+       dia 14 do mês seguinte. Só na primeira vez — reenviar o acesso não
+       muda quando o cliente começou. */
+    let ciclo: unknown = null;
+    if ((r.ok || r.agendado) && !c.implantado_em) {
+      try { ciclo = await alinharCiclo(db, c, hojeBRT()); }
+      catch (e) { ciclo = { erro: e instanceof Error ? e.message : 'falha ao alinhar o ciclo' }; }
+    }
     /* Acesso liberado é o portão da PRIMEIRA nota. Se ela já foi emitida e
        estava esperando, sai agora — nesta ordem: primeiro o sistema, depois
        o documento fiscal dele. */
@@ -91,7 +105,7 @@ Deno.serve(async (req) => {
       catch (e) { notas = { erro: e instanceof Error ? e.message : 'falha' }; }
     }
 
-    return json(200, { ...r, notas });
+    return json(200, { ...r, notas, ciclo });
   } catch (e) {
     return json(500, { error: e instanceof Error ? e.message : 'Erro' });
   }
