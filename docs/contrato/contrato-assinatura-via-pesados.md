@@ -2,7 +2,7 @@
 
 **Licença de uso de software (SaaS) e prestação de serviços de tecnologia**
 
-*Minuta v5 — 09/10/2026. Os campos entre `{{ }}` são preenchidos pelo sistema no fechamento da venda.*
+*Minuta v6 — 09/10/2026. Os campos entre `{{ }}` são preenchidos pelo sistema no fechamento da venda.*
 
 ---
 
@@ -199,7 +199,7 @@ Governador Valadares/MG, `{{data_aceite}}`.
 
 **`{{razao_social}}`** — CONTRATANTE, por `{{representante_nome}}` (CPF `{{representante_cpf}}`)
 
-*Assinado eletronicamente. Registro do aceite: `{{registro_aceite}}`*
+*Assinado eletronicamente em `{{data_aceite}}`, pelo WhatsApp `{{whatsapp_assinatura}}` (WhatsApp oficial do CONTRATANTE, Cláusula 1.7). Registro do aceite: `{{registro_aceite}}`*
 
 ---
 
