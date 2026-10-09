@@ -2,7 +2,7 @@
 
 **Licença de uso de software (SaaS) e prestação de serviços de tecnologia**
 
-*Minuta v2 — 09/10/2026. Os campos entre `{{ }}` são preenchidos pelo sistema no fechamento da venda.*
+*Minuta v3 — 09/10/2026. Os campos entre `{{ }}` são preenchidos pelo sistema no fechamento da venda.*
 
 ---
 
@@ -10,7 +10,7 @@
 
 | | |
 |---|---|
-| **CONTRATADA** | **VIA PESADOS E SISTEMAS LTDA**, nome fantasia **Via Pesados**, CNPJ `{{cnpj_contratada}}`, com sede na Rua Vinte e Quatro, 329B, Santos Dumont I, Governador Valadares/MG, CEP 35.022-300 |
+| **CONTRATADA** | **VIA PESADOS E SISTEMAS LTDA**, nome fantasia **Via Pesados**, CNPJ 68.835.124/0001-20, com sede na Rua Vinte e Quatro, 329, Santos Dumont, Governador Valadares/MG, CEP 35.022-300 |
 | **CONTRATANTE** | `{{razao_social}}`, CNPJ `{{cnpj}}`, com sede em `{{endereco}}` |
 | **Representante legal do CONTRATANTE** | `{{representante_nome}}`, CPF `{{representante_cpf}}` |
 | **WhatsApp oficial do CONTRATANTE** (para avisos, cobranças e notificações deste contrato) | `{{whatsapp}}` |
