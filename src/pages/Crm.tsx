@@ -15,10 +15,9 @@ import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
 type TabKey = 'whatsapp' | 'funil' | 'reunioes' | 'amostras' | 'conexao';
 
 /**
- * As abas do Comercial. Reuniões, Amostras e Implantação tinham saído da
- * barra (o funil ganhou a coluna Reunião e a conexão nasce do Vendido), mas
- * as telas continuavam no código sem caminho. Voltaram em 2026-10-08 como
- * subseções do Comercial (lib/secoes.ts) — a Home leva direto a cada uma.
+ * As abas do CRM. Reuniões, Amostras e Implantação tinham saído da barra (o
+ * funil ganhou a coluna Reunião e a conexão nasce do Vendido), mas as telas
+ * continuavam no código sem caminho; voltaram em 2026-10-08.
  */
 /* A marca do WhatsApp em traço único, com fill currentColor: assim ela
    acende em laranja com a aba ativa e apaga com as outras, como todo ícone
@@ -85,11 +84,11 @@ export default function Crm() {
       <header className="sticky top-0 z-40 border-b border-border/40 bg-background/95 backdrop-blur-xl">
         <div className="relative w-full flex h-20 items-center px-4 sm:px-6">
           <button
-            onClick={() => navigate('/secao/comercial')}
+            onClick={() => navigate('/')}
             className="flex items-center gap-1.5 text-[13px] text-foreground/40 hover:text-foreground transition-colors group z-10"
           >
             <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
-            <span>Comercial</span>
+            <span>Início</span>
           </button>
 
           <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none select-none">

@@ -3,23 +3,32 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Sun, Moon, LogOut } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { secaoDaRota, voltarDe } from '@/lib/secoes';
 import viaPesadosLogoLight from '@/assets/via-pesados-icon-color.png';
 import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
 
 const PAGE_TITLES: Record<string, string> = {
   '/clientes':   'Clientes',
-  '/pagamentos': 'Recebimentos',
-  '/financeiro': 'Caixa',
+  '/pagamentos': 'Pagamentos',
+  '/financeiro': 'Financeiro',
+  '/tickets':    'Suporte',
+  '/equipe':     'Equipe',
+  '/relatorios': 'Relatórios',
+  '/whatsapp':   'WhatsApp',
+  '/metas':      'Metas',
   '/inadimplencia': 'Inadimplência',
   '/planos':     'Planos e preços',
   '/saude':      'Saúde da plataforma',
-  '/tickets':    'Chamados',
-  '/equipe':     'Equipe',
-  '/relatorios': 'Relatórios',
-  '/whatsapp':   'Canal oficial',
-  '/metas':      'Metas',
 };
+
+/* O "voltar" vai para o Início, como sempre foi — menos dentro de um
+   cliente: da ficha volta para a lista, e da cobrança ou do onboarding volta
+   para a ficha. */
+function voltarDe(pathname: string): { para: string; rotulo: string } {
+  const sub = pathname.match(/^\/clientes\/([^/]+)\/(cobranca|onboarding)/);
+  if (sub) return { para: `/clientes/${sub[1]}`, rotulo: 'Cliente' };
+  if (/^\/clientes\/[^/]+$/.test(pathname)) return { para: '/clientes', rotulo: 'Clientes' };
+  return { para: '/', rotulo: 'Início' };
+}
 
 // Telas que trazem o próprio cabeçalho. Comparação por prefixo porque a
 // ficha do prospect é /crm/prospect/<id> — com Set de caminho exato ela
@@ -39,15 +48,10 @@ export function Layout({ children }: { children: ReactNode }) {
 
   if (isHome || isFullPage) return <>{children}</>;
 
-  /* Na tela de seção o título é a própria seção; nas outras, o nome da
-     tela. O "voltar" sobe um degrau: ficha → lista → seção → início. */
-  const title = location.pathname.startsWith('/secao/')
-    ? ''
-    : Object.entries(PAGE_TITLES).find(
-        ([path]) => location.pathname === path || location.pathname.startsWith(path + '/')
-      )?.[1] ?? '';
   const voltar = voltarDe(location.pathname);
-  const secao = secaoDaRota(location.pathname);
+  const title = Object.entries(PAGE_TITLES).find(
+    ([path]) => location.pathname === path || location.pathname.startsWith(path + '/')
+  )?.[1] ?? '';
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -76,10 +80,7 @@ export function Layout({ children }: { children: ReactNode }) {
           {/* Direita: título + ações */}
           <div className="ml-auto flex items-center gap-2 z-10">
             {title && (
-              <span className="text-[13px] font-medium text-foreground/60 hidden sm:block">
-                {secao && <span className="text-foreground/30 font-normal">{secao.titulo} · </span>}
-                {title}
-              </span>
+              <span className="text-[13px] font-medium text-foreground/60 hidden sm:block">{title}</span>
             )}
             <button
               onClick={toggleTheme}

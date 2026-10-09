@@ -26,7 +26,6 @@ const Cobranca       = lazy(() => import('@/pages/Cobranca'));
 const Onboarding     = lazy(() => import('@/pages/Onboarding'));
 const Whatsapp       = lazy(() => import('@/pages/Whatsapp'));
 const Metas          = lazy(() => import('@/pages/Metas'));
-const Secao          = lazy(() => import('@/pages/Secao'));
 const Inadimplencia  = lazy(() => import('@/pages/Inadimplencia'));
 const Planos         = lazy(() => import('@/pages/Planos'));
 const Saude          = lazy(() => import('@/pages/Saude'));
@@ -91,7 +90,8 @@ const Gate = () => {
       <Suspense fallback={<Loader />}>
         <Routes>
           <Route path="/"              index element={<Home />} />
-          <Route path="/secao/:chave"  element={<Secao />} />
+          {/* As telas de seção saíram (2026-10-09): endereço salvo cai no Início. */}
+          <Route path="/secao/:chave"  element={<Navigate to="/" replace />} />
           <Route path="/crm"           element={<Crm />} />
           <Route path="/crm/prospect/:id" element={<ProspectDetalhe />} />
           <Route path="/crm/venda/:id" element={<RegistrarVenda />} />
