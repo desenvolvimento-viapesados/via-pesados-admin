@@ -2,7 +2,7 @@
 
 **Licença de uso de software (SaaS) e prestação de serviços de tecnologia**
 
-*Minuta v1 — 09/10/2026. Os campos entre `{{ }}` são preenchidos pelo sistema no fechamento da venda.*
+*Minuta v2 — 09/10/2026. Os campos entre `{{ }}` são preenchidos pelo sistema no fechamento da venda.*
 
 ---
 
@@ -10,16 +10,13 @@
 
 | | |
 |---|---|
-| **CONTRATADA** | **XF DIGITAL LTDA**, nome fantasia **Via Pesados**, CNPJ 63.247.136/0001-10, com sede na Rua Vinte e Quatro, 329B, Santos Dumont I, Governador Valadares/MG, CEP 35.022-300 |
+| **CONTRATADA** | **VIA PESADOS E SISTEMAS LTDA**, nome fantasia **Via Pesados**, CNPJ `{{cnpj_contratada}}`, com sede na Rua Vinte e Quatro, 329B, Santos Dumont I, Governador Valadares/MG, CEP 35.022-300 |
 | **CONTRATANTE** | `{{razao_social}}`, CNPJ `{{cnpj}}`, com sede em `{{endereco}}` |
 | **Representante legal do CONTRATANTE** | `{{representante_nome}}`, CPF `{{representante_cpf}}` |
 | **WhatsApp oficial do CONTRATANTE** (para avisos, cobranças e notificações deste contrato) | `{{whatsapp}}` |
 | **E-mail do CONTRATANTE** (apenas para recuperação de senha) | `{{email}}` |
-| **Plano** | Plano único Via Pesados, conforme Anexo I |
-| **Canais incluídos** | `{{canais}}` |
-| **Domínio do site** | `{{dominio}}` (de titularidade do CONTRATANTE) |
+| **Plano** | Plano único Via Pesados, com todas as funcionalidades e canais de venda da Plataforma (Anexo I) |
 | **Mensalidade** | R$ `{{valor_mensal}}` (`{{valor_extenso}}`) |
-| **Taxa de implantação** | `{{taxa_implantacao}}` (quando não houver: "isento") |
 | **Vencimento** | Todo dia `{{dia_vencimento}}`, que é o dia da Data de Implantação |
 | **Formas de pagamento** | Pix, boleto ou cartão de crédito, pela página de pagamento da CONTRATADA |
 | **Fidelidade** | Não há. O CONTRATANTE pode cancelar a qualquer tempo, sem multa (Cláusula 11) |
@@ -36,7 +33,7 @@ As partes acima qualificadas celebram este Contrato, que se rege pelas cláusula
 
 1.2. **Painel**: a área logada da Plataforma, usada pelo CONTRATANTE e seus usuários.
 
-1.3. **Site**: o site de vendas do CONTRATANTE gerado pela Plataforma, publicado no domínio indicado no Quadro-Resumo ou em endereço fornecido pela CONTRATADA.
+1.3. **Site**: o site de vendas do CONTRATANTE gerado pela Plataforma, publicado no domínio do CONTRATANTE ou em endereço fornecido pela CONTRATADA.
 
 1.4. **Canais de terceiros**: plataformas de outras empresas às quais a Plataforma se conecta, como Facebook, Instagram, catálogo do WhatsApp, Mercado Livre e o próprio WhatsApp.
 
@@ -56,7 +53,7 @@ As partes acima qualificadas celebram este Contrato, que se rege pelas cláusula
 
 3.1. A implantação começa após a assinatura deste Contrato e a confirmação do primeiro pagamento.
 
-3.2. Compete à CONTRATADA: criar o ambiente do CONTRATANTE, aplicar sua identidade visual, configurar o Site e os canais contratados, liberar os acessos e orientar o uso inicial.
+3.2. Compete à CONTRATADA: criar o ambiente do CONTRATANTE, aplicar sua identidade visual, configurar o Site e os canais de venda, liberar os acessos e orientar o uso inicial.
 
 3.3. Compete ao CONTRATANTE fornecer, em tempo hábil: logotipo e materiais de marca; informações do estoque; acesso às contas dos canais de terceiros que deseja conectar; e a configuração de DNS do seu domínio, quando houver. Atrasos no envio desses itens prorrogam a implantação pelo mesmo tempo, sem responsabilidade da CONTRATADA.
 
@@ -124,7 +121,7 @@ As partes acima qualificadas celebram este Contrato, que se rege pelas cláusula
 
 8.1. As integrações com canais de terceiros dependem das regras, aprovações, limites e disponibilidade dessas empresas, que podem alterá-los a qualquer tempo. A CONTRATADA não garante aprovação de contas, alcance, volume de contatos ou vendas, nem responde por bloqueios, suspensões ou mudanças determinadas pelos canais de terceiros.
 
-8.2. **O CONTRATANTE declara ciência de que a conexão de números de WhatsApp pela leitura de QR Code utiliza integração não oficial com o WhatsApp**, sujeita às políticas da Meta, inclusive à restrição ou ao bloqueio do número. A CONTRATADA orienta boas práticas de uso, mas não responde por bloqueios decorrentes do uso do número pelo CONTRATANTE.
+8.2. O uso do WhatsApp segue as regras da Meta, que pode restringir ou bloquear números usados de forma abusiva, como no envio de mensagens em massa, no contato com quem não pediu ou em caso de muitas denúncias. A CONTRATADA orienta as boas práticas de uso, e o cuidado com a forma de uso do número cabe ao CONTRATANTE.
 
 8.3. As contas do CONTRATANTE nos canais de terceiros (Facebook, Instagram, Mercado Livre, WhatsApp e outras) e o seu domínio pertencem ao CONTRATANTE. A CONTRATADA atua sobre elas apenas com a autorização concedida pelo próprio CONTRATANTE e somente para executar este Contrato.
 
@@ -132,7 +129,7 @@ As partes acima qualificadas celebram este Contrato, que se rege pelas cláusula
 
 9.1. A Plataforma, seus códigos, layouts, modelos e a marca Via Pesados são de titularidade exclusiva da CONTRATADA.
 
-9.2. Os dados e conteúdos inseridos pelo CONTRATANTE permanecem de sua titularidade. O CONTRATANTE concede à CONTRATADA licença de uso desses conteúdos na medida necessária para executar este Contrato, como exibir veículos no Site e publicá-los nos canais contratados.
+9.2. Os dados e conteúdos inseridos pelo CONTRATANTE permanecem de sua titularidade. O CONTRATANTE concede à CONTRATADA licença de uso desses conteúdos na medida necessária para executar este Contrato, como exibir veículos no Site e publicá-los nos canais de venda.
 
 9.3. O CONTRATANTE autoriza a CONTRATADA a mencionar seu nome e logotipo como cliente da Via Pesados em materiais de divulgação. A autorização pode ser revogada a qualquer tempo pelo WhatsApp.
 
@@ -200,7 +197,7 @@ As partes acima qualificadas celebram este Contrato, que se rege pelas cláusula
 
 Governador Valadares/MG, `{{data_aceite}}`.
 
-**XF DIGITAL LTDA (Via Pesados)** — CONTRATADA
+**VIA PESADOS E SISTEMAS LTDA (Via Pesados)** — CONTRATADA
 
 **`{{razao_social}}`** — CONTRATANTE, por `{{representante_nome}}` (CPF `{{representante_cpf}}`)
 
@@ -214,7 +211,7 @@ O plano único Via Pesados inclui, conforme as funcionalidades disponíveis na d
 
 1. **Gestão de estoque** de caminhões, carretas, implementos, máquinas e demais veículos, com ficha técnica, fotos e documentos.
 2. **Site próprio** do CONTRATANTE, com vitrine de veículos, página de cada veículo, simulador de financiamento e formulários de contato.
-3. **Publicação nos canais contratados** (Quadro-Resumo), a partir de um único cadastro, observadas as regras de cada canal.
+3. **Publicação nos canais de venda** disponíveis na Plataforma — como Facebook, Instagram, catálogo do WhatsApp e Mercado Livre —, todos incluídos no plano, a partir de um único cadastro e observadas as regras de cada canal.
 4. **Via CRM**: central de contatos e negociações, com integração ao WhatsApp da equipe.
 5. **Gestão comercial e financeira**: vendas, compras, consignações, despesas, metas, relatórios e equipe, com controle de acesso por usuário.
 6. **Implantação**, hospedagem, atualizações e suporte pelo WhatsApp.
