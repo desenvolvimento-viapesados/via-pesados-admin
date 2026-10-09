@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useCrmCounts, brl } from '@/hooks/useAdmin';
 import { FunilTab } from '@/components/crm/FunilTab';
-import { ReunioesTab } from '@/components/crm/ReunioesTab';
+import { AgendaTab } from '@/components/crm/AgendaTab';
 import { ConexaoTab } from '@/components/crm/ConexaoTab';
 import { WhatsAppTab } from '@/components/crm/WhatsAppTab';
 import viaPesadosLogoLight from '@/assets/via-pesados-icon-color.png';
@@ -35,7 +35,7 @@ const TABS: { key: TabKey; label: string; newLabel: string; icon: IconeDaAba }[]
   // quer ver quem escreveu, não o funil.
   { key: 'whatsapp', label: 'WhatsApp', newLabel: 'Número',   icon: IconeWhatsApp },
   { key: 'funil',    label: 'Funil',    newLabel: 'Prospect', icon: Kanban },
-  { key: 'reunioes', label: 'Reuniões', newLabel: 'Reunião',  icon: CalendarDays },
+  { key: 'reunioes', label: 'Agenda',   newLabel: 'Reunião',  icon: CalendarDays },
   { key: 'conexao',  label: 'Implantação', newLabel: 'Venda', icon: Rocket },
 ];
 
@@ -155,10 +155,10 @@ export default function Crm() {
 
       {/* ── Conteúdo ───────────────────────────────────────── */}
       <main className={cn('flex-1 w-full py-5',
-        tab === 'funil' || tab === 'whatsapp' ? 'px-4 sm:px-6' : 'px-4 sm:px-6 max-w-6xl mx-auto')}>
+        tab === 'funil' || tab === 'whatsapp' || tab === 'reunioes' ? 'px-4 sm:px-6' : 'px-4 sm:px-6 max-w-6xl mx-auto')}>
         {tab === 'whatsapp' && <WhatsAppTab newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'funil'    && <FunilTab    newOpen={newOpen} onCloseNew={closeNew} />}
-        {tab === 'reunioes' && <ReunioesTab newOpen={newOpen} onCloseNew={closeNew} defaultProspectId={defaultProspect} />}
+        {tab === 'reunioes' && <AgendaTab   newOpen={newOpen} onCloseNew={closeNew} defaultProspectId={defaultProspect} />}
         {tab === 'conexao'  && <ConexaoTab  newOpen={newOpen} onCloseNew={closeNew} />}
       </main>
     </div>
