@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { enviarTemplate, primeiroNome } from '../_shared/wa.ts';
+import { enviarTemplate, primeiroNome, modeloAprovado } from '../_shared/wa.ts';
 import { tentarNotasPendentes } from '../_shared/nota-aviso.ts';
 import { alinharCiclo } from '../_shared/ciclo.ts';
 import { hojeBRT } from '../_shared/regua.ts';
@@ -73,9 +73,14 @@ Deno.serve(async (req) => {
        o botão do acesso_liberado tem URL fixa (/lojista) e a Meta só aceita
        variável no FIM da URL — ele levaria o cliente a uma tela de login sem
        senha. O acesso_equipe já foi aprovado com /entrar/{{1}}. */
+    /* O acesso é a última etapa da implantação: a mensagem é a de
+       conclusão, com tudo o que ficou pronto, e o botão de criar a senha.
+       Até a Meta aprovar implantacao_concluida, sai o acesso_equipe —
+       mesmo botão, mesmo convite de 24h. */
+    const template = (await modeloAprovado('implantacao_concluida')) ? 'implantacao_concluida' : 'acesso_equipe';
     const r = await enviarTemplate(db, {
       para: c.whatsapp,
-      template: 'acesso_equipe',
+      template,
       client_id: c.id,
       /* A chave continua sendo a de acesso_liberado: é ela que o portão da
          primeira nota consulta, e o evento é o mesmo — o acesso saiu. No

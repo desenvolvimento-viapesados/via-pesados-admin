@@ -81,7 +81,7 @@ export async function enviarNotaFiscal(
          'acesso_equipe', que carrega o token do primeiro acesso. Clientes
          avisados antes da troca têm o nome antigo gravado, e derrubá-los
          aqui seguraria a nota deles para sempre. */
-      if (!(await jaSaiu(db, ['acesso_liberado', 'acesso_equipe'], [`acesso_liberado:${cli.id}`]))) {
+      if (!(await jaSaiu(db, ['acesso_liberado', 'acesso_equipe', 'implantacao_concluida'], [`acesso_liberado:${cli.id}`]))) {
         return { enviado: false, motivo: 'sistema ainda não liberado para o lojista', aguardando: true };
       }
     } else {

@@ -73,10 +73,14 @@ function useDiagnosticoWa(): DiagnosticoWa {
     let vivo = true;
     (async () => {
       try {
-        const [t, n] = await Promise.all([
-          fetch(`${FUNCTIONS_URL}/wa-diagnostico?template=acesso_equipe`).then((r) => r.json()),
-          fetch(`${FUNCTIONS_URL}/wa-diagnostico`).then((r) => r.json()),
-        ]);
+        /* Primeiro o resumo (número e status dos modelos), para saber qual
+           mensagem sai: a de conclusão, quando aprovada; senão o acesso_equipe
+           — a mesma regra do cliente-avisar-acesso. */
+        const n = await fetch(`${FUNCTIONS_URL}/wa-diagnostico`).then((r) => r.json());
+        const aprovado = (n?.templates ?? []).some(
+          (x: { nome?: string; status?: string }) => x.nome === 'implantacao_concluida' && x.status === 'APPROVED');
+        const t = await fetch(`${FUNCTIONS_URL}/wa-diagnostico?template=${aprovado ? 'implantacao_concluida' : 'acesso_equipe'}`)
+          .then((r) => r.json());
         if (!vivo) return;
         type Comp = { type: string; text?: string; buttons?: { text: string; url: string }[] };
         const comps: Comp[] = t?.template?.components ?? [];

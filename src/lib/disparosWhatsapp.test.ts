@@ -43,6 +43,10 @@ const GATILHOS: Record<string, Parameters<typeof conferirParams>[1]> = {
   reuniao_lembrete: {
     body: ['Walker', 'Kauã', '14:00'],
   },
+  implantacao_concluida: {
+    body: ['Walker', 'iTruck Caminhões'],
+    urlSuffix: 'convite123',
+  },
   acesso_equipe: {
     body: ['Walker', 'iTruck Caminhões'],
     urlSuffix: 'convite123',

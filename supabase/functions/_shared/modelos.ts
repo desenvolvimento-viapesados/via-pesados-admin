@@ -495,5 +495,39 @@ export const MODELOS: Modelo[] = [
     }
    }
   ]
+ },
+ /* Conclusão da implantação (12/10/2026): o acesso é a última etapa, e esta mensagem
+    leva o primeiro usuário a criar a senha. Até a Meta aprovar, sai o acesso_equipe. */
+ {
+  "name": "implantacao_concluida",
+  "language": "pt_BR",
+  "category": "UTILITY",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Olá, {{1}}! A implantação da {{2}} na Via Pesados está concluída, e está tudo pronto para vender:\n\n• Sistema de gestão configurado, com o estoque cadastrado\n• Site próprio no ar\n• Anúncios conectados aos canais de venda\n• Via CRM pronto para atender os seus clientes\n• Relatórios e financeiro para acompanhar os resultados\n\nToque no botão abaixo para criar a sua senha e acessar o painel. O link vale por 24 horas.",
+    "example": {
+     "body_text": [
+      [
+       "Walker",
+       "iTruck Caminhões"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "URL",
+      "text": "Criar minha senha",
+      "url": "https://viapesados.com.br/entrar/{{1}}",
+      "example": [
+       "https://viapesados.com.br/entrar/exemplo123"
+      ]
+     }
+    ]
+   }
+  ]
  }
 ];

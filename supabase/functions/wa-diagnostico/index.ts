@@ -47,6 +47,14 @@ Deno.serve(async (req) => {
   if (ycloud) {
     try {
       const lista = await listarTemplates(ycloud);
+      /* ?template=<nome> devolve o modelo inteiro (texto e botões), como no
+         caminho da Graph — é o que a prévia do Onboarding lê. Sem isto a
+         prévia dizia "não consegui ler o modelo" desde a troca para a YCloud. */
+      const pedido = new URL(req.url).searchParams.get('template');
+      if (pedido) {
+        const t = lista.find((x) => x.name === pedido) ?? null;
+        return json(200, { ok: true, provedor: 'ycloud', template: t });
+      }
       const porStatus: Record<string, number> = {};
       for (const t of lista) porStatus[t.status] = (porStatus[t.status] ?? 0) + 1;
 
