@@ -7,6 +7,10 @@
  *
  * Um arquivo para todas as páginas: trocar um ID aqui vale para a landing
  * e para as cinco páginas de busca (que saem de scripts/gerar-paginas-seo.py).
+ *
+ * O navegador guarda este arquivo por 4 horas: ao mudá-lo, suba o "?v=" em
+ * public/conheca/index.html e em scripts/gerar-paginas-seo.py (e rode o
+ * gerador), senão quem já visitou continua com a versão velha.
  */
 (function () {
   var PIXEL_META = '1439814911458702';
