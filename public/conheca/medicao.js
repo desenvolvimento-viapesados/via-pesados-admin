@@ -16,7 +16,7 @@
   var PIXEL_META = '1439814911458702';
   /* Google Ads: a tag da conta e a conversão "Clique no WhatsApp"
      (categoria Contato, primária). O rótulo vem do snippet de evento. */
-  var GOOGLE_ADS = { id: 'AW-18511315341', rotulo: '' };
+  var GOOGLE_ADS = { id: 'AW-18511315341', rotulo: 'pfmFCK2U55sdEI2D8fpE' };
 
   /* Pixel da Meta, o código oficial. */
   !function (f, b, e, v, n, t, s) {
