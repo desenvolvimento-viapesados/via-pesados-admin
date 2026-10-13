@@ -38,15 +38,39 @@
     window.gtag('config', GOOGLE_ADS.id);
   }
 
+  /* O mesmo clique também vai pelo servidor (API de Conversões, função
+     meta-conversao): o navegador que bloqueia o pixel não bloqueia isto. O
+     event_id é o mesmo nos dois, e a Meta conta uma vez só. */
+  var SERVIDOR = 'https://ktjvyysqhsyvjmhumjly.supabase.co/functions/v1/meta-conversao';
+  var cookie = function (nome) {
+    var m = document.cookie.match(new RegExp('(?:^|; )' + nome + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : undefined;
+  };
+  var fbclid = new URLSearchParams(location.search).get('fbclid');
+  var idDoEvento = function () {
+    return (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+      : Date.now().toString(36) + Math.random().toString(36).slice(2);
+  };
+
   /* Qualquer botão de WhatsApp, de qualquer página, sem marcar um por um:
-     botão novo na landing já entra na conta. Só o caminho da página vai
-     junto — nada do visitante. */
+     botão novo na landing já entra na conta. Só o caminho da página e os
+     cookies do próprio pixel vão junto — nada que o visitante digitou. */
   var pagina = location.pathname.replace(/\/+$/, '') || '/';
   document.addEventListener('click', function (ev) {
     var alvo = ev.target && ev.target.closest
       && ev.target.closest('a[href*="wa.me/"], a[href*="api.whatsapp.com"], a[href*="whatsapp.com/send"]');
     if (!alvo) return;
-    try { fbq('track', 'Contact', { content_name: pagina }); } catch (e) { /* medição nunca trava o clique */ }
+    var id = idDoEvento();
+    try { fbq('track', 'Contact', { content_name: pagina }, { eventID: id }); } catch (e) { /* medição nunca trava o clique */ }
+    try {
+      var fbc = cookie('_fbc') || (fbclid ? 'fb.1.' + Date.now() + '.' + fbclid : undefined);
+      var corpo = JSON.stringify({
+        event_name: 'Contact', event_id: id, url: location.href, content_name: pagina,
+        fbp: cookie('_fbp'), fbc: fbc,
+      });
+      if (navigator.sendBeacon) navigator.sendBeacon(SERVIDOR, new Blob([corpo], { type: 'text/plain' }));
+      else fetch(SERVIDOR, { method: 'POST', body: corpo, keepalive: true, mode: 'cors' });
+    } catch (e) { /* idem */ }
     if (GOOGLE_ADS && window.gtag) {
       try { window.gtag('event', 'conversion', { send_to: GOOGLE_ADS.id + '/' + GOOGLE_ADS.rotulo }); } catch (e) { /* idem */ }
     }
