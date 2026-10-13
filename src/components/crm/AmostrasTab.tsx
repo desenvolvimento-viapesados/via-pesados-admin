@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   useDemos, useCreateDemo, useUpdateDemo, useProspects, useAdvanceProspect,
-  provisionCompany, deactivateCompany, updateCompanyBranding, uploadLogo, slugify, genPassword,
+  provisionCompany, semearAmostra, deactivateCompany, updateCompanyBranding, uploadLogo, slugify, genPassword,
   saveSystemCredential, type Demo,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
@@ -62,6 +62,22 @@ export async function provisionarAmostra(demo: Demo) {
     business_hours: demo.business_hours ?? undefined,
     maps_url: demo.maps_url ?? undefined,
   });
+
+  /* O preenchimento (veículos, clientes, vendas, CRM) falhar não derruba o
+     provisionamento — a empresa já existe — e por isso passava calado: a
+     Rodolima foi ao ar VAZIA em 13/10/2026 e só se descobriu ao abrir o
+     site. Tenta de novo uma vez; se ainda falhar, avisa com o motivo,
+     porque apresentar amostra vazia é pior que não apresentar. */
+  if (provisioned.seed_error) {
+    try {
+      await semearAmostra(provisioned.company_id);
+    } catch (e) {
+      toast.error(
+        `A amostra subiu, mas ficou VAZIA (sem veículos): ${(e as Error).message || provisioned.seed_error}. Não apresente antes de resolver.`,
+        { duration: 30000 },
+      );
+    }
+  }
 
   // O slug pode ter mudado: repetir uma amostra da mesma empresa gera
   // "demo-x-2". A URL precisa acompanhar, senão aponta para a antiga.

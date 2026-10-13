@@ -636,7 +636,7 @@ interface ProvisionInput {
 
 export const provisionCompany = async (
   input: ProvisionInput,
-): Promise<{ company_id: string; company_slug: string; admin_email: string }> => {
+): Promise<{ company_id: string; company_slug: string; admin_email: string; seed_error?: string | null }> => {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error('Sessão expirada');
   const res = await fetch(`${LOJISTA_FUNCTIONS_URL}/admin-provision`, {
@@ -650,6 +650,21 @@ export const provisionCompany = async (
   const data = await res.json();
   if (!res.ok || data.error) throw new Error(data.error || 'Erro ao provisionar sistema');
   return data;
+};
+
+/** Reaplica o preenchimento da amostra (veículos, clientes, vendas, CRM).
+    Idempotente no servidor: os ids derivam do company_id. */
+export const semearAmostra = async (company_id: string): Promise<string> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Sessão expirada');
+  const res = await fetch(`${LOJISTA_FUNCTIONS_URL}/admin-provision`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ action: 'seed_demo', company_id }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.error) throw new Error(data.error || data.message || 'O preenchimento falhou');
+  return data.seed as string;
 };
 
 /**
