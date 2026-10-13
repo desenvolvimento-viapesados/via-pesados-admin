@@ -14,9 +14,9 @@
  */
 (function () {
   var PIXEL_META = '1439814911458702';
-  /* Conversão "Contato" do Google Ads: preencher quando ela for criada,
-     no formato { id: 'AW-123456789', rotulo: 'AbCdEfGh' }. */
-  var GOOGLE_ADS = null;
+  /* Google Ads: a tag da conta e a conversão "Clique no WhatsApp"
+     (categoria Contato, primária). O rótulo vem do snippet de evento. */
+  var GOOGLE_ADS = { id: 'AW-18511315341', rotulo: '' };
 
   /* Pixel da Meta, o código oficial. */
   !function (f, b, e, v, n, t, s) {
@@ -75,7 +75,7 @@
       if (navigator.sendBeacon) navigator.sendBeacon(SERVIDOR, new Blob([corpo], { type: 'text/plain' }));
       else fetch(SERVIDOR, { method: 'POST', body: corpo, keepalive: true, mode: 'cors' });
     } catch (e) { /* idem */ }
-    if (GOOGLE_ADS && window.gtag) {
+    if (GOOGLE_ADS && GOOGLE_ADS.rotulo && window.gtag) {
       try { window.gtag('event', 'conversion', { send_to: GOOGLE_ADS.id + '/' + GOOGLE_ADS.rotulo }); } catch (e) { /* idem */ }
     }
   }, true);

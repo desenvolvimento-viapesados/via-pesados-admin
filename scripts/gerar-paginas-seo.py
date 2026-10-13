@@ -356,7 +356,7 @@ def pagina(p):
 <script type="application/ld+json">
 {json.dumps(ld, ensure_ascii=False, indent=1)}
 </script>
-<script src="/conheca/medicao.js?v=2" async></script>
+<script src="/conheca/medicao.js?v=3" async></script>
 </head>
 <body>
 
