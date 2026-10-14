@@ -65,11 +65,14 @@
       && ev.target.closest('a[href*="wa.me/"], a[href*="api.whatsapp.com"], a[href*="whatsapp.com/send"]');
     if (!alvo) return;
     var id = idDoEvento();
-    try { fbq('track', 'Contact', { content_name: pagina }, { eventID: id }); } catch (e) { /* medição nunca trava o clique */ }
+    /* data-cta diz qual botão da página foi: mostra que chamada converte */
+    var lugar = alvo.getAttribute('data-cta');
+    var nome = lugar ? pagina + ' · ' + lugar : pagina;
+    try { fbq('track', 'Contact', { content_name: nome }, { eventID: id }); } catch (e) { /* medição nunca trava o clique */ }
     try {
       var fbc = cookie('_fbc') || (fbclid ? 'fb.1.' + Date.now() + '.' + fbclid : undefined);
       var corpo = JSON.stringify({
-        event_name: 'Contact', event_id: id, url: location.href, content_name: pagina,
+        event_name: 'Contact', event_id: id, url: location.href, content_name: nome,
         fbp: cookie('_fbp'), fbc: fbc,
       });
       if (navigator.sendBeacon) navigator.sendBeacon(SERVIDOR, new Blob([corpo], { type: 'text/plain' }));
