@@ -49,10 +49,10 @@ const DIA = 86_400_000;
 const dias = (a: string, b: string) => Math.max(0, (new Date(b).getTime() - new Date(a).getTime()) / DIA);
 const nDias = (n: number) => (n >= 10 ? `${Math.round(n)}d` : `${n.toFixed(1)}d`);
 
-const ORDEM_ETAPA = ['contato', 'oportunidade', 'reuniao', 'vendido'] as const;
+const ORDEM_ETAPA = ['contato', 'amostra', 'oportunidade', 'reuniao', 'vendido'] as const;
 const ROTULO_ETAPA: Record<string, string> = {
-  contato: 'Contato', oportunidade: 'Oportunidade',
-  reuniao: 'Reunião', vendido: 'Vendido', perdido: 'Perdido',
+  contato: 'Contato', amostra: 'Envio de Amostra', oportunidade: 'Oportunidade',
+  reuniao: 'Reunião', vendido: 'Fechado', perdido: 'Perdido',
 };
 
 const SEM_CANAL = '__sem__';
@@ -498,7 +498,7 @@ export function CanaisTab({
               title="Tempo em cada etapa"
               sub="Média de dias entre a entrada na etapa e a saída dela — só transições concluídas"
             />
-            <ZebraTable sticky head={['Canal', ...ORDEM_ETAPA.slice(0, 3).map((e) => ROTULO_ETAPA[e]), 'Ciclo total']}>
+            <ZebraTable sticky head={['Canal', ...ORDEM_ETAPA.slice(0, 4).map((e) => ROTULO_ETAPA[e]), 'Ciclo total']}>
               {linhas.map((l) => (
                 <Tr key={l.id}>
                   <Td sticky>
@@ -507,7 +507,7 @@ export function CanaisTab({
                       {l.nome}
                     </span>
                   </Td>
-                  {ORDEM_ETAPA.slice(0, 3).map((e) => (
+                  {ORDEM_ETAPA.slice(0, 4).map((e) => (
                     <Td key={e}>{l.tempoEtapa[e] === null || l.tempoEtapa[e] === undefined ? '—' : nDias(l.tempoEtapa[e] as number)}</Td>
                   ))}
                   <Td className="text-foreground font-semibold">{l.cicloDias === null ? '—' : nDias(l.cicloDias)}</Td>
@@ -538,7 +538,7 @@ export function CanaisTab({
             {linhas.every((l) => l.perdidos === 0) ? (
               <Empty h={200}>Nenhuma perda registrada nesta turma.</Empty>
             ) : (
-              <ZebraTable sticky head={['Canal', ...ORDEM_ETAPA.slice(0, 3).map((e) => ROTULO_ETAPA[e]), 'Total perdido', '% da turma']}>
+              <ZebraTable sticky head={['Canal', ...ORDEM_ETAPA.slice(0, 4).map((e) => ROTULO_ETAPA[e]), 'Total perdido', '% da turma']}>
                 {linhas.filter((l) => l.perdidos > 0).map((l) => (
                   <Tr key={l.id}>
                     <Td sticky>
@@ -547,7 +547,7 @@ export function CanaisTab({
                         {l.nome}
                       </span>
                     </Td>
-                    {ORDEM_ETAPA.slice(0, 3).map((e) => <Td key={e}>{l.morteEm[e] ?? 0}</Td>)}
+                    {ORDEM_ETAPA.slice(0, 4).map((e) => <Td key={e}>{l.morteEm[e] ?? 0}</Td>)}
                     <Td className="text-red-400 font-semibold">{l.perdidos}</Td>
                     <Td>{pct(l.perdidos, l.leads, 0)}</Td>
                   </Tr>

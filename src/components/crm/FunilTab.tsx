@@ -19,9 +19,10 @@ import { StatusBadge } from '@/components/admin/ui';
 
 const PIPELINE: { key: ProspectStage; label: string }[] = [
   { key: 'contato',      label: 'Contato' },
+  { key: 'amostra',      label: 'Envio de Amostra' },
   { key: 'oportunidade', label: 'Oportunidade' },
   { key: 'reuniao',      label: 'Reunião' },
-  { key: 'vendido',      label: 'Vendido' },
+  { key: 'vendido',      label: 'Fechado' },
 ];
 
 const inputCls =
@@ -158,7 +159,7 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
   );
   /* Contagem e valor de cada funil, só dos que estão andando (não vendido). */
   const resumo = useMemo(() => {
-    const ativos = todos.filter((p) => p.stage === 'contato' || p.stage === 'oportunidade' || p.stage === 'reuniao');
+    const ativos = todos.filter((p) => p.stage === 'contato' || p.stage === 'amostra' || p.stage === 'oportunidade' || p.stage === 'reuniao');
     const de = (f?: ChaveDoFunil) => {
       const l = f ? ativos.filter((p) => (p.funil ?? 'fria') === f) : ativos;
       return { qtd: l.length, valor: l.reduce((s, p) => s + (p.proposal_value ?? 0), 0) };

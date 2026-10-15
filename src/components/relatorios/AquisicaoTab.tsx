@@ -26,7 +26,7 @@ interface Props {
 const dias = (a: string, b: string) =>
   Math.max(0, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86_400_000));
 
-const ETAPAS_ABERTAS = ['contato', 'oportunidade', 'reuniao'] as const;
+const ETAPAS_ABERTAS = ['contato', 'amostra', 'oportunidade', 'reuniao'] as const;
 
 const ETAPA_LABEL: Record<string, string> = {
   novo: 'Novo', contato: 'Em contato', reuniao: 'Reunião',

@@ -25,9 +25,10 @@ const inputCls =
 
 const ROTULO_ETAPA: Record<ProspectStage, string> = {
   contato: 'Contato',
+  amostra: 'Envio de Amostra',
   oportunidade: 'Oportunidade',
   reuniao: 'Reunião',
-  vendido: 'Vendido',
+  vendido: 'Fechado',
   perdido: 'Perdido',
 };
 
@@ -601,7 +602,7 @@ export default function ProspectDetalhe() {
       {reuniaoAberta && (
         <AgendarReuniaoDialog
           prospect={prospect}
-          moverParaReuniao={prospect.stage === 'contato' || prospect.stage === 'oportunidade'}
+          moverParaReuniao={prospect.stage === 'contato' || prospect.stage === 'amostra' || prospect.stage === 'oportunidade'}
           onClose={() => setReuniaoAberta(false)}
         />
       )}

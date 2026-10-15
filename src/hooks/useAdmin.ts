@@ -4,7 +4,9 @@ import { supabase, LOJISTA_FUNCTIONS_URL } from '@/integrations/supabase/client'
 
 /* ═══ Tipos ═══════════════════════════════════════════════════ */
 
-export type ProspectStage = 'contato' | 'oportunidade' | 'reuniao' | 'vendido' | 'perdido';
+/* 'amostra' é a etapa "Envio de Amostra"; 'vendido' aparece como "Fechado" —
+   a chave fica, porque metas, relatórios e o histórico contam por ela. */
+export type ProspectStage = 'contato' | 'amostra' | 'oportunidade' | 'reuniao' | 'vendido' | 'perdido';
 
 export interface Prospect {
   id: string;
@@ -431,7 +433,7 @@ export const useWinProspect = () => {
 
 /** Ordem da esteira. Ações só empurram para frente, nunca para trás. */
 export const STAGE_RANK: Record<ProspectStage, number> = {
-  contato: 0, oportunidade: 1, reuniao: 2, vendido: 3, perdido: 99,
+  contato: 0, amostra: 1, oportunidade: 2, reuniao: 3, vendido: 4, perdido: 99,
 };
 
 /** Avança o prospect ao executar a ação da etapa (agendar, criar amostra...). */
@@ -1167,7 +1169,7 @@ export const useCrmCounts = () => {
   const { data: demos = [] } = useDemos();
 
   return useMemo(() => {
-    const activeStages = new Set<ProspectStage>(['contato', 'oportunidade', 'reuniao']);
+    const activeStages = new Set<ProspectStage>(['contato', 'amostra', 'oportunidade', 'reuniao']);
     const active = prospects.filter((p) => activeStages.has(p.stage));
 
     const scheduled = new Set(

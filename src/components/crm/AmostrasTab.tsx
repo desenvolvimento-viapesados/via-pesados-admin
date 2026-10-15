@@ -283,7 +283,7 @@ export function DemoDialog({
 
         const prospect = prospects.find((x) => x.id === form.prospect_id);
         if (prospect) {
-          await advance.mutateAsync({ id: prospect.id, from: prospect.stage, to: 'oportunidade' });
+          await advance.mutateAsync({ id: prospect.id, from: prospect.stage, to: 'amostra' });
         }
 
         /* Provisiona agora. Deixar a amostra em rascunho esperando um
@@ -625,7 +625,7 @@ export function AmostrasTab({
   /** Chegou na etapa Amostra e ainda não tem demo montada. */
   const pending = useMemo(() => {
     const withDemo = new Set(demos.map((d) => d.prospect_id).filter(Boolean) as string[]);
-    return prospects.filter((p) => p.stage === 'oportunidade' && !withDemo.has(p.id));
+    return prospects.filter((p) => p.stage === 'amostra' && !withDemo.has(p.id));
   }, [prospects, demos]);
 
   const closeDialog = () => { setCreateFor(null); setEditing(null); onCloseNew(); };
