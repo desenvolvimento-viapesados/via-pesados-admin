@@ -1,5 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { ligarNotaFiscal } from '../_shared/nota.ts';
+import { hojeBRT } from '../_shared/regua.ts';
+import { primeiroVencimento } from '../_shared/teste.ts';
+import { testeDoCliente, converterTeste } from '../_shared/teste-db.ts';
 
 /** O que sai como observação na nota fiscal do lojista. */
 const descricaoDaNota = (c: { plan?: string | null } | null | undefined) =>
@@ -94,6 +97,15 @@ Deno.serve(async (req) => {
 
     if (!cli) return json(404, { error: 'Link inválido ou expirado.' });
 
+    /* Veio de teste grátis? Quem assina durante o teste só paga quando ele
+       acaba: a primeira mensalidade vence no dia do corte (teste.ts). */
+    const teste = await testeDoCliente(db, cli.id);
+    const doTeste = teste && ['aguardando_implantacao', 'em_teste', 'encerrado'].includes(teste.status) ? teste : null;
+    const primeiroVenc = () => (doTeste ? primeiroVencimento(doTeste, hojeBRT()) : vencimentoInicial());
+    const assinouNoTeste = async () => {
+      if (doTeste) await converterTeste(db, cli!.id, 'assinou pela página de pagamento');
+    };
+
     /* ── abrir: o que a página mostra ────────────────────────────────
        Montado campo a campo de propósito. Nada além disto sai daqui. */
     if (acao === 'abrir') {
@@ -164,6 +176,10 @@ Deno.serve(async (req) => {
         valor: Number(cli.mrr) || 0,
         canais: cli.canais ?? [],
         ja_assinou: !!cli.asaas_subscription_id,
+        /* A página diz "você só paga quando o teste acabar". */
+        teste: doTeste && !cli.asaas_subscription_id
+          ? { ate: doTeste.fim, encerrado: doTeste.status === 'encerrado', primeiro_vencimento: primeiroVenc() }
+          : null,
       });
     }
 
@@ -213,7 +229,7 @@ Deno.serve(async (req) => {
           customer,
           billingType: 'UNDEFINED',
           value: valor,
-          nextDueDate: vencimentoInicial(),
+          nextDueDate: primeiroVenc(),
           cycle: 'MONTHLY',
           description: `Via Pesados — ${cli.plan ? `plano ${cli.plan}` : 'mensalidade'}`,
           externalReference: cli.id,
@@ -223,6 +239,7 @@ Deno.serve(async (req) => {
           asaas_subscription_id: subId,
           checkout_billing_type: 'UNDEFINED',
         }).eq('id', cli.id);
+        await assinouNoTeste();
         /* Emissão de nota é por assinatura. Falhar aqui não derruba a venda:
            `nota-configurar` conserta depois, e perder o cliente não tem
            conserto. */
@@ -364,7 +381,7 @@ Deno.serve(async (req) => {
           customer,
           billingType: 'CREDIT_CARD',
           value: valor,
-          nextDueDate: vencimentoInicial(),
+          nextDueDate: primeiroVenc(),
           cycle: 'MONTHLY',
           description: `Via Pesados — ${cli.plan ? `plano ${cli.plan}` : 'mensalidade'}`,
           externalReference: cli.id,
@@ -376,6 +393,7 @@ Deno.serve(async (req) => {
           asaas_subscription_id: sub.id,
           checkout_billing_type: 'CREDIT_CARD',
         }).eq('id', cli.id);
+        await assinouNoTeste();
         await ligarNotaFiscal(base, chave, sub.id, descricaoDaNota(cli));
         return json(200, {
           ok: true, tipo: 'cartao', valor,
@@ -390,7 +408,7 @@ Deno.serve(async (req) => {
         customer,
         billingType: 'UNDEFINED',
         value: valor,
-        nextDueDate: vencimentoInicial(),
+        nextDueDate: primeiroVenc(),
         cycle: 'MONTHLY',
         description: `Via Pesados — ${cli.plan ? `plano ${cli.plan}` : 'mensalidade'}`,
         externalReference: cli.id,
@@ -399,6 +417,7 @@ Deno.serve(async (req) => {
         asaas_subscription_id: sub.id,
         checkout_billing_type: 'UNDEFINED',
       }).eq('id', cli.id);
+      await assinouNoTeste();
       await ligarNotaFiscal(base, chave, sub.id, descricaoDaNota(cli));
 
       const primeira = await primeiraCobranca(sub.id);

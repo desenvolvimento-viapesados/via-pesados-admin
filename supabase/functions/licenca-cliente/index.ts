@@ -1,5 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { alinharCiclo } from '../_shared/ciclo.ts';
+import { ancoraDoCiclo } from '../_shared/teste.ts';
+import { testeDoCliente, moverTeste } from '../_shared/teste-db.ts';
 import { pedirAoLojista } from '../_shared/licenca.ts';
 import { hojeBRT, somarDias, DIAS_DE_TOLERANCIA } from '../_shared/regua.ts';
 
@@ -45,7 +47,10 @@ Deno.serve(async (req) => {
 
     if (acao === 'alinhar') {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(String(implantado_em ?? ''))) return json(400, { error: 'Informe a data de implantação' });
-      const r = await alinharCiclo(db, c, implantado_em);
+      // Veio de teste grátis: o teste anda junto, e o ciclo conta do fim dele.
+      let t = await testeDoCliente(db, c.id);
+      if (t) t = await moverTeste(db, t, implantado_em);
+      const r = await alinharCiclo(db, c, implantado_em, ancoraDoCiclo(implantado_em, t));
       await db.from('activities').insert({
         client_id: c.id, kind: 'nota', author_id: user.id,
         content: `Data de implantação definida em ${implantado_em.split('-').reverse().join('/')}`

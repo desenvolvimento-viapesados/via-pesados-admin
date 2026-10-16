@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useClients, useCompaniesHealth, usePayments, type Client } from '@/hooks/useAdmin';
+import { useTestesGratis } from '@/hooks/useTesteGratis';
 import { etapasDoCliente, progresso, type Etapa } from '@/lib/estadoDoCliente';
 import {
   fatosDaSaude, proximoPasso, diasDesde, ritmoDaImplantacao, estaImplantando, type Ritmo,
@@ -46,6 +47,7 @@ export function useImplantacao({ lerSistemas = true }: { lerSistemas?: boolean }
   const { data: clientes = [], isLoading: c1 } = useClients();
   const { data: pagamentos = [], isLoading: c2 } = usePayments();
   const { data: tarefas = [] } = useTarefasDeTodos();
+  const { data: testes = [] } = useTestesGratis();
   const ids = useMemo(
     () => (lerSistemas ? clientes.filter((c) => c.lojista_company_id && c.status !== 'cancelado').map((c) => c.lojista_company_id!) : []),
     [clientes, lerSistemas],
@@ -69,6 +71,7 @@ export function useImplantacao({ lerSistemas = true }: { lerSistemas?: boolean }
             contract_signed_at: c.contract_signed_at,
             asaas_payment_link_url: c.asaas_payment_link_url,
             pagou: pagamentos.some((p) => p.client_id === c.id && p.status === 'pago'),
+            emTeste: testes.some((t) => t.client_id === c.id && (t.status === 'aguardando_implantacao' || t.status === 'em_teste')),
             tarefas: tarefas.filter((t) => t.client_id === c.id),
           },
           // Sem sistema não há o que perguntar: a resposta é "não tem", não "não sei".
@@ -99,5 +102,5 @@ export function useImplantacao({ lerSistemas = true }: { lerSistemas?: boolean }
       comOCliente: implantando.filter((i) => i.passo?.dono === 'cliente').length,
       atrasados: implantando.filter((i) => i.ritmo === 'atrasado').length,
     };
-  }, [clientes, pagamentos, tarefas, saudeQuery.data, saudeQuery.isSuccess, saudeQuery.isFetching, saudeQuery.isError, c1, c2]);
+  }, [clientes, pagamentos, tarefas, testes, saudeQuery.data, saudeQuery.isSuccess, saudeQuery.isFetching, saudeQuery.isError, c1, c2]);
 }

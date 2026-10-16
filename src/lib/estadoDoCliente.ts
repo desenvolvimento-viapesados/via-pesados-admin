@@ -23,6 +23,9 @@ export type FatosDoPainel = {
   asaas_payment_link_url?: string | null;
   /** Pagamento confirmado — vem de `payments`, não do link existir. */
   pagou?: boolean;
+  /** Veio de teste grátis (ainda sem assinar): paga no fim do teste, e a
+      implantação não espera o pagamento — o teste conta dela. */
+  emTeste?: boolean;
   /** As tarefas marcadas à mão, para o que não é verificável. */
   tarefas?: Array<{ task_key: string; done: boolean }>;
 };
@@ -80,9 +83,10 @@ export function etapasDoCliente(painel: FatosDoPainel, sistema: FatosDoSistema):
       chave: 'pagamento_recebido',
       titulo: 'Pagamento recebido',
       origem: 'painel',
-      feito: painel.pagou === true,
+      feito: painel.pagou === true || painel.emTeste === true,
       porque: painel.pagou === true
         ? 'cobrança confirmada'
+        : painel.emTeste === true ? 'teste grátis: a primeira mensalidade vem no fim do teste'
         : sim(painel.asaas_payment_link_url) ? 'link criado, pagamento não confirmado' : 'cobrança ainda não criada',
     },
     {

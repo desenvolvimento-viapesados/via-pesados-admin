@@ -3,6 +3,8 @@ import { enviarTemplate, primeiroNome, modeloAprovado } from '../_shared/wa.ts';
 import { tentarNotasPendentes } from '../_shared/nota-aviso.ts';
 import { alinharCiclo } from '../_shared/ciclo.ts';
 import { hojeBRT } from '../_shared/regua.ts';
+import { ancoraDoCiclo } from '../_shared/teste.ts';
+import { testeDoCliente, comecarTeste } from '../_shared/teste-db.ts';
 
 /**
  * Avisa o lojista de que o sistema está no ar.
@@ -97,8 +99,17 @@ Deno.serve(async (req) => {
        dia 14 do mês seguinte. Só na primeira vez — reenviar o acesso não
        muda quando o cliente começou. */
     let ciclo: unknown = null;
+    let teste: unknown = null;
     if ((r.ok || r.agendado) && !c.implantado_em) {
-      try { ciclo = await alinharCiclo(db, c, hojeBRT()); }
+      /* Veio de teste grátis: os 30 dias começam hoje, e a mensalidade de
+         quem já assinou passa a vencer no dia seguinte ao fim do teste. */
+      const hoje = hojeBRT();
+      let t = await testeDoCliente(db, c.id);
+      if (t) {
+        try { t = await comecarTeste(db, t, hoje); teste = { inicio: t.inicio, fim: t.fim }; }
+        catch (e) { teste = { erro: e instanceof Error ? e.message : 'falha ao começar o teste' }; }
+      }
+      try { ciclo = await alinharCiclo(db, c, hoje, ancoraDoCiclo(hoje, t)); }
       catch (e) { ciclo = { erro: e instanceof Error ? e.message : 'falha ao alinhar o ciclo' }; }
     }
     /* Acesso liberado é o portão da PRIMEIRA nota. Se ela já foi emitida e
@@ -110,7 +121,7 @@ Deno.serve(async (req) => {
       catch (e) { notas = { erro: e instanceof Error ? e.message : 'falha' }; }
     }
 
-    return json(200, { ...r, notas, ciclo });
+    return json(200, { ...r, notas, ciclo, teste });
   } catch (e) {
     return json(500, { error: e instanceof Error ? e.message : 'Erro' });
   }

@@ -213,12 +213,18 @@ Deno.serve(async (req) => {
     resultados.push({ cliente: cid, etapa, ...r });
   }
 
+  /* Loja cortada no fim do teste grátis não tem fatura — "não deve nada"
+     seria verdade, e ela voltaria ao ar na manhã seguinte. Quem a libera é
+     a assinatura (webhook do pagamento) ou a equipe. */
+  const { data: doTeste } = await db.from('testes_gratis').select('client_id').eq('status', 'encerrado');
+  const cortadosPeloTeste = new Set((doTeste ?? []).map((t: { client_id: string }) => t.client_id));
+
   /* 4. Liberação: suspenso que não deve mais nada vencido além da tolerância.
      Sem mensagem: aqui a liberação pode não ter sido pagamento (fatura
      cancelada, por exemplo) — "pagamento confirmado" seria mentira. */
   for (const s of suspensos ?? []) {
     const c = porId.get(s.id);
-    if (!c?.lojista_company_id) continue;
+    if (!c?.lojista_company_id || cortadosPeloTeste.has(s.id)) continue;
     const aindaDeve = (abertas ?? []).some((p: Cobranca) => p.client_id === s.id && passouDaTolerancia(p.due_date, hoje));
     if (aindaDeve) continue;
     const r = await pedirAoLojista({ acao: 'liberar', company_id: c.lojista_company_id });

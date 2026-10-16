@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Check, FileText, KeyRound, Link2, Loader2, Trophy,
+  ArrowLeft, Check, FileText, Hourglass, KeyRound, Link2, Loader2, Trophy,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,7 @@ import {
   genPassword, slugify, brlFull,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
+import { criarTesteGratis } from '@/hooks/useTesteGratis';
 import { CidadeUF } from '@/components/crm/CidadeUF';
 import { mascaraTelefone, soDigitos, mascaraMoeda, valorDaMoeda, moedaDeNumero } from '@/lib/mascaras';
 
@@ -104,6 +105,7 @@ const vazio = {
   contact_name: '', whatsapp: '', city: '', state: '',
   mrr: '', canais: [] as string[],
   gerar_cobranca: true,
+  teste_gratis: false,
   acesso_nome: '', acesso_email: '',
   sistema_email: '',
   owner_id: '',
@@ -253,20 +255,34 @@ export default function RegistrarVenda() {
         }
       }
 
+      /* Teste grátis: os 30 dias começam na implantação (no aviso de
+         acesso), não agora. A linha nasce esperando; a rotina diária e o
+         aviso de acesso cuidam do resto. */
+      if (form.teste_gratis) {
+        try {
+          await criarTesteGratis(client.id, form.owner_id || member?.id || null, member?.id ?? null);
+        } catch (e) {
+          toast.warning(`Venda registrada, mas o teste grátis não foi criado: ${(e as Error).message}`);
+        }
+      }
+
       if (form.gerar_cobranca && mrrNum > 0) {
         try {
           await gerarLink.mutateAsync({ client_id: client.id, valor: mrrNum });
-          toast.success('Venda registrada e cobrança mensal criada');
+          toast.success(form.teste_gratis
+            ? 'Teste grátis registrado — a assinatura fica pronta para quando ele decidir'
+            : 'Venda registrada e cobrança mensal criada');
         } catch (e) {
           toast.warning(`Venda registrada, mas a cobrança não foi gerada: ${(e as Error).message}`);
         }
       } else {
-        toast.success('Venda registrada — contrato emitido em rascunho');
+        toast.success(form.teste_gratis ? 'Teste grátis registrado' : 'Venda registrada — contrato emitido em rascunho');
       }
 
       /* A cobrança é o próximo passo real: manda o link e espera. Cair na
-         ficha obrigava a procurar o link no meio de um checklist. */
-      navigate(`/clientes/${client.id}/cobranca`);
+         ficha obrigava a procurar o link no meio de um checklist. No teste,
+         o próximo passo é implantar — o link de assinar vai nos avisos. */
+      navigate(form.teste_gratis ? '/testes' : `/clientes/${client.id}/cobranca`);
     } catch {
       toast.error('Erro ao registrar venda');
       setSalvando(false);
@@ -390,6 +406,13 @@ export default function RegistrarVenda() {
                 <input className={campo} inputMode="numeric" placeholder="Mensalidade (R$)" value={form.mrr} onChange={(e) => set('mrr', mascaraMoeda(e.target.value))} />
                 <Opcao
                   tom="emerald"
+                  ligada={form.teste_gratis}
+                  onClick={() => set('teste_gratis', !form.teste_gratis)}
+                  titulo={<span className="flex items-center gap-1.5"><Hourglass className="h-3 w-3" /> Começar com 30 dias de teste grátis</span>}
+                  sub="Conta da implantação, não de hoje. Sem cartão. Se não assinar, painel e site saem do ar no dia seguinte ao fim."
+                />
+                <Opcao
+                  tom="emerald"
                   ligada={form.gerar_cobranca}
                   onClick={() => set('gerar_cobranca', !form.gerar_cobranca)}
                   titulo={<span className="flex items-center gap-1.5"><Link2 className="h-3 w-3" /> Gerar cobrança mensal no Asaas</span>}
@@ -440,6 +463,12 @@ export default function RegistrarVenda() {
                     {amostra ? `amostra de ${amostra.company_name}` : 'novo, vazio'}
                   </dd>
                 </div>
+                {form.teste_gratis && (
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-foreground/45">Teste grátis</dt>
+                    <dd className="text-foreground">30 dias após a implantação</dd>
+                  </div>
+                )}
                 <div className="flex justify-between gap-3">
                   <dt className="text-foreground/45">Canais</dt>
                   <dd className="text-foreground">{form.canais.length || '—'}</dd>
@@ -453,7 +482,7 @@ export default function RegistrarVenda() {
               className="w-full h-12 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trophy className="h-4 w-4" />}
-              {salvando ? 'Fechando…' : 'Registrar venda'}
+              {salvando ? 'Fechando…' : form.teste_gratis ? 'Registrar teste grátis' : 'Registrar venda'}
             </button>
             {!amostra && amostras.length > 0 && (
               <p className="text-[11px] text-amber-500/90 leading-snug px-1">

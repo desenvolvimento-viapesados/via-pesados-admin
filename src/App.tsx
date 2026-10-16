@@ -29,6 +29,7 @@ const Whatsapp       = lazy(() => import('@/pages/Whatsapp'));
 const Metas          = lazy(() => import('@/pages/Metas'));
 const Planos         = lazy(() => import('@/pages/Planos'));
 const Saude          = lazy(() => import('@/pages/Saude'));
+const TestesGratis   = lazy(() => import('@/pages/TestesGratis'));
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -97,6 +98,7 @@ const Gate = () => {
           <Route path="/crm/venda/:id" element={<RegistrarVenda />} />
           <Route path="/crm/venda"     element={<RegistrarVenda />} />
           <Route path="/implantacao"   element={<Implantacao />} />
+          <Route path="/testes"        element={<TestesGratis />} />
           <Route path="/clientes"      element={<Clientes />} />
           <Route path="/clientes/:id"  element={<ClienteDetalhe />} />
           <Route path="/clientes/:id/cobranca" element={<Cobranca />} />

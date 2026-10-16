@@ -3,6 +3,8 @@ import { enviarTemplate, mesDe, dataBR, brl, primeiroNome, proximoMes, modeloApr
 import { tentarNotasPendentes } from '../_shared/nota-aviso.ts';
 import { pedirAoLojista } from '../_shared/licenca.ts';
 import { alinharCiclo } from '../_shared/ciclo.ts';
+import { ancoraDoCiclo } from '../_shared/teste.ts';
+import { testeDoCliente, converterTeste } from '../_shared/teste-db.ts';
 import { hojeBRT, passouDaTolerancia } from '../_shared/regua.ts';
 
 /**
@@ -277,9 +279,19 @@ Deno.serve(async (req) => {
        passa a contar da implantação, não do vencimento que o checkout
        inventou (hoje + 3 dias). */
     let ciclo: unknown = null;
+    /* Veio de teste grátis: pagou, é cliente (se a assinatura não tiver
+       marcado antes). E o ciclo conta do fim do teste, não da implantação —
+       o primeiro mês foi grátis. */
+    const teste = status === 'pago' && cliente ? await testeDoCliente(db, clientId) : null;
+    if (teste) await converterTeste(db, clientId, 'primeira mensalidade paga');
     if (status === 'pago' && virou === 'ativo' && cliente?.implantado_em && (p.subscription || cliente.asaas_subscription_id)) {
       try {
-        ciclo = await alinharCiclo(db, { id: clientId, asaas_subscription_id: p.subscription ?? cliente.asaas_subscription_id }, cliente.implantado_em);
+        ciclo = await alinharCiclo(
+          db,
+          { id: clientId, asaas_subscription_id: p.subscription ?? cliente.asaas_subscription_id },
+          cliente.implantado_em,
+          ancoraDoCiclo(cliente.implantado_em, teste),
+        );
       } catch (e) {
         ciclo = { erro: e instanceof Error ? e.message : 'falha ao alinhar' };
       }

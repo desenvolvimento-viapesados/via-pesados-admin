@@ -529,5 +529,154 @@ export const MODELOS: Modelo[] = [
     ]
    }
   ]
+ },
+ /* Teste grátis de 30 dias (16/10/2026): começo, 5 dias antes, véspera, corte e
+    reconquista. Cada um só sai depois de aprovado (modeloAprovado). */
+ {
+  "name": "teste_gratis_comecou",
+  "language": "pt_BR",
+  "category": "UTILITY",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Olá, {{1}}! O seu teste grátis do Via Pesados começou: são 30 dias com o sistema completo, até {{2}}.\n\nNesse período, cada veículo cadastrado sai em todos os canais de uma vez, e as conversas da equipe ficam num lugar só. Qualquer dúvida, é só responder esta mensagem.",
+    "example": {
+     "body_text": [
+      [
+       "Walker",
+       "15/11/2026"
+      ]
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "name": "teste_gratis_faltam_5_dias",
+  "language": "pt_BR",
+  "category": "UTILITY",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Olá, {{1}}. Faltam 5 dias para o fim do seu teste grátis do Via Pesados, que vai até {{2}}.\n\nPara continuar sem interrupção, assine pelo botão abaixo. A primeira mensalidade só vence quando o teste terminar.",
+    "example": {
+     "body_text": [
+      [
+       "Walker",
+       "15/11/2026"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "URL",
+      "text": "Assinar o Via Pesados",
+      "url": "https://viapesados.com.br/bemvindo/{{1}}",
+      "example": [
+       "https://viapesados.com.br/bemvindo/exemplo123"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "teste_gratis_termina_amanha",
+  "language": "pt_BR",
+  "category": "UTILITY",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Olá, {{1}}. O seu teste grátis do Via Pesados vai até amanhã, {{2}}. Depois disso, o painel e o site saem do ar até a assinatura; nada é apagado.\n\nPara não parar, assine pelo botão abaixo.",
+    "example": {
+     "body_text": [
+      [
+       "Walker",
+       "15/11/2026"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "URL",
+      "text": "Assinar o Via Pesados",
+      "url": "https://viapesados.com.br/bemvindo/{{1}}",
+      "example": [
+       "https://viapesados.com.br/bemvindo/exemplo123"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "teste_gratis_encerrado",
+  "language": "pt_BR",
+  "category": "UTILITY",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Olá, {{1}}. O teste grátis da {{2}} no Via Pesados terminou em {{3}}, e o painel e o site saíram do ar.\n\nNada foi apagado: veículos, clientes e negociações continuam guardados. Assinando pelo botão abaixo, tudo volta na hora.",
+    "example": {
+     "body_text": [
+      [
+       "Walker",
+       "iTruck Caminhões",
+       "15/11/2026"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "URL",
+      "text": "Assinar e reativar",
+      "url": "https://viapesados.com.br/bemvindo/{{1}}",
+      "example": [
+       "https://viapesados.com.br/bemvindo/exemplo123"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "teste_gratis_volte",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Olá, {{1}}. Sem o painel, cada veículo novo volta a ser anunciado na mão: no Facebook, no Instagram e no Mercado Livre, um por um.\n\nCom o Via Pesados é um cadastro só, e ele sai em todos. Assine e volte a anunciar em minutos.",
+    "example": {
+     "body_text": [
+      [
+       "Walker"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "URL",
+      "text": "Assinar",
+      "url": "https://viapesados.com.br/bemvindo/{{1}}",
+      "example": [
+       "https://viapesados.com.br/bemvindo/exemplo123"
+      ]
+     }
+    ]
+   }
+  ]
  }
 ];

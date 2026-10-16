@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { LicencaDoCliente } from '@/components/admin/LicencaDoCliente';
+import { TesteDoCliente } from '@/components/admin/TesteDoCliente';
+import { useTestesGratis } from '@/hooks/useTesteGratis';
 import {
   Loader2, Check, FileText, CreditCard, Rocket, Globe, Upload,
   Copy, ExternalLink, Phone, Mail, MapPin, Plus, StickyNote,
@@ -566,6 +568,8 @@ export default function ClienteDetalhe() {
      do cliente parou de abrir. O `enabled` de dentro já cuida de não
      chamar nada enquanto o cliente não chegou. */
   const usoQuery = useClientUsage(client);
+  const { data: testes = [] } = useTestesGratis();
+  const teste = testes.find((t) => t.client_id === id) ?? null;
 
   /* `?resolver=etapa` chega da Implantação: abre direto o diálogo que
      resolve, em vez de deixar a pessoa procurar o botão na ficha. */
@@ -608,6 +612,7 @@ export default function ClienteDetalhe() {
       contract_signed_at: client?.contract_signed_at,
       asaas_payment_link_url: client?.asaas_payment_link_url,
       pagou,
+      emTeste: teste?.status === 'aguardando_implantacao' || teste?.status === 'em_teste',
       tarefas: tasks,
     },
     usoQuery.isPending ? null : (uso as never),
@@ -962,6 +967,8 @@ export default function ClienteDetalhe() {
             </button>
 
             <PlanoDoCliente client={client} />
+
+            {teste && <TesteDoCliente teste={teste} />}
 
             <LicencaDoCliente client={client} payments={payments} />
 

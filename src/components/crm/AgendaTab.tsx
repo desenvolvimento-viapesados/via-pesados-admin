@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Loader2, Video, Check, X, CalendarClock, ExternalLink, MonitorPlay, Building2, RotateCcw,
+  CheckSquare, Square, Phone,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -9,6 +10,8 @@ import {
   useMeetings, useCreateMeeting, useUpdateMeeting, useProspects, useDemos, useAdvanceProspect, type Meeting,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTarefas, useAtualizarTarefa, type Tarefa } from '@/hooks/useTesteGratis';
+import { numeroParaWhatsapp } from '@/lib/inadimplencia';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/admin/ui';
 import {
@@ -326,18 +329,161 @@ function DetalhesDaReuniao({ reuniao, demoUrl, onClose }: { reuniao: Meeting | n
   );
 }
 
+/* ─── Tarefas ──────────────────────────────────────────────────────
+   O que o vendedor faz num dia sem ser reunião — hoje, as ligações do
+   teste grátis. Ficam numa faixa no topo do dia, como as tarefas do Google
+   Agenda: não ocupam horário e não contam como reunião em lugar nenhum. */
+
+const nomeDaTarefa = (t: Tarefa) => t.client?.company_name ?? t.titulo;
+const oQueFazer = (t: Tarefa) => t.titulo.replace('Teste grátis · ', '');
+
+function ChipDaTarefa({ tarefa, onAbrir, compacto }: { tarefa: Tarefa; onAbrir: (t: Tarefa) => void; compacto?: boolean }) {
+  const feita = !!tarefa.feito_em;
+  const Icone = feita ? CheckSquare : Square;
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onAbrir(tarefa); }}
+      title={`${nomeDaTarefa(tarefa)} · ${oQueFazer(tarefa)}`}
+      className={cn(
+        'w-full rounded px-1.5 py-0.5 text-left text-[11px] leading-tight flex items-center gap-1 border border-dashed',
+        feita
+          ? 'border-transparent text-foreground/35 line-through'
+          : 'border-primary/40 bg-primary/[0.06] text-foreground/80 hover:bg-primary/[0.12]',
+      )}
+    >
+      <Icone className="h-3 w-3 shrink-0" />
+      <span className="truncate"><span className="font-semibold">{nomeDaTarefa(tarefa)}</span>{!compacto && <> · {oQueFazer(tarefa)}</>}</span>
+    </button>
+  );
+}
+
+function DetalhesDaTarefa({ tarefa, onClose }: { tarefa: Tarefa | null; onClose: () => void }) {
+  const navigate = useNavigate();
+  const atualizar = useAtualizarTarefa();
+  const { member } = useAuth();
+  const [resultado, setResultado] = useState('');
+  const [adiando, setAdiando] = useState(false);
+  const [novoDia, setNovoDia] = useState('');
+
+  useEffect(() => {
+    setResultado(tarefa?.resultado ?? '');
+    setAdiando(false);
+    if (tarefa) setNovoDia(paraCampoLocal(new Date(tarefa.quando)).slice(0, 10));
+  }, [tarefa?.id]);
+
+  if (!tarefa) return null;
+  const feita = !!tarefa.feito_em;
+  const zap = numeroParaWhatsapp(tarefa.client?.whatsapp);
+  const botao = 'h-9 px-3 rounded-xl text-[12.5px] font-semibold flex items-center justify-center gap-1.5 transition-colors';
+
+  const mudar = async (patch: Partial<Tarefa>, aviso: string) => {
+    try {
+      await atualizar.mutateAsync({ id: tarefa.id, ...patch });
+      toast.success(aviso);
+      onClose();
+    } catch {
+      toast.error('Não consegui salvar');
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md bg-background border-black/[0.1] dark:border-white/[0.1] rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-[15px] font-semibold flex items-start gap-2.5 pr-6">
+            <CheckSquare className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+            <span className={cn(feita && 'line-through text-foreground/50')}>{nomeDaTarefa(tarefa)} · {oQueFazer(tarefa)}</span>
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 pt-0.5">
+          <p className="pl-[26px] text-[13px] text-foreground/75 first-letter:uppercase">
+            {new Date(tarefa.quando).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            {feita && ` · feita em ${new Date(tarefa.feito_em!).toLocaleDateString('pt-BR')}`}
+          </p>
+          {tarefa.detalhe && (
+            <p className="ml-[26px] text-[12.5px] text-foreground/65 leading-relaxed rounded-xl bg-black/[0.03] dark:bg-white/[0.04] px-3 py-2">{tarefa.detalhe}</p>
+          )}
+          <div className="flex flex-wrap gap-2 pl-[26px]">
+            {zap && (
+              <a href={`https://wa.me/${zap}`} target="_blank" rel="noopener noreferrer" className={cn(botao, 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20')}>
+                <Phone className="h-3.5 w-3.5" /> WhatsApp
+              </a>
+            )}
+            {tarefa.client_id && (
+              <button onClick={() => navigate(tarefa.origem === 'teste_gratis' ? '/testes' : `/clientes/${tarefa.client_id}`)} className={cn(botao, 'border border-black/[0.08] dark:border-white/[0.1] text-foreground/70 hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.05]')}>
+                <Building2 className="h-3.5 w-3.5" /> {tarefa.origem === 'teste_gratis' ? 'Ver o teste' : 'Abrir loja'}
+              </button>
+            )}
+          </div>
+
+          {adiando ? (
+            <div className="rounded-xl border border-black/[0.08] dark:border-white/[0.1] p-3 space-y-2.5">
+              <p className="text-[12px] font-semibold text-foreground/70">Para quando?</p>
+              <input className={inputCls} type="date" value={novoDia} onChange={(e) => setNovoDia(e.target.value)} />
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => setAdiando(false)} className={cn(botao, 'text-foreground/50 hover:text-foreground')}>Voltar</button>
+                <button
+                  onClick={() => novoDia && mudar({ quando: new Date(`${novoDia}T10:00:00`).toISOString() }, 'Tarefa adiada')}
+                  className={cn(botao, 'bg-primary text-primary-foreground hover:opacity-90')}
+                >
+                  Adiar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <textarea
+                className={cn(inputCls, 'h-20 py-2 resize-none')}
+                placeholder="O que ficou combinado? (aparece no histórico do teste)"
+                value={resultado}
+                onChange={(e) => setResultado(e.target.value)}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                {feita ? (
+                  <button onClick={() => mudar({ feito_em: null, feito_por: null }, 'Reaberta')} className={cn(botao, 'bg-black/[0.04] dark:bg-white/[0.06] text-foreground/70 hover:text-foreground')}>
+                    <RotateCcw className="h-3.5 w-3.5" /> Reabrir
+                  </button>
+                ) : (
+                  <button onClick={() => setAdiando(true)} className={cn(botao, 'bg-black/[0.04] dark:bg-white/[0.06] text-foreground/70 hover:text-foreground')}>
+                    <CalendarClock className="h-3.5 w-3.5" /> Adiar
+                  </button>
+                )}
+                <button
+                  onClick={() => mudar(
+                    { resultado: resultado.trim() || null, ...(feita ? {} : { feito_em: new Date().toISOString(), feito_por: member?.id ?? null }) },
+                    feita ? 'Anotação salva' : 'Feito',
+                  )}
+                  disabled={atualizar.isPending}
+                  className={cn(botao, 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50')}
+                >
+                  <Check className="h-3.5 w-3.5" /> {feita ? 'Salvar anotação' : 'Feito'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* ─── Grade de horas (semana e dia) ────────────────────────────── */
 
 function GradeDeHoras({
-  dias, reunioes, agora, onNova, onAbrir, onMover,
+  dias, reunioes, tarefas, agora, onNova, onAbrir, onMover, onAbrirTarefa,
 }: {
   dias: Date[];
   reunioes: Meeting[];
+  tarefas: Tarefa[];
   agora: Date;
   onNova: (d: Date) => void;
   onAbrir: (m: Meeting) => void;
   onMover: (m: Meeting, para: Date) => void;
+  onAbrirTarefa: (t: Tarefa) => void;
 }) {
+  const tarefasDoDia = (dia: Date) => tarefas.filter((t) => mesmoDia(new Date(t.quando), dia));
+  const temTarefa = dias.some((d) => tarefasDoDia(d).length > 0);
   const rolagem = useRef<HTMLDivElement>(null);
   const arrasto = useRef<{ id: string; dy: number } | null>(null);
   const altura = (HORA_FINAL - HORA_INICIAL) * PX_POR_HORA;
@@ -379,6 +525,18 @@ function GradeDeHoras({
           );
         })}
       </div>
+
+      {/* Tarefas do dia — faixa fixa, fora da grade de horas */}
+      {temTarefa && (
+        <div className="grid border-b border-black/[0.07] dark:border-white/[0.08]" style={{ gridTemplateColumns: `52px repeat(${dias.length}, minmax(0, 1fr))` }}>
+          <div className="flex items-center justify-end pr-2 text-[10px] text-foreground/35">tarefas</div>
+          {dias.map((d) => (
+            <div key={d.toISOString()} className="p-1 flex flex-col gap-0.5 border-l border-black/[0.05] dark:border-white/[0.06] min-w-0">
+              {tarefasDoDia(d).map((t) => <ChipDaTarefa key={t.id} tarefa={t} onAbrir={onAbrirTarefa} compacto={dias.length > 1} />)}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Corpo com rolagem */}
       <div ref={rolagem} className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 300px)', minHeight: 360 }}>
@@ -497,14 +655,16 @@ function GradeDeHoras({
 /* ─── Mês ──────────────────────────────────────────────────────── */
 
 function GradeDoMes({
-  referencia, reunioes, agora, onNova, onAbrir, onDia,
+  referencia, reunioes, tarefas, agora, onNova, onAbrir, onDia, onAbrirTarefa,
 }: {
   referencia: Date;
   reunioes: Meeting[];
+  tarefas: Tarefa[];
   agora: Date;
   onNova: (d: Date) => void;
   onAbrir: (m: Meeting) => void;
   onDia: (d: Date) => void;
+  onAbrirTarefa: (t: Tarefa) => void;
 }) {
   const casas = gradeDoMes(referencia);
   const cabecalho = casas.slice(0, 7);
@@ -547,6 +707,9 @@ function GradeDoMes({
               >
                 {dia.getDate()}
               </button>
+              {tarefas.filter((t) => mesmoDia(new Date(t.quando), dia)).map((t) => (
+                <ChipDaTarefa key={t.id} tarefa={t} onAbrir={onAbrirTarefa} compacto />
+              ))}
               {lista.slice(0, MAX).map((m) => (
                 <button
                   key={m.id}
@@ -583,7 +746,22 @@ export function AgendaTab({
   onCloseNew: () => void;
   defaultProspectId?: string | null;
 }) {
-  const { data: reunioes = [], isLoading } = useMeetings();
+  const { data: todasAsReunioes = [], isLoading } = useMeetings();
+  const { data: todasAsTarefas = [] } = useTarefas();
+  const { member } = useAuth();
+  /* A agenda de cada vendedor: quem vende abre vendo só o que é seu. */
+  const [soMinhas, setSoMinhas] = useState(() => member?.role === 'vendedor');
+  const reunioes = useMemo(
+    () => (soMinhas && member ? todasAsReunioes.filter((m) => m.owner_id === member.id) : todasAsReunioes),
+    [todasAsReunioes, soMinhas, member],
+  );
+  const tarefas = useMemo(
+    () => (soMinhas && member ? todasAsTarefas.filter((t) => t.owner_id === member.id) : todasAsTarefas),
+    [todasAsTarefas, soMinhas, member],
+  );
+  const [tarefaAberta, setTarefaAberta] = useState<string | null>(null);
+  // O perfil chega depois do primeiro desenho: vendedor passa a ver só o seu.
+  useEffect(() => { if (member?.role === 'vendedor') setSoMinhas(true); }, [member?.id]);
   const { data: prospects = [] } = useProspects();
   const { data: demos = [] } = useDemos();
   const atualizar = useUpdateMeeting();
@@ -609,11 +787,12 @@ export function AgendaTab({
 
   /** Chegou na etapa Reunião e ainda não tem horário marcado. */
   const faltaMarcar = useMemo(() => {
+    // Reunião marcada por qualquer pessoa conta — o filtro é só de exibição.
     const comReuniao = new Set(
-      reunioes.filter((m) => m.status === 'agendada' || m.status === 'realizada').map((m) => m.prospect_id).filter(Boolean),
+      todasAsReunioes.filter((m) => m.status === 'agendada' || m.status === 'realizada').map((m) => m.prospect_id).filter(Boolean),
     );
-    return prospects.filter((p) => p.stage === 'reuniao' && !comReuniao.has(p.id));
-  }, [prospects, reunioes]);
+    return prospects.filter((p) => p.stage === 'reuniao' && !comReuniao.has(p.id) && (!soMinhas || !member || p.owner_id === member.id));
+  }, [prospects, todasAsReunioes, soMinhas, member]);
 
   const proximas = useMemo(
     () => reunioes.filter((m) => m.status === 'agendada' && new Date(m.scheduled_at) >= agora).length,
@@ -644,6 +823,12 @@ export function AgendaTab({
   };
 
   const reuniaoAberta = reunioes.find((m) => m.id === aberta) ?? null;
+  const tarefaDetalhe = tarefas.find((t) => t.id === tarefaAberta) ?? null;
+  /** Ficou para trás e ninguém marcou: aparece no topo até alguém resolver. */
+  const atrasadas = useMemo(
+    () => tarefas.filter((t) => !t.feito_em && inicioDoDia(new Date(t.quando)) < inicioDoDia(agora)),
+    [tarefas, agora],
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -657,6 +842,21 @@ export function AgendaTab({
               className="h-7 px-2.5 rounded-full bg-background border border-black/[0.08] dark:border-white/[0.1] text-[12px] font-medium text-foreground/80 hover:border-primary/50 hover:text-primary transition-colors"
             >
               {p.company_name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {atrasadas.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] px-3 py-2.5">
+          <span className="text-[12px] font-semibold text-amber-700 dark:text-amber-400 mr-1">Tarefas atrasadas:</span>
+          {atrasadas.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTarefaAberta(t.id)}
+              className="h-7 px-2.5 rounded-full bg-background border border-black/[0.08] dark:border-white/[0.1] text-[12px] font-medium text-foreground/80 hover:border-amber-500/50 transition-colors"
+            >
+              {nomeDaTarefa(t)} · {oQueFazer(t)}
             </button>
           ))}
         </div>
@@ -684,6 +884,23 @@ export function AgendaTab({
           <span className="text-[11.5px] text-foreground/40 hidden sm:inline">{proximas} {proximas === 1 ? 'reunião marcada' : 'reuniões marcadas'} pela frente</span>
         )}
 
+        {member && (
+          <div className="flex rounded-xl border border-black/[0.1] dark:border-white/[0.12] p-0.5">
+            {([[true, 'Só as minhas'], [false, 'Todos']] as const).map(([v, r]) => (
+              <button
+                key={r}
+                onClick={() => setSoMinhas(v)}
+                className={cn(
+                  'h-8 px-3 rounded-[10px] text-[12px] font-medium transition-colors',
+                  soMinhas === v ? 'bg-primary/15 text-primary font-semibold' : 'text-foreground/50 hover:text-foreground',
+                )}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="flex rounded-xl border border-black/[0.1] dark:border-white/[0.12] p-0.5">
           {([['dia', 'Dia'], ['semana', 'Semana'], ['mes', 'Mês']] as const).map(([v, r]) => (
             <button
@@ -708,19 +925,23 @@ export function AgendaTab({
         <GradeDoMes
           referencia={referencia}
           reunioes={reunioes}
+          tarefas={tarefas}
           agora={agora}
           onNova={(d) => setNova({ quando: d })}
           onAbrir={(m) => setAberta(m.id)}
           onDia={(d) => { setReferencia(d); setVisao('dia'); }}
+          onAbrirTarefa={(t) => setTarefaAberta(t.id)}
         />
       ) : (
         <GradeDeHoras
           dias={visao === 'dia' ? [referencia] : diasDaSemana(referencia)}
           reunioes={reunioes}
+          tarefas={tarefas}
           agora={agora}
           onNova={(d) => setNova({ quando: d })}
           onAbrir={(m) => setAberta(m.id)}
           onMover={mover}
+          onAbrirTarefa={(t) => setTarefaAberta(t.id)}
         />
       )}
 
@@ -728,10 +949,12 @@ export function AgendaTab({
         {(Object.keys(TIPOS) as Meeting['kind'][]).map((k) => (
           <span key={k} className="flex items-center gap-1.5"><span className={cn('h-2 w-2 rounded-full', COR[k].ponto)} />{TIPOS[k]}</span>
         ))}
+        <span className="flex items-center gap-1.5"><Square className="h-3 w-3 text-primary" />Tarefa</span>
         <span className="ml-auto hidden sm:inline">Clique num horário para marcar · arraste para remarcar</span>
       </div>
 
       <NovaReuniao quando={nova?.quando ?? null} prospectId={nova?.prospectId} onClose={fecharNova} />
+      <DetalhesDaTarefa tarefa={tarefaDetalhe} onClose={() => setTarefaAberta(null)} />
       <DetalhesDaReuniao reuniao={reuniaoAberta} demoUrl={reuniaoAberta?.demo_id ? demoUrl[reuniaoAberta.demo_id] : null} onClose={() => setAberta(null)} />
     </div>
   );

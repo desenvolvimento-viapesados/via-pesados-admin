@@ -47,6 +47,10 @@ export async function alinharCiclo(
   db: { from: (t: string) => any },
   cliente: { id: string; asaas_subscription_id: string | null },
   implantadoEm: string,
+  /* De onde os vencimentos contam. É a implantação, a não ser para quem
+     veio do teste grátis: aí conta do dia do corte, porque o primeiro mês
+     foi grátis (ancoraDoCiclo, em teste.ts). */
+  ancora: string = implantadoEm,
 ): Promise<Alinhamento> {
   await db.from('clients').update({ implantado_em: implantadoEm }).eq('id', cliente.id);
   const resultado: Alinhamento = { implantado_em: implantadoEm, mudancas: [], proxima: null };
@@ -59,7 +63,7 @@ export async function alinharCiclo(
     .filter((p) => ABERTAS.includes(String(p.status)))
     .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)));
 
-  const { vencimentos, proxima } = vencimentosDoCiclo(implantadoEm, pagas, abertas.length);
+  const { vencimentos, proxima } = vencimentosDoCiclo(ancora, pagas, abertas.length);
 
   for (let i = 0; i < abertas.length; i++) {
     const p = abertas[i];

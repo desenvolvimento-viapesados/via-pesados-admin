@@ -66,6 +66,12 @@ const GATILHOS: Record<string, Parameters<typeof conferirParams>[1]> = {
     documento: { link: 'https://exemplo/nf.pdf', filename: 'NFS-e 1 — Via Pesados.pdf' },
     body: ['Walker', 'setembro', '1', 'R$ 10,00'],
   },
+  // teste-gratis/index.ts
+  teste_gratis_comecou: { body: ['Walker', '15/11/2026'] },
+  teste_gratis_faltam_5_dias: { body: ['Walker', '15/11/2026'], urlSuffix: 'tok123' },
+  teste_gratis_termina_amanha: { body: ['Walker', '15/11/2026'], urlSuffix: 'tok123' },
+  teste_gratis_encerrado: { body: ['Walker', 'iTruck Caminhões', '15/11/2026'], urlSuffix: 'tok123' },
+  teste_gratis_volte: { body: ['Walker'], urlSuffix: 'tok123' },
 };
 
 describe('o que os gatilhos mandam bate com o modelo aprovado', () => {

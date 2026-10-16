@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Users, DollarSign, CreditCard, MessageSquare, BarChart3, ChevronRight,
   UserCheck, LogOut, Sun, Moon, ExternalLink, Target,
-  Layers, HeartPulse, Rocket, ArrowRight,
+  Layers, HeartPulse, Rocket, ArrowRight, Hourglass,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
@@ -12,6 +12,8 @@ import { useCrmCounts, useTickets, useClients, usePayments, brl } from '@/hooks/
 import { mrrDaCarteira } from '@/lib/mrr';
 import { inadimplentes } from '@/lib/inadimplencia';
 import { useImplantacao, naoSei } from '@/hooks/useImplantacao';
+import { useTarefas } from '@/hooks/useTesteGratis';
+import { hojeBRT } from '../../supabase/functions/_shared/regua';
 import { useMemo } from 'react';
 import { InitialAvatar } from '@/components/admin/ui';
 import { LOJISTA_APP_URL } from '@/integrations/supabase/client';
@@ -60,6 +62,12 @@ export default function Home() {
 
   const { data: tickets = [] } = useTickets();
   const openTickets = tickets.filter((t) => t.status !== 'resolvido').length;
+  /* Ligações do teste grátis que vencem hoje ou já passaram. */
+  const { data: tarefas = [] } = useTarefas();
+  const tarefasDoTeste = tarefas.filter((t) =>
+    t.origem === 'teste_gratis' && !t.feito_em
+    && new Date(new Date(t.quando).getTime() - 3 * 3600_000).toISOString().slice(0, 10) <= hojeBRT(),
+  ).length;
 
   const displayName = member?.full_name || user?.email?.split('@')[0] || 'Usuário';
   const firstName = displayName.split(' ')[0];
@@ -265,6 +273,7 @@ export default function Home() {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <ModuleTile label="Clientes"      description="Carteira e contas"              icon={<Users />}         onClick={() => navigate('/clientes')} />
+            <ModuleTile label="Teste grátis"  description="30 dias após a implantação"     icon={<Hourglass />}     onClick={() => navigate('/testes')} badge={tarefasDoTeste} />
             <ModuleTile label="Pagamentos"    description="Cobranças e inadimplência"      icon={<CreditCard />}    onClick={() => navigate('/pagamentos')} badge={devendo} />
             <ModuleTile label="Financeiro"    description="Entradas, saídas e vencimentos" icon={<DollarSign />}    onClick={() => navigate('/financeiro')} />
             <ModuleTile label="Planos"        description="Planos e preços"                icon={<Layers />}        onClick={() => navigate('/planos')} />
