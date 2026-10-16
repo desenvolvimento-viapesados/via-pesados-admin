@@ -678,5 +678,39 @@ export const MODELOS: Modelo[] = [
     ]
    }
   ]
+ },
+ /* Esqueci minha senha (16/10/2026): o link de nova senha vai pelo WhatsApp, como
+    toda comunicação com o lojista. Mesmo /entrar/{{1}} do primeiro acesso. */
+ {
+  "name": "redefinir_senha",
+  "language": "pt_BR",
+  "category": "UTILITY",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Olá, {{1}}. Recebemos um pedido para criar uma nova senha de acesso ao sistema da {{2}} na Via Pesados.\n\nToque no botão abaixo para criar a nova senha. O link vale por 1 hora e só pode ser usado uma vez. Se você não pediu, é só ignorar esta mensagem.",
+    "example": {
+     "body_text": [
+      [
+       "Walker",
+       "iTruck Caminhões"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "URL",
+      "text": "Criar nova senha",
+      "url": "https://viapesados.com.br/entrar/{{1}}",
+      "example": [
+       "https://viapesados.com.br/entrar/exemplo123"
+      ]
+     }
+    ]
+   }
+  ]
  }
 ];

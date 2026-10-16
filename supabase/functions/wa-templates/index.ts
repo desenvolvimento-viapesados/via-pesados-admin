@@ -149,11 +149,23 @@ Deno.serve(async (req) => {
     /* Criar modelo é escrever na conta da Meta em nome da Via Pesados. Só
        membro ativo da equipe, como em qualquer ação que sai daqui. */
     const auth = req.headers.get('Authorization')?.replace('Bearer ', '') ?? '';
-    const { data: { user } } = await db.auth.getUser(auth);
-    if (!user) return json(401, { error: 'não autenticado' });
-    const { data: membro } = await db.from('team_members')
-      .select('id, is_active').eq('id', user.id).maybeSingle();
-    if (!membro || membro.is_active === false) return json(403, { error: 'acesso negado' });
+    /* A chave de serviço do projeto também passa: é como se sobem modelos
+       novos pelo terminal, sem ninguém logado no painel. A prova é ela
+       conseguir uma operação de administrador — comparar texto falha quando
+       a chave muda de formato. */
+    let servico = false;
+    for (const chave of [auth, req.headers.get('apikey') ?? ''].filter(Boolean)) {
+      if (servico) break;
+      const { error } = await createClient(Deno.env.get('SUPABASE_URL')!, chave).auth.admin.listUsers({ page: 1, perPage: 1 });
+      servico = !error;
+    }
+    if (!servico) {
+      const { data: { user } } = await db.auth.getUser(auth);
+      if (!user) return json(401, { error: 'não autenticado' });
+      const { data: membro } = await db.from('team_members')
+        .select('id, is_active').eq('id', user.id).maybeSingle();
+      if (!membro || membro.is_active === false) return json(403, { error: 'acesso negado' });
+    }
 
     const { action } = await req.json().catch(() => ({ action: 'listar' }));
     const provedor = ycloud ? 'ycloud' : 'meta';

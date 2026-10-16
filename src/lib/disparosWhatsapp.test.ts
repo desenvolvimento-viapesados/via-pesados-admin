@@ -72,6 +72,8 @@ const GATILHOS: Record<string, Parameters<typeof conferirParams>[1]> = {
   teste_gratis_termina_amanha: { body: ['Walker', '15/11/2026'], urlSuffix: 'tok123' },
   teste_gratis_encerrado: { body: ['Walker', 'iTruck Caminhões', '15/11/2026'], urlSuffix: 'tok123' },
   teste_gratis_volte: { body: ['Walker'], urlSuffix: 'tok123' },
+  // sistema-lojista/supabase/functions/esqueci-senha
+  redefinir_senha: { body: ['Walker', 'iTruck Caminhões'], urlSuffix: 'tok123' },
 };
 
 describe('o que os gatilhos mandam bate com o modelo aprovado', () => {

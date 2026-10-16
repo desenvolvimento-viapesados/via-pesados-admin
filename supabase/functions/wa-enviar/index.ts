@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { enviarTemplate } from '../_shared/wa.ts';
+import { enviarTemplate, modeloAprovado } from '../_shared/wa.ts';
 
 /**
  * Disparo de template para quem não é o projeto admin.
@@ -30,7 +30,7 @@ function confere(a: string, b: string) {
 /* Só o que faz sentido vir de fora. Um endpoint que aceitasse qualquer nome
    de template deixaria o projeto lojista mandar cobrança em nome da Via
    Pesados — que é coisa do admin, não dele. */
-const PERMITIDOS = new Set(['whatsapp_desconectado', 'acesso_equipe']);
+const PERMITIDOS = new Set(['whatsapp_desconectado', 'acesso_equipe', 'redefinir_senha']);
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
@@ -47,6 +47,13 @@ Deno.serve(async (req) => {
     if (!template || !chave) return json(400, { error: 'template e chave são obrigatórios' });
     if (!PERMITIDOS.has(String(template))) {
       return json(403, { error: `template ${template} não é permitido por este endpoint` });
+    }
+
+    /* Modelo ainda em análise na Meta não sai: o envio seria recusado e a
+       chave ficaria queimada. Quem chamou recebe o motivo e decide (o
+       "esqueci minha senha" cai para o e-mail). */
+    if (!(await modeloAprovado(String(template)))) {
+      return json(200, { ok: false, motivo: 'modelo ainda não aprovado' });
     }
 
     const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
