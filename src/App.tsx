@@ -97,6 +97,7 @@ const Gate = () => {
           <Route path="/crm/prospect/:id" element={<ProspectDetalhe />} />
           <Route path="/crm/venda/:id" element={<RegistrarVenda />} />
           <Route path="/crm/venda"     element={<RegistrarVenda />} />
+          <Route path="/crm/teste/:id" element={<RegistrarVenda teste />} />
           <Route path="/implantacao"   element={<Implantacao />} />
           <Route path="/testes"        element={<TestesGratis />} />
           <Route path="/clientes"      element={<Clientes />} />

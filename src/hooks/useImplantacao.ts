@@ -29,6 +29,8 @@ export type ItemDaImplantacao = {
   ritmo: Ritmo;
   feitas: number;
   total: number;
+  /** Veio do teste grátis: implantação separada, e os 30 dias contam do aviso de acesso. */
+  emTeste: boolean;
 };
 
 /** O sistema do cliente ainda não respondeu sobre esta etapa. */
@@ -64,6 +66,7 @@ export function useImplantacao({ lerSistemas = true }: { lerSistemas?: boolean }
       .filter((c) => c.status !== 'cancelado' && c.status !== 'pausado')
       .map((c) => {
         const saude = c.lojista_company_id ? saudePorEmpresa.get(c.lojista_company_id) : undefined;
+        const emTeste = testes.some((t) => t.client_id === c.id && (t.status === 'aguardando_implantacao' || t.status === 'em_teste'));
         const etapas = etapasDoCliente(
           {
             lojista_company_id: c.lojista_company_id,
@@ -71,7 +74,7 @@ export function useImplantacao({ lerSistemas = true }: { lerSistemas?: boolean }
             contract_signed_at: c.contract_signed_at,
             asaas_payment_link_url: c.asaas_payment_link_url,
             pagou: pagamentos.some((p) => p.client_id === c.id && p.status === 'pago'),
-            emTeste: testes.some((t) => t.client_id === c.id && (t.status === 'aguardando_implantacao' || t.status === 'em_teste')),
+            emTeste,
             tarefas: tarefas.filter((t) => t.client_id === c.id),
           },
           // Sem sistema não há o que perguntar: a resposta é "não tem", não "não sei".
@@ -79,7 +82,7 @@ export function useImplantacao({ lerSistemas = true }: { lerSistemas?: boolean }
         );
         const dias = diasDesde(c.created_at, agora);
         const { feitas, total } = progresso(etapas);
-        return { cliente: c, etapas, passo: proximoPasso(etapas), dias, ritmo: ritmoDaImplantacao(dias), feitas, total };
+        return { cliente: c, etapas, passo: proximoPasso(etapas), dias, ritmo: ritmoDaImplantacao(dias), feitas, total, emTeste };
       });
 
     const implantando = itens
@@ -92,8 +95,18 @@ export function useImplantacao({ lerSistemas = true }: { lerSistemas?: boolean }
       .filter((c) => c.status === 'ativo' && c.activated_at && diasDesde(c.activated_at, agora) <= 30 && !implantandoIds.has(c.id))
       .sort((a, b) => (b.activated_at ?? '').localeCompare(a.activated_at ?? ''));
 
+    /* Separadas de propósito (pedido do dono, 16/10/2026): a implantação de
+       quem pagou e a de quem vai testar são conversas diferentes — uma
+       entrega o que foi comprado, a outra prepara um teste que precisa
+       converter. */
+    const vendas = implantando.filter((i) => !i.emTeste);
+    const testes_ = implantando.filter((i) => i.emTeste);
+
     return {
       carregando: c1 || c2,
+      vendas,
+      testes: testes_,
+      atrasadosVendas: vendas.filter((i) => i.ritmo === 'atrasado').length,
       lendoSistemas: saudeQuery.isFetching && !saudeQuery.isSuccess,
       ponteFalhou: saudeQuery.isError,
       implantando,

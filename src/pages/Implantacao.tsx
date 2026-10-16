@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Rocket, ArrowRight, Check, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Rocket, ArrowRight, Check, CheckCircle2, AlertCircle, Hourglass } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { brl } from '@/hooks/useAdmin';
 import { useImplantacao, type ItemDaImplantacao } from '@/hooks/useImplantacao';
@@ -94,6 +94,11 @@ function Loja({ item }: { item: ItemDaImplantacao }) {
             {cliente.mrr ? ` · ${brl(cliente.mrr)}/mês` : ''}
           </p>
         </button>
+        {item.emTeste && (
+          <span className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+            <Hourglass className="h-3 w-3" /> Teste grátis
+          </span>
+        )}
         <span title="Desde que a venda foi registrada. O combinado é uma semana."
           className={cn('shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums', RITMO[item.ritmo])}>
           {dias(item.dias)}
@@ -111,6 +116,9 @@ function Loja({ item }: { item: ItemDaImplantacao }) {
               </span>
             </p>
             <p className="text-[13.5px] font-semibold text-foreground mt-0.5">{passo.acao}</p>
+            {item.emTeste && passo.chave === 'acesso_liberado' && (
+              <p className="text-[11.5px] text-emerald-600 dark:text-emerald-400 mt-1">Os 30 dias do teste começam quando o acesso for avisado.</p>
+            )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {lembrete && (
@@ -143,6 +151,19 @@ export default function Implantacao() {
   const d = useImplantacao();
   const navigate = useNavigate();
   const [filtro, setFiltro] = useState<Filtro>('todos');
+  /* Duas implantações, separadas: a de quem comprou e a de quem vai testar. */
+  const [params, setParams] = useSearchParams();
+  const aba: 'vendas' | 'teste' = params.get('aba') === 'teste' ? 'teste' : 'vendas';
+  const trocarAba = (a: 'vendas' | 'teste') => {
+    const p = new URLSearchParams(params);
+    if (a === 'teste') p.set('aba', 'teste'); else p.delete('aba');
+    setParams(p, { replace: true });
+    setFiltro('todos');
+  };
+  const base = aba === 'teste' ? d.testes : d.vendas;
+  const comAGente = base.filter((i) => i.passo?.dono === 'nos').length;
+  const comOCliente = base.filter((i) => i.passo?.dono === 'cliente').length;
+  const atrasados = base.filter((i) => i.ritmo === 'atrasado').length;
 
   if (d.carregando) {
     return (
@@ -152,8 +173,8 @@ export default function Implantacao() {
     );
   }
 
-  const n = d.implantando.length;
-  const lista = d.implantando.filter((i) => filtro === 'todos' || i.passo?.dono === filtro);
+  const n = base.length;
+  const lista = base.filter((i) => filtro === 'todos' || i.passo?.dono === filtro);
 
   return (
     <div className="flex flex-col gap-8 max-w-5xl">
@@ -162,10 +183,37 @@ export default function Implantacao() {
         <h1 className="mt-5 text-[30px] sm:text-[34px] leading-[1.1] tracking-tight">
           <span className="font-extralight text-foreground/40">Implantação</span>{' '}
           <span className="font-bold text-foreground">
-            {n === 0 ? 'em dia' : `${n} ${n === 1 ? 'loja entrando' : 'lojas entrando'} no ar`}
+            {aba === 'teste'
+              ? (n === 0 ? 'de teste em dia' : `${n} ${n === 1 ? 'loja preparando' : 'lojas preparando'} o teste`)
+              : (n === 0 ? 'em dia' : `${n} ${n === 1 ? 'loja entrando' : 'lojas entrando'} no ar`)}
           </span>
         </h1>
-        <p className="mt-3 text-[13px] font-light text-foreground/45">Do contrato assinado ao primeiro anúncio no ar — o que falta, e com quem.</p>
+        <p className="mt-3 text-[13px] font-light text-foreground/45">
+          {aba === 'teste'
+            ? 'Deixar a loja pronta para testar — estoque, canais e anúncio no ar. Os 30 dias começam no aviso de acesso.'
+            : 'Do contrato assinado ao primeiro anúncio no ar — o que falta, e com quem.'}
+        </p>
+
+        <div className="mt-6 flex gap-1 border-b border-black/[0.07] dark:border-white/[0.08]">
+          {([['vendas', 'Vendas', d.vendas.length], ['teste', 'Teste grátis', d.testes.length]] as const).map(([chave, rotulo, qtd]) => (
+            <button
+              key={chave}
+              onClick={() => trocarAba(chave)}
+              className={cn(
+                'relative h-10 px-3.5 text-[13px] flex items-center gap-2 transition-colors',
+                aba === chave ? 'text-foreground font-semibold' : 'text-foreground/45 hover:text-foreground/75',
+              )}
+            >
+              {chave === 'teste' && <Hourglass className="h-3.5 w-3.5" />}
+              {rotulo}
+              <span className={cn('min-w-5 h-5 px-1.5 rounded-full text-[10.5px] font-semibold flex items-center justify-center',
+                aba === chave ? (chave === 'teste' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-primary/15 text-primary') : 'bg-black/[0.05] dark:bg-white/[0.06]')}>
+                {qtd}
+              </span>
+              {aba === chave && <span className={cn('absolute inset-x-2 -bottom-px h-[2px] rounded-full', chave === 'teste' ? 'bg-emerald-500' : 'bg-primary')} />}
+            </button>
+          ))}
+        </div>
       </header>
 
       {d.ponteFalhou && (
@@ -177,9 +225,9 @@ export default function Implantacao() {
       {n > 0 && (
         <div className="rounded-2xl border border-black/[0.07] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.03] grid grid-cols-3 divide-x divide-black/[0.06] dark:divide-white/[0.06]">
           {([
-            ['nos', 'Com a gente', d.comAGente, d.comAGente ? 'text-primary' : 'text-foreground'],
-            ['cliente', 'Com o cliente', d.comOCliente, 'text-foreground'],
-            [null, 'Passou de 2 semanas', d.atrasados, d.atrasados ? 'text-red-500' : 'text-foreground'],
+            ['nos', 'Com a gente', comAGente, comAGente ? 'text-primary' : 'text-foreground'],
+            ['cliente', 'Com o cliente', comOCliente, 'text-foreground'],
+            [null, 'Passou de 2 semanas', atrasados, atrasados ? 'text-red-500' : 'text-foreground'],
           ] as const).map(([chave, rotulo, valor, cor]) => {
             const ativo = chave !== null && filtro === chave;
             const Tag = chave ? 'button' : 'div';
@@ -203,9 +251,11 @@ export default function Implantacao() {
           <span className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
             <Rocket className="h-5 w-5" />
           </span>
-          <p className="mt-5 text-[16px] font-semibold text-foreground">Nenhuma loja em implantação agora</p>
+          <p className="mt-5 text-[16px] font-semibold text-foreground">{aba === 'teste' ? 'Nenhum teste grátis sendo preparado' : 'Nenhuma loja em implantação agora'}</p>
           <p className="mt-1.5 text-[12.5px] font-light text-foreground/45 max-w-sm leading-relaxed">
-            Quando uma venda for fechada — contrato assinado e primeiro pagamento — a loja aparece aqui com o próximo passo.
+            {aba === 'teste'
+              ? 'Arraste uma loja para "Teste grátis" no funil: ela aparece aqui com o próximo passo, e os 30 dias começam no aviso de acesso.'
+              : 'Quando uma venda for fechada — contrato assinado e primeiro pagamento — a loja aparece aqui com o próximo passo.'}
           </p>
         </div>
       ) : lista.length === 0 ? (
@@ -216,7 +266,7 @@ export default function Implantacao() {
         </div>
       )}
 
-      {d.noArRecentes.length > 0 && (
+      {aba === 'vendas' && d.noArRecentes.length > 0 && (
         <section>
           <p className="text-[13px] font-semibold text-foreground/75">Entraram no ar nos últimos 30 dias</p>
           <div className="mt-3 flex flex-wrap gap-2">

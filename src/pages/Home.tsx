@@ -12,7 +12,8 @@ import { useCrmCounts, useTickets, useClients, usePayments, brl } from '@/hooks/
 import { mrrDaCarteira } from '@/lib/mrr';
 import { inadimplentes } from '@/lib/inadimplencia';
 import { useImplantacao, naoSei } from '@/hooks/useImplantacao';
-import { useTarefas } from '@/hooks/useTesteGratis';
+import { useTarefas, useTestesGratis } from '@/hooks/useTesteGratis';
+import { situacaoDoTeste } from '@/lib/testeGratis';
 import { hojeBRT } from '../../supabase/functions/_shared/regua';
 import { useMemo } from 'react';
 import { InitialAvatar } from '@/components/admin/ui';
@@ -62,12 +63,15 @@ export default function Home() {
 
   const { data: tickets = [] } = useTickets();
   const openTickets = tickets.filter((t) => t.status !== 'resolvido').length;
-  /* Ligações do teste grátis que vencem hoje ou já passaram. */
+  /* Teste grátis: quem está testando, quem termina logo e a ligação de hoje. */
+  const { data: testes = [] } = useTestesGratis();
   const { data: tarefas = [] } = useTarefas();
-  const tarefasDoTeste = tarefas.filter((t) =>
-    t.origem === 'teste_gratis' && !t.feito_em
-    && new Date(new Date(t.quando).getTime() - 3 * 3600_000).toISOString().slice(0, 10) <= hojeBRT(),
-  ).length;
+  const ligacoesDeHoje = tarefas
+    .filter((t) => t.origem === 'teste_gratis' && !t.feito_em
+      && new Date(new Date(t.quando).getTime() - 3 * 3600_000).toISOString().slice(0, 10) <= hojeBRT())
+    .sort((a, b) => a.quando.localeCompare(b.quando));
+  const testando = testes.filter((t) => t.status === 'em_teste');
+  const retaFinal = testando.filter((t) => situacaoDoTeste(t).reta_final).length;
 
   const displayName = member?.full_name || user?.email?.split('@')[0] || 'Usuário';
   const firstName = displayName.split(' ')[0];
@@ -222,45 +226,99 @@ export default function Home() {
             </div>
           </button>
 
-          {/* ── Implantação: a venda até o primeiro anúncio no ar ── */}
+        </div>
+
+        {/* ── Implantação e Teste grátis, lado a lado, logo abaixo do CRM ── */}
+        <div className="grid gap-3 lg:grid-cols-2 -mt-3 sm:-mt-7">
+          {/* Implantação: a venda até o primeiro anúncio no ar */}
           <button
             onClick={() => navigate('/implantacao')}
             className={cn(
-              'group mt-3 w-full rounded-2xl overflow-hidden border transition-all duration-200 text-left',
+              'group w-full rounded-2xl overflow-hidden border transition-all duration-200 text-left flex flex-col',
               'border-primary/25 bg-primary/[0.05] hover:bg-primary/[0.09] hover:border-primary/40',
               'hover:shadow-xl hover:shadow-black/10 dark:hover:shadow-black/30',
             )}
           >
-            <div className="px-6 pt-5 pb-4 flex items-center gap-4">
+            <div className="px-6 pt-5 pb-4 flex items-center gap-4 flex-1">
               <span className="h-10 w-10 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
                 <Rocket className="h-5 w-5" />
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-[18px] sm:text-[20px] font-bold text-foreground tracking-tight leading-tight">Implantação</p>
-                <p className="text-[12px] text-foreground/45 mt-0.5 font-light">Do contrato assinado ao primeiro anúncio no ar — o que falta, e com quem</p>
+                <p className="text-[12px] text-foreground/45 mt-0.5 font-light">Da venda fechada ao primeiro anúncio no ar</p>
               </div>
               <ChevronRight className="h-5 w-5 text-foreground/20 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
             </div>
             <div className="grid grid-cols-3 border-t border-primary/15 divide-x divide-primary/15">
               {[
-                { label: 'Implantando', value: implantacao.implantando.length },
-                { label: 'No ar há menos de 30 dias', value: implantacao.noArRecentes.length },
-                { label: 'Passou de 2 semanas', value: implantacao.atrasados },
-              ].map(({ label, value }) => (
+                { label: 'Implantando', value: implantacao.vendas.length, alerta: false },
+                { label: 'No ar < 30 dias', value: implantacao.noArRecentes.length, alerta: false },
+                { label: 'Passou de 2 sem.', value: implantacao.atrasadosVendas, alerta: true },
+              ].map(({ label, value, alerta }) => (
                 <div key={label} className="px-3 py-2.5 text-center">
-                  <p className={cn('text-[17px] font-bold tabular-nums leading-none', label.startsWith('Passou') && value > 0 ? 'text-red-500' : 'text-foreground')}>{value}</p>
+                  <p className={cn('text-[17px] font-bold tabular-nums leading-none', alerta && value > 0 ? 'text-red-500' : 'text-foreground')}>{value}</p>
                   <p className="text-[10px] text-foreground/35 mt-1 leading-none">{label}</p>
                 </div>
               ))}
             </div>
-            {agora?.passo && (
-              <div className="px-6 py-2.5 border-t border-primary/15 flex items-center gap-2 text-[12px]">
-                <ArrowRight className="h-3.5 w-3.5 text-primary shrink-0" />
-                <span className="text-foreground/45 shrink-0">Agora:</span>
-                <span className="font-semibold text-foreground truncate">{agora.cliente.company_name}</span>
-                <span className="text-foreground/55 truncate">— {agora.passo.acao.charAt(0).toLowerCase() + agora.passo.acao.slice(1)}</span>
-              </div>
+            <div className="px-6 py-2.5 border-t border-primary/15 flex items-center gap-2 text-[12px] min-h-[41px]">
+              {agora?.passo ? (
+                <>
+                  <ArrowRight className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span className="text-foreground/45 shrink-0">Agora:</span>
+                  <span className="font-semibold text-foreground truncate">{agora.cliente.company_name}</span>
+                  <span className="text-foreground/55 truncate">— {agora.passo.acao.charAt(0).toLowerCase() + agora.passo.acao.slice(1)}</span>
+                </>
+              ) : (
+                <span className="text-foreground/35">Nada esperando agora</span>
+              )}
+            </div>
+          </button>
+
+          {/* Teste grátis: 30 dias contados da implantação */}
+          <button
+            onClick={() => navigate('/testes')}
+            className={cn(
+              'group w-full rounded-2xl overflow-hidden border transition-all duration-200 text-left flex flex-col',
+              'border-emerald-500/25 bg-emerald-500/[0.05] hover:bg-emerald-500/[0.09] hover:border-emerald-500/40',
+              'hover:shadow-xl hover:shadow-black/10 dark:hover:shadow-black/30',
             )}
+          >
+            <div className="px-6 pt-5 pb-4 flex items-center gap-4 flex-1">
+              <span className="h-10 w-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <Hourglass className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[18px] sm:text-[20px] font-bold text-foreground tracking-tight leading-tight">Teste grátis</p>
+                <p className="text-[12px] text-foreground/45 mt-0.5 font-light">30 dias contados da implantação — e a conversa para assinar</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-foreground/20 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </div>
+            <div className="grid grid-cols-3 border-t border-emerald-500/15 divide-x divide-emerald-500/15">
+              {[
+                { label: 'Preparando', value: implantacao.testes.length, alerta: false },
+                { label: 'Testando', value: testando.length, alerta: false },
+                { label: 'Terminam em 5 dias', value: retaFinal, alerta: true },
+              ].map(({ label, value, alerta }) => (
+                <div key={label} className="px-3 py-2.5 text-center">
+                  <p className={cn('text-[17px] font-bold tabular-nums leading-none', alerta && value > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-foreground')}>{value}</p>
+                  <p className="text-[10px] text-foreground/35 mt-1 leading-none">{label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="px-6 py-2.5 border-t border-emerald-500/15 flex items-center gap-2 text-[12px] min-h-[41px]">
+              {ligacoesDeHoje[0] ? (
+                <>
+                  <ArrowRight className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="text-foreground/45 shrink-0">Hoje:</span>
+                  <span className="font-semibold text-foreground truncate">{ligacoesDeHoje[0].client?.company_name ?? '—'}</span>
+                  <span className="text-foreground/55 truncate">— {ligacoesDeHoje[0].titulo.replace('Teste grátis · ', '')}</span>
+                  {ligacoesDeHoje.length > 1 && <span className="text-foreground/35 shrink-0">+{ligacoesDeHoje.length - 1}</span>}
+                </>
+              ) : (
+                <span className="text-foreground/35">Nenhuma ligação para hoje</span>
+              )}
+            </div>
           </button>
         </div>
 
@@ -273,7 +331,6 @@ export default function Home() {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <ModuleTile label="Clientes"      description="Carteira e contas"              icon={<Users />}         onClick={() => navigate('/clientes')} />
-            <ModuleTile label="Teste grátis"  description="30 dias após a implantação"     icon={<Hourglass />}     onClick={() => navigate('/testes')} badge={tarefasDoTeste} />
             <ModuleTile label="Pagamentos"    description="Cobranças e inadimplência"      icon={<CreditCard />}    onClick={() => navigate('/pagamentos')} badge={devendo} />
             <ModuleTile label="Financeiro"    description="Entradas, saídas e vencimentos" icon={<DollarSign />}    onClick={() => navigate('/financeiro')} />
             <ModuleTile label="Planos"        description="Planos e preços"                icon={<Layers />}        onClick={() => navigate('/planos')} />

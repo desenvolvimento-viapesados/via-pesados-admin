@@ -4,9 +4,11 @@ import { supabase, LOJISTA_FUNCTIONS_URL } from '@/integrations/supabase/client'
 
 /* ═══ Tipos ═══════════════════════════════════════════════════ */
 
-/* 'amostra' é a etapa "Envio de Amostra"; 'vendido' aparece como "Fechado" —
-   a chave fica, porque metas, relatórios e o histórico contam por ela. */
-export type ProspectStage = 'contato' | 'amostra' | 'oportunidade' | 'reuniao' | 'vendido' | 'perdido';
+/* 'amostra' é a etapa "Envio de Amostra"; 'teste' é o "Teste grátis" (vai para
+   a implantação de teste e, quando assina, para Fechado sozinho); 'vendido'
+   aparece como "Fechado" — a chave fica, porque metas, relatórios e o
+   histórico contam por ela. */
+export type ProspectStage = 'contato' | 'amostra' | 'oportunidade' | 'reuniao' | 'teste' | 'vendido' | 'perdido';
 
 export interface Prospect {
   id: string;
@@ -433,7 +435,7 @@ export const useWinProspect = () => {
 
 /** Ordem da esteira. Ações só empurram para frente, nunca para trás. */
 export const STAGE_RANK: Record<ProspectStage, number> = {
-  contato: 0, amostra: 1, oportunidade: 2, reuniao: 3, vendido: 4, perdido: 99,
+  contato: 0, amostra: 1, oportunidade: 2, reuniao: 3, teste: 4, vendido: 5, perdido: 99,
 };
 
 /** Avança o prospect ao executar a ação da etapa (agendar, criar amostra...). */
@@ -479,7 +481,12 @@ export interface SaleInput {
 export const useRegisterSale = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ input, prospectId }: { input: SaleInput; prospectId?: string | null }) => {
+    mutationFn: async ({ input, prospectId, etapa = 'vendido' }: {
+      input: SaleInput; prospectId?: string | null;
+      /* Teste grátis registra o cliente igual, mas o prospect fica em
+         "Teste grátis" — Fechado só quando ele assinar. */
+      etapa?: Extract<ProspectStage, 'teste' | 'vendido'>;
+    }) => {
       const { recurrence = 'mensal', ...clientFields } = input;
 
       /* MRR é receita MENSAL recorrente. O formulário aceita o valor cheio
@@ -518,7 +525,7 @@ export const useRegisterSale = () => {
         .eq('task_key', 'contrato_gerado');
 
       if (prospectId) {
-        await supabase.from('prospects').update({ stage: 'vendido' }).eq('id', prospectId);
+        await supabase.from('prospects').update({ stage: etapa }).eq('id', prospectId);
       }
 
       return client as Client;
@@ -1169,7 +1176,7 @@ export const useCrmCounts = () => {
   const { data: demos = [] } = useDemos();
 
   return useMemo(() => {
-    const activeStages = new Set<ProspectStage>(['contato', 'amostra', 'oportunidade', 'reuniao']);
+    const activeStages = new Set<ProspectStage>(['contato', 'amostra', 'oportunidade', 'reuniao', 'teste']);
     const active = prospects.filter((p) => activeStages.has(p.stage));
 
     const scheduled = new Set(

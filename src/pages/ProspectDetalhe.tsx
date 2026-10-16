@@ -28,6 +28,7 @@ const ROTULO_ETAPA: Record<ProspectStage, string> = {
   amostra: 'Envio de Amostra',
   oportunidade: 'Oportunidade',
   reuniao: 'Reunião',
+  teste: 'Teste grátis',
   vendido: 'Fechado',
   perdido: 'Perdido',
 };

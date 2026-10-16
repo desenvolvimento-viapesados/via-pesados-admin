@@ -159,7 +159,7 @@ function Loja({
           </button>
         )}
         {teste.status === 'aguardando_implantacao' && (
-          <button onClick={() => navigate('/implantacao')} className="h-8 px-3 rounded-lg border border-black/[0.08] dark:border-white/[0.1] text-[12px] font-medium text-foreground/70 hover:text-foreground flex items-center gap-1.5">
+          <button onClick={() => navigate('/implantacao?aba=teste')} className="h-8 px-3 rounded-lg border border-black/[0.08] dark:border-white/[0.1] text-[12px] font-medium text-foreground/70 hover:text-foreground flex items-center gap-1.5">
             Ver implantação <ArrowRight className="h-3 w-3" />
           </button>
         )}
@@ -316,7 +316,7 @@ export default function TestesGratis() {
           </span>
           <p className="mt-5 text-[16px] font-semibold text-foreground">Nenhum teste grátis ainda</p>
           <p className="mt-1.5 text-[12.5px] font-light text-foreground/45 max-w-sm leading-relaxed">
-            No fechamento, ligue "Começar com 30 dias de teste grátis". A loja aparece aqui e os 30 dias começam quando a implantação termina.
+            Arraste uma loja para "Teste grátis" no funil. Ela passa pela implantação de teste e os 30 dias começam no aviso de acesso.
           </p>
         </div>
       ) : lista.length === 0 ? (

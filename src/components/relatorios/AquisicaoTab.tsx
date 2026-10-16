@@ -26,11 +26,11 @@ interface Props {
 const dias = (a: string, b: string) =>
   Math.max(0, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86_400_000));
 
-const ETAPAS_ABERTAS = ['contato', 'amostra', 'oportunidade', 'reuniao'] as const;
+const ETAPAS_ABERTAS = ['contato', 'amostra', 'oportunidade', 'reuniao', 'teste'] as const;
 
 const ETAPA_LABEL: Record<string, string> = {
-  novo: 'Novo', contato: 'Em contato', reuniao: 'Reunião',
-  amostra: 'Amostra', proposta: 'Proposta', fechamento: 'Fechamento',
+  novo: 'Novo', contato: 'Em contato', reuniao: 'Reunião', oportunidade: 'Oportunidade',
+  amostra: 'Amostra', teste: 'Teste grátis', proposta: 'Proposta', fechamento: 'Fechamento',
 };
 
 export function AquisicaoTab({ prospects, clients, meetings, demos, periodo, label }: Props) {

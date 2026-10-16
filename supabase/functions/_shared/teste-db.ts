@@ -96,6 +96,9 @@ export async function converterTeste(db: Db, clientId: string, como: string) {
     .eq('client_id', clientId).in('status', ['aguardando_implantacao', 'em_teste', 'encerrado'])
     .select('id').maybeSingle();
   if (!t) return false;
+  // No funil, sai de "Teste grátis" e vai para Fechado — só se ainda estiver lá.
+  const { data: c } = await db.from('clients').select('prospect_id').eq('id', clientId).maybeSingle();
+  if (c?.prospect_id) await db.from('prospects').update({ stage: 'vendido' }).eq('id', c.prospect_id).eq('stage', 'teste');
   await db.from('tarefas').delete()
     .eq('client_id', clientId).eq('origem', 'teste_gratis').is('feito_em', null);
   await db.from('activities').insert({ client_id: clientId, kind: 'nota', content: `Teste grátis convertido: ${como}.` });

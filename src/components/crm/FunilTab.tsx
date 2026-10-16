@@ -6,7 +6,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
-  useProspects, useCreateProspect, useUpdateProspect, useChannels, useDemos,
+  useProspects, useCreateProspect, useUpdateProspect, useChannels, useDemos, useClients,
   brl, type Prospect, type ProspectStage,
 } from '@/hooks/useAdmin';
 import { FUNIS, ehFunil, funilDoCanal, rotuloDoFunil, type ChaveDoFunil } from '@/lib/funis';
@@ -16,12 +16,15 @@ import { mascaraTelefone, soDigitos, mascaraMoeda, valorDaMoeda } from '@/lib/ma
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/admin/ui';
+import { useTestesGratis } from '@/hooks/useTesteGratis';
+import { situacaoDoTeste, type SituacaoDoTeste } from '@/lib/testeGratis';
 
 const PIPELINE: { key: ProspectStage; label: string }[] = [
   { key: 'contato',      label: 'Contato' },
   { key: 'amostra',      label: 'Envio de Amostra' },
   { key: 'oportunidade', label: 'Oportunidade' },
   { key: 'reuniao',      label: 'Reunião' },
+  { key: 'teste',        label: 'Teste grátis' },
   { key: 'vendido',      label: 'Fechado' },
 ];
 
@@ -140,6 +143,17 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
   const navigate = useNavigate();
   const { data: todos = [], isLoading } = useProspects();
   const { data: amostras = [] } = useDemos();
+  const { data: clientesDoFunil = [] } = useClients();
+  const { data: testesDoFunil = [] } = useTestesGratis();
+  /* Em que pé está o teste de cada card da coluna Teste grátis. */
+  const testeDoProspect = useMemo(() => {
+    const m = new Map<string, SituacaoDoTeste>();
+    for (const t of testesDoFunil) {
+      const c = clientesDoFunil.find((x) => x.id === t.client_id);
+      if (c?.prospect_id) m.set(c.prospect_id, situacaoDoTeste(t));
+    }
+    return m;
+  }, [testesDoFunil, clientesDoFunil]);
   const update = useUpdateProspect();
   const [reuniaoPara, setReuniaoPara] = useState<Prospect | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -159,7 +173,7 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
   );
   /* Contagem e valor de cada funil, só dos que estão andando (não vendido). */
   const resumo = useMemo(() => {
-    const ativos = todos.filter((p) => p.stage === 'contato' || p.stage === 'amostra' || p.stage === 'oportunidade' || p.stage === 'reuniao');
+    const ativos = todos.filter((p) => p.stage === 'contato' || p.stage === 'amostra' || p.stage === 'oportunidade' || p.stage === 'reuniao' || p.stage === 'teste');
     const de = (f?: ChaveDoFunil) => {
       const l = f ? ativos.filter((p) => (p.funil ?? 'fria') === f) : ativos;
       return { qtd: l.length, valor: l.reduce((s, p) => s + (p.proposal_value ?? 0), 0) };
@@ -191,6 +205,14 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
     // depois.
     if (stage === 'vendido') {
       navigate(`/crm/venda/${p.id}`);
+      return;
+    }
+
+    // Teste grátis também é cadastro: o cliente nasce, vai para a
+    // implantação de teste, e os 30 dias contam do aviso de acesso. O
+    // próprio cadastro move o card no fim.
+    if (stage === 'teste') {
+      navigate(`/crm/teste/${p.id}`);
       return;
     }
 
@@ -302,18 +324,29 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
                     >
                       <p className="text-[12.5px] font-semibold text-foreground leading-tight">{p.company_name}</p>
                       {p.contact_name && <p className="text-[11px] text-foreground/45 mt-0.5">{p.contact_name}</p>}
-                      {(funilAtual === 'todos' || comAmostra.has(p.id)) && (
+                      {(funilAtual === 'todos' || comAmostra.has(p.id) || (p.stage === 'teste' && testeDoProspect.has(p.id))) && (
                         <div className="flex flex-wrap gap-1 mt-1.5">
                           {funilAtual === 'todos' && (
                             <span className="text-[9.5px] font-medium rounded-full px-1.5 py-px bg-black/[0.05] dark:bg-white/[0.07] text-foreground/50">
                               {rotuloDoFunil(p.funil)}
                             </span>
                           )}
-                          {comAmostra.has(p.id) && (
+                          {comAmostra.has(p.id) && p.stage !== 'teste' && (
                             <span className="text-[9.5px] font-medium rounded-full px-1.5 py-px bg-primary/10 text-primary inline-flex items-center gap-0.5">
                               <MonitorPlay className="h-2.5 w-2.5" /> amostra
                             </span>
                           )}
+                          {p.stage === 'teste' && testeDoProspect.has(p.id) && (() => {
+                            const t = testeDoProspect.get(p.id)!;
+                            const cor = t.tom === 'alerta' ? 'bg-red-500/10 text-red-500'
+                              : t.tom === 'atencao' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400';
+                            return (
+                              <span title={t.linha} className={cn('text-[9.5px] font-medium rounded-full px-1.5 py-px', cor)}>
+                                {t.restantes !== null && t.restantes > 0 && !t.reta_final ? t.linha.split(' · ')[0] : t.rotulo}
+                              </span>
+                            );
+                          })()}
                         </div>
                       )}
                       <div className="flex items-center justify-between mt-2">

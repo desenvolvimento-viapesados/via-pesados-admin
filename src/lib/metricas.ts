@@ -126,7 +126,7 @@ export function valorDaMetrica(
 
     case 'pipeline':
       return soma(d.prospects
-        .filter((p) => ['contato', 'amostra', 'oportunidade', 'reuniao'].includes(p.stage))
+        .filter((p) => ['contato', 'amostra', 'oportunidade', 'reuniao', 'teste'].includes(p.stage))
         .map((p) => Number(p.proposal_value ?? 0)));
     case 'prospects_novos':
       return d.prospects.filter((p) => noPeriodo(p.created_at, periodo)).length;

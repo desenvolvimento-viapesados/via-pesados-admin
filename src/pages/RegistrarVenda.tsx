@@ -105,7 +105,6 @@ const vazio = {
   contact_name: '', whatsapp: '', city: '', state: '',
   mrr: '', canais: [] as string[],
   gerar_cobranca: true,
-  teste_gratis: false,
   acesso_nome: '', acesso_email: '',
   sistema_email: '',
   owner_id: '',
@@ -119,7 +118,12 @@ const vazio = {
  * Nenhuma das duas é reversível com um clique, e nenhuma cabe num diálogo
  * que o operador fecha sem querer clicando fora.
  */
-export default function RegistrarVenda() {
+/**
+ * `teste`: a loja foi arrastada para "Teste grátis" no funil. O cadastro é o
+ * mesmo — sistema, acesso, canais, a mensalidade que vale depois —, mas o
+ * prospect fica em Teste grátis e a loja vai para a implantação de teste.
+ */
+export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: boolean } = {}) {
   const { id: prospectId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { member } = useAuth();
@@ -200,6 +204,7 @@ export default function RegistrarVenda() {
     setSalvando(true);
     try {
       const client = await register.mutateAsync({
+        etapa: modoTeste ? 'teste' : 'vendido',
         input: {
           company_name: form.company_name.trim(),
           legal_name: form.legal_name || null,
@@ -258,7 +263,7 @@ export default function RegistrarVenda() {
       /* Teste grátis: os 30 dias começam na implantação (no aviso de
          acesso), não agora. A linha nasce esperando; a rotina diária e o
          aviso de acesso cuidam do resto. */
-      if (form.teste_gratis) {
+      if (modoTeste) {
         try {
           await criarTesteGratis(client.id, form.owner_id || member?.id || null, member?.id ?? null);
         } catch (e) {
@@ -269,20 +274,20 @@ export default function RegistrarVenda() {
       if (form.gerar_cobranca && mrrNum > 0) {
         try {
           await gerarLink.mutateAsync({ client_id: client.id, valor: mrrNum });
-          toast.success(form.teste_gratis
+          toast.success(modoTeste
             ? 'Teste grátis registrado — a assinatura fica pronta para quando ele decidir'
             : 'Venda registrada e cobrança mensal criada');
         } catch (e) {
           toast.warning(`Venda registrada, mas a cobrança não foi gerada: ${(e as Error).message}`);
         }
       } else {
-        toast.success(form.teste_gratis ? 'Teste grátis registrado' : 'Venda registrada — contrato emitido em rascunho');
+        toast.success(modoTeste ? 'Teste grátis registrado' : 'Venda registrada — contrato emitido em rascunho');
       }
 
       /* A cobrança é o próximo passo real: manda o link e espera. Cair na
          ficha obrigava a procurar o link no meio de um checklist. No teste,
          o próximo passo é implantar — o link de assinar vai nos avisos. */
-      navigate(form.teste_gratis ? '/testes' : `/clientes/${client.id}/cobranca`);
+      navigate(modoTeste ? '/implantacao?aba=teste' : `/clientes/${client.id}/cobranca`);
     } catch {
       toast.error('Erro ao registrar venda');
       setSalvando(false);
@@ -303,10 +308,10 @@ export default function RegistrarVenda() {
         {/* Cabeçalho — padrão Via Pesados */}
         <header className="mb-10">
           <p className="text-[11px] font-light tracking-[0.22em] uppercase text-primary mb-3">
-            Fechamento
+            {modoTeste ? 'Teste grátis' : 'Fechamento'}
           </p>
           <h1 className="text-[30px] sm:text-[38px] leading-[1.08] tracking-tight">
-            <span className="block font-extralight text-foreground/50">Registrar a venda de</span>
+            <span className="block font-extralight text-foreground/50">{modoTeste ? 'Começar o teste grátis de' : 'Registrar a venda de'}</span>
             <span className="block font-bold text-foreground">{form.company_name || 'novo cliente'}</span>
           </h1>
           <div className="h-[3px] w-16 bg-primary rounded-full mt-5" />
@@ -404,13 +409,15 @@ export default function RegistrarVenda() {
                 {/* Um plano só, e a mensalidade é negociada por cliente —
                     não há o que escolher aqui além do valor. */}
                 <input className={campo} inputMode="numeric" placeholder="Mensalidade (R$)" value={form.mrr} onChange={(e) => set('mrr', mascaraMoeda(e.target.value))} />
-                <Opcao
-                  tom="emerald"
-                  ligada={form.teste_gratis}
-                  onClick={() => set('teste_gratis', !form.teste_gratis)}
-                  titulo={<span className="flex items-center gap-1.5"><Hourglass className="h-3 w-3" /> Começar com 30 dias de teste grátis</span>}
-                  sub="Conta da implantação, não de hoje. Sem cartão. Se não assinar, painel e site saem do ar no dia seguinte ao fim."
-                />
+                {modoTeste && (
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] px-3.5 py-3 flex items-start gap-2.5">
+                    <Hourglass className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+                    <p className="text-[12px] text-foreground/70 leading-snug">
+                      <span className="font-semibold text-foreground">30 dias de teste grátis</span>, contados da implantação, sem cartão.
+                      O valor acima é a mensalidade que vale depois. Se não assinar, painel e site saem do ar no dia seguinte ao fim.
+                    </p>
+                  </div>
+                )}
                 <Opcao
                   tom="emerald"
                   ligada={form.gerar_cobranca}
@@ -463,7 +470,7 @@ export default function RegistrarVenda() {
                     {amostra ? `amostra de ${amostra.company_name}` : 'novo, vazio'}
                   </dd>
                 </div>
-                {form.teste_gratis && (
+                {modoTeste && (
                   <div className="flex justify-between gap-3">
                     <dt className="text-foreground/45">Teste grátis</dt>
                     <dd className="text-foreground">30 dias após a implantação</dd>
@@ -482,7 +489,7 @@ export default function RegistrarVenda() {
               className="w-full h-12 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trophy className="h-4 w-4" />}
-              {salvando ? 'Fechando…' : form.teste_gratis ? 'Registrar teste grátis' : 'Registrar venda'}
+              {salvando ? 'Fechando…' : modoTeste ? 'Começar o teste grátis' : 'Registrar venda'}
             </button>
             {!amostra && amostras.length > 0 && (
               <p className="text-[11px] text-amber-500/90 leading-snug px-1">
