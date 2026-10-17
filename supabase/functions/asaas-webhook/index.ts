@@ -120,6 +120,25 @@ function paramsDoTemplate(
   }
 }
 
+/** O pagamento já foi avisado ao lojista — por qualquer um dos caminhos,
+ *  enviado ou esperando as 08h na fila. */
+async function pagamentoJaAvisado(db: { from: (t: string) => any }, paymentId: string): Promise<boolean> {
+  const avisos: [string, string][] = [
+    ['pagamento_confirmado', `PAYMENT_RECEIVED:${paymentId}`],
+    ['pagamento_confirmado', `PAYMENT_CONFIRMED:${paymentId}`],
+    ['painel_liberado', `liberado:${paymentId}`],
+  ];
+  for (const [template, chave] of avisos) {
+    const { data: enviado } = await db.from('wa_envios').select('id').eq('template', template).eq('chave', chave).limit(1);
+    if (enviado?.length) return true;
+    /* na fila conta o que está esperando as 08h; o que falhou lá não segura o aviso */
+    const { data: naFila } = await db.from('wa_fila').select('id').eq('template', template).eq('chave', chave)
+      .or('resultado.is.null,resultado.eq.enviado').limit(1);
+    if (naFila?.length) return true;
+  }
+  return false;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
   if (req.method !== 'POST') return json(405, { error: 'Method not allowed' });
@@ -225,53 +244,86 @@ Deno.serve(async (req) => {
     /* Aviso no WhatsApp — DEPOIS de gravar, e sempre dentro de try. O banco
        em dia é a obrigação desta função; a mensagem é o extra. Se a Meta
        estiver fora do ar, o Asaas não pode ficar sabendo. */
+    /* Pagou e estava com o acesso cortado? Decide ANTES do aviso, porque
+       aí a mensagem é uma só: "pagamento confirmado e painel liberado".
+       Em 17/10/2026 a iTruck recebeu as duas — "Recebemos o seu pagamento"
+       e, dois segundos depois, "o pagamento foi confirmado e o painel já
+       está liberado" — para o mesmo Pix. Só libera se não sobrar outra
+       mensalidade vencida além da tolerância. */
+    let vaiLiberar = false;
+    if (status === 'pago' && cliente?.acesso_suspenso_em && cliente.lojista_company_id) {
+      const { data: outras } = await db.from('payments').select('due_date')
+        .eq('client_id', clientId).in('status', ['pendente', 'atrasado']).not('asaas_subscription_id', 'is', null);
+      const hoje = hojeBRT();
+      vaiLiberar = !(outras ?? []).some((o: { due_date: string }) => passouDaTolerancia(o.due_date, hoje));
+    }
+
+    /* Aviso no WhatsApp — DEPOIS de gravar, e sempre dentro de try. O banco
+       em dia é a obrigação desta função; a mensagem é o extra. Se a Meta
+       estiver fora do ar, o Asaas não pode ficar sabendo. */
     let aviso: unknown = { ok: false, motivo: 'sem template para o evento' };
     /* PAYMENT_OVERDUE chega no dia seguinte ao vencimento: é o lembrete
        BRANDO ("em atraso", sistema segue no ar). O aviso de risco sai no
        dia seguinte, pela rotina das 9h, e o corte no terceiro dia. */
     const template = TEMPLATE_POR_EVENTO[evento];
-    if (template && cliente) {
+    const avisarPagamento = async () => {
+      /* Um pagamento, um aviso. No cartão o Asaas manda CONFIRMED na hora e
+         RECEIVED uns 30 dias depois, e cada evento tinha a sua chave: o
+         lojista recebia "Recebemos o seu pagamento" duas vezes. A chave
+         agora é a do pagamento; a conferência cobre as chaves antigas e o
+         "painel liberado", que já diz que o pagamento foi confirmado. */
+      if (await pagamentoJaAvisado(db, String(p.id))) return { ok: false, motivo: 'pagamento já avisado' };
+      return enviarTemplate(db, {
+        para: cliente!.whatsapp,
+        template: 'pagamento_confirmado',
+        client_id: cliente!.id,
+        chave: `PAYMENT_RECEIVED:${p.id}`,
+        params: paramsDoTemplate('pagamento_confirmado', p, cliente!),
+      });
+    };
+    const avisoVemNaLiberacao = template === 'pagamento_confirmado' && vaiLiberar && await modeloAprovado('painel_liberado');
+    if (template && cliente && !avisoVemNaLiberacao) {
       try {
-        aviso = await enviarTemplate(db, {
-          para: cliente.whatsapp,
-          template,
-          client_id: cliente.id,
-          // A chave amarra o disparo ao evento: PAYMENT_CREATED e
-          // PAYMENT_RECEIVED da MESMA cobrança são avisos diferentes, e
-          // cada um pode sair uma vez só.
-          chave: `${evento}:${p.id}`,
-          params: paramsDoTemplate(template, p, cliente),
-          // Se tiver de esperar as 08h, só sai se a cobrança continuar aberta.
-          condicao: status === 'pago' ? null : { tipo: 'cobranca_aberta', asaas_payment_id: String(p.id) },
-        });
+        aviso = template === 'pagamento_confirmado'
+          ? await avisarPagamento()
+          : await enviarTemplate(db, {
+            para: cliente.whatsapp,
+            template,
+            client_id: cliente.id,
+            // A chave amarra o disparo ao evento: cada aviso sai uma vez só.
+            chave: `${evento}:${p.id}`,
+            params: paramsDoTemplate(template, p, cliente),
+            // Se tiver de esperar as 08h, só sai se a cobrança continuar aberta.
+            condicao: status === 'pago' ? null : { tipo: 'cobranca_aberta', asaas_payment_id: String(p.id) },
+          });
       } catch (e) {
         console.error('asaas-webhook aviso:', e);
       }
     }
 
-    /* Pagou: o acesso volta na hora, sem esperar a rotina do dia seguinte.
-       Só libera se não sobrar outra mensalidade vencida além da tolerância. */
+    /* Pagou: o acesso volta na hora, sem esperar a rotina do dia seguinte. */
     let acesso: unknown = null;
-    if (status === 'pago' && cliente?.acesso_suspenso_em && cliente.lojista_company_id) {
-      const { data: outras } = await db.from('payments').select('due_date')
-        .eq('client_id', clientId).in('status', ['pendente', 'atrasado']).not('asaas_subscription_id', 'is', null);
-      const hoje = hojeBRT();
-      const aindaDeve = (outras ?? []).some((o: { due_date: string }) => passouDaTolerancia(o.due_date, hoje));
-      if (!aindaDeve) {
-        acesso = await pedirAoLojista({ acao: 'liberar', company_id: cliente.lojista_company_id });
-        if ((acesso as { ok?: boolean })?.ok) {
-          await db.from('clients').update({ acesso_suspenso_em: null }).eq('id', clientId);
-          await db.from('activities').insert({ client_id: clientId, kind: 'nota', content: 'Acesso ao sistema liberado: mensalidade paga.' });
-          if (await modeloAprovado('painel_liberado')) {
-            await enviarTemplate(db, {
+    if (vaiLiberar && cliente?.lojista_company_id) {
+      acesso = await pedirAoLojista({ acao: 'liberar', company_id: cliente.lojista_company_id });
+      if ((acesso as { ok?: boolean })?.ok) {
+        await db.from('clients').update({ acesso_suspenso_em: null }).eq('id', clientId);
+        await db.from('activities').insert({ client_id: clientId, kind: 'nota', content: 'Acesso ao sistema liberado: mensalidade paga.' });
+        if (avisoVemNaLiberacao) {
+          try {
+            aviso = await enviarTemplate(db, {
               para: cliente.whatsapp,
               template: 'painel_liberado',
               client_id: clientId,
               chave: `liberado:${p.id}`,
               params: { body: [primeiroNome(cliente.contact_name), cliente.company_name ?? 'sua loja'] },
             });
+          } catch (e) {
+            console.error('asaas-webhook aviso de liberação:', e);
           }
         }
+      } else if (avisoVemNaLiberacao) {
+        /* Não liberou: o aviso de pagamento não pode se perder por isso. */
+        try { aviso = await avisarPagamento(); } catch (e) { console.error('asaas-webhook aviso:', e); }
       }
     }
 

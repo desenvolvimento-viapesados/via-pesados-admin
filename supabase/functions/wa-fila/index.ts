@@ -68,7 +68,7 @@ Deno.serve(async () => {
         resultado = r.ok ? 'enviado' : `não enviado: ${r.motivo}`;
         /* Acesso liberado e pagamento confirmado são os portões da nota
            fiscal: se um deles esperou as 08h, a nota esperou junto. */
-        if (r.ok && item.client_id && (item.template === 'acesso_equipe' || item.template === 'implantacao_concluida' || item.template === 'pagamento_confirmado')) {
+        if (r.ok && item.client_id && (item.template === 'acesso_equipe' || item.template === 'implantacao_concluida' || item.template === 'pagamento_confirmado' || item.template === 'painel_liberado')) {
           try { await tentarNotasPendentes(db, item.client_id); } catch { /* a nota tenta de novo no próximo portão */ }
         }
       }

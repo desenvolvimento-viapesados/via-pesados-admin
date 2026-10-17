@@ -88,8 +88,11 @@ export async function enviarNotaFiscal(
       const pay = nota.asaas_payment_id;
       if (!pay) return { enviado: false, motivo: 'nota sem cobrança vinculada', aguardando: true };
       /* O mesmo template sai por dois eventos do Asaas — o que confirma e o
-         que recebe. Qualquer um dos dois serve como "já avisamos". */
-      const ok = await jaSaiu(db, ['pagamento_confirmado'], [`PAYMENT_RECEIVED:${pay}`, `PAYMENT_CONFIRMED:${pay}`]);
+         que recebe. Qualquer um dos dois serve como "já avisamos". Quando o
+         pagamento tira a loja do corte, o aviso é o "painel liberado", que
+         já diz que o pagamento foi confirmado — vale também. */
+      const ok = await jaSaiu(db, ['pagamento_confirmado', 'painel_liberado'],
+        [`PAYMENT_RECEIVED:${pay}`, `PAYMENT_CONFIRMED:${pay}`, `liberado:${pay}`]);
       if (!ok) return { enviado: false, motivo: 'aviso de pagamento ainda não saiu', aguardando: true };
     }
   }

@@ -481,10 +481,20 @@ Deno.serve(async (req) => {
       });
     }
 
-    /* ── status: a página pergunta se o Pix já caiu ──────────────── */
+    /* ── status: a página pergunta se o Pix já caiu ────────────────
+       Pergunta pela cobrança QUE ESTÁ NA TELA. Antes olhava a primeira
+       mensalidade do cliente (asaas_first_payment_id): para quem pagava
+       outubro, a de setembro já estava paga, e a página dizia "tudo certo"
+       5 segundos depois de abrir o Pix — sem o lojista ter pago nada
+       (17/10/2026, iTruck). Sem cobrança informada, a resposta é "não":
+       dizer pago sem saber qual é o erro que não pode acontecer. */
     if (acao === 'status') {
-      if (!cli.asaas_first_payment_id) return json(200, { ok: true, pago: false });
-      const p = await asaas(base, chave, `/payments/${cli.asaas_first_payment_id}`);
+      const { payment_id } = corpo as { payment_id?: string };
+      if (!payment_id) return json(200, { ok: true, pago: false });
+      const p = await asaas(base, chave, `/payments/${encodeURIComponent(payment_id)}`);
+      const doCliente = String(p?.externalReference ?? '') === cli.id
+        || (!!cli.asaas_subscription_id && p?.subscription === cli.asaas_subscription_id);
+      if (!doCliente) return json(403, { error: 'Cobrança não pertence a este cliente.' });
       const pago = ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(String(p?.status));
       return json(200, { ok: true, pago, situacao: p?.status });
     }
