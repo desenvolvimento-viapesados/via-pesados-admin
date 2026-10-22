@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Users, DollarSign, CreditCard, MessageSquare, BarChart3, ChevronRight,
   UserCheck, LogOut, Sun, Moon, ExternalLink, Target,
-  Layers, HeartPulse, Rocket, ArrowRight, Hourglass,
+  Layers, HeartPulse, Rocket, ArrowRight, Hourglass, Landmark,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
@@ -337,6 +337,7 @@ export default function Home() {
             <ModuleTile label="Suporte"       description="Chamados dos clientes"          icon={<MessageSquare />} onClick={() => navigate('/tickets')} badge={openTickets} />
             <ModuleTile label="Relatórios"    description="Recorrência, funil e caixa"     icon={<BarChart3 />}     onClick={() => navigate('/relatorios')} />
             <ModuleTile label="Metas"         description="Norte, OKR e horizonte"         icon={<Target />}        onClick={() => navigate('/metas')} />
+            <ModuleTile label="Conselho"      description="A diretoria e as decisões"      icon={<Landmark />}      onClick={() => navigate('/conselho')} />
             <ModuleTile label="Equipe"        description="Membros e acessos"              icon={<UserCheck />}     onClick={() => navigate('/equipe')} />
             <ModuleTile label="Saúde"         description="Se a plataforma está no ar"     icon={<HeartPulse />}    onClick={() => navigate('/saude')} />
           </div>

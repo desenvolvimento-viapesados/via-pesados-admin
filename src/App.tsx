@@ -27,6 +27,7 @@ const Cobranca       = lazy(() => import('@/pages/Cobranca'));
 const Onboarding     = lazy(() => import('@/pages/Onboarding'));
 const Whatsapp       = lazy(() => import('@/pages/Whatsapp'));
 const Metas          = lazy(() => import('@/pages/Metas'));
+const Conselho       = lazy(() => import('@/pages/Conselho'));
 const Planos         = lazy(() => import('@/pages/Planos'));
 const Saude          = lazy(() => import('@/pages/Saude'));
 const TestesGratis   = lazy(() => import('@/pages/TestesGratis'));
@@ -114,6 +115,7 @@ const Gate = () => {
           <Route path="/relatorios"    element={<Relatorios />} />
           <Route path="/whatsapp"      element={<Whatsapp />} />
           <Route path="/metas"         element={<Metas />} />
+          <Route path="/conselho"      element={<Conselho />} />
 
           {/* rotas antigas — agora vivem dentro do CRM */}
           <Route path="/funil"     element={<Navigate to="/crm?tab=funil" replace />} />
