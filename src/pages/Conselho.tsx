@@ -12,7 +12,7 @@ import {
   usePerguntar, useCancelarPergunta, useDecidir, type Decisao, type Fala, type Reuniao,
 } from '@/hooks/useConselho';
 import {
-  CEO, DIRETORIA, SEGUNDA_LEVA, quem, iniciais, posicaoNaOrbita, andamentoDoExperimento,
+  CEO, DIRETORIA, SEGUNDA_LEVA, TODA_A_DIRETORIA, quem, iniciais, posicaoNaOrbita, andamentoDoExperimento,
   ROTULO_RODADA, ORDEM_DAS_RODADAS, ROTULO_TIPO, ROTULO_EXPERIMENTO,
 } from '@/lib/conselho';
 
@@ -81,29 +81,42 @@ function Avatar({ slug, tamanho = 'md', aceso = true }: { slug: string; tamanho?
   );
 }
 
-/* ── A órbita: o CEO no centro, a diretoria em volta ─────────────────── */
-function Orbita({ participantes }: { participantes: string[] }) {
-  const raio = 128;
+/* ── A órbita: o CEO no centro, a diretoria executiva no anel de dentro,
+   operação, risco, parceiros, pessoas e as unidades no anel de fora ───── */
+function Cadeira({ slug, x, y, aceso }: { slug: string; x: number; y: number; aceso: boolean }) {
+  const d = quem(slug);
   return (
-    <div className="relative mx-auto hidden h-[340px] w-[340px] sm:block">
-      <div className="absolute inset-[42px] rounded-full border border-dashed border-primary/25" />
-      <div className="absolute inset-[110px] rounded-full bg-primary/5 blur-xl" />
+    <div className="absolute left-1/2 top-1/2 w-[84px] text-center"
+      style={{ transform: `translate(calc(-50% + ${x}px), calc(-20px + ${y}px))` }}>
+      <Avatar slug={slug} tamanho="sm" aceso={aceso} />
+      <p className={cn('mt-0.5 truncate text-[10px] font-semibold leading-tight', aceso ? 'text-foreground' : 'text-foreground/30')}>{d.nome.split(' ')[0]}</p>
+      <p className="truncate text-[9px] leading-tight text-foreground/35">{d.cargo}</p>
+    </div>
+  );
+}
+
+function Orbita({ participantes }: { participantes: string[] }) {
+  const aceso = (slug: string) => participantes.length === 0 || participantes.includes(slug);
+  const dentro = 112;
+  const fora = 196;
+  return (
+    <div className="relative mx-auto hidden h-[470px] w-[470px] shrink-0 sm:block">
+      <div className="absolute rounded-full border border-dashed border-foreground/10" style={{ inset: 235 - fora }} />
+      <div className="absolute rounded-full border border-dashed border-primary/30" style={{ inset: 235 - dentro }} />
+      <div className="absolute inset-[170px] rounded-full bg-primary/10 blur-2xl" />
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
         <Avatar slug="ceo" tamanho="lg" />
         <p className="mt-1.5 text-[11px] font-semibold text-foreground">{CEO.nome}</p>
         <p className="text-[10px] text-foreground/40">CEO</p>
       </div>
       {DIRETORIA.map((d, i) => {
-        const p = posicaoNaOrbita(i, DIRETORIA.length, raio);
-        const aceso = participantes.length === 0 || participantes.includes(d.slug);
-        return (
-          <div key={d.slug} className="absolute left-1/2 top-1/2 w-24 text-center"
-            style={{ transform: `translate(calc(-50% + ${p.x}px), calc(-22px + ${p.y}px))` }}>
-            <Avatar slug={d.slug} aceso={aceso} />
-            <p className={cn('mt-1 truncate text-[10.5px] font-semibold', aceso ? 'text-foreground' : 'text-foreground/30')}>{d.nome.split(' ')[0]}</p>
-            <p className="truncate text-[9.5px] text-foreground/35">{d.cargo}</p>
-          </div>
-        );
+        const p = posicaoNaOrbita(i, DIRETORIA.length, dentro);
+        return <Cadeira key={d.slug} slug={d.slug} x={p.x} y={p.y} aceso={aceso(d.slug)} />;
+      })}
+      {SEGUNDA_LEVA.map((d, i) => {
+        // O anel de fora gira meia cadeira para ninguém ficar atrás de alguém de dentro.
+        const p = posicaoNaOrbita(i + 0.5, SEGUNDA_LEVA.length, fora);
+        return <Cadeira key={d.slug} slug={d.slug} x={p.x} y={p.y} aceso={aceso(d.slug)} />;
       })}
     </div>
   );
@@ -112,7 +125,7 @@ function Orbita({ participantes }: { participantes: string[] }) {
 function DiretoriaEmLista({ participantes }: { participantes: string[] }) {
   return (
     <div className="grid grid-cols-3 gap-3 sm:hidden">
-      {[CEO, ...DIRETORIA].map((d) => {
+      {[CEO, ...TODA_A_DIRETORIA].map((d) => {
         const aceso = d.slug === 'ceo' || participantes.length === 0 || participantes.includes(d.slug);
         return (
           <div key={d.slug} className="text-center">
@@ -158,7 +171,7 @@ function Perguntar() {
         className="text-[13px]" />
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-[11px] text-foreground/40 mr-1">Quem você quer ouvir (opcional):</span>
-        {DIRETORIA.map((d) => {
+        {TODA_A_DIRETORIA.map((d) => {
           const on = escolhidos.includes(d.slug);
           return (
             <button key={d.slug} type="button"
@@ -338,7 +351,7 @@ export default function Conselho() {
             Toda semana e quando algo grande acontece, o CEO reúne a diretoria com os números reais da empresa.
             Cada um propõe, os outros contestam, o CEO decide, e o que é seu chega aqui.
           </p>
-          <p className="mt-2 text-[11px] text-foreground/35">Segunda leva, ainda sem cadeira: {SEGUNDA_LEVA.join(', ')}.</p>
+          <p className="mt-2 text-[11px] text-foreground/35">No anel de dentro, a diretoria executiva; no de fora, operação, risco, parceiros, pessoas e as unidades de negócio. Acesos: quem falou na reunião aberta.</p>
         </div>
         <Orbita participantes={aberta?.participantes ?? []} />
         <DiretoriaEmLista participantes={aberta?.participantes ?? []} />

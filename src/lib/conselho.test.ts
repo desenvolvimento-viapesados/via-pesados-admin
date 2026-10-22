@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { andamentoDoExperimento, DIRETORIA, iniciais, posicaoNaOrbita, quem } from './conselho';
+import { andamentoDoExperimento, DIRETORIA, SEGUNDA_LEVA, TODA_A_DIRETORIA, iniciais, posicaoNaOrbita, quem } from './conselho';
 
 describe('o conselho no painel', () => {
   it('cada diretor tem slug único', () => {
-    const slugs = DIRETORIA.map((d) => d.slug);
+    const slugs = TODA_A_DIRETORIA.map((d) => d.slug);
     expect(new Set(slugs).size).toBe(slugs.length);
   });
 
@@ -11,6 +11,7 @@ describe('o conselho no painel', () => {
     // A skill grava estes slugs em conselho_falas.diretor; um nome a mais ou
     // a menos aqui deixaria fala sem dono na tela.
     expect(DIRETORIA.map((d) => d.slug)).toEqual(['helena', 'rafael', 'marta', 'livia', 'bruno', 'camila', 'lucas', 'yara']);
+    expect(SEGUNDA_LEVA.map((d) => d.slug)).toEqual(['diego', 'sergio', 'paulo', 'thiago', 'gustavo', 'juliana', 'fernanda', 'ana']);
   });
 
   it('quem: acha pelo slug e não quebra com slug desconhecido', () => {

@@ -29,12 +29,20 @@ export const DIRETORIA: Diretor[] = [
   { slug: 'yara', nome: 'Yara Nakamura', cargo: 'Dados', cor: 'bg-cyan-600', ativo: true },
 ];
 
-export const SEGUNDA_LEVA = [
-  'Tecnologia', 'Operações', 'Jurídico e Riscos', 'Parcerias',
-  'Unidade Lojistas', 'Unidade Transportadoras', 'Marketplace e Match', 'Pessoas',
+/** O anel de fora: operação, risco, parceiros, pessoas e as três unidades de negócio. */
+export const SEGUNDA_LEVA: Diretor[] = [
+  { slug: 'diego', nome: 'Diego Ramos', cargo: 'Tecnologia', cor: 'bg-slate-500', ativo: true },
+  { slug: 'sergio', nome: 'Sérgio Valadares', cargo: 'Operações', cor: 'bg-lime-600', ativo: true },
+  { slug: 'paulo', nome: 'Paulo Mendes', cargo: 'Jurídico e Riscos', cor: 'bg-red-600', ativo: true },
+  { slug: 'thiago', nome: 'Thiago Rezende', cargo: 'Parcerias', cor: 'bg-yellow-600', ativo: true },
+  { slug: 'gustavo', nome: 'Gustavo Pires', cargo: 'Unidade Lojistas', cor: 'bg-orange-600', ativo: true },
+  { slug: 'juliana', nome: 'Juliana Teles', cargo: 'Unidade Transportadoras', cor: 'bg-blue-600', ativo: true },
+  { slug: 'fernanda', nome: 'Fernanda Rocha', cargo: 'Marketplace e Match', cor: 'bg-fuchsia-600', ativo: true },
+  { slug: 'ana', nome: 'Ana Beatriz Costa', cargo: 'Pessoas e Cultura', cor: 'bg-rose-500', ativo: true },
 ];
 
-const TODOS = [CEO, ...DIRETORIA];
+export const TODA_A_DIRETORIA = [...DIRETORIA, ...SEGUNDA_LEVA];
+const TODOS = [CEO, ...TODA_A_DIRETORIA];
 
 export function quem(slug: string | null | undefined): Diretor {
   return TODOS.find((d) => d.slug === slug) ?? {
