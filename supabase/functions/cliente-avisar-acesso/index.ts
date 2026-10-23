@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
     let ciclo: unknown = null;
     let teste: unknown = null;
     if ((r.ok || r.agendado) && !c.implantado_em) {
-      /* Veio de teste grátis: os 30 dias começam hoje, e a mensalidade de
+      /* Veio de teste grátis: os 60 dias começam hoje, e a mensalidade de
          quem já assinou passa a vencer no dia seguinte ao fim do teste. */
       const hoje = hojeBRT();
       let t = await testeDoCliente(db, c.id);

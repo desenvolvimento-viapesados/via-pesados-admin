@@ -11,12 +11,12 @@ import {
 } from '@/hooks/useTesteGratis';
 import { InitialAvatar } from '@/components/admin/ui';
 import { COR_DO_TOM } from '@/components/admin/TesteDoCliente';
-import { situacaoDoTeste, taxaDeConversao, diasAteAssinar, dataCurta } from '@/lib/testeGratis';
+import { situacaoDoTeste, taxaDeConversao, diasAteAssinar, dataCurta, DIAS_DE_TESTE } from '@/lib/testeGratis';
 import { numeroParaWhatsapp } from '@/lib/inadimplencia';
 import { tarefasDoTeste } from '../../supabase/functions/_shared/teste';
 import { hojeBRT } from '../../supabase/functions/_shared/regua';
 
-/* Teste grátis: 30 dias contados da implantação. A tela responde duas
+/* Teste grátis: 60 dias contados da implantação. A tela responde duas
    perguntas — como cada loja está usando o teste, e o que o vendedor faz
    hoje. Quem decide a conversão é a conversa; a tela põe o vendedor na
    hora certa com o número certo na mão. */
@@ -103,7 +103,7 @@ function Loja({
         <span className={cn('text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0', cor.fundo, cor.texto)}>{s.rotulo}</span>
       </div>
 
-      {/* A régua dos 30 dias, com os pontos em que o vendedor entra. */}
+      {/* A régua do teste, com os pontos em que o vendedor entra. */}
       <div className="relative h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08]">
         <div className={cn('absolute inset-y-0 left-0 rounded-full', cor.barra)} style={{ width: `${Math.round(s.progresso * 100)}%` }} />
         {total > 0 && marcos.map((m) => {
@@ -271,7 +271,7 @@ export default function TestesGratis() {
           </span>
         </h1>
         <p className="mt-3 text-[13px] font-light text-foreground/45">
-          30 dias contados da implantação. No dia seguinte ao fim, sem assinatura, painel e site saem do ar — nada é apagado.
+          {DIAS_DE_TESTE} dias contados da implantação. No dia seguinte ao fim, sem assinatura, painel e site saem do ar — nada é apagado.
         </p>
       </header>
 
@@ -316,7 +316,7 @@ export default function TestesGratis() {
           </span>
           <p className="mt-5 text-[16px] font-semibold text-foreground">Nenhum teste grátis ainda</p>
           <p className="mt-1.5 text-[12.5px] font-light text-foreground/45 max-w-sm leading-relaxed">
-            Arraste uma loja para "Teste grátis" no funil. Ela passa pela implantação de teste e os 30 dias começam no aviso de acesso.
+            Arraste uma loja para "Teste grátis" no funil. Ela passa pela implantação de teste e os {DIAS_DE_TESTE} dias começam no aviso de acesso.
           </p>
         </div>
       ) : lista.length === 0 ? (

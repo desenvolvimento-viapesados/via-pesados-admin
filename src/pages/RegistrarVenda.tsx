@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { criarTesteGratis } from '@/hooks/useTesteGratis';
 import { CidadeUF } from '@/components/crm/CidadeUF';
 import { mascaraTelefone, soDigitos, mascaraMoeda, valorDaMoeda, moedaDeNumero } from '@/lib/mascaras';
+import { DIAS_DE_TESTE } from '@/lib/testeGratis';
 
 const campo =
   'w-full h-11 px-3.5 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50 transition-colors';
@@ -260,7 +261,7 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
         }
       }
 
-      /* Teste grátis: os 30 dias começam na implantação (no aviso de
+      /* Teste grátis: os 60 dias começam na implantação (no aviso de
          acesso), não agora. A linha nasce esperando; a rotina diária e o
          aviso de acesso cuidam do resto. */
       if (modoTeste) {
@@ -413,7 +414,7 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
                   <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] px-3.5 py-3 flex items-start gap-2.5">
                     <Hourglass className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
                     <p className="text-[12px] text-foreground/70 leading-snug">
-                      <span className="font-semibold text-foreground">30 dias de teste grátis</span>, contados da implantação, sem cartão.
+                      <span className="font-semibold text-foreground">{DIAS_DE_TESTE} dias de teste grátis</span>, contados da implantação, sem cartão.
                       O valor acima é a mensalidade que vale depois. Se não assinar, painel e site saem do ar no dia seguinte ao fim.
                     </p>
                   </div>
@@ -473,7 +474,7 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
                 {modoTeste && (
                   <div className="flex justify-between gap-3">
                     <dt className="text-foreground/45">Teste grátis</dt>
-                    <dd className="text-foreground">30 dias após a implantação</dd>
+                    <dd className="text-foreground">{DIAS_DE_TESTE} dias após a implantação</dd>
                   </div>
                 )}
                 <div className="flex justify-between gap-3">

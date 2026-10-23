@@ -13,7 +13,7 @@ import { mrrDaCarteira } from '@/lib/mrr';
 import { inadimplentes } from '@/lib/inadimplencia';
 import { useImplantacao, naoSei } from '@/hooks/useImplantacao';
 import { useTarefas, useTestesGratis } from '@/hooks/useTesteGratis';
-import { situacaoDoTeste } from '@/lib/testeGratis';
+import { situacaoDoTeste, DIAS_DE_TESTE } from '@/lib/testeGratis';
 import { hojeBRT } from '../../supabase/functions/_shared/regua';
 import { useMemo } from 'react';
 import { InitialAvatar } from '@/components/admin/ui';
@@ -275,7 +275,7 @@ export default function Home() {
             </div>
           </button>
 
-          {/* Teste grátis: 30 dias contados da implantação */}
+          {/* Teste grátis: contado da implantação */}
           <button
             onClick={() => navigate('/testes')}
             className={cn(
@@ -290,7 +290,7 @@ export default function Home() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-[18px] sm:text-[20px] font-bold text-foreground tracking-tight leading-tight">Teste grátis</p>
-                <p className="text-[12px] text-foreground/45 mt-0.5 font-light">30 dias contados da implantação — e a conversa para assinar</p>
+                <p className="text-[12px] text-foreground/45 mt-0.5 font-light">{DIAS_DE_TESTE} dias contados da implantação — e a conversa para assinar</p>
               </div>
               <ChevronRight className="h-5 w-5 text-foreground/20 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all shrink-0" />
             </div>

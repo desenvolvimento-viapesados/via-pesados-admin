@@ -530,21 +530,24 @@ export const MODELOS: Modelo[] = [
    }
   ]
  },
- /* Teste grátis de 30 dias (16/10/2026): começo, 5 dias antes, véspera, corte e
-    reconquista. Cada um só sai depois de aprovado (modeloAprovado). */
+ /* Teste grátis (16/10/2026): começo, 5 dias antes, véspera, corte e
+    reconquista. Cada um só sai depois de aprovado (modeloAprovado).
+    O de começo dizia "são 30 dias"; quando o teste passou a 60 (23/10/2026)
+    nasceu `teste_gratis_inicio`, que só diz até quando vai — a duração mora
+    em DIAS_DE_TESTE, e mudar o número não pode exigir outra aprovação. */
  {
-  "name": "teste_gratis_comecou",
+  "name": "teste_gratis_inicio",
   "language": "pt_BR",
   "category": "UTILITY",
   "components": [
    {
     "type": "BODY",
-    "text": "Olá, {{1}}! O seu teste grátis do Via Pesados começou: são 30 dias com o sistema completo, até {{2}}.\n\nNesse período, cada veículo cadastrado sai em todos os canais de uma vez, e as conversas da equipe ficam num lugar só. Qualquer dúvida, é só responder esta mensagem.",
+    "text": "Olá, {{1}}! O seu teste grátis do Via Pesados começou: o sistema completo, liberado até {{2}}.\n\nNesse período, cada veículo cadastrado sai em todos os canais de uma vez, e as conversas da equipe ficam num lugar só. Qualquer dúvida, é só responder esta mensagem.",
     "example": {
      "body_text": [
       [
        "Walker",
-       "15/11/2026"
+       "15/12/2026"
       ]
      ]
     }

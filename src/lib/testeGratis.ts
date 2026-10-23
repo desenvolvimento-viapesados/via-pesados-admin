@@ -4,6 +4,10 @@ import {
   DIAS_DE_TESTE, diaDoTeste, diasRestantes, diaDoCorte, acabou,
 } from '../../supabase/functions/_shared/teste';
 import { hojeBRT } from '../../supabase/functions/_shared/regua';
+
+/* A duração mora na regra da rotina; as telas leem daqui para nunca
+   prometer um número diferente do que o corte cumpre. */
+export { DIAS_DE_TESTE };
 import type { TesteGratis } from '@/hooks/useTesteGratis';
 
 export type Tom = 'neutro' | 'bom' | 'atencao' | 'alerta' | 'apagado';
@@ -13,7 +17,7 @@ export type SituacaoDoTeste = {
   tom: Tom;
   /** 0 a 1 — quanto do teste já passou. */
   progresso: number;
-  /** "Dia 12 de 30", "Começa na implantação", "Assinou em 10/11"… */
+  /** "Dia 12 de 60", "Começa na implantação", "Assinou em 10/11"… */
   linha: string;
   /** Dias de acesso que ainda restam (só em teste). */
   restantes: number | null;
@@ -33,7 +37,7 @@ export function situacaoDoTeste(t: TesteGratis, hoje = hojeBRT()): SituacaoDoTes
     return { rotulo: 'Cancelado', tom: 'apagado', progresso: 0, linha: 'Teste cancelado', restantes: null, reta_final: false };
   }
   if (t.status === 'aguardando_implantacao' || !t.inicio || !t.fim) {
-    return { rotulo: 'Implantando', tom: 'neutro', progresso: 0, linha: 'Os 30 dias começam no aviso de acesso', restantes: null, reta_final: false };
+    return { rotulo: 'Implantando', tom: 'neutro', progresso: 0, linha: `Os ${DIAS_DE_TESTE} dias começam no aviso de acesso`, restantes: null, reta_final: false };
   }
   if (t.status === 'encerrado' || acabou(t.fim, hoje)) {
     return {

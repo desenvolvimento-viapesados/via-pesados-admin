@@ -29,7 +29,7 @@ export type ItemDaImplantacao = {
   ritmo: Ritmo;
   feitas: number;
   total: number;
-  /** Veio do teste grátis: implantação separada, e os 30 dias contam do aviso de acesso. */
+  /** Veio do teste grátis: implantação separada, e os 60 dias contam do aviso de acesso. */
   emTeste: boolean;
 };
 

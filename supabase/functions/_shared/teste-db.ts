@@ -2,7 +2,7 @@
  * O que muda no banco quando o teste grátis começa, converte ou acaba.
  * As regras de data moram em teste.ts; aqui só se grava.
  */
-import { fimDoTeste, tarefasDoTeste, as10h, type TarefaDoTeste } from './teste.ts';
+import { DIAS_DE_TESTE, fimDoTeste, tarefasDoTeste, as10h, type TarefaDoTeste } from './teste.ts';
 
 // deno-lint-ignore no-explicit-any
 type Db = { from: (t: string) => any };
@@ -38,7 +38,7 @@ export async function agendarTarefas(db: Db, teste: TesteGratis, tarefas: Tarefa
   }
 }
 
-/** Implantou: o relógio dos 30 dias começa hoje. */
+/** Implantou: o relógio do teste começa hoje. */
 export async function comecarTeste(db: Db, teste: TesteGratis, inicio: string) {
   /* Assinou antes da implantação: continua tendo o mês grátis. Ganha as
      datas (é delas que a primeira mensalidade conta), sem tarefas — quem
@@ -61,7 +61,7 @@ export async function comecarTeste(db: Db, teste: TesteGratis, inicio: string) {
   await agendarTarefas(db, atualizado, tarefasDoTeste(inicio, fim), c?.prospect_id ?? null);
   await db.from('activities').insert({
     client_id: teste.client_id, kind: 'nota',
-    content: `Teste grátis começou na implantação: 30 dias, até ${fim.split('-').reverse().join('/')}.`,
+    content: `Teste grátis começou na implantação: ${DIAS_DE_TESTE} dias, até ${fim.split('-').reverse().join('/')}.`,
   });
   return atualizado as TesteGratis;
 }

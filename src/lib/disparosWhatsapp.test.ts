@@ -67,7 +67,7 @@ const GATILHOS: Record<string, Parameters<typeof conferirParams>[1]> = {
     body: ['Walker', 'setembro', '1', 'R$ 10,00'],
   },
   // teste-gratis/index.ts
-  teste_gratis_comecou: { body: ['Walker', '15/11/2026'] },
+  teste_gratis_inicio: { body: ['Walker', '15/12/2026'] },
   teste_gratis_faltam_5_dias: { body: ['Walker', '15/11/2026'], urlSuffix: 'tok123' },
   teste_gratis_termina_amanha: { body: ['Walker', '15/11/2026'], urlSuffix: 'tok123' },
   teste_gratis_encerrado: { body: ['Walker', 'iTruck Caminhões', '15/11/2026'], urlSuffix: 'tok123' },

@@ -1,12 +1,13 @@
 /**
  * O teste grátis, num lugar só — as datas, as mensagens e as tarefas.
  *
- * Regras do dono (16/10/2026):
- *  1. São 30 dias CONTADOS DA IMPLANTAÇÃO, não do dia em que a venda foi
+ * Regras do dono (16/10/2026; 60 dias desde 23/10/2026, o que a
+ * apresentação comercial e os anúncios prometem):
+ *  1. São 60 dias CONTADOS DA IMPLANTAÇÃO, não do dia em que a venda foi
  *     registrada. O sistema precisa estar montado para o teste valer: um
  *     teste que começa vazio termina com "não serviu".
- *  2. Implantou dia 16/10: o teste vai até 15/11 (`fim`, inclusive). No dia
- *     seguinte, 16/11, se não assinou, painel e site saem do ar — o mesmo
+ *  2. Implantou dia 16/10: o teste vai até 15/12 (`fim`, inclusive). No dia
+ *     seguinte, 16/12, se não assinou, painel e site saem do ar — o mesmo
  *     corte da mensalidade, com nada apagado. Assinou, volta na hora.
  *  3. A contagem chega pelo WhatsApp e pelo vendedor; o sistema do lojista
  *     não ganha faixa nem bolinha de "faltam X dias".
@@ -19,7 +20,7 @@
  */
 import { somarDias } from './regua.ts';
 
-export const DIAS_DE_TESTE = 30;
+export const DIAS_DE_TESTE = 60;
 
 export type StatusDoTeste = 'aguardando_implantacao' | 'em_teste' | 'convertido' | 'encerrado' | 'cancelado';
 
@@ -46,7 +47,7 @@ export const acabou = (fim: string, hoje: string) => hoje >= diaDoCorte(fim);
 /**
  * Primeiro vencimento de quem assina vindo do teste: o dia do corte — ou
  * hoje + 3, a folga do boleto, se o teste já acabou. Quem assina antes da
- * implantação ainda não tem data: fica para daqui a 31 dias, e a
+ * implantação ainda não tem data: fica para depois do teste inteiro, e a
  * implantação realinha (ver ancoraDoCiclo).
  */
 export function primeiroVencimento(teste: DatasDoTeste | null, hoje: string): string {
@@ -66,7 +67,7 @@ export const ancoraDoCiclo = (implantadoEm: string, teste: DatasDoTeste | null) 
 /* ─── Mensagens ─────────────────────────────────────────────────── */
 
 export type MensagemDoTeste = {
-  template: 'teste_gratis_comecou' | 'teste_gratis_faltam_5_dias' | 'teste_gratis_termina_amanha';
+  template: 'teste_gratis_inicio' | 'teste_gratis_faltam_5_dias' | 'teste_gratis_termina_amanha';
   marco: 'comecou' | 'faltam_5' | 'termina_amanha';
   /** Até quando ainda faz sentido mandar (fim do dia, em Brasília). */
   ate: string;
@@ -84,7 +85,7 @@ export function mensagemDoDia(teste: { inicio: string; fim: string }, hoje: stri
   if (hoje === vespera) return { template: 'teste_gratis_termina_amanha', marco: 'termina_amanha', ate: vespera };
   const cinco = somarDias(fim, -5);
   if (hoje >= cinco && hoje <= somarDias(fim, -3)) return { template: 'teste_gratis_faltam_5_dias', marco: 'faltam_5', ate: somarDias(fim, -3) };
-  if (hoje <= somarDias(inicio, 2)) return { template: 'teste_gratis_comecou', marco: 'comecou', ate: somarDias(inicio, 2) };
+  if (hoje <= somarDias(inicio, 2)) return { template: 'teste_gratis_inicio', marco: 'comecou', ate: somarDias(inicio, 2) };
   return null;
 }
 
@@ -110,7 +111,7 @@ export function tarefasDoTeste(inicio: string, fim: string): TarefaDoTeste[] {
       detalhe: 'Ligar: já chegou cliente pelo WhatsApp? Quantos veículos estão anunciados? A equipe está usando? Anotar o que ouviu.',
     },
     {
-      marco: 'teste:metade', dia: somarDias(inicio, 15), titulo: 'Teste grátis · metade',
+      marco: 'teste:metade', dia: somarDias(inicio, Math.round(DIAS_DE_TESTE / 2)), titulo: 'Teste grátis · metade',
       detalhe: 'Marcar 20 minutos para mostrar o que já aconteceu: anúncios no ar, contatos que chegaram, vendas registradas. Perguntar o que falta para fechar.',
     },
     {

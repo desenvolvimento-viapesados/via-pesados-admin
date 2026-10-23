@@ -211,7 +211,7 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
     }
 
     // Teste grátis também é cadastro: o cliente nasce, vai para a
-    // implantação de teste, e os 30 dias contam do aviso de acesso. O
+    // implantação de teste, e os 60 dias contam do aviso de acesso. O
     // próprio cadastro move o card no fim.
     if (stage === 'teste') {
       navigate(`/crm/teste/${p.id}`);

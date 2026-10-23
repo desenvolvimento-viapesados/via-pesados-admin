@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
           chave: `teste:${msg.marco}:${t.id}:${t.fim}`,
           params: {
             body: [nomeDo(c), dataBR(t.fim)],
-            ...(msg.template === 'teste_gratis_comecou' ? {} : { urlSuffix: c.checkout_token ?? '' }),
+            ...(msg.template === 'teste_gratis_inicio' ? {} : { urlSuffix: c.checkout_token ?? '' }),
           },
           // Fim do dia limite em Brasília (23h59 = 02h59 UTC do dia seguinte).
           validoAte: `${diaDoCorte(msg.ate)}T02:59:00.000Z`,

@@ -7,6 +7,7 @@ import { useImplantacao, type ItemDaImplantacao } from '@/hooks/useImplantacao';
 import { InitialAvatar } from '@/components/admin/ui';
 import { ORDEM_DA_IMPLANTACAO, type Ritmo } from '@/lib/implantacao';
 import { numeroParaWhatsapp } from '@/lib/inadimplencia';
+import { DIAS_DE_TESTE } from '@/lib/testeGratis';
 
 /* Implantação: da venda fechada (contrato assinado e primeiro pagamento,
    que acontecem antes, no fechamento) ao primeiro anúncio no ar. Cada loja
@@ -117,7 +118,7 @@ function Loja({ item }: { item: ItemDaImplantacao }) {
             </p>
             <p className="text-[13.5px] font-semibold text-foreground mt-0.5">{passo.acao}</p>
             {item.emTeste && passo.chave === 'acesso_liberado' && (
-              <p className="text-[11.5px] text-emerald-600 dark:text-emerald-400 mt-1">Os 30 dias do teste começam quando o acesso for avisado.</p>
+              <p className="text-[11.5px] text-emerald-600 dark:text-emerald-400 mt-1">Os {DIAS_DE_TESTE} dias do teste começam quando o acesso for avisado.</p>
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -190,7 +191,7 @@ export default function Implantacao() {
         </h1>
         <p className="mt-3 text-[13px] font-light text-foreground/45">
           {aba === 'teste'
-            ? 'Deixar a loja pronta para testar — estoque, canais e anúncio no ar. Os 30 dias começam no aviso de acesso.'
+            ? `Deixar a loja pronta para testar — estoque, canais e anúncio no ar. Os ${DIAS_DE_TESTE} dias começam no aviso de acesso.`
             : 'Do contrato assinado ao primeiro anúncio no ar — o que falta, e com quem.'}
         </p>
 
@@ -254,7 +255,7 @@ export default function Implantacao() {
           <p className="mt-5 text-[16px] font-semibold text-foreground">{aba === 'teste' ? 'Nenhum teste grátis sendo preparado' : 'Nenhuma loja em implantação agora'}</p>
           <p className="mt-1.5 text-[12.5px] font-light text-foreground/45 max-w-sm leading-relaxed">
             {aba === 'teste'
-              ? 'Arraste uma loja para "Teste grátis" no funil: ela aparece aqui com o próximo passo, e os 30 dias começam no aviso de acesso.'
+              ? `Arraste uma loja para "Teste grátis" no funil: ela aparece aqui com o próximo passo, e os ${DIAS_DE_TESTE} dias começam no aviso de acesso.`
               : 'Quando uma venda for fechada — contrato assinado e primeiro pagamento — a loja aparece aqui com o próximo passo.'}
           </p>
         </div>
