@@ -23,6 +23,14 @@ export const mascaraTelefone = (valor: string | null | undefined) => {
 export const soDigitos = (valor: string | null | undefined) =>
   String(valor ?? '').replace(/\D/g, '');
 
+/**
+ * Número com DDD que dá para discar: 10 dígitos (fixo) ou 11 (celular).
+ * É o que a confirmação e o lembrete de reunião precisam — e por isso a
+ * reunião é o momento de exigir, não o cadastro.
+ */
+export const whatsappCompleto = (valor: string | null | undefined) =>
+  soDigitos(valor).length >= 10;
+
 /** `1200000` → `12.000,00`. O digitado são centavos. */
 export const mascaraMoeda = (valor: string | number | null | undefined) => {
   const d = String(valor ?? '').replace(/\D/g, '');

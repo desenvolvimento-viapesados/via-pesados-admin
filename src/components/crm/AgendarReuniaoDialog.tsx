@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { useCreateMeeting, useUpdateProspect, type Prospect } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase, FUNCTIONS_URL } from '@/integrations/supabase/client';
+import { mascaraTelefone, whatsappCompleto } from '@/lib/mascaras';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const inputCls =
@@ -56,6 +57,9 @@ export function AgendarReuniaoDialog({
     meet_link: '',
     notes: '',
   });
+  // O cadastro e a amostra aceitam prospect sem WhatsApp; a reunião não,
+  // porque a confirmação e o lembrete saem por ele. Então é aqui que se pede.
+  const [whatsapp, setWhatsapp] = useState('');
 
   useEffect(() => {
     if (prospect) {
@@ -66,10 +70,12 @@ export function AgendarReuniaoDialog({
         meet_link: '',
         notes: '',
       });
+      setWhatsapp('');
     }
   }, [prospect?.id]);
 
   if (!prospect) return null;
+  const faltaWhatsapp = !whatsappCompleto(prospect.whatsapp);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -77,9 +83,19 @@ export function AgendarReuniaoDialog({
     if (!form.scheduled_at) { toast.error('Informe a data e a hora'); return; }
     const quando = new Date(form.scheduled_at);
     if (Number.isNaN(quando.getTime())) { toast.error('Data inválida'); return; }
+    if (faltaWhatsapp && !whatsappCompleto(whatsapp)) {
+      toast.error('Informe o WhatsApp com DDD — é por onde a confirmação da reunião é enviada');
+      return;
+    }
 
     setSalvando(true);
     try {
+      // O número entra antes da reunião: a confirmação logo abaixo já lê
+      // o WhatsApp do prospect.
+      if (faltaWhatsapp) {
+        await atualizar.mutateAsync({ id: prospect.id, whatsapp });
+      }
+
       const reuniao = await criar.mutateAsync({
         prospect_id: prospect.id,
         title: `${TIPOS[form.kind]} — ${prospect.company_name}`,
@@ -147,6 +163,22 @@ export function AgendarReuniaoDialog({
             Com <span className="text-foreground font-medium">{prospect.company_name}</span>
             {prospect.contact_name && <span className="text-foreground/60"> · {prospect.contact_name}</span>}
           </p>
+
+          {faltaWhatsapp && (
+            <div className="space-y-1">
+              <input
+                className={inputCls}
+                placeholder="WhatsApp do contato *"
+                inputMode="numeric"
+                autoFocus
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(mascaraTelefone(e.target.value))}
+              />
+              <p className="text-[11.5px] text-foreground/45 px-1">
+                Ainda não temos o WhatsApp. A confirmação e o lembrete da reunião vão por ele.
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-[1fr_92px] gap-2.5">
             <input

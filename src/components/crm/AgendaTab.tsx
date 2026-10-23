@@ -7,8 +7,9 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
-  useMeetings, useCreateMeeting, useUpdateMeeting, useProspects, useDemos, useAdvanceProspect, type Meeting,
+  useMeetings, useCreateMeeting, useUpdateMeeting, useProspects, useDemos, useAdvanceProspect, useUpdateProspect, type Meeting,
 } from '@/hooks/useAdmin';
+import { mascaraTelefone, whatsappCompleto } from '@/lib/mascaras';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTarefas, useAtualizarTarefa, type Tarefa } from '@/hooks/useTesteGratis';
 import { numeroParaWhatsapp } from '@/lib/inadimplencia';
@@ -83,9 +84,10 @@ function NovaReuniao({
   const { member } = useAuth();
   const criar = useCreateMeeting();
   const avancar = useAdvanceProspect();
+  const atualizarProspect = useUpdateProspect();
   const { data: prospects = [] } = useProspects();
   const { data: demos = [] } = useDemos();
-  const vazio = { prospect_id: '', scheduled_at: '', duration_min: '45', kind: 'descoberta', demo_id: '', meet_link: '', notes: '' };
+  const vazio = { prospect_id: '', scheduled_at: '', duration_min: '45', kind: 'descoberta', demo_id: '', meet_link: '', notes: '', whatsapp: '' };
   const [form, setForm] = useState(vazio);
 
   useEffect(() => {
@@ -104,7 +106,15 @@ function NovaReuniao({
     if (!form.scheduled_at || Number.isNaN(inicio.getTime())) { toast.error('Informe a data e a hora'); return; }
     const prospect = prospects.find((p) => p.id === form.prospect_id);
     const tipo = form.kind as Meeting['kind'];
+    // Prospect pode chegar aqui sem WhatsApp (o cadastro e a amostra não
+    // exigem). A reunião exige: confirmação e lembrete vão por ele.
+    const faltaWhatsapp = !!prospect && !whatsappCompleto(prospect.whatsapp);
+    if (faltaWhatsapp && !whatsappCompleto(form.whatsapp)) {
+      toast.error('Informe o WhatsApp com DDD — é por onde a confirmação da reunião é enviada');
+      return;
+    }
     try {
+      if (prospect && faltaWhatsapp) await atualizarProspect.mutateAsync({ id: prospect.id, whatsapp: form.whatsapp });
       await criar.mutateAsync({
         prospect_id: prospect?.id ?? null,
         demo_id: form.demo_id || null,
@@ -137,6 +147,25 @@ function NovaReuniao({
             <option value="">Com quem? (prospect)</option>
             {ativos.map((p) => <option key={p.id} value={p.id}>{p.company_name}</option>)}
           </select>
+
+          {(() => {
+            const escolhido = prospects.find((p) => p.id === form.prospect_id);
+            if (!escolhido || whatsappCompleto(escolhido.whatsapp)) return null;
+            return (
+              <div className="space-y-1">
+                <input
+                  className={inputCls}
+                  placeholder="WhatsApp do contato *"
+                  inputMode="numeric"
+                  value={form.whatsapp}
+                  onChange={(e) => set('whatsapp', mascaraTelefone(e.target.value))}
+                />
+                <p className="text-[11.5px] text-foreground/45 px-1">
+                  Ainda não temos o WhatsApp. A confirmação e o lembrete da reunião vão por ele.
+                </p>
+              </div>
+            );
+          })()}
 
           <div className="grid grid-cols-[1fr_96px] gap-2.5">
             <input className={inputCls} type="datetime-local" value={form.scheduled_at} onChange={(e) => set('scheduled_at', e.target.value)} />

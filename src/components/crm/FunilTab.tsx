@@ -12,7 +12,7 @@ import {
 import { FUNIS, ehFunil, funilDoCanal, rotuloDoFunil, type ChaveDoFunil } from '@/lib/funis';
 import { AgendarReuniaoDialog } from './AgendarReuniaoDialog';
 import { CidadeUF } from './CidadeUF';
-import { mascaraTelefone, soDigitos, mascaraMoeda, valorDaMoeda } from '@/lib/mascaras';
+import { mascaraTelefone, whatsappCompleto, mascaraMoeda, valorDaMoeda } from '@/lib/mascaras';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/admin/ui';
@@ -68,9 +68,11 @@ function NewProspectDialog({ open, onClose, funilInicial }: { open: boolean; onC
     // adiante ele deixa de ser dado e vira chute — e é a base de todo o
     // relatório de aquisição.
     if (!form.channel_id) { toast.error('Escolha por onde este prospect chegou'); return; }
-    // Mesma razão da venda: confirmação e lembrete de reunião saem por aqui.
-    if (soDigitos(form.whatsapp).length < 10) {
-      toast.error('Informe o WhatsApp — é por onde a confirmação de reunião é enviada');
+    // WhatsApp não trava o cadastro: a amostra sai antes de ter o número.
+    // Quem exige é o agendamento da reunião, que manda a confirmação por lá.
+    // Se veio preenchido, porém, tem que dar para discar.
+    if (form.whatsapp && !whatsappCompleto(form.whatsapp)) {
+      toast.error('WhatsApp incompleto — informe com DDD ou deixe em branco');
       return;
     }
     try {
@@ -104,7 +106,7 @@ function NewProspectDialog({ open, onClose, funilInicial }: { open: boolean; onC
           <input className={inputCls} placeholder="Nome da empresa *" value={form.company_name} onChange={(e) => set('company_name', e.target.value)} />
           <div className="grid grid-cols-2 gap-2.5">
             <input className={inputCls} placeholder="Nome do responsável" value={form.contact_name} onChange={(e) => set('contact_name', e.target.value)} />
-            <input className={inputCls} placeholder="WhatsApp *" inputMode="numeric" value={form.whatsapp} onChange={(e) => set('whatsapp', mascaraTelefone(e.target.value))} />
+            <input className={inputCls} placeholder="WhatsApp (pode ficar para a reunião)" inputMode="numeric" value={form.whatsapp} onChange={(e) => set('whatsapp', mascaraTelefone(e.target.value))} />
           </div>
           <CidadeUF
             uf={form.state}
