@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Kanban, CalendarDays } from 'lucide-react';
+import { ArrowLeft, Plus, Kanban, CalendarDays, Radar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useCrmCounts, brl } from '@/hooks/useAdmin';
 import { FunilTab } from '@/components/crm/FunilTab';
 import { AgendaTab } from '@/components/crm/AgendaTab';
 import { WhatsAppTab } from '@/components/crm/WhatsAppTab';
+import { ProspeccaoTab } from '@/components/crm/ProspeccaoTab';
 import viaPesadosLogoLight from '@/assets/via-pesados-icon-color.png';
 import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
 
-type TabKey = 'whatsapp' | 'funil' | 'reunioes';
+type TabKey = 'whatsapp' | 'funil' | 'reunioes' | 'prospeccao';
 
 /**
  * As abas do CRM. A amostra não tem aba: mora na ficha do prospect (clicar
@@ -29,12 +30,15 @@ const IconeWhatsApp = ({ className }: { className?: string }) => (
 
 type IconeDaAba = React.ComponentType<{ className?: string }>;
 
-const TABS: { key: TabKey; label: string; newLabel: string; icon: IconeDaAba }[] = [
+const TABS: { key: TabKey; label: string; newLabel: string | null; icon: IconeDaAba }[] = [
   // WhatsApp vem primeiro: é onde o dia começa. Quem abre o CRM de manhã
   // quer ver quem escreveu, não o funil.
   { key: 'whatsapp', label: 'WhatsApp', newLabel: 'Número',   icon: IconeWhatsApp },
   { key: 'funil',    label: 'Funil',    newLabel: 'Prospect', icon: Kanban },
   { key: 'reunioes', label: 'Agenda',   newLabel: 'Reunião',  icon: CalendarDays },
+  // O agente que acha lojas e manda a primeira mensagem. Quem responde
+  // aparece no WhatsApp e entra no funil pelo cadastro breve, como todo mundo.
+  { key: 'prospeccao', label: 'Prospecção', newLabel: null, icon: Radar },
 ];
 
 const isTab = (v: string | null): v is TabKey => TABS.some((t) => t.key === v);
@@ -144,12 +148,14 @@ export default function Crm() {
             })}
           </div>
 
-          <button
-            onClick={() => setNewOpen(true)}
-            className="ml-auto mb-2 h-9 px-3.5 rounded-xl bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 transition-all flex items-center gap-1.5 shrink-0"
-          >
-            <Plus className="h-3.5 w-3.5" /> {current.newLabel}
-          </button>
+          {current.newLabel && (
+            <button
+              onClick={() => setNewOpen(true)}
+              className="ml-auto mb-2 h-9 px-3.5 rounded-xl bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 transition-all flex items-center gap-1.5 shrink-0"
+            >
+              <Plus className="h-3.5 w-3.5" /> {current.newLabel}
+            </button>
+          )}
         </div>
       </header>
 
@@ -159,6 +165,7 @@ export default function Crm() {
         {tab === 'whatsapp' && <WhatsAppTab newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'funil'    && <FunilTab    newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'reunioes' && <AgendaTab   newOpen={newOpen} onCloseNew={closeNew} defaultProspectId={defaultProspect} />}
+        {tab === 'prospeccao' && <ProspeccaoTab />}
       </main>
     </div>
   );

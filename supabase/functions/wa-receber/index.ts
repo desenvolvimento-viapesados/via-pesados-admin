@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { semSufixo } from '../_shared/evolution.ts';
+import { aoChegarMensagem } from '../_shared/prospeccao-entrada.ts';
 
 /**
  * Entrada de mensagens, das TRÊS origens, no mesmo modelo.
@@ -331,6 +332,12 @@ Deno.serve(async (req) => {
       await db.from('wa_conversas')
         .update({ nao_lidas: (conversa.nao_lidas ?? 0) + 1 })
         .eq('id', conversa.id);
+      /* Loja da prospecção respondendo: para os lembretes e chama o agente.
+         Falha aqui não pode custar a mensagem, que já está gravada. */
+      if (origem === 'evolution') {
+        await aoChegarMensagem(db, inst.id, n.telefone, conversa.id)
+          .catch((e) => console.error('wa-receber: prospecção', e));
+      }
     }
 
     return ok({ ok: true, conversa: conversa.id, repetida: error?.code === '23505' });

@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Loader2, Send, Search, Plus, QrCode, RefreshCw, ChevronDown, Check, Settings2, Radio,
@@ -35,7 +35,10 @@ const dia = (iso: string) =>
 
 export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew: () => void }) {
   const { data: instancias = [], isLoading: carregandoInst } = useInstancias();
-  const [instanciaId, setInstanciaId] = useState<string | null>(null);
+  /* ?numero=&conversa= abre direto numa conversa — é o "Abrir conversa" da
+     aba Prospecção. */
+  const [params] = useSearchParams();
+  const [instanciaId, setInstanciaId] = useState<string | null>(params.get('numero'));
   /* Sempre num número concreto. Uma visão "todas" misturaria caixas de
      pessoas diferentes na mesma lista — e quem atende precisa saber por qual
      número a conversa entrou antes de responder, porque a regra das 24h só
@@ -43,7 +46,7 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
   useEffect(() => {
     if (!instanciaId && instancias.length) setInstanciaId(instancias[0].id);
   }, [instancias, instanciaId]);
-  const [conversaId, setConversaId] = useState<string | null>(null);
+  const [conversaId, setConversaId] = useState<string | null>(params.get('conversa'));
   const [busca, setBusca] = useState('');
   const [texto, setTexto] = useState('');
   const [qr, setQr] = useState<{ instancia: Instancia; imagem: string | null; codigo: string | null } | null>(null);
