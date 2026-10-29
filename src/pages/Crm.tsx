@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Plus, Kanban, CalendarDays, Radar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
+import { useFrente } from '@/contexts/FrenteContext';
+import { rotuloDaFrente } from '@/lib/frente';
 import { useCrmCounts, brl } from '@/hooks/useAdmin';
 import { FunilTab } from '@/components/crm/FunilTab';
 import { AgendaTab } from '@/components/crm/AgendaTab';
@@ -46,6 +48,7 @@ const isTab = (v: string | null): v is TabKey => TABS.some((t) => t.key === v);
 export default function Crm() {
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const { frente } = useFrente();
   const [params, setParams] = useSearchParams();
 
   const urlTab = params.get('tab');
@@ -101,9 +104,11 @@ export default function Crm() {
             />
           </div>
 
-          <div className="ml-auto text-right z-10 hidden sm:block">
-            <p className="text-[10px] text-foreground/35 tracking-wide">Pipeline ativo</p>
-            <p className="text-[15px] font-bold text-foreground tabular-nums leading-tight">
+          <div className="ml-auto text-right z-10">
+            <p className="text-[10px] text-foreground/35 tracking-wide">
+              {rotuloDaFrente(frente)}<span className="hidden sm:inline"> · Pipeline ativo</span>
+            </p>
+            <p className="hidden sm:block text-[15px] font-bold text-foreground tabular-nums leading-tight">
               {brl(counts.pipeline)}<span className="text-[10px] font-normal text-foreground/35 ml-0.5">/mês</span>
             </p>
           </div>

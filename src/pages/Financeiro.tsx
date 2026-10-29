@@ -12,6 +12,8 @@ import {
   useChannels,
 } from '@/hooks/useAdmin';
 import { SectionHeader, Panel } from '@/components/admin/ui';
+import { useFrente } from '@/contexts/FrenteContext';
+import { rotuloDaFrente } from '@/lib/frente';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 /* ══════════════════════════════════════════════════════════════════
@@ -73,6 +75,10 @@ function LancamentoDialog({ open, onClose }: { open: boolean; onClose: () => voi
   const { data: canaisAquisicao = [] } = useChannels();
   const { data: clients = [] } = useClients();
   const criar = useCreateFinTransaction();
+  /* Na Empresa, lançar aqui é custo geral da Via Pesados: sem cliente, que
+     é sempre de uma frente (e o banco recusaria o vínculo). */
+  const { frente } = useFrente();
+  const naEmpresa = frente === 'empresa';
 
   const vazio = {
     tipo: 'despesa' as 'receita' | 'despesa',
@@ -172,7 +178,7 @@ function LancamentoDialog({ open, onClose }: { open: boolean; onClose: () => voi
             </select>
           </div>
 
-          {form.tipo === 'receita' && (
+          {form.tipo === 'receita' && !naEmpresa && (
             <select className={inputCls} value={form.client_id}
               onChange={(e) => setForm((f) => ({ ...f, client_id: e.target.value }))}>
               <option value="">Vincular a um cliente (opcional)…</option>
@@ -313,6 +319,12 @@ type Chip = 'tudo' | 'receber' | 'pagar' | 'atrasados';
 
 export default function Financeiro() {
   const navigate = useNavigate();
+  const { frente } = useFrente();
+  /* Na Empresa a lista junta as duas frentes e os custos gerais. Cada linha
+     diz de onde é, e só o custo geral se mexe aqui — lançamento de uma
+     frente se edita dentro dela (o banco também só deixa assim). */
+  const naEmpresa = frente === 'empresa';
+  const daqui = (t: FinTransaction) => !naEmpresa || t.frente === 'empresa';
   const { data: payments = [] } = usePayments();
   const { data: transacoes = [], isLoading } = useFinTransactions();
   const atualizar = useUpdateFinTransaction();
@@ -454,7 +466,7 @@ export default function Financeiro() {
           onClick={() => setLancar(true)}
           className="h-9 px-3.5 rounded-xl bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 transition-all flex items-center gap-1.5"
         >
-          <Plus className="h-3.5 w-3.5" />Lançar
+          <Plus className="h-3.5 w-3.5" />{naEmpresa ? 'Lançar custo geral' : 'Lançar'}
         </button>
       </div>
 
@@ -619,8 +631,10 @@ export default function Financeiro() {
                         )}
                       </p>
                       <p className="text-[11px] text-foreground/35 truncate leading-tight mt-0.5">
-                        {[t.category?.name, t.client?.company_name, dataCurta(dataDoEvento(t))]
-                          .filter(Boolean).join(' · ')}
+                        {[
+                          naEmpresa ? (t.frente === 'empresa' ? 'Custo geral' : rotuloDaFrente(t.frente)) : null,
+                          t.category?.name, t.client?.company_name, dataCurta(dataDoEvento(t)),
+                        ].filter(Boolean).join(' · ')}
                       </p>
                     </div>
                     <p className={cn('text-[13px] font-semibold tabular-nums shrink-0',
@@ -628,7 +642,7 @@ export default function Financeiro() {
                       {t.type === 'receita' ? '+' : '−'}{brl(Number(t.amount))}
                     </p>
                     {/* Ação sempre visível: atrás de hover ela não existe no celular. */}
-                    <div className="flex items-center gap-0.5 shrink-0">
+                    <div className={cn('flex items-center gap-0.5 shrink-0', !daqui(t) && 'invisible')}>
                       {t.status !== 'pago' && (
                         <button onClick={() => marcarPago(t)} title="Marcar como pago"
                           className="h-7 w-7 rounded-lg flex items-center justify-center text-foreground/25 hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors">

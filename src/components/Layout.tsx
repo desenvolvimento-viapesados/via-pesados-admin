@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Sun, Moon, LogOut } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFrente } from '@/contexts/FrenteContext';
+import { rotuloDaFrente } from '@/lib/frente';
 import viaPesadosLogoLight from '@/assets/via-pesados-icon-color.png';
 import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
 
@@ -41,6 +43,7 @@ const FULLPAGE_PREFIXES = ['/crm'];
 export function Layout({ children }: { children: ReactNode }) {
   const { theme, toggleTheme } = useTheme();
   const { signOut } = useAuth();
+  const { frente } = useFrente();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -82,9 +85,12 @@ export function Layout({ children }: { children: ReactNode }) {
 
           {/* Direita: título + ações */}
           <div className="ml-auto flex items-center gap-2 z-10">
-            {title && (
-              <span className="text-[13px] font-medium text-foreground/60 hidden sm:block">{title}</span>
-            )}
+            {/* A frente, sempre à vista: com duas carteiras no mesmo painel,
+                "de quem é esta lista?" não pode ter dúvida. */}
+            <span className="text-[13px] font-medium text-foreground/60">
+              <span className="text-foreground/35">{rotuloDaFrente(frente)}</span>
+              {title && <span className="hidden sm:inline"><span className="text-foreground/20"> · </span>{title}</span>}
+            </span>
             <button
               onClick={toggleTheme}
               className="h-8 w-8 rounded-lg flex items-center justify-center text-foreground/30 hover:text-foreground hover:bg-foreground/[0.06] transition-colors"

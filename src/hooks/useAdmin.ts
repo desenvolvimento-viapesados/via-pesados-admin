@@ -1,6 +1,10 @@
 import { useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase, LOJISTA_FUNCTIONS_URL } from '@/integrations/supabase/client';
+import { frenteAtual, type Frente } from '@/lib/frente';
+
+/** A frente da linha (o banco preenche). 'empresa' só existe no financeiro e nas metas. */
+export type FrenteDaLinha = Exclude<Frente, 'empresa'>;
 
 /* ═══ Tipos ═══════════════════════════════════════════════════ */
 
@@ -23,6 +27,7 @@ export interface Prospect {
   channel_id: string | null;
   /** Prospecção fria, anúncios ou indicação (lib/funis.ts). */
   funil: 'fria' | 'anuncios' | 'indicacao';
+  frente?: FrenteDaLinha;
   stage: ProspectStage;
   proposal_value: number | null;
   plan: string | null;
@@ -60,6 +65,8 @@ export interface Demo {
   maps_url: string | null;
   status: 'rascunho' | 'provisionada' | 'apresentada' | 'convertida' | 'descartada';
   lojista_company_id: string | null;
+  transportes_empresa_id?: string | null;
+  frente?: FrenteDaLinha;
   admin_email: string | null;
   admin_password: string | null;
   demo_url: string | null;
@@ -99,7 +106,11 @@ export interface Client {
   plan: string | null;
   mrr: number | null;
   status: 'onboarding' | 'ativo' | 'inadimplente' | 'pausado' | 'cancelado';
+  /** De que frente é o cliente — o banco preenche (lib/frente.ts). */
+  frente?: FrenteDaLinha;
   lojista_company_id: string | null;
+  /** O sistema da transportadora, no projeto viapesados-transportes. */
+  transportes_empresa_id?: string | null;
   domain: string | null;
   /** Canais contratados na venda; aplicados no tenant ao criar o sistema. */
   canais: string[];
@@ -169,6 +180,7 @@ export interface Payment {
   invoice_url: string | null;
   /** Preenchido quando a cobrança é uma mensalidade da assinatura. */
   asaas_subscription_id?: string | null;
+  frente?: FrenteDaLinha;
   created_at: string;
   client?: Pick<Client, 'id' | 'company_name'> | null;
 }
@@ -961,6 +973,17 @@ export const useEscutarPagamentos = (clientId: string | undefined) => {
   const qc = useQueryClient();
   useEffect(() => {
     if (!clientId) return;
+    /* O tempo real não leva o cabeçalho da frente, e o banco o atende como
+       Lojistas: na frente Transportadoras o aviso nunca chegaria. Ali a tela
+       pergunta de novo a cada 15 segundos. */
+    if (frenteAtual() !== 'lojista') {
+      const t = setInterval(() => {
+        qc.invalidateQueries({ queryKey: ['payments'] });
+        qc.invalidateQueries({ queryKey: ['onboarding'] });
+        qc.invalidateQueries({ queryKey: ['onboarding-progress'] });
+      }, 15_000);
+      return () => clearInterval(t);
+    }
     const canal = supabase
       .channel(`pagamentos:${clientId}`)
       .on(
@@ -1265,6 +1288,8 @@ export interface FinTransaction {
   attachment_url: string | null;
   /** Só em despesa de aquisição — é o numerador do CAC por canal. */
   channel_id: string | null;
+  /** 'empresa' = custo geral, lançado na visão da Empresa. */
+  frente?: Frente;
   created_by: string | null;
   created_at: string;
   category?: { id: string; name: string; color: string; type: string } | null;

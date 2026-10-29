@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Hourglass, Check, CalendarPlus, MessageSquareText, AlertCircle, Phone, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useFrente } from '@/contexts/FrenteContext';
+import { useCarteiraTransportadoras, type FichaTransportadora } from '@/hooks/useTransportadoras';
 import { useClients, useCompaniesHealth, useTeam, type Client, type SaudeDaEmpresa } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -49,12 +51,35 @@ function Sinais({ s, carregando }: { s: SaudeDaEmpresa | undefined; carregando: 
   );
 }
 
+/* Os sinais da transportadora testando: frota, motoristas, viagens e acesso. */
+function SinaisDaTransportadora({ f, carregando }: { f: FichaTransportadora | undefined; carregando: boolean }) {
+  if (carregando) return <p className="text-[11.5px] text-foreground/35">Lendo o sistema da transportadora…</p>;
+  if (!f) return <p className="text-[11.5px] text-foreground/35">Sistema ainda não lido</p>;
+  const itens: [string, string, boolean][] = [
+    ['Caminhões', String(f.caminhoes), f.caminhoes > 0],
+    ['Motoristas', String(f.motoristas), f.motoristas > 0],
+    ['Viagens', String(f.viagens_30d), f.viagens_30d > 0],
+    ['Último acesso', f.ultimo_acesso ? dataCurta(f.ultimo_acesso) : 'nunca', !!f.ultimo_acesso],
+  ];
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {itens.map(([rotulo, valor, ok]) => (
+        <div key={rotulo} className="min-w-0">
+          <p className="text-[10.5px] text-foreground/40 truncate">{rotulo}</p>
+          <p className={cn('text-[13px] font-semibold tabular-nums truncate', ok ? 'text-foreground' : 'text-foreground/40')}>{valor}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Loja({
-  teste, cliente, saude, lendo, vendedor, proxima,
+  teste, cliente, saude, ficha, lendo, vendedor, proxima,
 }: {
   teste: TesteGratis;
   cliente: Client | undefined;
   saude: SaudeDaEmpresa | undefined;
+  ficha?: FichaTransportadora;
   lendo: boolean;
   vendedor: string | null;
   proxima: Tarefa | undefined;
@@ -114,6 +139,9 @@ function Loja({
 
       {cliente?.lojista_company_id && teste.status !== 'aguardando_implantacao' && (
         <Sinais s={saude} carregando={lendo} />
+      )}
+      {cliente?.transportes_empresa_id && teste.status !== 'aguardando_implantacao' && (
+        <SinaisDaTransportadora f={ficha} carregando={lendo} />
       )}
 
       {proxima && (
@@ -224,6 +252,15 @@ export default function TestesGratis() {
   );
   const saude = useCompaniesHealth(ids);
   const saudePorEmpresa = useMemo(() => new Map((saude.data ?? []).map((s) => [s.company_id, s])), [saude.data]);
+  /* Frente Transportadoras: os mesmos sinais, do sistema delas. */
+  const { frente } = useFrente();
+  const transp = frente === 'transportadora';
+  const um = transp ? 'transportadora' : 'loja';
+  const idsTransp = useMemo(
+    () => testes.filter((t) => t.status === 'em_teste').map((t) => porCliente.get(t.client_id)?.transportes_empresa_id).filter((x): x is string => !!x),
+    [testes, porCliente],
+  );
+  const carteiraTransp = useCarteiraTransportadoras(idsTransp);
 
   const hoje = hojeBRT();
   const pendentes = tarefas.filter((t) => t.origem === 'teste_gratis' && !t.feito_em);
@@ -267,17 +304,20 @@ export default function TestesGratis() {
         <h1 className="mt-5 text-[30px] sm:text-[34px] leading-[1.1] tracking-tight">
           <span className="font-extralight text-foreground/40">Teste grátis</span>{' '}
           <span className="font-bold text-foreground">
-            {n === 0 ? 'sem loja testando' : `${n} ${n === 1 ? 'loja testando' : 'lojas testando'}`}
+            {n === 0 ? `sem ${um} testando` : `${n} ${n === 1 ? `${um} testando` : `${um}s testando`}`}
           </span>
         </h1>
         <p className="mt-3 text-[13px] font-light text-foreground/45">
-          {DIAS_DE_TESTE} dias contados da implantação. No dia seguinte ao fim, sem assinatura, painel e site saem do ar — nada é apagado.
+          {transp
+            /* O corte automático do fim do teste ainda só existe no sistema do lojista. */
+            ? `${DIAS_DE_TESTE} dias contados da implantação. No fim, sem assinatura, a equipe bloqueia o acesso na ficha — nada é apagado.`
+            : `${DIAS_DE_TESTE} dias contados da implantação. No dia seguinte ao fim, sem assinatura, painel e site saem do ar — nada é apagado.`}
         </p>
       </header>
 
-      {saude.isError && (
+      {(saude.isError || carteiraTransp.isError) && (
         <p className="text-[12px] text-amber-600 dark:text-amber-400 flex items-center gap-1.5 -mt-4">
-          <AlertCircle className="h-3.5 w-3.5" /> Não consegui ler os sistemas das lojas agora — os sinais de uso ficam em branco.
+          <AlertCircle className="h-3.5 w-3.5" /> Não consegui ler os sistemas {transp ? 'das transportadoras' : 'das lojas'} agora — os sinais de uso ficam em branco.
         </p>
       )}
 
@@ -316,11 +356,11 @@ export default function TestesGratis() {
           </span>
           <p className="mt-5 text-[16px] font-semibold text-foreground">Nenhum teste grátis ainda</p>
           <p className="mt-1.5 text-[12.5px] font-light text-foreground/45 max-w-sm leading-relaxed">
-            Arraste uma loja para "Teste grátis" no funil. Ela passa pela implantação de teste e os {DIAS_DE_TESTE} dias começam no aviso de acesso.
+            Arraste uma {um} para "Teste grátis" no funil. Ela passa pela implantação de teste e os {DIAS_DE_TESTE} dias começam no aviso de acesso.
           </p>
         </div>
       ) : lista.length === 0 ? (
-        <p className="text-[12.5px] font-light text-foreground/45">Nenhuma loja neste filtro.</p>
+        <p className="text-[12.5px] font-light text-foreground/45">Nenhuma {um} neste filtro.</p>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {lista.map(({ t }) => {
@@ -331,7 +371,8 @@ export default function TestesGratis() {
                 teste={t}
                 cliente={c}
                 saude={c?.lojista_company_id ? saudePorEmpresa.get(c.lojista_company_id) : undefined}
-                lendo={saude.isFetching && !saude.isSuccess}
+                ficha={c?.transportes_empresa_id ? carteiraTransp.data?.[c.transportes_empresa_id] : undefined}
+                lendo={transp ? carteiraTransp.isFetching && !carteiraTransp.isSuccess : saude.isFetching && !saude.isSuccess}
                 vendedor={t.owner_id ? nomes.get(t.owner_id) ?? null : null}
                 proxima={proximaDe(t.client_id)}
               />

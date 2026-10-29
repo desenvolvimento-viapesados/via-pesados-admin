@@ -1,15 +1,18 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { Suspense, lazy } from 'react';
 import { Layout } from '@/components/Layout';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { FrenteProvider, useFrente } from '@/contexts/FrenteContext';
+import { abreNaEmpresa } from '@/lib/frente';
 import Login from '@/pages/Login';
 /* Estático de propósito: com `lazy()` o bundler gera o chunk da bancada
    mesmo em produção, onde a rota nunca renderiza. Import estático dentro
    de um `if (false)` o Rollup remove inteiro. */
 import DevFicha from '@/pages/DevFicha';
+import DevFrentes from '@/pages/DevFrentes';
 
 const Home           = lazy(() => import('@/pages/Home'));
 const Crm            = lazy(() => import('@/pages/Crm'));
@@ -44,6 +47,8 @@ const Loader = () => (
 
 const Gate = () => {
   const { user, member, loading, signOut } = useAuth();
+  const { frente } = useFrente();
+  const location = useLocation();
 
   /* A bancada passa na frente do login: ela existe para eu ver as telas
      sem entrar na conta de quem me pediu o trabalho, e não lê o banco.
@@ -51,6 +56,10 @@ const Gate = () => {
      remove o bloco e a rota nem chega no pacote. */
   if (import.meta.env.DEV && window.location.pathname.endsWith('/dev/ficha')) {
     return <DevFicha />;
+  }
+  // A bancada das frentes (Home nas três frentes e a ficha da transportadora).
+  if (import.meta.env.DEV && window.location.pathname.endsWith('/dev/frentes')) {
+    return <DevFrentes />;
   }
 
   if (loading) {
@@ -87,8 +96,16 @@ const Gate = () => {
     );
   }
 
+  /* Na Empresa só abrem a visão geral e os módulos da empresa: as telas de
+     cliente leriam as duas frentes juntas (lib/frente.ts). */
+  if (frente === 'empresa' && !abreNaEmpresa(location.pathname)) {
+    return <Navigate to="/" replace />;
+  }
+
   return (
-    <Layout>
+    /* `key`: trocar de frente remonta as telas, e nenhuma consulta da frente
+       anterior continua viva (contexts/FrenteContext.tsx). */
+    <Layout key={frente}>
       <Suspense fallback={<Loader />}>
         <Routes>
           <Route path="/"              index element={<Home />} />
@@ -132,10 +149,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter basename="/admin">
         <AuthProvider>
+          <FrenteProvider>
           <TooltipProvider>
             <Gate />
             <Toaster theme="dark" position="top-center" richColors />
           </TooltipProvider>
+          </FrenteProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

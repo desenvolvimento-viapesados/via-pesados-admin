@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, ArrowRight, Check, Copy, ExternalLink, Globe, Loader2, PartyPopper, RotateCcw,
   Boxes, GraduationCap, KeyRound,
@@ -544,6 +544,10 @@ export default function Onboarding() {
       </div>
     );
   }
+
+  /* Este passo a passo monta loja, site, domínio e canais: é do lojista. A
+     transportadora resolve cada etapa na própria ficha. */
+  if (client.frente === 'transportadora') return <Navigate to={`/clientes/${client.id}`} replace />;
 
   const total = ETAPAS.length;
   const etapa = ETAPAS[Math.min(i, total - 1)];

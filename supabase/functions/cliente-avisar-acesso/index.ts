@@ -46,9 +46,15 @@ Deno.serve(async (req) => {
     if (!client_id) return json(400, { error: 'client_id é obrigatório' });
 
     const { data: c } = await db.from('clients')
-      .select('id, company_name, contact_name, whatsapp, admin_email, lojista_company_id, implantado_em, asaas_subscription_id')
+      .select('id, company_name, contact_name, whatsapp, admin_email, lojista_company_id, implantado_em, asaas_subscription_id, frente')
       .eq('id', client_id).maybeSingle();
     if (!c) return json(404, { error: 'cliente não encontrado' });
+    /* O aviso é o do lojista: o template fala do sistema da loja e o link
+       abre o sistema do lojista. A transportadora recebe o link gerado na
+       ficha (aba Sistema). */
+    if (c.frente === 'transportadora') {
+      return json(400, { error: 'Transportadora: gere o link de acesso na aba Sistema da ficha.' });
+    }
     if (!c.whatsapp) return json(400, { error: 'Cliente sem WhatsApp cadastrado.' });
     if (!c.admin_email || !c.lojista_company_id) {
       return json(400, { error: 'Cliente ainda não tem sistema. Crie o sistema antes de avisar o acesso.' });

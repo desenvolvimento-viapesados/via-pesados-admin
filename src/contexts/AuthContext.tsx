@@ -21,7 +21,7 @@ interface AuthCtx {
   signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthCtx>({
+export const AuthContext = createContext<AuthCtx>({
   user: null,
   session: null,
   member: null,

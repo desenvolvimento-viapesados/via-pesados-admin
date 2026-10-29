@@ -5,7 +5,9 @@ import { cn } from '@/lib/utils';
 import { useClients, useCompaniesHealth, usePayments, brl, type Client } from '@/hooks/useAdmin';
 import { EmptyState } from '@/components/admin/ui';
 import { TotaisDaCarteira, ListaDaCarteira } from '@/components/admin/Carteira';
-import { montarCarteira, totaisDaCarteira, ordemDeAtencao } from '@/lib/carteira';
+import { montarCarteira, montarCarteiraDeTransportadoras, totaisDaCarteira, ordemDeAtencao } from '@/lib/carteira';
+import { useCarteiraTransportadoras } from '@/hooks/useTransportadoras';
+import { useFrente } from '@/contexts/FrenteContext';
 
 const inputCls =
   'w-full h-10 px-3 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50 transition-colors';
@@ -37,6 +39,14 @@ export default function Clientes() {
     [clients],
   );
   const saudeQuery = useCompaniesHealth(companyIds);
+  /* Frente Transportadoras: a saúde vem do sistema delas, numa chamada só. */
+  const { frente } = useFrente();
+  const transportadoras = frente === 'transportadora';
+  const empresaIds = useMemo(
+    () => clients.map((c) => c.transportes_empresa_id).filter(Boolean) as string[],
+    [clients],
+  );
+  const carteiraTransp = useCarteiraTransportadoras(empresaIds);
 
   useEffect(() => {
     if (params.get('new') === '1') {
@@ -47,8 +57,10 @@ export default function Clientes() {
   }, []);
 
   const carteira = useMemo(
-    () => montarCarteira(clients, saudeQuery.data ?? []),
-    [clients, saudeQuery.data],
+    () => (transportadoras
+      ? montarCarteiraDeTransportadoras(clients, carteiraTransp.data ?? {})
+      : montarCarteira(clients, saudeQuery.data ?? [])),
+    [clients, saudeQuery.data, carteiraTransp.data, transportadoras],
   );
   const { data: pagamentos = [] } = usePayments();
   const totais = useMemo(() => totaisDaCarteira(carteira, pagamentos), [carteira, pagamentos]);
@@ -83,7 +95,7 @@ export default function Clientes() {
           <h1 className="text-[22px] font-bold tracking-tight text-foreground">Clientes</h1>
           <p className="text-[12px] text-foreground/40 mt-0.5">
             Carteira e contas da plataforma
-            {saudeQuery.isFetching && <span className="ml-2 opacity-60">· lendo os sistemas…</span>}
+            {(transportadoras ? carteiraTransp.isFetching : saudeQuery.isFetching) && <span className="ml-2 opacity-60">· lendo os sistemas…</span>}
           </p>
         </div>
         <button
@@ -95,14 +107,14 @@ export default function Clientes() {
       </div>
 
       {/* ── Os números que abrem a reunião ── */}
-      <TotaisDaCarteira totais={totais} />
+      <TotaisDaCarteira totais={totais} transportadoras={transportadoras} />
 
-      {saudeQuery.isError && (
+      {(transportadoras ? carteiraTransp.isError : saudeQuery.isError) && (
         <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-3.5 py-2.5">
           <AlertTriangle className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
           <p className="text-[12px] text-foreground/70 leading-snug">
             Não consegui ler os sistemas dos clientes — a lista mostra só o que o painel já sabia.{' '}
-            <button onClick={() => saudeQuery.refetch()} className="text-primary hover:underline">Tentar de novo</button>
+            <button onClick={() => (transportadoras ? carteiraTransp.refetch() : saudeQuery.refetch())} className="text-primary hover:underline">Tentar de novo</button>
           </p>
         </div>
       )}

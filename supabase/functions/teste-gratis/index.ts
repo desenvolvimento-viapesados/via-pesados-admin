@@ -50,14 +50,19 @@ Deno.serve(async (req) => {
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const hoje = hojeBRT();
 
+  /* A rotina do teste (lembretes, aviso do fim e o corte do painel e do site)
+     é a do lojista. O teste da transportadora é acompanhado à mão até ter a
+     rotina dela (migration frentes). */
   const { data: testes, error } = await db.from('testes_gratis')
     .select('id, client_id, owner_id, status, inicio, fim, dias_extras')
+    .eq('frente', 'lojista')
     .in('status', ['aguardando_implantacao', 'em_teste', 'encerrado']);
   if (error) return json(500, { error: error.message });
   if (!testes?.length) return json(200, { ok: true, hoje, resultados: [] });
 
   const { data: clientes } = await db.from('clients')
     .select('id, prospect_id, company_name, contact_name, whatsapp, checkout_token, status, mrr, lojista_company_id, implantado_em, asaas_subscription_id, acesso_suspenso_em, acesso_liberado_ate')
+    .eq('frente', 'lojista')
     .in('id', testes.map((t: TesteGratis) => t.client_id));
   const porId = new Map((clientes ?? []).map((c: Cliente) => [c.id, c]));
 

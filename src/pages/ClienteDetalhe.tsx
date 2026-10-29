@@ -8,7 +8,7 @@ import {
   Copy, ExternalLink, Phone, Mail, MapPin, Plus, StickyNote,
   PartyPopper, KeyRound, Repeat, Send, ChevronRight, ArrowRight,
   Hand, Database, MoreHorizontal, Pause, Ban, RotateCcw,
-  Truck, Radio, TrendingUp, Users, ScanSearch,
+  Truck, Radio, TrendingUp, Users, ScanSearch, UserRound, Route,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -22,11 +22,15 @@ import {
   usePlans, useCriarAssinaturaAsaas, useClientUsage, auditarAnuncios,
 } from '@/hooks/useAdmin';
 import {
-  etapasDoCliente, situacaoDoCliente, progresso, ROTULO_SITUACAO,
+  etapasDoCliente, etapasDaTransportadora, fatosDaFicha, situacaoDoCliente, progresso, ROTULO_SITUACAO,
 } from '@/lib/estadoDoCliente';
-import { situacaoFinanceira, pendenciasDoCliente } from '@/lib/fichaDoCliente';
+import { situacaoFinanceira, pendenciasDoCliente, pendenciasDaTransportadora } from '@/lib/fichaDoCliente';
+import { useFichaTransportadora } from '@/hooks/useTransportadoras';
+import {
+  CriarSistemaDialog, LinkDeAcessoDialog, SistemaDaTransportadora, PessoasDaTransportadora,
+} from '@/components/admin/SistemaDaTransportadora';
 import { useAuth } from '@/contexts/AuthContext';
-import { LOJISTA_APP_URL, supabase, FUNCTIONS_URL } from '@/integrations/supabase/client';
+import { LOJISTA_APP_URL, TRANSPORTES_APP_URL, supabase, FUNCTIONS_URL } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CanaisDoCliente } from '@/components/CanaisDoCliente';
 import { UsoDoSistema } from '@/components/admin/UsoDoSistema';
@@ -568,6 +572,10 @@ export default function ClienteDetalhe() {
      do cliente parou de abrir. O `enabled` de dentro já cuida de não
      chamar nada enquanto o cliente não chegou. */
   const usoQuery = useClientUsage(client);
+  /* Transportadora: a ficha vem do projeto das transportadoras. Mesmo lugar
+     e mesmo motivo do de cima — hook antes do return de carregamento. */
+  const fichaQuery = useFichaTransportadora(client);
+  const transp = client?.frente === 'transportadora';
   const { data: testes = [] } = useTestesGratis();
   const teste = testes.find((t) => t.client_id === id) ?? null;
 
@@ -580,7 +588,9 @@ export default function ClienteDetalhe() {
     if (pedido === 'contrato_assinado') {
       if (pendente) setAssinando(pendente); else setDialog('contrato_gerado');
     } else if (pedido === 'sistema_criado') {
-      setDialog('sistema_criado');
+      setDialog(client.frente === 'transportadora' ? 'sistema_transportadora' : 'sistema_criado');
+    } else if (pedido === 'acesso_liberado' && client.frente === 'transportadora' && client.transportes_empresa_id) {
+      setDialog('link_de_acesso');
     } else if (pedido === 'dominio_conectado' && client.lojista_company_id) {
       setDialog('dominio_conectado');
     }
@@ -603,30 +613,41 @@ export default function ClienteDetalhe() {
      acesso enquanto ela publicava caminhão todo dia. Agora a ficha
      pergunta ao sistema do cliente e à cobrança; o que sobra de manual é
      só o treinamento, e a tela diz qual é qual. */
-  const uso = usoQuery.data ?? null;
+  const uso = transp ? null : usoQuery.data ?? null;
+  const ficha = transp ? fichaQuery.data ?? null : null;
   const pagou = payments.some((p) => p.status === 'pago');
-  const etapas = etapasDoCliente(
-    {
-      lojista_company_id: client?.lojista_company_id,
-      domain: client?.domain,
-      contract_signed_at: client?.contract_signed_at,
-      asaas_payment_link_url: client?.asaas_payment_link_url,
-      pagou,
-      emTeste: teste?.status === 'aguardando_implantacao' || teste?.status === 'em_teste',
-      tarefas: tasks,
-    },
-    usoQuery.isPending ? null : (uso as never),
-  );
+  const fatosDoPainel = {
+    lojista_company_id: client?.lojista_company_id,
+    transportes_empresa_id: client?.transportes_empresa_id,
+    domain: client?.domain,
+    contract_signed_at: client?.contract_signed_at,
+    asaas_payment_link_url: client?.asaas_payment_link_url,
+    pagou,
+    emTeste: teste?.status === 'aguardando_implantacao' || teste?.status === 'em_teste',
+    tarefas: tasks,
+  };
+  const etapas = transp
+    ? etapasDaTransportadora(
+      fatosDoPainel,
+      // Sem sistema a resposta é "não tem"; com sistema e sem ficha, "não sei".
+      !client.transportes_empresa_id
+        ? { primeiro_acesso: null, ultimo_acesso: null, caminhoes: 0, motoristas: 0, viagens: 0 }
+        : fichaQuery.isPending ? null : fatosDaFicha(ficha),
+    )
+    : etapasDoCliente(fatosDoPainel, usoQuery.isPending ? null : (uso as never));
   const etapasAbertas = etapas.filter((e) => !e.feito);
   const { feitas: doneCount, total: totalEtapas } = progresso(etapas);
   const pct = totalEtapas ? Math.round((doneCount / totalEtapas) * 100) : 0;
   const allDone = doneCount === totalEtapas;
-  const situacao = situacaoDoCliente(etapas, uso?.marcos?.ultimo_acesso_em);
+  const ultimoAcesso = transp ? ficha?.ultimo_acesso : uso?.marcos?.ultimo_acesso_em;
+  const situacao = situacaoDoCliente(etapas, ultimoAcesso);
   const rotuloSituacao = ROTULO_SITUACAO[situacao];
   /* Dinheiro e pendências saem dos fatos, não de caixa marcada: a fatura
      vencida é do Asaas, o canal caído é do sistema do cliente. */
   const financeiro = situacaoFinanceira(payments);
-  const pendencias = pendenciasDoCliente(client, uso, financeiro);
+  const pendencias = transp
+    ? pendenciasDaTransportadora(client, ficha, financeiro)
+    : pendenciasDoCliente(client, uso, financeiro);
   /* Mandar para o começo obrigava a reencontrar onde parou — e "continuar"
      que recomeça não é continuar. */
   const proximaEtapa = proximaEtapaAberta(tasks);
@@ -697,9 +718,9 @@ export default function ClienteDetalhe() {
             <p className="text-[24px] font-bold text-foreground tabular-nums leading-tight">{brl(client.mrr)}</p>
             <p className="text-[10.5px] text-foreground/35">por mês</p>
           </div>
-          {client.lojista_company_id && (
+          {(transp ? client.transportes_empresa_id : client.lojista_company_id) && (
             <a
-              href={client.domain ? `https://${client.domain}` : LOJISTA_APP_URL}
+              href={transp ? TRANSPORTES_APP_URL : client.domain ? `https://${client.domain}` : LOJISTA_APP_URL}
               target="_blank" rel="noopener noreferrer"
               className="h-8 px-2.5 rounded-lg bg-primary/10 text-primary text-[11.5px] font-semibold hover:bg-primary/20 flex items-center gap-1.5"
             >
@@ -749,8 +770,7 @@ export default function ClienteDetalhe() {
           escolhe clicando. */}
       <div className="flex items-center gap-2 flex-wrap">
         <Selo tom={rotuloSituacao.tom} texto={rotuloSituacao.texto}
-          detalhe={uso?.marcos?.ultimo_acesso_em
-            ? `entrou ${quandoFoi(uso.marcos.ultimo_acesso_em)}` : undefined} />
+          detalhe={ultimoAcesso ? `entrou ${quandoFoi(ultimoAcesso)}` : undefined} />
         <Selo
           tom={financeiro.estado === 'atrasado' ? 'ruim'
             : financeiro.estado === 'em_dia' ? 'bom'
@@ -758,7 +778,7 @@ export default function ClienteDetalhe() {
           texto={financeiro.texto}
           detalhe={financeiro.estado === 'atrasado' ? brlFull(financeiro.valorEmAberto) : undefined}
         />
-        {usoQuery.isPending && client.lojista_company_id && (
+        {((usoQuery.isPending && client.lojista_company_id) || (transp && fichaQuery.isPending && client.transportes_empresa_id)) && (
           <span className="text-[11px] text-foreground/35 flex items-center gap-1.5">
             <Loader2 className="h-3 w-3 animate-spin" /> lendo o sistema do cliente…
           </span>
@@ -780,6 +800,22 @@ export default function ClienteDetalhe() {
       )}
 
       {/* ── Os quatro números da conta ───────────────────────────── */}
+      {ficha && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+          <Resposta icone={<Truck className="h-3 w-3" />} label="Caminhões"
+            valor={ficha.caminhoes} sub={`${ficha.veiculos} veículos com as carretas`} />
+          <Resposta icone={<UserRound className="h-3 w-3" />} label="Motoristas"
+            valor={ficha.motoristas} tom={ficha.caminhoes > 0 && ficha.motoristas === 0 ? 'ruim' : undefined}
+            sub={ficha.motoristas ? 'cadastrados' : 'nenhum ainda'} />
+          <Resposta icone={<Route className="h-3 w-3" />} label="Viagens"
+            valor={ficha.viagens_30d} sub={ficha.viagens ? `nos últimos 30 dias · ${ficha.viagens} no total` : 'nenhuma ainda'} />
+          <Resposta icone={<Users className="h-3 w-3" />} label="Pessoas"
+            valor={ficha.pessoas.length}
+            tom={ficha.pessoas.some((p) => !p.ultimo_acesso && !p.definiu_senha_em) ? 'atencao' : undefined}
+            sub={ficha.pessoas.some((p) => !p.ultimo_acesso && !p.definiu_senha_em)
+              ? `${ficha.pessoas.filter((p) => !p.ultimo_acesso && !p.definiu_senha_em).length} nunca entrou` : 'todas já entraram'} />
+        </div>
+      )}
       {uso && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
           <Resposta icone={<Truck className="h-3 w-3" />} label="Estoque"
@@ -843,7 +879,10 @@ export default function ClienteDetalhe() {
                   const pendente = contracts.find((c) => c.status === 'rascunho' || c.status === 'enviado');
                   const resolver =
                     e.chave === 'dominio_conectado' && client.lojista_company_id ? () => setDialog('dominio_conectado')
-                    : e.chave === 'sistema_criado' ? () => setDialog('sistema_criado')
+                    : e.chave === 'sistema_criado' ? () => setDialog(transp ? 'sistema_transportadora' : 'sistema_criado')
+                    : transp && e.chave === 'acesso_liberado' && client.transportes_empresa_id ? () => setDialog('link_de_acesso')
+                    : transp && e.chave === 'treinamento_realizado'
+                      ? () => { if (confirm('O treinamento da equipe já foi feito?')) markTask('treinamento_realizado'); }
                     : e.chave === 'contrato_assinado'
                       ? (pendente ? () => setAssinando(pendente) : () => setDialog('contrato_gerado'))
                     : null;
@@ -873,7 +912,9 @@ export default function ClienteDetalhe() {
                   );
                 })}
               </Panel>
-              {client.status === 'onboarding' && (
+              {/* O passo a passo do onboarding monta loja, site e domínio:
+                  é do lojista. A transportadora resolve cada etapa aqui. */}
+              {client.status === 'onboarding' && !transp && (
                 <button
                   onClick={() => navigate(`/clientes/${client.id}/onboarding?etapa=${proximaEtapa}`)}
                   className="mt-3 w-full h-11 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2"
@@ -887,12 +928,28 @@ export default function ClienteDetalhe() {
             <Panel className="px-4 py-3 flex items-center gap-2.5">
               <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" strokeWidth={3} />
               <p className="text-[12.5px] text-foreground/65">
-                Conta completa: contrato, cobrança, sistema, domínio, canal e anúncio — tudo ligado.
+                {transp
+                  ? 'Conta completa: contrato, cobrança, sistema, frota e viagem — tudo ligado.'
+                  : 'Conta completa: contrato, cobrança, sistema, domínio, canal e anúncio — tudo ligado.'}
               </p>
             </Panel>
           )}
 
-          {!client.lojista_company_id && (
+          {transp && !client.transportes_empresa_id && (
+            <Panel className="p-4 space-y-3">
+              <p className="text-[12px] text-foreground/50 leading-snug">
+                Esta transportadora ainda não tem sistema. Sem ele não dá para liberar o primeiro acesso.
+              </p>
+              <button
+                onClick={() => setDialog('sistema_transportadora')}
+                className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-[12.5px] font-semibold hover:opacity-90 transition-all flex items-center justify-center gap-2"
+              >
+                <Rocket className="h-3.5 w-3.5" /> Criar sistema
+              </button>
+            </Panel>
+          )}
+
+          {!transp && !client.lojista_company_id && (
             <Panel className="p-4 space-y-3">
               <p className="text-[12px] text-foreground/50 leading-snug">
                 Este cliente ainda não tem sistema. Sem ele não dá para liberar o
@@ -970,7 +1027,9 @@ export default function ClienteDetalhe() {
 
             {teste && <TesteDoCliente teste={teste} />}
 
-            <LicencaDoCliente client={client} payments={payments} />
+            {/* A licença do lojista corta o painel pelo sistema do lojista. A
+                transportadora se bloqueia à mão, na aba Sistema. */}
+            {!transp && <LicencaDoCliente client={client} payments={payments} />}
 
             <div>
               <SectionHeader
@@ -1058,7 +1117,11 @@ export default function ClienteDetalhe() {
       )}
 
       {/* ── Sistema ──────────────────────────────────────────────── */}
-      {aba === 'Sistema' && (
+      {aba === 'Sistema' && transp && (
+        <SistemaDaTransportadora client={client} ficha={ficha} carregando={fichaQuery.isFetching}
+          onLink={() => setDialog('link_de_acesso')} />
+      )}
+      {aba === 'Sistema' && !transp && (
         <div className="flex flex-col gap-5">
           {!client.lojista_company_id ? (
             <Panel className="p-5">
@@ -1145,7 +1208,8 @@ export default function ClienteDetalhe() {
       )}
 
       {/* ── Pessoas ──────────────────────────────────────────────── */}
-      {aba === 'Pessoas' && (
+      {aba === 'Pessoas' && transp && <PessoasDaTransportadora ficha={ficha} />}
+      {aba === 'Pessoas' && !transp && (
         client.lojista_company_id ? (
           <UsoDoSistema client={client} mostrar={['pessoas', 'lgpd']} />
         ) : (
@@ -1164,6 +1228,12 @@ export default function ClienteDetalhe() {
       )}
       {dialog === 'pagamento_extra' && (
         <PaymentDialog client={client} onClose={() => setDialog(null)} />
+      )}
+      {dialog === 'sistema_transportadora' && (
+        <CriarSistemaDialog client={client} onDone={() => markTask('sistema_criado')} onClose={() => setDialog(null)} />
+      )}
+      {dialog === 'link_de_acesso' && (
+        <LinkDeAcessoDialog client={client} ficha={ficha} onClose={() => setDialog(null)} />
       )}
       {dialog === 'sistema_criado' && (
         <ProvisionDialog client={client} onDone={() => markTask('sistema_criado')} onClose={() => setDialog(null)} />

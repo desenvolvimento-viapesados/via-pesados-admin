@@ -1,4 +1,4 @@
-import { ChevronRight, AlertTriangle, Truck, Radio, Users, TrendingUp, Wallet } from 'lucide-react';
+import { ChevronRight, AlertTriangle, Truck, Radio, Users, TrendingUp, Wallet, UserRound, Route } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { brl } from '@/hooks/useAdmin';
 import { Panel, InitialAvatar } from '@/components/admin/ui';
@@ -33,7 +33,33 @@ const Total = ({ icone, label, valor, sub, tom }: {
 );
 
 
-export function TotaisDaCarteira({ totais }: { totais: ReturnType<typeof totaisDaCarteira> }) {
+export function TotaisDaCarteira({ totais, transportadoras = false }: {
+  totais: ReturnType<typeof totaisDaCarteira>;
+  /** Frente Transportadoras: caminhões, motoristas e viagens no lugar de estoque e anúncio. */
+  transportadoras?: boolean;
+}) {
+  if (transportadoras) {
+    return (
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-2.5">
+        <Total icone={<Wallet className="h-3 w-3" />} label="MRR" valor={brl(totais.mrr)}
+          sub={totais.mrrAguardando > 0
+            ? `${totais.contasPagantes} de ${totais.clientes} pagando · ${brl(totais.mrrAguardando)} a ativar`
+            : `${totais.contasPagantes} ${totais.contasPagantes === 1 ? 'conta pagando' : 'contas pagando'}`} />
+        <Total icone={<Truck className="h-3 w-3" />} label="Caminhões" valor={totais.caminhoes} />
+        <Total icone={<UserRound className="h-3 w-3" />} label="Motoristas" valor={totais.motoristas} />
+        <Total icone={<Route className="h-3 w-3" />} label="Viagens 30d" valor={totais.viagens30d}
+          sub={`${brl(totais.frete30d)} de frete`} tom="bom" />
+        <Total icone={<Users className="h-3 w-3" />} label="Usuários" valor={totais.usuarios}
+          sub={`em ${totais.usando} ${totais.usando === 1 ? 'conta ativa' : 'contas ativas'}`} />
+        <Total icone={<AlertTriangle className="h-3 w-3" />} label="Precisam de você"
+          valor={totais.comAlarmeGrave}
+          sub={totais.sumidos
+            ? `${totais.sumidos} ${totais.sumidos === 1 ? 'conta sumiu' : 'contas sumiram'}`
+            : 'nenhuma urgência'}
+          tom={totais.comAlarmeGrave ? 'alerta' : undefined} />
+      </div>
+    );
+  }
   return (
     <div className="grid grid-cols-2 lg:grid-cols-6 gap-2.5">
       {/* O subtítulo diz de quantas contas o dinheiro vem, e quanto ainda
@@ -110,6 +136,25 @@ export function ListaDaCarteira({
                 </div>
 
                 {/* Os números do cliente, do sistema dele */}
+                {l.ficha !== undefined ? (
+                  <div className="hidden md:grid grid-cols-3 gap-4 shrink-0 text-right">
+                    <div>
+                      <p className="text-[13px] font-semibold tabular-nums text-foreground">{l.ficha ? l.ficha.caminhoes : '—'}</p>
+                      <p className="text-[9.5px] uppercase tracking-wide text-foreground/30">caminhões</p>
+                    </div>
+                    <div>
+                      <p className={cn('text-[13px] font-semibold tabular-nums',
+                        l.ficha && l.ficha.caminhoes > 0 && l.ficha.motoristas === 0 ? 'text-red-400' : 'text-foreground')}>
+                        {l.ficha ? l.ficha.motoristas : '—'}
+                      </p>
+                      <p className="text-[9.5px] uppercase tracking-wide text-foreground/30">motoristas</p>
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-semibold tabular-nums text-emerald-500">{l.ficha ? l.ficha.viagens_30d : '—'}</p>
+                      <p className="text-[9.5px] uppercase tracking-wide text-foreground/30">viagens 30d</p>
+                    </div>
+                  </div>
+                ) : (
                 <div className="hidden md:grid grid-cols-3 gap-4 shrink-0 text-right">
                   <div>
                     <p className="text-[13px] font-semibold tabular-nums text-foreground">{s ? s.veiculos : '—'}</p>
@@ -127,6 +172,7 @@ export function ListaDaCarteira({
                     <p className="text-[9.5px] uppercase tracking-wide text-foreground/30">vendas 30d</p>
                   </div>
                 </div>
+                )}
 
                 <div className="shrink-0 w-24 text-right">
                   <p className="text-[13px] font-bold text-foreground tabular-nums">

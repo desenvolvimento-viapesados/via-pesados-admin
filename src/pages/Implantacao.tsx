@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils';
 import { brl } from '@/hooks/useAdmin';
 import { useImplantacao, type ItemDaImplantacao } from '@/hooks/useImplantacao';
 import { InitialAvatar } from '@/components/admin/ui';
-import { ORDEM_DA_IMPLANTACAO, type Ritmo } from '@/lib/implantacao';
+import { ORDEM_DA_IMPLANTACAO, ORDEM_DA_TRANSPORTADORA, type Ritmo } from '@/lib/implantacao';
+import { useFrente } from '@/contexts/FrenteContext';
 import { numeroParaWhatsapp } from '@/lib/inadimplencia';
 import { DIAS_DE_TESTE } from '@/lib/testeGratis';
 
@@ -23,6 +24,31 @@ const CURTO: Record<string, string> = {
   treinamento_realizado: 'Treino',
   dominio_conectado: 'Domínio',
 };
+
+/* A transportadora não anuncia: o "no ar" dela é a primeira viagem. */
+const CURTO_TRANSPORTADORA: Record<string, string> = {
+  ...CURTO,
+  frota_cadastrada: 'Frota',
+  go_live: 'Viagem',
+};
+
+/* As palavras da tela em cada frente. */
+const TEXTO = {
+  lojista: {
+    um: 'loja', varios: 'lojas',
+    vendas: 'Do contrato assinado ao primeiro anúncio no ar — o que falta, e com quem.',
+    teste: `Deixar a loja pronta para testar — estoque, canais e anúncio no ar. Os ${DIAS_DE_TESTE} dias começam no aviso de acesso.`,
+    semPonte: 'Não consegui ler os sistemas das lojas agora — acesso, estoque, canal e anúncio aparecem como "não sei".',
+    vazio: 'Nenhuma loja em implantação agora',
+  },
+  transportadora: {
+    um: 'transportadora', varios: 'transportadoras',
+    vendas: 'Do contrato assinado à primeira viagem no sistema — o que falta, e com quem.',
+    teste: `Deixar a transportadora pronta para testar — frota, motoristas e a primeira viagem. Os ${DIAS_DE_TESTE} dias começam no aviso de acesso.`,
+    semPonte: 'Não consegui ler os sistemas das transportadoras agora — acesso, frota e viagens aparecem como "não sei".',
+    vazio: 'Nenhuma transportadora em implantação agora',
+  },
+} as const;
 
 const RITMO: Record<Ritmo, string> = {
   em_dia: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10',
@@ -46,13 +72,16 @@ function linkDoLembrete(item: ItemDaImplantacao) {
 
 /** As etapas como uma linha de pontos: feito, agora, depois. */
 function Trilha({ item }: { item: ItemDaImplantacao }) {
+  const transp = item.cliente.frente === 'transportadora';
+  const ordem: readonly string[] = transp ? ORDEM_DA_TRANSPORTADORA : ORDEM_DA_IMPLANTACAO;
+  const curto = transp ? CURTO_TRANSPORTADORA : CURTO;
   return (
     <ol className="flex items-start">
-      {ORDEM_DA_IMPLANTACAO.map((k, i) => {
+      {ordem.map((k, i) => {
         const e = item.etapas.find((x) => x.chave === k);
         const feito = !!e?.feito;
         const agora = item.passo?.chave === k;
-        const ultimo = i === ORDEM_DA_IMPLANTACAO.length - 1;
+        const ultimo = i === ordem.length - 1;
         return (
           <li key={k} title={e ? `${e.titulo}: ${e.porque}` : k} className="relative flex-1 flex flex-col items-center gap-2 min-w-0">
             {!ultimo && (
@@ -69,7 +98,7 @@ function Trilha({ item }: { item: ItemDaImplantacao }) {
             </span>
             <span className={cn('text-[10.5px] leading-none truncate max-w-full',
               feito ? 'text-foreground/45' : agora ? 'text-primary font-semibold' : 'text-foreground/30')}>
-              {CURTO[k]}
+              {curto[k]}
             </span>
           </li>
         );
@@ -151,6 +180,8 @@ type Filtro = 'todos' | 'nos' | 'cliente';
 export default function Implantacao() {
   const d = useImplantacao();
   const navigate = useNavigate();
+  const { frente } = useFrente();
+  const t = TEXTO[frente === 'transportadora' ? 'transportadora' : 'lojista'];
   const [filtro, setFiltro] = useState<Filtro>('todos');
   /* Duas implantações, separadas: a de quem comprou e a de quem vai testar. */
   const [params, setParams] = useSearchParams();
@@ -185,14 +216,12 @@ export default function Implantacao() {
           <span className="font-extralight text-foreground/40">Implantação</span>{' '}
           <span className="font-bold text-foreground">
             {aba === 'teste'
-              ? (n === 0 ? 'de teste em dia' : `${n} ${n === 1 ? 'loja preparando' : 'lojas preparando'} o teste`)
-              : (n === 0 ? 'em dia' : `${n} ${n === 1 ? 'loja entrando' : 'lojas entrando'} no ar`)}
+              ? (n === 0 ? 'de teste em dia' : `${n} ${n === 1 ? `${t.um} preparando` : `${t.varios} preparando`} o teste`)
+              : (n === 0 ? 'em dia' : `${n} ${n === 1 ? `${t.um} entrando` : `${t.varios} entrando`} no ar`)}
           </span>
         </h1>
         <p className="mt-3 text-[13px] font-light text-foreground/45">
-          {aba === 'teste'
-            ? `Deixar a loja pronta para testar — estoque, canais e anúncio no ar. Os ${DIAS_DE_TESTE} dias começam no aviso de acesso.`
-            : 'Do contrato assinado ao primeiro anúncio no ar — o que falta, e com quem.'}
+          {aba === 'teste' ? t.teste : t.vendas}
         </p>
 
         <div className="mt-6 flex gap-1 border-b border-black/[0.07] dark:border-white/[0.08]">
@@ -219,7 +248,7 @@ export default function Implantacao() {
 
       {d.ponteFalhou && (
         <p className="text-[12px] text-amber-600 dark:text-amber-400 flex items-center gap-1.5 -mt-4">
-          <AlertCircle className="h-3.5 w-3.5" /> Não consegui ler os sistemas das lojas agora — acesso, estoque, canal e anúncio aparecem como "não sei".
+          <AlertCircle className="h-3.5 w-3.5" /> {t.semPonte}
         </p>
       )}
 
@@ -252,15 +281,15 @@ export default function Implantacao() {
           <span className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
             <Rocket className="h-5 w-5" />
           </span>
-          <p className="mt-5 text-[16px] font-semibold text-foreground">{aba === 'teste' ? 'Nenhum teste grátis sendo preparado' : 'Nenhuma loja em implantação agora'}</p>
+          <p className="mt-5 text-[16px] font-semibold text-foreground">{aba === 'teste' ? 'Nenhum teste grátis sendo preparado' : t.vazio}</p>
           <p className="mt-1.5 text-[12.5px] font-light text-foreground/45 max-w-sm leading-relaxed">
             {aba === 'teste'
-              ? `Arraste uma loja para "Teste grátis" no funil: ela aparece aqui com o próximo passo, e os ${DIAS_DE_TESTE} dias começam no aviso de acesso.`
-              : 'Quando uma venda for fechada — contrato assinado e primeiro pagamento — a loja aparece aqui com o próximo passo.'}
+              ? `Arraste uma ${t.um} para "Teste grátis" no funil: ela aparece aqui com o próximo passo, e os ${DIAS_DE_TESTE} dias começam no aviso de acesso.`
+              : `Quando uma venda for fechada — contrato assinado e primeiro pagamento — a ${t.um} aparece aqui com o próximo passo.`}
           </p>
         </div>
       ) : lista.length === 0 ? (
-        <p className="text-[12.5px] font-light text-foreground/45">Nenhuma loja neste filtro.</p>
+        <p className="text-[12.5px] font-light text-foreground/45">Nenhuma {t.um} neste filtro.</p>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {lista.map((i) => <Loja key={i.cliente.id} item={i} />)}

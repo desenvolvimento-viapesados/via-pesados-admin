@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { comFrente } from '@/lib/frente';
 
 // Projeto Supabase: viapesados-admin (painel interno da empresa)
 const SUPABASE_URL = 'https://ktjvyysqhsyvjmhumjly.supabase.co';
@@ -11,6 +12,9 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     persistSession: true,
     autoRefreshToken: true,
   },
+  /* Toda consulta ao banco leva a frente em que o painel está (lib/frente.ts):
+     é o banco que separa Lojistas de Transportadoras. */
+  global: { fetch: comFrente() },
 });
 
 /* As funções DESTE projeto. Existe porque cinco telas montavam a URL a
@@ -34,3 +38,10 @@ export const LOJISTA_APP_URL = 'https://viapesados.com.br/lojista';
 export const DEMO_BASE_URL = 'https://amostra.viapesados.com.br';
 // abre direto no sistema — a amostra não passa por tela de login
 export const demoUrl = (slug: string) => `${DEMO_BASE_URL}/${slug}/sistema`;
+
+// Sistema das transportadoras (outro projeto Supabase, viapesados-transportes):
+// criar a transportadora, o link de acesso e a ficha de uso.
+export const TRANSPORTES_FUNCTIONS_URL = 'https://bxmpjgjjrlefmsyprvrb.supabase.co/functions/v1';
+export const TRANSPORTES_APP_URL = 'https://transportes.viapesados.com.br';
+/** A transportadora de exemplo, aberta a quem recebe a amostra — sem login. */
+export const TRANSPORTES_AMOSTRA_URL = `${TRANSPORTES_APP_URL}/amostra`;

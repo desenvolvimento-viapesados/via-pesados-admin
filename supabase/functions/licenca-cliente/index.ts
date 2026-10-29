@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
 
     const { acao, client_id, implantado_em } = await req.json();
     const { data: c } = await db.from('clients')
-      .select('id, company_name, lojista_company_id, asaas_subscription_id, acesso_suspenso_em')
+      .select('id, company_name, lojista_company_id, asaas_subscription_id, acesso_suspenso_em, frente')
       .eq('id', client_id).maybeSingle();
     if (!c) return json(404, { error: 'cliente não encontrado' });
 
@@ -60,6 +60,8 @@ Deno.serve(async (req) => {
     }
 
     if (acao === 'liberar') {
+      // Liberar é no sistema do lojista; a transportadora é liberada na aba Sistema da ficha.
+      if (c.frente === 'transportadora') return json(400, { error: 'Transportadora: bloqueie e libere na aba Sistema da ficha.' });
       if (!c.lojista_company_id) return json(400, { error: 'Cliente sem sistema' });
       const r = await pedirAoLojista({ acao: 'liberar', company_id: c.lojista_company_id });
       if (!r.ok) return json(502, { error: r.motivo });

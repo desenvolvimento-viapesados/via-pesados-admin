@@ -1,5 +1,8 @@
 import type { Client, SaudeDaEmpresa } from '@/hooks/useAdmin';
-import { situacaoDoCliente, etapasDoCliente, type SituacaoCliente } from '@/lib/estadoDoCliente';
+import type { FichaTransportadora } from '@/hooks/useTransportadoras';
+import {
+  situacaoDoCliente, etapasDoCliente, etapasDaTransportadora, fatosDaFicha, type SituacaoCliente,
+} from '@/lib/estadoDoCliente';
 import { mrrDaCarteira, type PagamentoDoMRR } from '@/lib/mrr';
 
 /**
@@ -25,6 +28,8 @@ export type Alarme = {
 export type LinhaDaCarteira = {
   cliente: Client;
   saude: SaudeDaEmpresa | null;
+  /** Só na frente Transportadoras: a ficha que o sistema dela devolve. */
+  ficha?: FichaTransportadora | null;
   situacao: SituacaoCliente;
   alarmes: Alarme[];
   /** Quanto tempo desde o último login, em dias. `null` = nunca entrou. */
@@ -130,6 +135,55 @@ export function montarCarteira(
 }
 
 /**
+ * O que precisa de ação numa transportadora, hoje. Mesma regra do lojista:
+ * dinheiro e conta sumindo são graves; o resto é sinal amarelo.
+ */
+export function alarmesDaTransportadora(
+  cliente: Client,
+  f: FichaTransportadora | null,
+  agora = Date.now(),
+): Alarme[] {
+  const a: Alarme[] = [];
+  if (cliente.status === 'cancelado') return a;
+  if (cliente.status === 'inadimplente') a.push({ chave: 'inadimplente', texto: 'Cobrança em atraso', peso: 'grave' });
+  if (!f) return a;
+  if (f.bloqueada_em) a.push({ chave: 'bloqueada', texto: 'Bloqueada pela mensalidade', peso: 'grave' });
+  const semEntrar = dias(f.ultimo_acesso, agora);
+  if (semEntrar === null && !f.primeiro_acesso) {
+    a.push({ chave: 'nunca_entrou', texto: 'Ninguém nunca entrou', peso: 'grave' });
+  } else if (semEntrar !== null && semEntrar > 30) {
+    a.push({ chave: 'parado', texto: `Sem entrar há ${semEntrar} dias`, peso: 'grave' });
+  } else if (semEntrar !== null && semEntrar > 7) {
+    a.push({ chave: 'ocioso', texto: `Sem entrar há ${semEntrar} dias`, peso: 'atencao' });
+  }
+  if (f.caminhoes > 0 && f.motoristas === 0) a.push({ chave: 'sem_motorista', texto: 'Caminhão sem motorista', peso: 'atencao' });
+  return a;
+}
+
+/** A carteira da frente Transportadoras: a mesma linha, com a ficha dela. */
+export function montarCarteiraDeTransportadoras(
+  clientes: Client[],
+  fichas: Record<string, FichaTransportadora>,
+  agora = Date.now(),
+): LinhaDaCarteira[] {
+  return clientes.map((cliente) => {
+    const f = cliente.transportes_empresa_id ? fichas[cliente.transportes_empresa_id] ?? null : null;
+    const etapas = etapasDaTransportadora(
+      { transportes_empresa_id: cliente.transportes_empresa_id },
+      f ? fatosDaFicha(f) : null,
+    );
+    return {
+      cliente,
+      saude: null,
+      ficha: f,
+      situacao: situacaoDoCliente(etapas, f?.ultimo_acesso, agora),
+      alarmes: alarmesDaTransportadora(cliente, f, agora),
+      diasSemEntrar: dias(f?.ultimo_acesso, agora),
+    };
+  });
+}
+
+/**
  * Os números que abrem a tela — e a reunião.
  *
  * Os pagamentos entram aqui porque MRR é o que já entrou, não o que foi
@@ -151,7 +205,12 @@ export function totaisDaCarteira(linhas: LinhaDaCarteira[], pagamentos: Pagament
     veiculosAnunciados: soma((l) => l.saude?.veiculos_anunciados ?? 0),
     vendas30d: soma((l) => l.saude?.vendas_30d ?? 0),
     faturamento30d: soma((l) => Number(l.saude?.faturamento_30d ?? 0)),
-    usuarios: soma((l) => l.saude?.usuarios ?? 0),
+    usuarios: soma((l) => l.saude?.usuarios ?? l.ficha?.pessoas.length ?? 0),
+    // Frente Transportadoras.
+    caminhoes: soma((l) => l.ficha?.caminhoes ?? 0),
+    motoristas: soma((l) => l.ficha?.motoristas ?? 0),
+    viagens30d: soma((l) => l.ficha?.viagens_30d ?? 0),
+    frete30d: soma((l) => Number(l.ficha?.frete_30d ?? 0)),
     /* Quantas contas precisam de alguém hoje. É o número que decide a
        agenda da equipe, e não existia em lugar nenhum. */
     comAlarmeGrave: vivos.filter((l) => l.alarmes.some((a) => a.peso === 'grave')).length,

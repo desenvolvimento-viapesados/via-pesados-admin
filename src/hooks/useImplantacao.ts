@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useClients, useCompaniesHealth, usePayments, type Client } from '@/hooks/useAdmin';
 import { useTestesGratis } from '@/hooks/useTesteGratis';
-import { etapasDoCliente, progresso, type Etapa } from '@/lib/estadoDoCliente';
+import { useCarteiraTransportadoras } from '@/hooks/useTransportadoras';
+import { etapasDoCliente, etapasDaTransportadora, fatosDaFicha, progresso, type Etapa } from '@/lib/estadoDoCliente';
 import {
   fatosDaSaude, proximoPasso, diasDesde, ritmoDaImplantacao, estaImplantando, type Ritmo,
 } from '@/lib/implantacao';
@@ -55,6 +56,14 @@ export function useImplantacao({ lerSistemas = true }: { lerSistemas?: boolean }
     [clientes, lerSistemas],
   );
   const saudeQuery = useCompaniesHealth(ids);
+  /* Transportadora: a ficha vem do outro projeto. O banco só entrega
+     clientes da frente aberta, então numa frente só uma das duas leituras
+     tem o que pedir. */
+  const idsTransp = useMemo(
+    () => (lerSistemas ? clientes.filter((c) => c.transportes_empresa_id && c.status !== 'cancelado').map((c) => c.transportes_empresa_id!) : []),
+    [clientes, lerSistemas],
+  );
+  const carteiraTransp = useCarteiraTransportadoras(idsTransp);
 
   return useMemo(() => {
     const agora = Date.now();
@@ -67,22 +76,32 @@ export function useImplantacao({ lerSistemas = true }: { lerSistemas?: boolean }
       .map((c) => {
         const saude = c.lojista_company_id ? saudePorEmpresa.get(c.lojista_company_id) : undefined;
         const emTeste = testes.some((t) => t.client_id === c.id && (t.status === 'aguardando_implantacao' || t.status === 'em_teste'));
-        const etapas = etapasDoCliente(
-          {
-            lojista_company_id: c.lojista_company_id,
-            domain: c.domain,
-            contract_signed_at: c.contract_signed_at,
-            asaas_payment_link_url: c.asaas_payment_link_url,
-            pagou: pagamentos.some((p) => p.client_id === c.id && p.status === 'pago'),
-            emTeste,
-            tarefas: tarefas.filter((t) => t.client_id === c.id),
-          },
+        const transportadora = c.frente === 'transportadora';
+        const fatosDoPainel = {
+          lojista_company_id: c.lojista_company_id,
+          transportes_empresa_id: c.transportes_empresa_id,
+          domain: c.domain,
+          contract_signed_at: c.contract_signed_at,
+          asaas_payment_link_url: c.asaas_payment_link_url,
+          pagou: pagamentos.some((p) => p.client_id === c.id && p.status === 'pago'),
+          emTeste,
+          tarefas: tarefas.filter((t) => t.client_id === c.id),
+        };
+        const etapas = transportadora
+          ? etapasDaTransportadora(
+            fatosDoPainel,
+            !c.transportes_empresa_id
+              ? { primeiro_acesso: null, ultimo_acesso: null, caminhoes: 0, motoristas: 0, viagens: 0 }
+              : carteiraTransp.isSuccess ? fatosDaFicha(carteiraTransp.data?.[c.transportes_empresa_id]) : null,
+          )
+          : etapasDoCliente(
+          fatosDoPainel,
           // Sem sistema não há o que perguntar: a resposta é "não tem", não "não sei".
           !c.lojista_company_id ? { marcos: {} } : ponteRespondeu ? fatosDaSaude(saude) ?? { marcos: {} } : null,
         );
         const dias = diasDesde(c.created_at, agora);
         const { feitas, total } = progresso(etapas);
-        return { cliente: c, etapas, passo: proximoPasso(etapas), dias, ritmo: ritmoDaImplantacao(dias), feitas, total, emTeste };
+        return { cliente: c, etapas, passo: proximoPasso(etapas, transportadora ? 'transportadora' : 'lojista'), dias, ritmo: ritmoDaImplantacao(dias), feitas, total, emTeste };
       });
 
     const implantando = itens
@@ -107,13 +126,14 @@ export function useImplantacao({ lerSistemas = true }: { lerSistemas?: boolean }
       vendas,
       testes: testes_,
       atrasadosVendas: vendas.filter((i) => i.ritmo === 'atrasado').length,
-      lendoSistemas: saudeQuery.isFetching && !saudeQuery.isSuccess,
-      ponteFalhou: saudeQuery.isError,
+      lendoSistemas: (saudeQuery.isFetching && !saudeQuery.isSuccess) || (carteiraTransp.isFetching && !carteiraTransp.isSuccess),
+      ponteFalhou: saudeQuery.isError || carteiraTransp.isError,
       implantando,
       noArRecentes,
       comAGente: implantando.filter((i) => i.passo?.dono === 'nos').length,
       comOCliente: implantando.filter((i) => i.passo?.dono === 'cliente').length,
       atrasados: implantando.filter((i) => i.ritmo === 'atrasado').length,
     };
-  }, [clientes, pagamentos, tarefas, testes, saudeQuery.data, saudeQuery.isSuccess, saudeQuery.isFetching, saudeQuery.isError, c1, c2]);
+  }, [clientes, pagamentos, tarefas, testes, saudeQuery.data, saudeQuery.isSuccess, saudeQuery.isFetching, saudeQuery.isError,
+    carteiraTransp.data, carteiraTransp.isSuccess, carteiraTransp.isFetching, carteiraTransp.isError, c1, c2]);
 }

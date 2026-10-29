@@ -9,8 +9,11 @@ import { cn } from '@/lib/utils';
 import {
   useProspects, useUpdateProspect, useChannels, useProspectEvents,
   useMeetings, useDemos, useUpdateDemo, useActivities, useCreateActivity,
+  useCreateDemo, useAdvanceProspect, slugify,
   brl, type Prospect, type ProspectStage, type Demo,
 } from '@/hooks/useAdmin';
+import { useFrente } from '@/contexts/FrenteContext';
+import { TRANSPORTES_AMOSTRA_URL } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { StatusBadge } from '@/components/admin/ui';
 import { AgendarReuniaoDialog } from '@/components/crm/AgendarReuniaoDialog';
@@ -63,7 +66,7 @@ function Cartao({ titulo, children, acao }: { titulo: string; children: React.Re
    A amostra é o argumento de venda: é o sistema do cliente, com a marca
    dele, no ar. Ficava como uma linha de lista no rodapé da ficha, do
    mesmo tamanho de uma anotação. Sobe para o topo, com o link à mão. */
-function AmostraDestaque({ amostra, onEditar }: { amostra: Demo; onEditar: () => void }) {
+function AmostraDestaque({ amostra, onEditar }: { amostra: Demo; onEditar?: () => void }) {
   const update = useUpdateDemo();
   const [subindo, setSubindo] = useState(false);
   const cor = amostra.primary_color || '#E36C0A';
@@ -122,14 +125,17 @@ function AmostraDestaque({ amostra, onEditar }: { amostra: Demo; onEditar: () =>
           </div>
           <StatusBadge status={amostra.status} />
           {/* Editar a amostra é rotina, não exceção: trocar uma foto errada
-              ou o texto do hero acontece durante a própria apresentação. */}
-          <button
-            onClick={onEditar}
-            title="Editar amostra"
-            className="h-7 w-7 shrink-0 rounded-lg flex items-center justify-center text-foreground/35 hover:text-foreground hover:bg-black/[0.05] dark:hover:bg-white/[0.07] transition-colors"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
+              ou o texto do hero acontece durante a própria apresentação.
+              A das transportadoras é a de exemplo, igual para todos: não se edita. */}
+          {onEditar && (
+            <button
+              onClick={onEditar}
+              title="Editar amostra"
+              className="h-7 w-7 shrink-0 rounded-lg flex items-center justify-center text-foreground/35 hover:text-foreground hover:bg-black/[0.05] dark:hover:bg-white/[0.07] transition-colors"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
 
         {rascunho ? (
@@ -163,7 +169,10 @@ function AmostraDestaque({ amostra, onEditar }: { amostra: Demo; onEditar: () =>
               valor={link ? link.replace(/^https?:\/\//, '') : '—'}
               copiar={link ?? undefined}
             />
-            <Campo rotulo="Login" valor={amostra.admin_email ?? '—'} copiar={amostra.admin_email ?? undefined} />
+            {/* A amostra das transportadoras abre sem login. */}
+            {(amostra.admin_email || amostra.lojista_company_id) && (
+              <Campo rotulo="Login" valor={amostra.admin_email ?? '—'} copiar={amostra.admin_email ?? undefined} />
+            )}
           </div>
         )}
 
@@ -224,6 +233,35 @@ export default function ProspectDetalhe() {
 
   const atualizar = useUpdateProspect();
   const criarAtividade = useCreateActivity();
+  const criarDemo = useCreateDemo();
+  const avancar = useAdvanceProspect();
+  /* Transportadora: a amostra é a transportadora de exemplo, pública e igual
+     para todos — não se monta sistema nenhum. Fica registrada para o funil
+     saber quem já recebeu, como a do lojista. */
+  const { frente } = useFrente();
+  const transportadora = frente === 'transportadora';
+  const [criandoAmostra, setCriandoAmostra] = useState(false);
+  const amostraDaTransportadora = async () => {
+    if (!prospect) return;
+    setCriandoAmostra(true);
+    try {
+      await criarDemo.mutateAsync({
+        prospect_id: prospect.id,
+        company_name: prospect.company_name,
+        contact_name: prospect.contact_name,
+        slug: slugify(prospect.company_name),
+        status: 'provisionada',
+        demo_url: TRANSPORTES_AMOSTRA_URL,
+        created_by: member?.id ?? null,
+      });
+      await avancar.mutateAsync({ id: prospect.id, from: prospect.stage, to: 'amostra' });
+      toast.success('Amostra pronta: copie o link e mande para o cliente');
+    } catch (e) {
+      toast.error((e as Error).message || 'Não foi possível registrar a amostra');
+    } finally {
+      setCriandoAmostra(false);
+    }
+  };
 
   const [reuniaoAberta, setReuniaoAberta] = useState(false);
   const [amostraAberta, setAmostraAberta] = useState(false);
@@ -370,7 +408,7 @@ export default function ProspectDetalhe() {
             <AmostraDestaque
               key={a.id}
               amostra={a}
-              onEditar={() => setAmostraEditando(a)}
+              onEditar={transportadora ? undefined : () => setAmostraEditando(a)}
             />
           ))}
 
@@ -383,7 +421,8 @@ export default function ProspectDetalhe() {
               <CalendarPlus className="h-3.5 w-3.5" /> Reunião
             </button>
             <button
-              onClick={() => setAmostraAberta(true)}
+              onClick={() => (transportadora ? amostraDaTransportadora() : setAmostraAberta(true))}
+              disabled={criandoAmostra}
               className="h-10 rounded-xl border border-violet-400/25 bg-violet-400/[0.06] text-violet-400 text-[12px] font-medium hover:bg-violet-400/[0.12] transition-colors flex items-center justify-center gap-1.5"
             >
               <MonitorPlay className="h-3.5 w-3.5" /> Amostra

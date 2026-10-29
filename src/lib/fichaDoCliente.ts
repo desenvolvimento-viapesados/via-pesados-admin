@@ -1,4 +1,5 @@
 import type { Client, Payment, ClientUsage } from '@/hooks/useAdmin';
+import type { FichaTransportadora } from '@/hooks/useTransportadoras';
 
 /**
  * O que a ficha responde antes de qualquer clique.
@@ -143,6 +144,45 @@ export function pendenciasDoCliente(
       acao: 'Treinar',
       peso: 'atencao',
     });
+  }
+  return p;
+}
+
+/**
+ * As pendências da transportadora, na mesma ordem de peso: dinheiro, conta
+ * que ninguém abre, e o que trava o uso (frota sem motorista, certificado).
+ */
+export function pendenciasDaTransportadora(
+  cliente: Pick<Client, 'status'>,
+  ficha: FichaTransportadora | null,
+  fin: Financeiro,
+  agora = Date.now(),
+): Pendencia[] {
+  const p: Pendencia[] = [];
+  if (cliente.status === 'cancelado') return p;
+  if (fin.estado === 'atrasado') p.push({ chave: 'atrasado', texto: fin.texto, acao: 'Cobrar', peso: 'grave' });
+  if (!ficha) return p;
+
+  if (!ficha.ativo) {
+    p.push({ chave: 'desligada', texto: 'Sistema desligado: ninguém da transportadora entra', peso: 'grave' });
+    return p;
+  }
+  if (ficha.bloqueada_em) {
+    p.push({ chave: 'bloqueada', texto: 'Acesso bloqueado pela mensalidade', acao: 'Liberar no Sistema', peso: 'grave' });
+  }
+  const semEntrar = ficha.ultimo_acesso ? Math.floor((agora - new Date(ficha.ultimo_acesso).getTime()) / DIA) : null;
+  if (!ficha.ultimo_acesso && !ficha.primeiro_acesso) {
+    p.push({ chave: 'nunca_entrou', texto: 'Ninguém nunca entrou no sistema', acao: 'Enviar o link', peso: 'grave' });
+  } else if (semEntrar !== null && semEntrar > 30) {
+    p.push({ chave: 'parado', texto: `Sem ninguém entrar há ${semEntrar} dias`, acao: 'Ligar', peso: 'grave' });
+  } else if (semEntrar !== null && semEntrar > 7) {
+    p.push({ chave: 'ocioso', texto: `Sem ninguém entrar há ${semEntrar} dias`, peso: 'atencao' });
+  }
+  if (ficha.caminhoes > 0 && ficha.motoristas === 0) {
+    p.push({ chave: 'sem_motorista', texto: 'Caminhões sem nenhum motorista cadastrado', peso: 'atencao' });
+  }
+  if (ficha.viagens > 0 && !ficha.certificado_ok) {
+    p.push({ chave: 'sem_certificado', texto: 'Lançando viagem sem certificado digital — CT-e não sai', peso: 'atencao' });
   }
   return p;
 }

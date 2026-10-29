@@ -55,21 +55,26 @@ Deno.serve(async (req) => {
   const hoje = hojeBRT();
   const amanha = somarDias(hoje, 1);
 
+  /* A régua (avisos, corte do painel e do site) é a do lojista: as mensagens
+     falam de painel e site, e o corte é feito no sistema do lojista. A frente
+     Transportadoras fica de fora até ter a régua dela (migration frentes). */
   // Só mensalidade (cobrança de assinatura). Cobrança avulsa não corta acesso.
   const { data: abertas, error } = await db
     .from('payments')
     .select('id, client_id, amount, due_date, status, asaas_payment_id, asaas_subscription_id')
+    .eq('frente', 'lojista')
     .in('status', ABERTA)
     .not('asaas_subscription_id', 'is', null)
     .order('due_date');
   if (error) return json(500, { error: error.message });
 
   const idsClientes = [...new Set((abertas ?? []).map((c: Cobranca) => c.client_id))];
-  const { data: suspensos } = await db.from('clients').select('id').not('acesso_suspenso_em', 'is', null);
+  const { data: suspensos } = await db.from('clients').select('id').eq('frente', 'lojista').not('acesso_suspenso_em', 'is', null);
   const todos = [...new Set([...idsClientes, ...(suspensos ?? []).map((c: { id: string }) => c.id)])];
   const { data: clientes } = todos.length
     ? await db.from('clients')
       .select('id, contact_name, company_name, whatsapp, checkout_token, status, lojista_company_id, acesso_suspenso_em, acesso_liberado_ate')
+      .eq('frente', 'lojista')
       .in('id', todos)
     : { data: [] };
   const porId = new Map((clientes ?? []).map((c: Cliente) => [c.id, c]));

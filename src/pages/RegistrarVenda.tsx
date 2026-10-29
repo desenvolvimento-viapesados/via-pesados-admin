@@ -11,6 +11,7 @@ import {
   genPassword, slugify, brlFull,
 } from '@/hooks/useAdmin';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFrente } from '@/contexts/FrenteContext';
 import { criarTesteGratis } from '@/hooks/useTesteGratis';
 import { CidadeUF } from '@/components/crm/CidadeUF';
 import { mascaraTelefone, soDigitos, mascaraMoeda, valorDaMoeda, moedaDeNumero } from '@/lib/mascaras';
@@ -132,6 +133,10 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
   const { data: demos = [] } = useDemos();
   const { data: equipe = [] } = useTeam();
   const register = useRegisterSale();
+  /* Transportadora: não há amostra para adotar nem canal para contratar — o
+     sistema nasce na ficha, e a amostra dela é a de exemplo, pública. */
+  const { frente } = useFrente();
+  const transp = frente === 'transportadora';
   const atualizarCliente = useUpdateClient();
   const atualizarDemo = useUpdateDemo();
   const gerarLink = useCriarAssinaturaAsaas();
@@ -358,12 +363,14 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
                 </div>
                 <p className="text-[11px] text-foreground/45 leading-snug px-1 flex items-start gap-1.5">
                   <KeyRound className="h-3 w-3 mt-0.5 shrink-0" />
-                  Não há senha a combinar. Quando você liberar o acesso, ele recebe no WhatsApp um
-                  link de primeiro acesso e define a própria senha. O link vale 24 horas.
+                  {transp
+                    ? 'Não há senha a combinar. Quando o sistema for criado na ficha, sai um link de primeiro acesso para entregar a ele, e ele define a própria senha. O link vale 24 horas.'
+                    : 'Não há senha a combinar. Quando você liberar o acesso, ele recebe no WhatsApp um link de primeiro acesso e define a própria senha. O link vale 24 horas.'}
                 </p>
               </div>
             </Secao>
 
+            {!transp && (
             <Secao
               numero="03"
               titulo="Vincular projeto a"
@@ -404,8 +411,10 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
                 </p>
               )}
             </Secao>
+            )}
 
-            <Secao numero="04" titulo="Mensalidade e canais" descricao="O valor combinado e o que ele contratou.">
+            <Secao numero={transp ? '03' : '04'} titulo={transp ? 'Mensalidade' : 'Mensalidade e canais'}
+              descricao={transp ? 'O valor combinado.' : 'O valor combinado e o que ele contratou.'}>
               <div className="space-y-2.5">
                 {/* Um plano só, e a mensalidade é negociada por cliente —
                     não há o que escolher aqui além do valor. */}
@@ -415,7 +424,9 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
                     <Hourglass className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
                     <p className="text-[12px] text-foreground/70 leading-snug">
                       <span className="font-semibold text-foreground">{DIAS_DE_TESTE} dias de teste grátis</span>, contados da implantação, sem cartão.
-                      O valor acima é a mensalidade que vale depois. Se não assinar, painel e site saem do ar no dia seguinte ao fim.
+                      O valor acima é a mensalidade que vale depois. {transp
+                        ? 'Se não assinar, o acesso é bloqueado no fim do teste.'
+                        : 'Se não assinar, painel e site saem do ar no dia seguinte ao fim.'}
                     </p>
                   </div>
                 )}
@@ -426,6 +437,7 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
                   titulo={<span className="flex items-center gap-1.5"><Link2 className="h-3 w-3" /> Gerar cobrança mensal no Asaas</span>}
                   sub={form.mrr ? `${brlFull(mrrNum)} por mês, todo mês, no Pix, boleto ou cartão.` : 'Informe o valor acima para gerar.'}
                 />
+                {!transp && (
                 <div className="pt-2 space-y-1.5">
                   <p className="text-[11.5px] font-medium text-foreground/70 px-1">Canais contratados</p>
                   {CANAIS_VENDA.map((c) => (
@@ -438,10 +450,11 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
                     />
                   ))}
                 </div>
+                )}
               </div>
             </Secao>
 
-            <Secao numero="05" titulo="Responsável" descricao="Quem da Via Pesados responde por esta conta.">
+            <Secao numero={transp ? '04' : '05'} titulo="Responsável" descricao="Quem da Via Pesados responde por esta conta.">
               <select className={campo} value={form.owner_id} onChange={(e) => set('owner_id', e.target.value)}>
                 <option value="">Sem responsável</option>
                 {equipe.map((m) => <option key={m.id} value={m.id}>{m.full_name || m.email}</option>)}
@@ -468,7 +481,7 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
                       é quase sempre esquecimento, e o custo é um cliente sem
                       sistema, que trava o onboarding inteiro depois. */}
                   <dd className={cn('truncate text-right', amostra ? 'text-foreground' : amostras.length ? 'text-amber-400' : 'text-foreground')}>
-                    {amostra ? `amostra de ${amostra.company_name}` : 'novo, vazio'}
+                    {amostra ? `amostra de ${amostra.company_name}` : transp ? 'criado depois, na ficha' : 'novo, vazio'}
                   </dd>
                 </div>
                 {modoTeste && (
@@ -477,10 +490,12 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
                     <dd className="text-foreground">{DIAS_DE_TESTE} dias após a implantação</dd>
                   </div>
                 )}
-                <div className="flex justify-between gap-3">
-                  <dt className="text-foreground/45">Canais</dt>
-                  <dd className="text-foreground">{form.canais.length || '—'}</dd>
-                </div>
+                {!transp && (
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-foreground/45">Canais</dt>
+                    <dd className="text-foreground">{form.canais.length || '—'}</dd>
+                  </div>
+                )}
               </dl>
             </div>
 

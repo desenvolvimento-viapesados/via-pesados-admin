@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase, FUNCTIONS_URL } from '@/integrations/supabase/client';
+import { frenteAtual } from '@/lib/frente';
 
 /**
  * Dados da aba de WhatsApp.
@@ -119,6 +120,15 @@ export const useAcaoWa = () => useMutation({
 export function useTempoReal(conversaId: string | null) {
   const qc = useQueryClient();
   useEffect(() => {
+    /* O tempo real não leva o cabeçalho da frente e só entrega o que é de
+       Lojistas. Fora dela, a caixa pergunta de novo a cada 10 segundos. */
+    if (frenteAtual() !== 'lojista') {
+      const t = setInterval(() => {
+        qc.invalidateQueries({ queryKey: ['wa', 'conversas'] });
+        if (conversaId) qc.invalidateQueries({ queryKey: ['wa', 'mensagens', conversaId] });
+      }, 10_000);
+      return () => clearInterval(t);
+    }
     const canal = supabase.channel('wa-tempo-real')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'wa_mensagens' }, (p) => {
         const nova = (p.new ?? {}) as { conversa_id?: string };

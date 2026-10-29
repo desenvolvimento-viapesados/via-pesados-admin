@@ -1,4 +1,5 @@
 import type { Etapa, FatosDoSistema } from './estadoDoCliente';
+import type { Frente } from './frente';
 
 /* A implantação, do jeito que a equipe precisa ler: em que passo cada
    cliente está, com quem a bola está agora e o botão que resolve. As
@@ -107,11 +108,59 @@ export const PASSOS: Record<(typeof ORDEM_DA_IMPLANTACAO)[number], Passo> = {
   },
 };
 
-/** O primeiro passo em aberto na ordem de cobrança, ou `null` se acabou. */
-export function proximoPasso(etapas: Etapa[]): (Passo & { chave: string; titulo: string; porque: string }) | null {
-  for (const chave of ORDEM_DA_IMPLANTACAO) {
+/* A transportadora: o sistema, o primeiro acesso, a frota e a primeira
+   viagem. Não tem domínio, canal nem anúncio. O treinamento vem depois da
+   primeira viagem pelo mesmo motivo do lojista: treina-se quem já está
+   usando. */
+export const ORDEM_DA_TRANSPORTADORA = [
+  'sistema_criado',
+  'acesso_liberado',
+  'frota_cadastrada',
+  'go_live',
+  'treinamento_realizado',
+] as const;
+
+export const PASSOS_DA_TRANSPORTADORA: Record<(typeof ORDEM_DA_TRANSPORTADORA)[number], Passo> = {
+  sistema_criado: {
+    acao: 'Criar o sistema',
+    dono: 'nos',
+    rota: (id) => `/clientes/${id}?resolver=sistema_criado`,
+  },
+  acesso_liberado: {
+    acao: 'Enviar o primeiro acesso',
+    dono: 'nos',
+    rota: (id) => `/clientes/${id}?resolver=acesso_liberado`,
+  },
+  frota_cadastrada: {
+    acao: 'Cadastrar a frota e os motoristas',
+    dono: 'cliente',
+    rota: () => null,
+    lembrete: 'o seu sistema já está pronto. O próximo passo é cadastrar os caminhões e os motoristas — se preferir, me manda a lista que a gente ajuda.',
+  },
+  go_live: {
+    acao: 'Lançar a primeira viagem',
+    dono: 'cliente',
+    rota: () => null,
+    lembrete: 'a frota já está no sistema. Agora é lançar a primeira viagem, da cotação ao canhoto. Quer que eu te acompanhe na primeira?',
+  },
+  treinamento_realizado: {
+    acao: 'Fazer o treinamento',
+    dono: 'nos',
+    rota: (id) => `/clientes/${id}?resolver=treinamento_realizado`,
+  },
+};
+
+/** O primeiro passo em aberto na ordem de cobrança da frente, ou `null` se acabou. */
+export function proximoPasso(
+  etapas: Etapa[],
+  frente: Frente = 'lojista',
+): (Passo & { chave: string; titulo: string; porque: string }) | null {
+  const [ordem, passos] = frente === 'transportadora'
+    ? [ORDEM_DA_TRANSPORTADORA, PASSOS_DA_TRANSPORTADORA as Record<string, Passo>]
+    : [ORDEM_DA_IMPLANTACAO, PASSOS as Record<string, Passo>];
+  for (const chave of ordem) {
     const e = etapas.find((x) => x.chave === chave);
-    if (e && !e.feito) return { ...PASSOS[chave], chave, titulo: e.titulo, porque: e.porque };
+    if (e && !e.feito) return { ...passos[chave], chave, titulo: e.titulo, porque: e.porque };
   }
   return null;
 }

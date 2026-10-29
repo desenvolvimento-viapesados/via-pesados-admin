@@ -15,9 +15,13 @@
  * sistema não sabe é o que faz confiar no resto.
  */
 
+import type { FichaTransportadora } from '@/hooks/useTransportadoras';
+
 /** O que a ficha precisa saber do cliente, do lado do painel. */
 export type FatosDoPainel = {
   lojista_company_id?: string | null;
+  /** O sistema da transportadora (frente Transportadoras). */
+  transportes_empresa_id?: string | null;
   domain?: string | null;
   contract_signed_at?: string | null;
   asaas_payment_link_url?: string | null;
@@ -69,26 +73,10 @@ export function etapasDoCliente(painel: FatosDoPainel, sistema: FatosDoSistema):
   const m = sistema?.marcos ?? {};
   const semPonte = sistema === null;
   const naoSei = (q: string) => (semPonte ? `Ainda não li o sistema do cliente — ${q}` : q);
-  const marcada = (k: string) => painel.tarefas?.find((t) => t.task_key === k)?.done === true;
 
   return [
-    {
-      chave: 'contrato_assinado',
-      titulo: 'Contrato assinado',
-      origem: 'painel',
-      feito: sim(painel.contract_signed_at),
-      porque: sim(painel.contract_signed_at) ? 'tem data de assinatura' : 'sem data de assinatura',
-    },
-    {
-      chave: 'pagamento_recebido',
-      titulo: 'Pagamento recebido',
-      origem: 'painel',
-      feito: painel.pagou === true || painel.emTeste === true,
-      porque: painel.pagou === true
-        ? 'cobrança confirmada'
-        : painel.emTeste === true ? 'teste grátis: a primeira mensalidade vem no fim do teste'
-        : sim(painel.asaas_payment_link_url) ? 'link criado, pagamento não confirmado' : 'cobrança ainda não criada',
-    },
+    etapaDoContrato(painel),
+    etapaDoPagamento(painel),
     {
       chave: 'sistema_criado',
       titulo: 'Sistema no ar',
@@ -135,19 +123,115 @@ export function etapasDoCliente(painel: FatosDoPainel, sistema: FatosDoSistema):
       feito: m.tem_anuncio_no_ar === true,
       porque: m.tem_anuncio_no_ar === true ? 'tem anúncio no ar agora' : naoSei('nenhum anúncio no ar'),
     },
-    {
-      /* A única que não tem resposta no banco: é conversa entre pessoas.
-         Fica marcada à mão, e a tela diz que é à mão — misturar as duas
-         origens sem avisar é o que fazia o checklist inteiro parecer
-         igualmente confiável. */
-      chave: 'treinamento_realizado',
-      titulo: 'Treinamento feito',
-      origem: 'mao',
-      feito: marcada('treinamento_realizado'),
-      porque: marcada('treinamento_realizado') ? 'marcado pela equipe' : 'a equipe ainda não marcou',
-    },
+    etapaDoTreinamento(painel),
   ];
 }
+
+/* As três etapas que valem igual nas duas frentes. */
+function etapaDoContrato(painel: FatosDoPainel): Etapa {
+  return {
+    chave: 'contrato_assinado',
+    titulo: 'Contrato assinado',
+    origem: 'painel',
+    feito: sim(painel.contract_signed_at),
+    porque: sim(painel.contract_signed_at) ? 'tem data de assinatura' : 'sem data de assinatura',
+  };
+}
+
+function etapaDoPagamento(painel: FatosDoPainel): Etapa {
+  return {
+    chave: 'pagamento_recebido',
+    titulo: 'Pagamento recebido',
+    origem: 'painel',
+    feito: painel.pagou === true || painel.emTeste === true,
+    porque: painel.pagou === true
+      ? 'cobrança confirmada'
+      : painel.emTeste === true ? 'teste grátis: a primeira mensalidade vem no fim do teste'
+      : sim(painel.asaas_payment_link_url) ? 'link criado, pagamento não confirmado' : 'cobrança ainda não criada',
+  };
+}
+
+function etapaDoTreinamento(painel: FatosDoPainel): Etapa {
+  const feito = painel.tarefas?.find((t) => t.task_key === 'treinamento_realizado')?.done === true;
+  return {
+    /* A única que não tem resposta no banco: é conversa entre pessoas.
+       Fica marcada à mão, e a tela diz que é à mão — misturar as duas
+       origens sem avisar é o que fazia o checklist inteiro parecer
+       igualmente confiável. */
+    chave: 'treinamento_realizado',
+    titulo: 'Treinamento feito',
+    origem: 'mao',
+    feito,
+    porque: feito ? 'marcado pela equipe' : 'a equipe ainda não marcou',
+  };
+}
+
+/** O que a ficha da transportadora responde, no que a implantação usa. */
+export type FatosDaTransportadora = Pick<FichaTransportadora,
+  'primeiro_acesso' | 'ultimo_acesso' | 'caminhoes' | 'motoristas' | 'viagens'> | null;
+
+const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
+
+/**
+ * As etapas da transportadora, do mesmo jeito: cada uma é uma pergunta com
+ * resposta no banco. Não tem domínio, canal, estoque nem anúncio — o "no
+ * ar" de uma transportadora é a primeira viagem lançada no sistema.
+ *
+ * A última etapa usa a chave `go_live`, como no lojista: é ela que separa
+ * "implantando" de "usando" (situacaoDoCliente, estaImplantando).
+ *
+ * `sistema` nulo = a ficha ainda não respondeu: "não sei", não "não tem".
+ */
+export function etapasDaTransportadora(painel: FatosDoPainel, sistema: FatosDaTransportadora): Etapa[] {
+  const semPonte = sistema === null;
+  const naoSei = (q: string) => (semPonte ? `Ainda não li o sistema do cliente — ${q}` : q);
+  const caminhoes = sistema?.caminhoes ?? 0;
+  const motoristas = sistema?.motoristas ?? 0;
+  const viagens = sistema?.viagens ?? 0;
+  const entrou = sim(sistema?.primeiro_acesso) || sim(sistema?.ultimo_acesso);
+  const frota = caminhoes > 0 && motoristas > 0;
+
+  return [
+    etapaDoContrato(painel),
+    etapaDoPagamento(painel),
+    {
+      chave: 'sistema_criado',
+      titulo: 'Sistema no ar',
+      origem: 'painel',
+      feito: sim(painel.transportes_empresa_id),
+      porque: sim(painel.transportes_empresa_id) ? 'transportadora criada no sistema' : 'transportadora ainda não existe',
+    },
+    {
+      chave: 'acesso_liberado',
+      titulo: 'Primeiro acesso',
+      origem: 'sistema',
+      feito: entrou,
+      porque: entrou ? 'alguém da transportadora já entrou' : naoSei('ninguém da transportadora entrou ainda'),
+    },
+    {
+      chave: 'frota_cadastrada',
+      titulo: 'Frota e motoristas',
+      origem: 'sistema',
+      feito: frota,
+      porque: frota
+        ? `${plural(caminhoes, 'caminhão', 'caminhões')} e ${plural(motoristas, 'motorista', 'motoristas')}`
+        : naoSei(caminhoes === 0 && motoristas === 0 ? 'nenhum caminhão nem motorista cadastrado'
+          : caminhoes === 0 ? 'nenhum caminhão cadastrado' : 'nenhum motorista cadastrado'),
+    },
+    {
+      chave: 'go_live',
+      titulo: 'Primeira viagem',
+      origem: 'sistema',
+      feito: viagens > 0,
+      porque: viagens > 0 ? `${plural(viagens, 'viagem', 'viagens')} no sistema` : naoSei('nenhuma viagem lançada'),
+    },
+    etapaDoTreinamento(painel),
+  ];
+}
+
+/** A ficha no formato que `etapasDaTransportadora` entende; sem ficha, `null`. */
+export const fatosDaFicha = (f: FichaTransportadora | null | undefined): FatosDaTransportadora =>
+  f ? { primeiro_acesso: f.primeiro_acesso, ultimo_acesso: f.ultimo_acesso, caminhoes: f.caminhoes, motoristas: f.motoristas, viagens: f.viagens } : null;
 
 export type SituacaoCliente = 'prospecto' | 'implantando' | 'usando' | 'ocioso' | 'parado';
 
