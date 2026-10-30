@@ -28,6 +28,7 @@ export type FichaTransportadora = {
   criada_em: string;
   certificado_ok: boolean;
   certificado_validade: string | null;
+  ambiente_fiscal?: 'homologacao' | 'producao';
   pessoas: PessoaDaTransportadora[];
   ultimo_acesso: string | null;
   primeiro_acesso: string | null;
@@ -108,6 +109,10 @@ export const gerarLinkDeAcesso = (input: {
 /** Bloqueia ou libera pela mensalidade: bloqueada, a transportadora vê o aviso no lugar das telas. */
 export const bloquearTransportadora = (empresa_id: string, bloquear: boolean, motivo?: string) =>
   chamar<{ bloqueada: boolean }>('admin-provision', { action: 'licenca', empresa_id, bloquear, motivo });
+
+/** Teste ou de verdade: em produção, o CT-e e o MDF-e da transportadora passam a valer. */
+export const mudarAmbienteFiscal = (empresa_id: string, ambiente: 'homologacao' | 'producao') =>
+  chamar<{ ambiente: string }>('admin-provision', { action: 'ambiente_fiscal', empresa_id, ambiente });
 
 /** Desliga (ninguém da transportadora entra) ou religa. */
 export const desligarTransportadora = (empresa_id: string, desligar: boolean) =>
