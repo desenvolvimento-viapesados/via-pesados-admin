@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useUpdateClient, type Client } from '@/hooks/useAdmin';
 import {
-  bloquearTransportadora, criarSistemaTransportadora, desligarTransportadora, gerarLinkDeAcesso,
+  bloquearTransportadora, criarSistemaTransportadora, desligarTransportadora, gerarLinkDeAcesso, mudarAmbienteFiscal,
   type FichaTransportadora, type LinkDeAcesso,
 } from '@/hooks/useTransportadoras';
 import { TRANSPORTES_APP_URL } from '@/integrations/supabase/client';
@@ -245,6 +245,7 @@ export function SistemaDaTransportadora({ client, ficha, carregando, onLink }: {
 
   const bloqueada = !!ficha?.bloqueada_em;
   const desligada = ficha ? !ficha.ativo : false;
+  const emProducao = ficha?.ambiente_fiscal === 'producao';
 
   return (
     <div className="flex flex-col gap-5">
@@ -289,6 +290,30 @@ export function SistemaDaTransportadora({ client, ficha, carregando, onLink }: {
             </button>
           </div>
         </div>
+      </Panel>
+
+      <Panel className="p-4 flex items-center justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <p className="text-[12.5px] font-semibold text-foreground">Documentos fiscais: {emProducao ? 'produção' : 'homologação'}</p>
+          <p className="text-[11px] text-foreground/40">
+            {emProducao ? 'O CT-e e o MDF-e têm valor fiscal' : 'Teste, sem valor fiscal. Produção exige um CT-e de teste autorizado.'}
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            const pergunta = emProducao
+              ? `Voltar ${client.company_name} para homologação? Os documentos novos deixam de valer.`
+              : `Passar ${client.company_name} para produção? Os documentos novos passam a ter valor fiscal.`;
+            if (!confirm(pergunta)) return;
+            agir('ambiente', () => mudarAmbienteFiscal(empresa, emProducao ? 'homologacao' : 'producao'),
+              emProducao ? 'Voltou para homologação' : 'Em produção');
+          }}
+          disabled={!!ocupado || !ficha}
+          className="h-8 px-2.5 rounded-lg border border-black/[0.1] dark:border-white/[0.1] text-[11.5px] font-medium text-foreground/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] disabled:opacity-50 flex items-center gap-1.5"
+        >
+          {ocupado === 'ambiente' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
+          {emProducao ? 'Voltar para homologação' : 'Passar para produção'}
+        </button>
       </Panel>
 
       <div>
