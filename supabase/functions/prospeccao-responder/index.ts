@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
   decidirResposta, enviarEGravar, instanciaDoAgente, REMETENTE_AGENTE, type Loja,
 } from '../_shared/prospeccao.ts';
-import { pediuAmostra, pediuParaSair } from '../_shared/prospeccao-regras.ts';
+import { pediuParaSair, pediuTeste } from '../_shared/prospeccao-regras.ts';
 import { dentroDaJanela } from '../_shared/regua.ts';
 
 /**
@@ -17,7 +17,7 @@ import { dentroDaJanela } from '../_shared/regua.ts';
  *   2. sai se alguém da equipe já escreveu na conversa (do CRM ou do
  *      celular): a partir daí a conversa é de gente, e o agente não volta;
  *   3. pediu para sair → agradece uma vez e encerra;
- *   4. tocou em "Quero a amostra" (botão do modelo do número oficial) →
+ *   4. tocou em "Quero testar grátis" (botão do modelo do número oficial) →
  *      resposta pronta, sem IA, e a conversa vai para o Xavier;
  *   5. senão, a IA lê a conversa e decide: responder, passar para o Xavier
  *      (amostra topada, preço, reunião, áudio, dúvida fora do roteiro) ou
@@ -41,8 +41,9 @@ function confere(a: string, b: string) {
   return d === 0;
 }
 
-const RESPOSTA_AMOSTRA =
-  'Que bom! O Xavier continua com você por aqui para montar a amostra da loja. Se puder, já manda o Instagram ou o site de vocês.';
+/* Quem lê o modelo costuma ser o vendedor, não o dono: a pergunta diz ao Xavier com quem ele vai falar. */
+const RESPOSTA_TESTE =
+  'Fechado! O Xavier continua com você por aqui para liberar o teste grátis da loja. Você é o dono ou cuida das vendas aí?';
 
 const AGRADECE = [
   'Tranquilo, obrigado pelo retorno! Não te chamo mais por aqui. Boas vendas!',
@@ -99,10 +100,10 @@ async function trabalhar(db: any, lojaId: string, token: string, esperar: boolea
     acao = 'encerrar';
     texto = AGRADECE[Math.floor(Math.random() * AGRADECE.length)];
     motivoEquipe = 'Pediu para não receber mais mensagens.';
-  } else if (pediuAmostra(ultimaEntrada?.conteudo)) {
+  } else if (pediuTeste(ultimaEntrada?.conteudo)) {
     acao = 'passar_para_xavier';
-    texto = RESPOSTA_AMOSTRA;
-    motivoEquipe = 'Tocou em "Quero a amostra": quer ver a loja no sistema.';
+    texto = RESPOSTA_TESTE;
+    motivoEquipe = 'Tocou em "Quero testar grátis": quer o teste grátis.';
   } else {
     const d = await decidirResposta(loja, conversa.map((m: { direcao: string; conteudo: string | null; tipo: string }) => ({
       direcao: m.direcao, conteudo: m.conteudo, tipo: m.tipo, por_agente: doAgente(m as never),

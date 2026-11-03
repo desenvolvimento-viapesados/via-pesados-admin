@@ -717,35 +717,48 @@ export const MODELOS: Modelo[] = [
   ]
  } ,
  /* Prospecção pelo número oficial (03/11/2026): a primeira mensagem para as lojas da lista
-    do portal Caminhões e Carretas. MARKETING porque oferece o produto; o botão "Não tenho
-    interesse" é a saída — quem toca não recebe mais nada (prospeccao-responder). */
+    do portal Caminhões e Carretas. MARKETING porque oferece o produto. Quem lê é o vendedor
+    da loja (o dono avisou): o texto fala do dia dele — envio do veículo num toque, os
+    os canais e o teste grátis. O texto é do próprio dono (03/11/2026), rústico de propósito, para
+    casar com o vídeo gravado por ele no celular. Sem prazo do teste no texto: o dono ainda vai
+    definir, e mudar texto aprovado exige nova aprovação. O vídeo do cabeçalho é gravação real: envio de fotos
+    (Vídeos do sistema/Celular 05 e 06, lado a lado) e Recorrência (10). "Não tenho interesse"
+    é a saída — quem toca não recebe mais nada (prospeccao-responder). */
  {
   "name": "prospeccao_lojista",
   "language": "pt_BR",
   "category": "MARKETING",
   "components": [
    {
+    "type": "HEADER",
+    "format": "VIDEO",
+    "example": {
+     "header_url": [
+      "https://ktjvyysqhsyvjmhumjly.supabase.co/storage/v1/object/public/logos/wa/prospeccao-v1.mp4"
+     ]
+    }
+   },
+   {
     "type": "BODY",
-    "text": "Olá! Aqui é o Xavier, da Via Pesados. Encontrei a {{1}} no portal Caminhões e Carretas.\n\nA Via Pesados é um sistema feito só para loja de pesados: você cadastra cada veículo uma vez e ele sai no site da loja, no Mercado Livre, no Instagram e no Facebook. Vendeu, sai de todos sozinho.\n\nPosso montar uma amostra do site da loja com os {{2}} de vocês, sem custo?",
+    "text": "Aqui é ferramenta, meu amigo!\n\nImagina você mandando foto, ficha e preço dos veículos da {{1}} pros seus clientes com um toque, de qualquer lugar: no pátio, em visita, no escritório ou da sua casa.\n\nCê tá doido. E o veículo cadastrado uma vez já sai no Mercado Livre, Insta, Face e no site da loja.\n\nChama que tem teste grátis. Bora!",
     "example": {
      "body_text": [
       [
-       "Minas Caminhões",
-       "caminhões"
+       "Minas Caminhões"
       ]
      ]
     }
    },
    {
     "type": "FOOTER",
-    "text": "Para não receber mais, toque em Não tenho interesse."
+    "text": "Xavier · Via Pesados"
    },
    {
     "type": "BUTTONS",
     "buttons": [
      {
       "type": "QUICK_REPLY",
-      "text": "Quero a amostra"
+      "text": "Quero testar grátis"
      },
      {
       "type": "QUICK_REPLY",

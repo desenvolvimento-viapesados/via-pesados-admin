@@ -222,23 +222,17 @@ export const BUSCAS = [
  * modelos.ts; aqui ficam as duas variáveis e o que cada botão quer dizer.
  */
 export const MODELO_PROSPECCAO = 'prospeccao_lojista';
-export const BOTAO_AMOSTRA = 'Quero a amostra';
+export const BOTAO_TESTE = 'Quero testar grátis';
 export const BOTAO_SAIR = 'Não tenho interesse';
-
-/* O "Tipo de loja" da lista do portal, dito como o lojista diz. */
-const O_QUE_VENDE: Record<string, string> = {
-  'Caminhões': 'caminhões',
-  'Máquinas e tratores': 'máquinas',
-  'Implementos e carretas': 'implementos',
-  'Ônibus': 'ônibus',
-};
+/* O vídeo do cabeçalho (envio de fotos lado a lado, depois a Recorrência). Arquivo novo = nome
+   novo (v2, v3…): a Meta e o WhatsApp guardam em cache pelo endereço. */
+export const VIDEO_DO_MODELO = 'https://ktjvyysqhsyvjmhumjly.supabase.co/storage/v1/object/public/logos/wa/prospeccao-v1.mp4';
 
 export type LojaDoModelo = { nome: string; dados?: Record<string, unknown> | null };
 
-/** {{1}} = a loja; {{2}} = o que ela vende ("os caminhões de vocês"). */
+/** {{1}} = a loja, como gente fala ("foto dos veículos da Claudir Caminhões"). */
 export function paramsDoModelo(loja: LojaDoModelo): string[] {
-  const tipo = String(loja.dados?.tipo ?? '');
-  return [nomeFalado(loja.nome), O_QUE_VENDE[tipo] ?? 'veículos'];
+  return [nomeFalado(loja.nome)];
 }
 
 /** O texto do modelo com as variáveis no lugar: é o que aparece na caixa do CRM. */
@@ -246,9 +240,9 @@ export function textoDoModelo(corpo: string, params: string[]): string {
   return corpo.replace(/\{\{(\d+)\}\}/g, (_, n) => params[Number(n) - 1] ?? '');
 }
 
-/** A pessoa tocou em "Quero a amostra" (ou escreveu só isso). */
-export function pediuAmostra(texto: string | null | undefined): boolean {
-  return String(texto ?? '').trim().replace(/[.!]+$/, '').toLowerCase() === BOTAO_AMOSTRA.toLowerCase();
+/** A pessoa tocou em "Quero testar grátis" (ou escreveu só isso). */
+export function pediuTeste(texto: string | null | undefined): boolean {
+  return String(texto ?? '').trim().replace(/[.!]+$/, '').toLowerCase() === BOTAO_TESTE.toLowerCase();
 }
 
 /* ── o que a Meta diz sobre o número ──────────────────────────── */

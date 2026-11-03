@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   diaUtil, podeEnviarAgora, proximoContato, limiteDoDia, intervaloSorteado, telefoneBR, ehCelular, variantes,
   pediuParaSair, nomeFalado, textoDeReserva, pareceLojaDePesados,
-  canalDa, REGRAS_DO_CANAL, paramsDoModelo, textoDoModelo, pediuAmostra, BOTAO_AMOSTRA, BOTAO_SAIR,
-  MODELO_PROSPECCAO, lojaDepoisDaFalha, FALHAS_QUE_DESLIGAM, motivoParaDesligar,
+  canalDa, REGRAS_DO_CANAL, paramsDoModelo, textoDoModelo, pediuTeste, BOTAO_TESTE, BOTAO_SAIR,
+  MODELO_PROSPECCAO, lojaDepoisDaFalha, FALHAS_QUE_DESLIGAM, motivoParaDesligar, VIDEO_DO_MODELO,
 } from '../../supabase/functions/_shared/prospeccao-regras';
 import { MODELOS } from '../../supabase/functions/_shared/modelos';
 
@@ -129,32 +129,37 @@ describe('prospecção pelo número oficial', () => {
     expect(limiteDoDia(40, ini, ini)).toBe(15); // o QR code continua como era
   });
 
-  it('o modelo é de marketing, com as duas variáveis e os dois botões', () => {
+  it('o modelo é de marketing, com o vídeo no topo, as duas variáveis e os dois botões', () => {
     expect(modelo.category).toBe('MARKETING');
-    expect(corpo.match(/\{\{\d\}\}/g)).toEqual(['{{1}}', '{{2}}']);
+    const topo = modelo.components.find((c) => c.type === 'HEADER') as unknown as { format: string; example: { header_url: string[] } };
+    expect(topo.format).toBe('VIDEO');
+    expect(topo.example.header_url).toEqual([VIDEO_DO_MODELO]);
+    expect(corpo.match(/\{\{\d\}\}/g)).toEqual(['{{1}}']);
     const botoes = (modelo.components.find((c) => c.type === 'BUTTONS') as unknown as { buttons: { type: string; text: string }[] }).buttons;
-    expect(botoes.map((b) => b.text)).toEqual([BOTAO_AMOSTRA, BOTAO_SAIR]);
+    expect(botoes.map((b) => b.text)).toEqual([BOTAO_TESTE, BOTAO_SAIR]);
     expect(botoes.every((b) => b.type === 'QUICK_REPLY' && b.text.length <= 25)).toBe(true);
-    const rodape = String(modelo.components.find((c) => c.type === 'FOOTER')!.text);
-    expect(rodape.length).toBeLessThanOrEqual(60);
+    const rodape = modelo.components.find((c) => c.type === 'FOOTER');
+    if (rodape) expect(String(rodape.text).length).toBeLessThanOrEqual(60);
   });
 
-  it('a loja entra com o nome falado e o que ela vende', () => {
-    expect(paramsDoModelo({ nome: 'TREDIESEL CAMINHÕES LTDA', dados: { tipo: 'Caminhões' } })).toEqual(['Trediesel Caminhões', 'caminhões']);
-    expect(paramsDoModelo({ nome: 'Agro Máquinas', dados: { tipo: 'Máquinas e tratores' } })[1]).toBe('máquinas');
-    expect(paramsDoModelo({ nome: 'X', dados: {} })[1]).toBe('veículos');
-    const texto = textoDoModelo(corpo, ['Claudir Caminhões', 'caminhões']);
-    expect(texto).toContain('Encontrei a Claudir Caminhões no portal');
-    expect(texto).toContain('com os caminhões de vocês');
+  it('a loja entra com o nome falado, no texto do dono', () => {
+    expect(paramsDoModelo({ nome: 'TREDIESEL CAMINHÕES LTDA', dados: { tipo: 'Caminhões' } })).toEqual(['Trediesel Caminhões']);
+    const texto = textoDoModelo(corpo, paramsDoModelo({ nome: 'Claudir Caminhões' }));
+    expect(texto).toMatch(/^Aqui é ferramenta, meu amigo!/);
+    expect(texto).toContain('foto, ficha e preço dos veículos da Claudir Caminhões pros seus clientes com um toque');
+    expect(texto).toContain('Mercado Livre, Insta, Face e no site da loja');
+    expect(texto).toContain('teste grátis. Bora!');
+    expect(texto).not.toMatch(/\d+ dias/); // o prazo do teste ainda não foi definido
+    expect(texto).not.toContain('amostra');
     expect(texto).not.toContain('{{');
   });
 
-  it('os botões: "Não tenho interesse" é saída, "Quero a amostra" vai para o Xavier', () => {
+  it('os botões: "Não tenho interesse" é saída, "Quero testar grátis" vai para o Xavier', () => {
     expect(pediuParaSair(BOTAO_SAIR)).toBe(true);
-    expect(pediuAmostra(BOTAO_AMOSTRA)).toBe(true);
-    expect(pediuAmostra('quero a amostra!')).toBe(true);
-    expect(pediuAmostra('quero a amostra, mas antes me diz o preço')).toBe(false);
-    expect(pediuParaSair(BOTAO_AMOSTRA)).toBe(false);
+    expect(pediuTeste(BOTAO_TESTE)).toBe(true);
+    expect(pediuTeste('quero testar grátis!')).toBe(true);
+    expect(pediuTeste('quero testar grátis, mas quanto custa depois?')).toBe(false);
+    expect(pediuParaSair(BOTAO_TESTE)).toBe(false);
   });
 
   it('entrega que falhou: sem WhatsApp sai da fila; bloqueio desliga', () => {

@@ -75,7 +75,7 @@ const GATILHOS: Record<string, Parameters<typeof conferirParams>[1]> = {
   // sistema-lojista/supabase/functions/esqueci-senha
   redefinir_senha: { body: ['Walker', 'iTruck Caminhões'], urlSuffix: 'tok123' },
   // prospeccao-enviar, pelo número oficial (paramsDoModelo)
-  prospeccao_lojista: { body: ['Claudir Caminhões', 'caminhões'] },
+  prospeccao_lojista: { video: { link: 'https://exemplo/prospeccao.mp4' }, body: ['Claudir Caminhões'] },
 };
 
 describe('o que os gatilhos mandam bate com o modelo aprovado', () => {
@@ -119,6 +119,11 @@ describe('a conferência pega o que a Meta recusaria', () => {
       header: ['outubro'], body: ['a', 'b', 'c', 'd'],
     });
     expect(r.join()).toContain('não tem');
+  });
+
+  it('vídeo sem link no modelo que tem cabeçalho de vídeo', () => {
+    const r = conferirParams('prospeccao_lojista', { body: ['Claudir Caminhões'] });
+    expect(r.join()).toContain('falta o link do vídeo');
   });
 
   it('template desconhecido não é barrado: pode ser novo na Meta', () => {

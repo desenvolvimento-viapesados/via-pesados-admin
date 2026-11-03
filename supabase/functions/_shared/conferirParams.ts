@@ -19,6 +19,7 @@ import { MODELOS } from './modelos.ts';
 export type ParamsConferidos = {
   header?: string[];
   documento?: { link: string; filename: string };
+  video?: { link: string };
   body?: string[];
   urlSuffix?: string;
 };
@@ -56,8 +57,10 @@ export function conferirParams(template: string, p: ParamsConferidos = {}): stri
       if (exige !== tem) erros.push(`o cabeçalho pede ${exige} e foram ${tem}`);
     } else if (formato === 'DOCUMENT') {
       if (!p.documento?.link) erros.push('o cabeçalho é um documento e falta o link do PDF');
+    } else if (formato === 'VIDEO') {
+      if (!p.video?.link) erros.push('o cabeçalho é um vídeo e falta o link do vídeo');
     }
-  } else if (p.header?.length || p.documento) {
+  } else if (p.header?.length || p.documento || p.video) {
     erros.push('foi enviado cabeçalho, e o modelo aprovado não tem');
   }
 

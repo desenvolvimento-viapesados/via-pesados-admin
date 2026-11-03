@@ -164,7 +164,7 @@ function Painel() {
         {oficial ? (
           <>
             Só em dia útil, das 08h às 20h, uma mensagem a cada 7 a 18 minutos. Pelo número oficial, uma mensagem só por loja: o
-            modelo aprovado pela Meta, com os botões "Quero a amostra" e "Não tenho interesse". Antes de cada envio o número é lido
+            modelo aprovado pela Meta, com o vídeo do sistema e os botões "Quero testar grátis" e "Não tenho interesse". Antes de cada envio o número é lido
             na Meta; se a qualidade cair para amarelo, a prospecção desliga sozinha. Ninguém que já é cliente, prospect ou
             conversou com a gente recebe.
           </>
@@ -230,7 +230,7 @@ function Previa({ loja, onClose, max }: { loja: LojaProspeccao | null; onClose: 
             <div className="rounded-2xl rounded-tr-sm bg-primary/10 px-3.5 py-2.5 text-[13px] text-foreground whitespace-pre-wrap">{r.texto}</div>
             <p className="text-[11px] text-foreground/40">
               {r.por === 'modelo'
-                ? 'Modelo aprovado pela Meta, com os botões "Quero a amostra" e "Não tenho interesse". É exatamente o que sai; nada foi enviado.'
+                ? 'Modelo aprovado pela Meta: o vídeo do sistema no topo e os botões "Quero testar grátis" e "Não tenho interesse". É exatamente o que sai; nada foi enviado.'
                 : <>Contato {r.contato} de {max} · {r.por === 'ia' ? 'escrita pela IA para esta loja' : 'texto pronto (a IA não está ligada)'}.
                   Cada prévia sai diferente: é só um exemplo, nada foi enviado.</>}
             </p>

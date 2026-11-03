@@ -11,7 +11,7 @@ import { evolution, paraEnvio } from './evolution.ts';
 import { MODELOS } from './modelos.ts';
 import {
   BUSCAS, MODELO_PROSPECCAO, motivoParaDesligar, nomeFalado, paramsDoModelo, pareceLojaDePesados, telefoneBR,
-  textoDeReserva, textoDoModelo, variantes, type LojaDoModelo,
+  textoDeReserva, textoDoModelo, variantes, VIDEO_DO_MODELO, type LojaDoModelo,
 } from './prospeccao-regras.ts';
 import { enviarTemplate } from './wa.ts';
 import { configYCloud, enviarTextoPorYCloud, lerNumero } from './ycloud.ts';
@@ -331,7 +331,7 @@ const CORPO_DO_MODELO = String(
 /** O primeiro contato pelo oficial, como sai: o modelo com a loja no lugar das variáveis. */
 export function mensagemDoModelo(loja: LojaDoModelo): { params: string[]; texto: string } {
   const params = paramsDoModelo(loja);
-  return { params, texto: textoDoModelo(CORPO_DO_MODELO, params) };
+  return { params, texto: `[vídeo: envio de fotos e recorrência]\n\n${textoDoModelo(CORPO_DO_MODELO, params)}` };
 }
 
 /**
@@ -343,7 +343,9 @@ export function mensagemDoModelo(loja: LojaDoModelo): { params: string[]; texto:
 export async function enviarModeloEGravar(db: Db, inst: Instancia, telefone: string, loja: LojaDoModelo, chave: string):
   Promise<{ conversa_id: string; provider_id: string | null; texto: string }> {
   const { params, texto } = mensagemDoModelo(loja);
-  const r = await enviarTemplate(db, { para: telefone, template: MODELO_PROSPECCAO, params: { body: params }, chave });
+  const r = await enviarTemplate(db, {
+    para: telefone, template: MODELO_PROSPECCAO, params: { video: { link: VIDEO_DO_MODELO }, body: params }, chave,
+  });
   /* Agendado = virou 20h no meio da rodada: a fila manda às 08h. Conta como enviado. */
   if (!r.ok && !r.agendado) throw new Error(r.motivo);
   const providerId = r.ok ? r.message_id || null : null;

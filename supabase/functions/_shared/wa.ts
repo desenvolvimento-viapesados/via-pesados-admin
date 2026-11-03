@@ -52,6 +52,8 @@ export type Params = {
      arquivo é a Meta, não o lojista — um PDF atrás de login chega como
      falha de mídia, não como mensagem sem anexo. */
   documento?: { link: string; filename: string };
+  /* Cabeçalho de VÍDEO: mesmo caso do documento, a Meta baixa pelo link público. */
+  video?: { link: string };
   body?: string[];
   urlSuffix?: string;
 };
@@ -218,6 +220,11 @@ export async function enviarTemplate(
     componentes.push({
       type: 'header',
       parameters: [{ type: 'document', document: args.params.documento }],
+    });
+  } else if (args.params?.video) {
+    componentes.push({
+      type: 'header',
+      parameters: [{ type: 'video', video: args.params.video }],
     });
   } else if (args.params?.header?.length) {
     componentes.push({ type: 'header', parameters: textos(args.params.header) });
