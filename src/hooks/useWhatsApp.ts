@@ -13,7 +13,7 @@ import { frenteAtual } from '@/lib/frente';
 
 export type Instancia = {
   id: string; nome: string; telefone: string | null;
-  origem: 'evolution' | 'cloud_api';
+  origem: 'evolution' | 'cloud_api' | 'ycloud';
   evolution_instance: string | null;
   dono_nome: string | null;
   connection_state: string | null;
@@ -32,6 +32,12 @@ export type Mensagem = {
   id: string; conversa_id: string; direcao: 'entrada' | 'saida';
   tipo: string; conteudo: string | null; media_url: string | null;
   status: string | null; enviada_por_nome: string | null; created_at: string;
+  /** Áudio transcrito pelo assistente. */
+  transcricao?: string | null;
+  /** Arquivo guardado no bucket privado wa-midia ({conversa_id}/{mensagem_id}.{ext}). */
+  media_salva?: string | null;
+  /** Preenchido quando quem escreveu foi o assistente. */
+  turno_id?: string | null;
 };
 
 async function chamar(acao: string, corpo: Record<string, unknown> = {}) {

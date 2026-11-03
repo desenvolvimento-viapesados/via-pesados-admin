@@ -12,6 +12,9 @@ import { CidadeUF } from './CidadeUF';
 import {
   useEstadoProspeccao, useLojas, useAcaoProspeccao, type LojaProspeccao, type StatusLoja,
 } from '@/hooks/useProspeccao';
+import {
+  MODOS, ROTULO_DO_MODO, useAssistenteConfig, useSalvarConfig, type Modo,
+} from '@/hooks/useAssistente';
 
 /**
  * O agente de prospecção, numa tela.
@@ -60,6 +63,11 @@ function Painel() {
   const { data: e, isLoading } = useEstadoProspeccao();
   const acao = useAcaoProspeccao();
   const [teto, setTeto] = useState<string | null>(null);
+  /* Quem responde à prospecção recebe o assistente de vendas no modo da
+     configuração dele (aba Assistente). O antigo "o agente conversa até a
+     amostra" não manda mais. */
+  const { data: assistente } = useAssistenteConfig();
+  const salvarAssistente = useSalvarConfig();
 
   if (isLoading || !e) {
     return <Panel className="p-5 flex justify-center"><Loader2 className="h-4 w-4 animate-spin text-foreground/30" /></Panel>;
@@ -78,8 +86,8 @@ function Painel() {
   if (!e.google) avisos.push('Falta a chave do Google Maps (GOOGLE_MAPS_API_KEY) para buscar lojas.');
   const oficial = e.canal === 'oficial';
   if (!e.ia) avisos.push(oficial
-    ? 'Falta a chave da IA (ANTHROPIC_API_KEY): o agente só responde os dois botões da mensagem. Qualquer outra resposta vem para você.'
-    : 'Falta a chave da IA (ANTHROPIC_API_KEY): as mensagens saem dos textos prontos e o agente não responde sozinho — toda resposta vem para você.');
+    ? 'Falta a chave da IA no painel: o assistente não responde quem retornar. Toda resposta vem para você.'
+    : 'Falta a chave da IA no painel: as mensagens saem dos textos prontos e ninguém responde sozinho. Toda resposta vem para você.');
   if (oficial && e.modelo_aprovado === false) avisos.push('A mensagem da prospecção ainda está em análise na Meta: nada sai até ser aprovada.');
   if (cfg?.instancia_id && !e.numero_ok && e.numero_motivo) avisos.push(e.numero_motivo);
   if (!cfg?.instancia_id) avisos.push('Escolha o número que vai prospectar.');
@@ -144,11 +152,24 @@ function Painel() {
         </div>
         <div className="space-y-1.5">
           <p className="text-[10.5px] font-semibold tracking-widest uppercase text-foreground/30">Quando a loja responde</p>
-          <label className="flex items-center justify-between gap-3 h-9 px-3 rounded-xl border border-black/[0.1] dark:border-white/[0.1]">
-            <span className="text-[12.5px] text-foreground/75">O agente conversa até a amostra</span>
-            <Switch checked={!!cfg?.agente_responde} onCheckedChange={(v) => mudar({ agente_responde: v })} />
-          </label>
-          <p className="text-[10.5px] text-foreground/35">{e.respostas_hoje} respostas do agente hoje. Você escreveu na conversa, ele sai.</p>
+          <select
+            className={cn(inputCls, 'w-full')}
+            value={assistente?.modo_prospeccao ?? ''}
+            disabled={!assistente || salvarAssistente.isPending}
+            onChange={async (ev) => {
+              try {
+                await salvarAssistente.mutateAsync({ modo_prospeccao: ev.target.value as Modo });
+                toast.success('Salvo.');
+              } catch (err) { toast.error((err as Error).message); }
+            }}
+          >
+            {!assistente && <option value="">Assistente ainda não instalado</option>}
+            {MODOS.map((m) => <option key={m} value={m}>Assistente: {ROTULO_DO_MODO[m]}</option>)}
+          </select>
+          <p className="text-[10.5px] text-foreground/35">
+            {assistente && !assistente.ligado ? 'O assistente está desligado no geral (aba Assistente). ' : ''}
+            Você escreveu na conversa, ele sai.
+          </p>
         </div>
       </div>
 

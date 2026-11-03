@@ -1,7 +1,7 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Loader2, Send, Search, Plus, QrCode, RefreshCw, ChevronDown, Check, Settings2, Radio,
+  Loader2, Send, Search, Plus, QrCode, RefreshCw, ChevronDown, Check, Settings2, Radio, Bot,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,13 @@ import {
   type Conversa, type Instancia,
 } from '@/hooks/useWhatsApp';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  useAssistenteConfig, useAssistenteDaConversa, useTurnosDaConversa, useRascunhosEsperando,
+  useTempoRealDoAssistente,
+} from '@/hooks/useAssistente';
+import {
+  ControleDoAssistente, RascunhoDoAssistente, PainelDoAssistente, CorpoDaMensagem,
+} from './AssistenteNaConversa';
 
 /**
  * WhatsApp da Via Pesados.
@@ -62,8 +69,23 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
   const acao = useAcaoWa();
   useTempoReal(conversaId);
 
+  /* O assistente de vendas desta conversa: modo, etapa, rascunho. */
+  const { data: configAssistente } = useAssistenteConfig();
+  const { data: assistente } = useAssistenteDaConversa(conversaId);
+  const { data: turnos } = useTurnosDaConversa(conversaId);
+  const { data: comRascunho } = useRascunhosEsperando();
+  useTempoRealDoAssistente(conversaId);
+  const [painelAberto, setPainelAberto] = useState(false);
+  const rascunho = turnos?.rascunho ?? null;
+
   const conversa = conversas.find((c) => c.id === conversaId) ?? null;
   const instAtual = instancias.find((i) => i.id === (conversa?.instancia_id ?? instanciaId)) ?? null;
+
+  /* A janela de 24h da Meta conta da última mensagem da loja. */
+  const ultimaEntradaEm = useMemo(() => {
+    for (let i = mensagens.length - 1; i >= 0; i--) if (mensagens[i].direcao === 'entrada') return mensagens[i].created_at;
+    return null;
+  }, [mensagens]);
 
   const fim = useRef<HTMLDivElement>(null);
   useEffect(() => { fim.current?.scrollIntoView({ behavior: 'smooth' }); }, [mensagens.length, conversaId]);
@@ -179,7 +201,14 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
             >
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-[13px] font-medium text-foreground truncate">{c.nome || fone(c.telefone)}</span>
-                <span className="text-[10.5px] text-foreground/35 shrink-0">{hora(c.ultima_mensagem_em)}</span>
+                <span className="flex items-center gap-1.5 shrink-0">
+                  {comRascunho?.has(c.id) && (
+                    <span title="O assistente sugeriu uma resposta" className="flex items-center gap-0.5 text-[10px] font-semibold text-primary">
+                      <Bot className="h-3 w-3" /> rascunho
+                    </span>
+                  )}
+                  <span className="text-[10.5px] text-foreground/35">{hora(c.ultima_mensagem_em)}</span>
+                </span>
               </div>
               <div className="flex items-center justify-between gap-2 mt-0.5">
                 <span className="text-[11.5px] text-foreground/45 truncate">
@@ -212,6 +241,14 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
                 <p className="text-[13.5px] font-semibold text-foreground truncate">{conversa.nome || fone(conversa.telefone)}</p>
                 <p className="text-[11px] text-foreground/40">{fone(conversa.telefone)}</p>
               </div>
+              <div className="ml-auto" />
+              <ControleDoAssistente
+                conversaId={conversa.id}
+                assistente={assistente}
+                config={configAssistente}
+                painelAberto={painelAberto}
+                onPainel={() => setPainelAberto((v) => !v)}
+              />
               {instAtual && (
                 <span className={cn('shrink-0 text-[10.5px] px-2 py-1 rounded-lg border',
                   instAtual.origem === 'cloud_api'
@@ -232,10 +269,13 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
                         m.direcao === 'saida'
                           ? 'bg-primary/90 text-primary-foreground rounded-br-md'
                           : 'bg-black/[0.05] dark:bg-white/[0.07] text-foreground rounded-bl-md')}>
-                        <p className="text-[13px] whitespace-pre-wrap break-words">{m.conteudo}</p>
-                        <p className={cn('text-[10px] mt-1 text-right',
+                        <CorpoDaMensagem m={m} saida={m.direcao === 'saida'} />
+                        <p className={cn('text-[10px] mt-1 text-right flex items-center justify-end gap-1',
                           m.direcao === 'saida' ? 'text-primary-foreground/60' : 'text-foreground/35')}>
-                          {m.enviada_por_nome ? `${m.enviada_por_nome.split(' ')[0]} · ` : ''}{hora(m.created_at)}
+                          {m.turno_id || m.enviada_por_nome === 'Assistente'
+                            ? <><Bot className="h-3 w-3" /> Assistente · </>
+                            : m.enviada_por_nome ? `${m.enviada_por_nome.split(' ')[0]} · ` : ''}
+                          {hora(m.created_at)}
                         </p>
                       </div>
                     </div>
@@ -245,13 +285,28 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
               <div ref={fim} />
             </div>
 
-            <div className="p-3 border-t border-black/[0.08] dark:border-white/[0.08] flex items-end gap-2">
+            {rascunho && (
+              <div className="border-t border-black/[0.08] dark:border-white/[0.08]">
+                <RascunhoDoAssistente
+                  conversaId={conversa.id}
+                  turno={rascunho}
+                  config={configAssistente}
+                  assistente={assistente}
+                  ultimaEntradaEm={ultimaEntradaEm}
+                  oficial={!!instAtual && instAtual.origem !== 'evolution'}
+                />
+              </div>
+            )}
+
+            <div className={cn('p-3 flex items-end gap-2', !rascunho && 'border-t border-black/[0.08] dark:border-white/[0.08]')}>
               <textarea
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); mandar(); } }}
                 rows={1}
-                placeholder="Escreva uma mensagem"
+                placeholder={assistente && assistente.modo !== 'desligado'
+                  ? 'Escreva uma mensagem (se você escrever, o assistente sai desta conversa)'
+                  : 'Escreva uma mensagem'}
                 className="flex-1 max-h-28 px-3 py-2.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.05] text-[13px] resize-none focus:outline-none"
               />
               <button
@@ -265,6 +320,15 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
           </>
         )}
       </div>
+
+      {conversa && painelAberto && (
+        <PainelDoAssistente
+          conversaId={conversa.id}
+          assistente={assistente}
+          prospectId={conversa.prospect_id}
+          onFechar={() => setPainelAberto(false)}
+        />
+      )}
 
       <QrDialog qr={qr} onClose={() => setQr(null)} onRefazer={conectar} />
       <NovoNumeroDialog open={newOpen || novoAqui} onClose={fecharNovo} />

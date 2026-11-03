@@ -1,6 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { semSufixo } from '../_shared/evolution.ts';
 import { aoChegarMensagem, aoFalharEntrega } from '../_shared/prospeccao-entrada.ts';
+import { aoChegarParaOAssistente } from '../_shared/assistente-entrada.ts';
+import { deBase64, guardarMidia } from '../_shared/assistente-midia.ts';
 
 /**
  * Entrada de mensagens, das TRÊS origens, no mesmo modelo.
@@ -41,6 +43,11 @@ type Normalizada = {
   provider_message_id: string | null;
   foto_url?: string | null;
   quando?: string;
+  /* Da mídia: id no provedor e tipo do arquivo (o assistente baixa para ouvir/ver). */
+  metadata?: Record<string, unknown> | null;
+  /* Evolution manda o arquivo em base64 no próprio evento (webhookBase64) — o link do
+     WhatsApp é cifrado e não serve depois. Guardado na hora, nunca gravado na linha. */
+  base64?: string | null;
 };
 
 /** Evolution: MESSAGES_UPSERT. O texto muda de lugar conforme o tipo. */
@@ -61,9 +68,13 @@ function daEvolution(corpo: Record<string, any>): Normalizada | null {
     : m.documentMessage ? 'documento'
     : m.stickerMessage ? 'figurinha'
     : 'texto';
+  const midia = m.audioMessage ?? m.imageMessage ?? m.videoMessage ?? m.documentMessage ?? m.stickerMessage ?? null;
   return {
     telefone: semSufixo(d.key.remoteJid ?? ''),
     nome: d.pushName ?? null,
+    media_url: midia?.url ?? null,
+    metadata: midia ? { mime: midia.mimetype ?? null, segundos: midia.seconds ?? null } : null,
+    base64: (tipo === 'audio' || tipo === 'imagem') && typeof (m.base64 ?? d.base64) === 'string' ? (m.base64 ?? d.base64) : null,
     // fromMe = mensagem que a própria loja mandou, do celular. Precisa
     // aparecer na thread, senão a conversa fica pela metade.
     direcao: d.key.fromMe ? 'saida' : 'entrada',
@@ -89,12 +100,14 @@ function daCloud(corpo: Record<string, any>): Normalizada | null {
   const conteudo =
     msg.text?.body ?? msg.image?.caption ?? msg.video?.caption ??
     msg.document?.caption ?? msg.button?.text ?? msg.interactive?.button_reply?.title ?? null;
+  const midiaCloud = msg.audio ?? msg.image ?? msg.video ?? msg.document ?? msg.sticker ?? null;
   return {
     telefone: String(msg.from ?? ''),
     nome: perfil?.profile?.name ?? null,
     direcao: 'entrada',
     tipo,
     conteudo: conteudo ?? `[${tipo}]`,
+    metadata: midiaCloud ? { media_id: midiaCloud.id ?? null, mime: midiaCloud.mime_type ?? null } : null,
     provider_message_id: msg.id ?? null,
     quando: msg.timestamp ? new Date(Number(msg.timestamp) * 1000).toISOString() : undefined,
   };
@@ -131,6 +144,10 @@ function daYCloud(corpo: Record<string, any>): Normalizada | null {
     tipo,
     conteudo: conteudo ?? `[${tipo}]`,
     media_url: m.image?.link ?? m.video?.link ?? m.audio?.link ?? m.document?.link ?? null,
+    metadata: (() => {
+      const x = m.audio ?? m.image ?? m.video ?? m.document ?? m.sticker ?? null;
+      return x ? { media_id: x.id ?? null, mime: x.mime_type ?? null } : null;
+    })(),
     provider_message_id: m.id ?? m.wamid ?? null,
     // Já vem em ISO 8601; converter de novo só arriscaria estragar.
     quando: typeof m.sendTime === 'string' ? m.sendTime : undefined,
@@ -317,17 +334,18 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!conversa) return ok({ ok: true, ignorado: 'conversa não gravada' });
 
-    const { error } = await db.from('wa_mensagens').insert({
+    const { data: gravada, error } = await db.from('wa_mensagens').insert({
       conversa_id: conversa.id,
       instancia_id: inst.id,
       direcao: n.direcao,
       tipo: n.tipo,
       conteudo: n.conteudo,
       media_url: n.media_url ?? null,
+      metadata: n.metadata ?? null,
       provider_message_id: n.provider_message_id,
       status: 'recebida',
       created_at: n.quando ?? new Date().toISOString(),
-    });
+    }).select('id').maybeSingle();
     // 23505 = já tínhamos esta mensagem. É o esperado, não erro.
     if (error && error.code !== '23505') console.error('wa-receber:', error);
 
@@ -335,12 +353,22 @@ Deno.serve(async (req) => {
       await db.from('wa_conversas')
         .update({ nao_lidas: (conversa.nao_lidas ?? 0) + 1 })
         .eq('id', conversa.id);
-      /* Loja da prospecção respondendo: para os lembretes e chama o agente.
-         Falha aqui não pode custar a mensagem, que já está gravada. */
-      if (origem === 'evolution') {
-        await aoChegarMensagem(db, inst.id, n.telefone, conversa.id)
-          .catch((e) => console.error('wa-receber: prospecção', e));
+      /* Áudio e foto da Evolution: o arquivo só existe neste evento. Guarda já. */
+      if (n.base64 && gravada?.id) {
+        /* base64 malformado lança no atob: o try não deixa isso custar o resto do gancho. */
+        try {
+          await guardarMidia(db, conversa.id, gravada.id, deBase64(n.base64), String(n.metadata?.mime ?? ''));
+        } catch (e) {
+          console.warn('wa-receber: mídia não guardada', e);
+        }
       }
+      /* Loja da prospecção respondendo (de QUALQUER origem, o número oficial inclusive):
+         vira "conversando" e o assistente de vendas decide quem atende. Falha aqui não
+         pode custar a mensagem, que já está gravada. */
+      const loja = await aoChegarMensagem(db, inst.id, n.telefone, conversa.id)
+        .catch((e) => { console.error('wa-receber: prospecção', e); return null; });
+      await aoChegarParaOAssistente(db, conversa.id, loja)
+        .catch((e) => console.error('wa-receber: assistente', e));
     }
 
     return ok({ ok: true, conversa: conversa.id, repetida: error?.code === '23505' });

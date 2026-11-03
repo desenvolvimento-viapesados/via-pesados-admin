@@ -1,7 +1,8 @@
 /**
  * As peças do agente de prospecção que falam com o mundo: Google (achar a
  * loja), Evolution (conferir o WhatsApp e mandar), Claude (escrever a
- * mensagem e ler a resposta) e o CRM (a conversa aparece na caixa do número).
+ * primeira mensagem) e o CRM (a conversa aparece na caixa do número). Quem
+ * responde a loja que respondeu é o assistente de vendas (assistente.ts).
  *
  * As regras puras (janela, cadência, quem pediu para sair) estão em
  * prospeccao-regras.ts, que os testes do painel conferem.
@@ -130,51 +131,6 @@ export async function escreverContato(loja: Loja, contato: number, anteriores: s
   const r = await pedirJSON<{ texto: string }>(SISTEMA_CONTATO, pedido, SCHEMA_TEXTO, 'low');
   if (r?.texto && textoAceitavel(r.texto, contato)) return { texto: r.texto.trim(), por: 'ia' };
   return { texto: textoDeReserva(loja, contato), por: 'reserva' };
-}
-
-/* ── responder quem respondeu ─────────────────────────────────── */
-
-export type Decisao = {
-  acao: 'responder' | 'passar_para_xavier' | 'encerrar';
-  texto: string;
-  motivo: string;
-};
-
-const SISTEMA_RESPOSTA = `Você é o assistente do Xavier, da Via Pesados, no WhatsApp de vendas dele. A loja abaixo recebeu uma mensagem de prospecção e respondeu. Seu trabalho: responder as primeiras dúvidas e chegar à AMOSTRA (montamos o site da loja com os caminhões dela, sem custo) ou à demonstração de 15 minutos com o Xavier.
-
-${PRODUTO}
-
-Regras:
-- Português do Brasil, curto (até 3 frases), do jeito que se fala no WhatsApp. Sem link, sem lista, sem markdown.
-- Na primeira resposta sua nesta conversa, diga que é o assistente do Xavier. Se perguntarem se é robô ou pessoa, diga a verdade: é o assistente virtual, e o Xavier assume a conversa.
-- Responda só com o que está na descrição acima. Não sabe, não está lá, ou a pessoa pediu preço, valor, contrato, prazo, desconto, reunião marcada, ligação, áudio, ou quer falar com uma pessoa: acao = "passar_para_xavier", com um texto curto avisando que o Xavier vai continuar por aqui ainda hoje.
-- A pessoa topou a amostra ou a demonstração: peça o Instagram ou o site da loja (se ainda não tiver) e use acao = "passar_para_xavier" — quem monta e marca é ele.
-- A pessoa não quer, já tem sistema e não quer conhecer, pediu para não chamar mais, ou é engano (não é loja de pesados): acao = "encerrar", com um agradecimento curto e sem insistir.
-- Mensagem sem texto (só figurinha, áudio, imagem): acao = "passar_para_xavier".
-- Nunca prometa o que não está na descrição. Nunca fale mal de concorrente. Nunca insista depois de um não.
-- "motivo": uma frase para a equipe dizendo o que a pessoa quer.`;
-
-const SCHEMA_DECISAO = {
-  type: 'object',
-  properties: {
-    acao: { type: 'string', enum: ['responder', 'passar_para_xavier', 'encerrar'] },
-    texto: { type: 'string', description: 'A mensagem para a loja' },
-    motivo: { type: 'string', description: 'Uma frase para a equipe' },
-  },
-  required: ['acao', 'texto', 'motivo'],
-  additionalProperties: false,
-};
-
-export async function decidirResposta(loja: Loja, conversa: { direcao: string; conteudo: string | null; tipo: string; por_agente: boolean }[]): Promise<Decisao | null> {
-  const linhas = conversa.map((m) => {
-    const quem = m.direcao === 'entrada' ? 'LOJA' : (m.por_agente ? 'NÓS (agente)' : 'NÓS');
-    const txt = m.conteudo?.trim() || `[${m.tipo} sem texto]`;
-    return `${quem}: ${txt}`;
-  }).join('\n');
-  const pedido = `Loja: ${nomeFalado(loja.nome)}${loja.cidade ? ` (${loja.cidade}${loja.uf ? `/${loja.uf}` : ''})` : ''}\nRespostas suas até agora nesta conversa: ${loja.respostas_do_agente}\n\nConversa (a mais recente por último):\n${linhas}`;
-  const d = await pedirJSON<Decisao>(SISTEMA_RESPOSTA, pedido, SCHEMA_DECISAO, 'medium');
-  if (!d || !d.texto?.trim() || d.texto.length > 700 || /https?:\/\//i.test(d.texto)) return null;
-  return d;
 }
 
 /* ── Google Maps ──────────────────────────────────────────────── */

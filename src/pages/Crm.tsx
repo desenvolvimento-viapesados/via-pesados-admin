@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Kanban, CalendarDays, Radar } from 'lucide-react';
+import { ArrowLeft, Plus, Kanban, CalendarDays, Radar, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useFrente } from '@/contexts/FrenteContext';
@@ -10,10 +10,11 @@ import { FunilTab } from '@/components/crm/FunilTab';
 import { AgendaTab } from '@/components/crm/AgendaTab';
 import { WhatsAppTab } from '@/components/crm/WhatsAppTab';
 import { ProspeccaoTab } from '@/components/crm/ProspeccaoTab';
+import { AssistenteTab } from '@/components/crm/AssistenteTab';
 import viaPesadosLogoLight from '@/assets/via-pesados-icon-color.png';
 import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
 
-type TabKey = 'whatsapp' | 'funil' | 'reunioes' | 'prospeccao';
+type TabKey = 'whatsapp' | 'funil' | 'reunioes' | 'prospeccao' | 'assistente';
 
 /**
  * As abas do CRM. A amostra não tem aba: mora na ficha do prospect (clicar
@@ -41,6 +42,10 @@ const TABS: { key: TabKey; label: string; newLabel: string | null; icon: IconeDa
   // O agente que acha lojas e manda a primeira mensagem. Quem responde
   // aparece no WhatsApp e entra no funil pelo cadastro breve, como todo mundo.
   { key: 'prospeccao', label: 'Prospecção', newLabel: null, icon: Radar },
+  // O assistente de vendas: quem responde, conduz até os 15 minutos com o
+  // Xavier. Aqui ficam o botão geral, a agenda, os fatos e o gasto; o modo
+  // de cada conversa fica no cabeçalho dela, na aba WhatsApp.
+  { key: 'assistente', label: 'Assistente', newLabel: null, icon: Bot },
 ];
 
 const isTab = (v: string | null): v is TabKey => TABS.some((t) => t.key === v);
@@ -171,6 +176,7 @@ export default function Crm() {
         {tab === 'funil'    && <FunilTab    newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'reunioes' && <AgendaTab   newOpen={newOpen} onCloseNew={closeNew} defaultProspectId={defaultProspect} />}
         {tab === 'prospeccao' && <ProspeccaoTab />}
+        {tab === 'assistente' && <AssistenteTab />}
       </main>
     </div>
   );

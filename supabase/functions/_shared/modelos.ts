@@ -723,7 +723,7 @@ export const MODELOS: Modelo[] = [
     casar com o vídeo gravado por ele no celular. Sem prazo do teste no texto: o dono ainda vai
     definir, e mudar texto aprovado exige nova aprovação. O vídeo do cabeçalho é gravação real: envio de fotos
     (Vídeos do sistema/Celular 05 e 06, lado a lado) e Recorrência (10). "Não tenho interesse"
-    é a saída — quem toca não recebe mais nada (prospeccao-responder). */
+    é a saída — quem toca recebe uma despedida e nada mais (assistente-responder). */
  {
   "name": "prospeccao_lojista",
   "language": "pt_BR",

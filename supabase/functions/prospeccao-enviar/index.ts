@@ -7,7 +7,6 @@ import {
   canalDa, ehCelular, intervaloSorteado, limiteDoDia, MODELO_PROSPECCAO, podeEnviarAgora, proximoContato,
   REGRAS_DO_CANAL, variantes,
 } from '../_shared/prospeccao-regras.ts';
-import { dentroDaJanela } from '../_shared/regua.ts';
 import { modeloAprovado } from '../_shared/wa.ts';
 
 /**
@@ -47,22 +46,8 @@ Deno.serve(async () => {
     const { data: cfg } = await db.from('prospeccao_config').select('*').eq('id', 1).maybeSingle();
     if (!cfg) return json(200, { ok: true, sem_config: true });
 
-    /* Quem escreveu fora do horário ficou esperando: abriu a janela, o agente
-       responde (vale mesmo com o ENVIO desligado — é conversa, não prospecção). */
-    if (cfg.agente_responde && dentroDaJanela(agora)) {
-      const { data: pendentes } = await db.from('prospeccao_lojas').select('id, responder_token')
-        .eq('status', 'conversando').eq('humano_assumiu', false).not('responder_token', 'is', null)
-        .lt('atualizada_em', new Date(agora.getTime() - 2 * 60_000).toISOString()).limit(5);
-      for (const p of pendentes ?? []) {
-        await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/prospeccao-responder`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-interno': Deno.env.get('WA_INTERNAL_SECRET') ?? '' },
-          body: JSON.stringify({ loja_id: p.id, token: p.responder_token, esperar: false }),
-          signal: AbortSignal.timeout(10_000),
-        }).catch((e) => console.warn('prospeccao-enviar: resposta pendente', e));
-      }
-    }
-
+    /* Quem respondeu é atendido pelo assistente de vendas: as respostas que ficaram
+       para depois das 08h saem pela rotina assistente-pendentes, não daqui. */
     if (!cfg.ligado) return json(200, { ok: true, desligado: true });
 
     const { data: escolhido } = await db.from('wa_instancias').select('origem').eq('id', cfg.instancia_id).maybeSingle();

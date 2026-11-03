@@ -255,3 +255,18 @@ export async function salvarPerfil(cfg: Config, perfil: PerfilDoNumero): Promise
     'POST', perfil,
   ) as PerfilDoNumero;
 }
+
+/**
+ * Baixa a mídia que chegou (áudio, foto). O `link` do evento só abre sem
+ * chave por alguns minutos; com o cabeçalho `X-API-Key` vale por 30 dias
+ * (documentação da YCloud, exemplos de mensagem recebida). Mandamos a
+ * chave sempre — e só para o próprio domínio da YCloud.
+ */
+export async function baixarMidiaYCloud(cfg: Config, link: string): Promise<{ bytes: Uint8Array; tipo: string }> {
+  const url = new URL(link);
+  if (!/(^|\.)ycloud\.com$/i.test(url.hostname)) throw new Error('link de mídia fora da YCloud');
+  const r = await fetch(url, { headers: { 'X-API-Key': cfg.chave }, signal: AbortSignal.timeout(25_000) })
+    .catch(() => { throw new Error('A YCloud não entregou a mídia a tempo.'); });
+  if (!r.ok) throw new Error(`A YCloud recusou a mídia (HTTP ${r.status}).`);
+  return { bytes: new Uint8Array(await r.arrayBuffer()), tipo: r.headers.get('content-type') ?? 'application/octet-stream' };
+}

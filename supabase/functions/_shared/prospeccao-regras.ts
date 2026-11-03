@@ -127,22 +127,24 @@ export function variantes(tel: string): string[] {
 /* Valem em qualquer mensagem. */
 const SAIR_SEMPRE = [
   /^\s*(sair|pare|parar|stop|remover|remova|chega)\s*[.!]*\s*$/i,
-  /\b(me\s+tir[ae]|tir[ae]\s+(o\s+)?(meu|esse)\s+n[úu]mero|sair\s+da\s+lista|descadastr\w*|bloque(ar|io|ei|ando)|denunci\w*)/i,
+  /* "me tira uma dúvida" e "deu bloqueio no Face" não são pedido de sair: só "me tira DA LISTA",
+     "vou bloquear", "vou denunciar". */
+  /\b(me\s+tir[ae]\s+(d[aeo]s?s[ae]\s+lista|da\s+lista|daqui|do\s+grupo)|tir[ae]\s+(o\s+)?(meu|esse)\s+n[úu]mero|sair\s+da\s+lista|descadastr\w*|vou\s+(te\s+)?bloque\w*|vou\s+(te\s+)?denunci\w*)/i,
   /\bpar[ae]\s+de\s+(mandar|enviar|me\s+(mandar|chamar|enviar))/i,
   /\b(n[aã]o|nem)\s+(tenho|temos|tem)\s+(nenhum\s+)?interesse/i,
   /\bsem\s+interesse\b/i,
   /\bn[aã]o\s+me\s+(mande|manda|chame|chama|procure|procura|ligue|liga)/i,
 ];
-/* Só valem em resposta curta: "não quero" sozinho é recusa; "não quero perder
-   tempo com planilha" é o contrário. */
+/* Só valem quando são a mensagem inteira: "não quero" sozinho é recusa; "não quero
+   perder tempo com planilha" é o contrário, e "não preciso, já tenho site" é objeção. */
 const SAIR_SE_CURTA = [
-  /\bn[aã]o\s+(quero|queremos|precisamos|preciso|obrigad[oa])\b/i,
-  /^\s*(n[aã]o|nao)\s*[.!,]*\s*(obrigad[oa])?\s*[.!]*\s*$/i,
+  /^\s*n[aã]o\s+(quero|queremos|precisamos|preciso)(\s+n[aã]o)?(,?\s*obrigad[oa])?\s*[.!]*\s*$/i,
+  /^\s*n[aã]o\s*[.!,]*\s*(obrigad[oa])?\s*[.!]*\s*$/i,
 ];
 
 /**
  * A pessoa pediu para sair ou disse que não quer. Pega só o óbvio — o
- * resto quem decide é a leitura da conversa pela IA (prospeccao-responder).
+ * resto quem decide é a leitura da conversa pela IA (assistente-responder).
  */
 export function pediuParaSair(texto: string | null | undefined): boolean {
   const t = String(texto ?? '').trim();

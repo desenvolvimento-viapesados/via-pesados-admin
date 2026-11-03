@@ -78,6 +78,7 @@ describe('quem pediu para sair', () => {
   it.each([
     'Parece interessante', 'quanto custa?', 'não quero perder tempo com planilha, como funciona?',
     'pode mandar', 'já usamos um sistema, mas me conta mais', 'vou sair agora mas te chamo depois sobre isso', '',
+    'me tira uma dúvida: serve pra carreta?', 'deu bloqueio no Face', 'Não preciso, já tenho site',
   ])('"%s" não é', (t) => expect(pediuParaSair(t)).toBe(false));
 });
 
