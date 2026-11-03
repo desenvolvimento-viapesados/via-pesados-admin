@@ -47,14 +47,37 @@ export function proximoContato(contatoFeito: number, agora = new Date(), sorteio
   return new Date(alvo.getTime() + minutos * 60_000 - BRT_MS);
 }
 
+/* ── o canal ──────────────────────────────────────────────────── */
+
 /**
- * O teto do dia: começa em 15 e cresce 5 por semana ligado, sem passar do que
- * o dono definiu. Conta primeiras mensagens e lembretes; respostas do agente
- * a quem escreveu não contam (são conversa, não prospecção).
+ * O número oficial (API da Meta, pela YCloud) prospecta com regras próprias,
+ * decididas pelo dono em 03/11/2026, sabendo que a lista do portal não deu
+ * aceite para receber mensagem:
+ *
+ *  - UM contato por loja, pelo modelo aprovado. Insistir em quem não
+ *    respondeu é o que mais gera bloqueio, e bloqueio no oficial cala junto
+ *    a cobrança, o acesso e o "esqueci minha senha".
+ *  - Começa em 30 por dia e sobe 10 por semana até o teto da tela.
  */
-export function limiteDoDia(limiteDefinido: number, ligadoDesde: Date | null, agora = new Date()): number {
+export type Canal = 'evolution' | 'oficial';
+
+export const REGRAS_DO_CANAL: Record<Canal, { maxContatos: number; tetoInicial: number; passoSemanal: number }> = {
+  evolution: { maxContatos: MAX_CONTATOS, tetoInicial: 15, passoSemanal: 5 },
+  oficial: { maxContatos: 1, tetoInicial: 30, passoSemanal: 10 },
+};
+
+/** O número da YCloud é o oficial; o resto foi conectado pelo QR code. */
+export const canalDa = (origem: string | null | undefined): Canal => (origem === 'ycloud' ? 'oficial' : 'evolution');
+
+/**
+ * O teto do dia: começa no inicial do canal e cresce por semana ligado, sem
+ * passar do que o dono definiu. Conta primeiras mensagens e lembretes;
+ * respostas do agente a quem escreveu não contam (são conversa, não prospecção).
+ */
+export function limiteDoDia(limiteDefinido: number, ligadoDesde: Date | null, agora = new Date(), canal: Canal = 'evolution'): number {
+  const { tetoInicial, passoSemanal } = REGRAS_DO_CANAL[canal];
   const semanas = ligadoDesde ? Math.max(0, Math.floor((agora.getTime() - ligadoDesde.getTime()) / (7 * 86_400_000))) : 0;
-  return Math.max(1, Math.min(limiteDefinido, 15 + 5 * semanas));
+  return Math.max(1, Math.min(limiteDefinido, tetoInicial + passoSemanal * semanas));
 }
 
 /** Minutos até o próximo envio, sorteados entre o mínimo e o máximo. */
@@ -190,3 +213,74 @@ export const BUSCAS = [
   'revenda de carretas',
   'caminhões usados',
 ];
+
+/* ── o modelo do número oficial ───────────────────────────────── */
+
+/**
+ * Pelo número oficial a primeira mensagem só pode ser modelo aprovado pela
+ * Meta (texto livre só depois que a pessoa responde). O texto mora em
+ * modelos.ts; aqui ficam as duas variáveis e o que cada botão quer dizer.
+ */
+export const MODELO_PROSPECCAO = 'prospeccao_lojista';
+export const BOTAO_AMOSTRA = 'Quero a amostra';
+export const BOTAO_SAIR = 'Não tenho interesse';
+
+/* O "Tipo de loja" da lista do portal, dito como o lojista diz. */
+const O_QUE_VENDE: Record<string, string> = {
+  'Caminhões': 'caminhões',
+  'Máquinas e tratores': 'máquinas',
+  'Implementos e carretas': 'implementos',
+  'Ônibus': 'ônibus',
+};
+
+export type LojaDoModelo = { nome: string; dados?: Record<string, unknown> | null };
+
+/** {{1}} = a loja; {{2}} = o que ela vende ("os caminhões de vocês"). */
+export function paramsDoModelo(loja: LojaDoModelo): string[] {
+  const tipo = String(loja.dados?.tipo ?? '');
+  return [nomeFalado(loja.nome), O_QUE_VENDE[tipo] ?? 'veículos'];
+}
+
+/** O texto do modelo com as variáveis no lugar: é o que aparece na caixa do CRM. */
+export function textoDoModelo(corpo: string, params: string[]): string {
+  return corpo.replace(/\{\{(\d+)\}\}/g, (_, n) => params[Number(n) - 1] ?? '');
+}
+
+/** A pessoa tocou em "Quero a amostra" (ou escreveu só isso). */
+export function pediuAmostra(texto: string | null | undefined): boolean {
+  return String(texto ?? '').trim().replace(/[.!]+$/, '').toLowerCase() === BOTAO_AMOSTRA.toLowerCase();
+}
+
+/* ── o que a Meta diz sobre o número ──────────────────────────── */
+
+/**
+ * Falhas de entrega que dizem "o número está em risco": desligam a
+ * prospecção na hora. 131048 é a Meta avisando que muita gente bloqueou ou
+ * marcou como spam; 131031, conta travada; 368, punição por política.
+ */
+export const FALHAS_QUE_DESLIGAM = new Set(['131048', '131031', '368']);
+/* O número não tem WhatsApp ou não recebe de empresa: a loja sai da fila. */
+export const FALHAS_SEM_WHATSAPP = new Set(['131026']);
+
+/** A loja depois de uma entrega que falhou. */
+export function lojaDepoisDaFalha(codigo: string): { status: 'sem_whatsapp' | 'sem_resposta'; motivo: string } {
+  if (FALHAS_SEM_WHATSAPP.has(codigo)) return { status: 'sem_whatsapp', motivo: 'O número não tem WhatsApp ou não recebe mensagem de empresa.' };
+  if (codigo === '131049') return { status: 'sem_resposta', motivo: 'A Meta segurou a entrega: a pessoa já recebeu muitas mensagens de empresas nos últimos dias.' };
+  return { status: 'sem_resposta', motivo: `A mensagem não foi entregue${codigo ? ` (código ${codigo} da Meta)` : ''}.` };
+}
+
+/**
+ * A qualidade do número oficial impede prospectar? Amarelo já para: com
+ * mais bloqueios a Meta restringe o número, e é ele que manda cobrança,
+ * acesso e senha. Sem leitura (vazio ou UNKNOWN) não para — número com
+ * pouco uso costuma vir assim.
+ */
+export function motivoParaDesligar(qualidade: string | null | undefined, status?: string | null): string | null {
+  const q = String(qualidade ?? '').toUpperCase();
+  const fim = 'Desliguei a prospecção para proteger o número que manda cobrança, acesso e senha.';
+  if (q === 'RED') return `A qualidade do número oficial está baixa (vermelho) na Meta. ${fim}`;
+  if (q === 'YELLOW') return `A qualidade do número oficial caiu para média (amarelo) na Meta. ${fim}`;
+  const s = String(status ?? '').toUpperCase();
+  if (s && s !== 'CONNECTED') return `O número oficial não está conectado na Meta (status ${s}). ${fim}`;
+  return null;
+}

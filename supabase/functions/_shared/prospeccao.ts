@@ -8,7 +8,13 @@
  */
 import Anthropic from 'npm:@anthropic-ai/sdk@1.3.0';
 import { evolution, paraEnvio } from './evolution.ts';
-import { BUSCAS, nomeFalado, pareceLojaDePesados, telefoneBR, textoDeReserva, variantes } from './prospeccao-regras.ts';
+import { MODELOS } from './modelos.ts';
+import {
+  BUSCAS, MODELO_PROSPECCAO, motivoParaDesligar, nomeFalado, paramsDoModelo, pareceLojaDePesados, telefoneBR,
+  textoDeReserva, textoDoModelo, variantes, type LojaDoModelo,
+} from './prospeccao-regras.ts';
+import { enviarTemplate } from './wa.ts';
+import { configYCloud, enviarTextoPorYCloud, lerNumero } from './ycloud.ts';
 
 // deno-lint-ignore no-explicit-any
 type Db = any;
@@ -273,11 +279,29 @@ export async function conferirWhatsApp(instancia: string, telefones: string[]): 
   return r;
 }
 
-/** Manda pelo número da equipe e grava na caixa do CRM, como se tivesse saído da tela. */
-export async function enviarEGravar(db: Db, inst: { id: string; evolution_instance: string }, telefone: string, texto: string, nomeLoja: string):
+type Instancia = { id: string; origem: string; evolution_instance: string | null };
+
+/**
+ * Manda texto livre e grava na caixa do CRM, como se tivesse saído da tela.
+ * Pelo número oficial, texto livre só vale dentro das 24 horas depois da
+ * última mensagem da pessoa — é o caso de toda resposta do agente.
+ */
+export async function enviarEGravar(db: Db, inst: Instancia, telefone: string, texto: string, nomeLoja: string):
   Promise<{ conversa_id: string; provider_id: string | null }> {
-  const d = await evolution('message/sendText', inst.evolution_instance, 'POST', { number: paraEnvio(telefone), text: texto }) as { key?: { id?: string } };
-  const providerId = d?.key?.id ?? null;
+  let providerId: string | null;
+  if (inst.origem === 'ycloud') {
+    const cfg = configYCloud();
+    if (!cfg) throw new Error('O número oficial está sem as credenciais da YCloud.');
+    providerId = (await enviarTextoPorYCloud(cfg, { para: telefone, texto })).id || null;
+  } else {
+    const d = await evolution('message/sendText', inst.evolution_instance!, 'POST', { number: paraEnvio(telefone), text: texto }) as { key?: { id?: string } };
+    providerId = d?.key?.id ?? null;
+  }
+  return { conversa_id: await gravarNaCaixa(db, inst, telefone, texto, nomeLoja, providerId), provider_id: providerId };
+}
+
+/** A mensagem que saiu, na conversa do número no CRM. */
+async function gravarNaCaixa(db: Db, inst: Instancia, telefone: string, texto: string, nomeLoja: string, providerId: string | null): Promise<string> {
   const agora = new Date().toISOString();
   const { data: conversa } = await db.from('wa_conversas').upsert({
     instancia_id: inst.id, telefone, nome: nomeLoja,
@@ -295,7 +319,52 @@ export async function enviarEGravar(db: Db, inst: { id: string; evolution_instan
       await db.from('wa_mensagens').update({ enviada_por_nome: REMETENTE_AGENTE }).eq('provider_message_id', providerId);
     }
   }
-  return { conversa_id: conversa?.id, provider_id: providerId };
+  return conversa?.id;
+}
+
+/* ── o número oficial ─────────────────────────────────────────── */
+
+const CORPO_DO_MODELO = String(
+  MODELOS.find((m) => m.name === MODELO_PROSPECCAO)?.components.find((c) => c.type === 'BODY')?.text ?? '',
+);
+
+/** O primeiro contato pelo oficial, como sai: o modelo com a loja no lugar das variáveis. */
+export function mensagemDoModelo(loja: LojaDoModelo): { params: string[]; texto: string } {
+  const params = paramsDoModelo(loja);
+  return { params, texto: textoDoModelo(CORPO_DO_MODELO, params) };
+}
+
+/**
+ * Manda o modelo aprovado pelo enviarTemplate — o mesmo caminho da cobrança,
+ * com a janela das 08h–20h e a trava de repetição. `chave` muda a cada
+ * tentativa da mesma loja: a trava queima a chave mesmo quando a entrega
+ * falha, e "reativar" a loja tem de poder mandar de novo.
+ */
+export async function enviarModeloEGravar(db: Db, inst: Instancia, telefone: string, loja: LojaDoModelo, chave: string):
+  Promise<{ conversa_id: string; provider_id: string | null; texto: string }> {
+  const { params, texto } = mensagemDoModelo(loja);
+  const r = await enviarTemplate(db, { para: telefone, template: MODELO_PROSPECCAO, params: { body: params }, chave });
+  /* Agendado = virou 20h no meio da rodada: a fila manda às 08h. Conta como enviado. */
+  if (!r.ok && !r.agendado) throw new Error(r.motivo);
+  const providerId = r.ok ? r.message_id || null : null;
+  return { conversa_id: await gravarNaCaixa(db, inst, telefone, texto, loja.nome, providerId), provider_id: providerId, texto };
+}
+
+/**
+ * Pode prospectar pelo oficial agora? Lê o número na Meta antes de cada
+ * envio. Qualidade amarela ou vermelha desliga (`desligar`); sem conseguir
+ * ler, só espera a próxima rodada — mandar às cegas é o que não pode.
+ */
+export async function situacaoDoOficial(): Promise<{ ok: true } | { ok: false; desligar: boolean; motivo: string }> {
+  const cfg = configYCloud();
+  if (!cfg) return { ok: false, desligar: true, motivo: 'O número oficial está sem as credenciais da YCloud.' };
+  try {
+    const n = await lerNumero(cfg);
+    const motivo = motivoParaDesligar(n.qualityRating, n.status);
+    return motivo ? { ok: false, desligar: true, motivo } : { ok: true };
+  } catch (e) {
+    return { ok: false, desligar: false, motivo: `Não consegui ler o número na Meta: ${e instanceof Error ? e.message : e}` };
+  }
 }
 
 /** A instância que o agente usa, se estiver ligada e conectada. */
@@ -304,7 +373,10 @@ export async function instanciaDoAgente(db: Db, instanciaId: string | null) {
   const { data: inst } = await db.from('wa_instancias')
     .select('id, nome, origem, evolution_instance, connection_state, is_active').eq('id', instanciaId).maybeSingle();
   if (!inst || !inst.is_active) return { inst: null, motivo: 'O número escolhido não está mais no CRM.' };
-  if (inst.origem !== 'evolution' || !inst.evolution_instance) return { inst: null, motivo: 'A prospecção só sai por número conectado pelo QR code.' };
+  if (inst.origem === 'ycloud') {
+    return configYCloud() ? { inst, motivo: null } : { inst: null, motivo: 'O número oficial está sem as credenciais da YCloud.' };
+  }
+  if (inst.origem !== 'evolution' || !inst.evolution_instance) return { inst: null, motivo: 'A prospecção sai por número conectado pelo QR code ou pelo número oficial.' };
   if (inst.connection_state !== 'open') return { inst: null, motivo: `O WhatsApp ${inst.nome} está desconectado.` };
   return { inst, motivo: null };
 }

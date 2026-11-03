@@ -12,7 +12,7 @@
  * O token novo a cada mensagem é o que faz o agente responder uma vez só,
  * depois da última de uma sequência.
  */
-import { variantes } from './prospeccao-regras.ts';
+import { FALHAS_QUE_DESLIGAM, lojaDepoisDaFalha, variantes } from './prospeccao-regras.ts';
 import { dentroDaJanela } from './regua.ts';
 
 // deno-lint-ignore no-explicit-any
@@ -54,4 +54,27 @@ export async function aoChegarMensagem(db: Db, instanciaId: string, telefone: st
   }).catch((e) => console.warn('prospeccao: não chamou o agente', e));
   // deno-lint-ignore no-explicit-any
   (globalThis as any).EdgeRuntime?.waitUntil?.(chamada);
+}
+
+/**
+ * A Meta avisou que uma mensagem que saiu não foi entregue. Se era um
+ * contato da prospecção, a loja sai da fila com o motivo; e se o aviso é de
+ * número em risco (muita gente bloqueando), a prospecção desliga na hora.
+ */
+export async function aoFalharEntrega(db: Db, ids: string[], codigo: string, motivo: string) {
+  if (!ids.length) return;
+  const { data: envio } = await db.from('prospeccao_envios')
+    .select('id, loja_id').in('provider_message_id', ids).eq('tipo', 'contato').limit(1).maybeSingle();
+  if (!envio) return;
+  const agora = new Date().toISOString();
+  await db.from('prospeccao_envios').update({ erro: `${codigo ? `[${codigo}] ` : ''}${motivo}`.slice(0, 400) }).eq('id', envio.id);
+  const depois = lojaDepoisDaFalha(codigo);
+  await db.from('prospeccao_lojas').update({ ...depois, proximo_contato_em: null, atualizada_em: agora })
+    .eq('id', envio.loja_id).eq('status', 'em_contato');
+  if (FALHAS_QUE_DESLIGAM.has(codigo)) {
+    await db.from('prospeccao_config').update({
+      ligado: false, atualizado_em: agora,
+      pausado_motivo: `Desliguei sozinho: a Meta recusou uma entrega com o aviso "${motivo}" (código ${codigo}). Isso costuma vir de bloqueios e denúncias; insistir arrisca o número que manda cobrança, acesso e senha.`,
+    }).eq('id', 1);
+  }
 }

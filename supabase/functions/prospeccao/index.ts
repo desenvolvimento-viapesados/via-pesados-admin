@@ -1,8 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
-  buscarNoGoogle, claudeConfigurado, escreverContato, googleConfigurado, instanciaDoAgente, telefonesConhecidos, type Loja,
+  buscarNoGoogle, claudeConfigurado, escreverContato, googleConfigurado, instanciaDoAgente, mensagemDoModelo,
+  telefonesConhecidos, type Loja,
 } from '../_shared/prospeccao.ts';
-import { limiteDoDia, MAX_CONTATOS, podeEnviarAgora, variantes } from '../_shared/prospeccao-regras.ts';
+import { canalDa, limiteDoDia, MODELO_PROSPECCAO, podeEnviarAgora, REGRAS_DO_CANAL, variantes } from '../_shared/prospeccao-regras.ts';
+import { modeloAprovado } from '../_shared/wa.ts';
 
 /**
  * O que a aba Prospecção do CRM faz do lado do servidor.
@@ -47,7 +49,8 @@ Deno.serve(async (req) => {
     if (acao === 'estado') {
       const { data: cfg } = await db.from('prospeccao_config').select('*').eq('id', 1).maybeSingle();
       const { data: numeros } = await db.from('wa_instancias')
-        .select('id, nome, telefone, connection_state').eq('origem', 'evolution').eq('is_active', true).order('nome');
+        .select('id, nome, telefone, connection_state, origem').in('origem', ['evolution', 'ycloud']).eq('is_active', true).order('nome');
+      const canal = canalDa((numeros ?? []).find((n: { id: string }) => n.id === cfg?.instancia_id)?.origem);
       const contagens: Record<string, number> = {};
       await Promise.all(STATUS.map(async (s) => {
         const { count } = await db.from('prospeccao_lojas').select('id', { count: 'exact', head: true }).eq('status', s);
@@ -61,7 +64,9 @@ Deno.serve(async (req) => {
       return json(200, {
         config: cfg, numeros: numeros ?? [], contagens,
         hoje: hoje ?? 0, respostas_hoje: respostasHoje ?? 0,
-        teto: limiteDoDia(cfg?.limite_dia ?? 15, cfg?.ligado_desde ? new Date(cfg.ligado_desde) : null, agora),
+        canal, ...REGRAS_DO_CANAL[canal],
+        modelo_aprovado: canal === 'oficial' ? await modeloAprovado(MODELO_PROSPECCAO) : null,
+        teto: limiteDoDia(cfg?.limite_dia ?? 15, cfg?.ligado_desde ? new Date(cfg.ligado_desde) : null, agora, canal),
         horario_de_envio: podeEnviarAgora(agora),
         numero_ok: !!inst, numero_motivo: motivo,
         google: googleConfigurado(), ia: claudeConfigurado(),
@@ -135,7 +140,12 @@ Deno.serve(async (req) => {
     if (acao === 'previa') {
       const { data: loja } = await db.from('prospeccao_lojas').select('*').eq('id', corpo.loja_id).maybeSingle();
       if (!loja) return json(404, { error: 'Loja não encontrada.' });
-      const numero = Math.min((loja.contatos ?? 0) + 1, MAX_CONTATOS);
+      const { data: cfg } = await db.from('prospeccao_config').select('instancia_id').eq('id', 1).maybeSingle();
+      const { data: inst } = await db.from('wa_instancias').select('origem').eq('id', cfg?.instancia_id).maybeSingle();
+      const canal = canalDa(inst?.origem);
+      /* Pelo oficial a prévia é exata: é o modelo aprovado, com a loja nas variáveis. */
+      if (canal === 'oficial') return json(200, { ok: true, contato: 1, texto: mensagemDoModelo(loja).texto, por: 'modelo' });
+      const numero = Math.min((loja.contatos ?? 0) + 1, REGRAS_DO_CANAL.evolution.maxContatos);
       const { data: anteriores } = await db.from('prospeccao_envios').select('texto')
         .eq('loja_id', loja.id).eq('tipo', 'contato').is('erro', null).order('enviada_em');
       const r = await escreverContato(loja as Loja, numero, (anteriores ?? []).map((a: { texto: string }) => a.texto));

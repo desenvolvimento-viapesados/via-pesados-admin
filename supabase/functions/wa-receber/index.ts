@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { semSufixo } from '../_shared/evolution.ts';
-import { aoChegarMensagem } from '../_shared/prospeccao-entrada.ts';
+import { aoChegarMensagem, aoFalharEntrega } from '../_shared/prospeccao-entrada.ts';
 
 /**
  * Entrada de mensagens, das TRÊS origens, no mesmo modelo.
@@ -253,6 +253,9 @@ Deno.serve(async (req) => {
       if (novo === 'falhou') {
         const motivo = m?.error?.message ?? m?.errorMessage ?? m?.error?.title ?? 'a Meta recusou a entrega';
         await db.from('wa_envios').update({ erro: String(motivo).slice(0, 400) }).in('message_id', ids);
+        const codigo = String(m?.errorCode ?? m?.whatsappApiError?.code ?? m?.error?.code ?? '');
+        await aoFalharEntrega(db, ids, codigo, String(motivo))
+          .catch((e) => console.warn('wa-receber: prospecção não registrou a falha', e));
       }
       return ok({ ok: true, evento: 'status', status: novo, conhecida: !!atual });
     }

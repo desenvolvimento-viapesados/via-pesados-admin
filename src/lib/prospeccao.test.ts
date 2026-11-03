@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   diaUtil, podeEnviarAgora, proximoContato, limiteDoDia, intervaloSorteado, telefoneBR, ehCelular, variantes,
   pediuParaSair, nomeFalado, textoDeReserva, pareceLojaDePesados,
+  canalDa, REGRAS_DO_CANAL, paramsDoModelo, textoDoModelo, pediuAmostra, BOTAO_AMOSTRA, BOTAO_SAIR,
+  MODELO_PROSPECCAO, lojaDepoisDaFalha, FALHAS_QUE_DESLIGAM, motivoParaDesligar,
 } from '../../supabase/functions/_shared/prospeccao-regras';
+import { MODELOS } from '../../supabase/functions/_shared/modelos';
 
 /* As regras do agente de prospecção, como o dono definiu em 27/10/2026. */
 describe('quando o agente pode mandar', () => {
@@ -103,5 +106,70 @@ describe('o texto', () => {
     expect(pareceLojaDePesados('Transportadora Rápido')).toBe(false);
     expect(pareceLojaDePesados('Comércio de Caminhões e Peças Silva')).toBe(true);
     expect(pareceLojaDePesados('JR Multimarcas')).toBe(true);
+  });
+});
+
+/* Pelo número oficial, como o dono decidiu em 03/11/2026. */
+describe('prospecção pelo número oficial', () => {
+  const modelo = MODELOS.find((m) => m.name === MODELO_PROSPECCAO)!;
+  const corpo = String(modelo.components.find((c) => c.type === 'BODY')!.text);
+
+  it('o número da YCloud é o oficial; o resto é QR code', () => {
+    expect(canalDa('ycloud')).toBe('oficial');
+    expect(canalDa('evolution')).toBe('evolution');
+    expect(canalDa(null)).toBe('evolution');
+  });
+
+  it('um contato só por loja, começando em 30 por dia e subindo 10 por semana', () => {
+    expect(REGRAS_DO_CANAL.oficial.maxContatos).toBe(1);
+    const ini = new Date('2026-11-03T13:00:00Z');
+    expect(limiteDoDia(50, ini, ini, 'oficial')).toBe(30);
+    expect(limiteDoDia(50, ini, new Date('2026-11-11T13:00:00Z'), 'oficial')).toBe(40);
+    expect(limiteDoDia(50, ini, new Date('2026-12-30T13:00:00Z'), 'oficial')).toBe(50);
+    expect(limiteDoDia(40, ini, ini)).toBe(15); // o QR code continua como era
+  });
+
+  it('o modelo é de marketing, com as duas variáveis e os dois botões', () => {
+    expect(modelo.category).toBe('MARKETING');
+    expect(corpo.match(/\{\{\d\}\}/g)).toEqual(['{{1}}', '{{2}}']);
+    const botoes = (modelo.components.find((c) => c.type === 'BUTTONS') as unknown as { buttons: { type: string; text: string }[] }).buttons;
+    expect(botoes.map((b) => b.text)).toEqual([BOTAO_AMOSTRA, BOTAO_SAIR]);
+    expect(botoes.every((b) => b.type === 'QUICK_REPLY' && b.text.length <= 25)).toBe(true);
+    const rodape = String(modelo.components.find((c) => c.type === 'FOOTER')!.text);
+    expect(rodape.length).toBeLessThanOrEqual(60);
+  });
+
+  it('a loja entra com o nome falado e o que ela vende', () => {
+    expect(paramsDoModelo({ nome: 'TREDIESEL CAMINHÕES LTDA', dados: { tipo: 'Caminhões' } })).toEqual(['Trediesel Caminhões', 'caminhões']);
+    expect(paramsDoModelo({ nome: 'Agro Máquinas', dados: { tipo: 'Máquinas e tratores' } })[1]).toBe('máquinas');
+    expect(paramsDoModelo({ nome: 'X', dados: {} })[1]).toBe('veículos');
+    const texto = textoDoModelo(corpo, ['Claudir Caminhões', 'caminhões']);
+    expect(texto).toContain('Encontrei a Claudir Caminhões no portal');
+    expect(texto).toContain('com os caminhões de vocês');
+    expect(texto).not.toContain('{{');
+  });
+
+  it('os botões: "Não tenho interesse" é saída, "Quero a amostra" vai para o Xavier', () => {
+    expect(pediuParaSair(BOTAO_SAIR)).toBe(true);
+    expect(pediuAmostra(BOTAO_AMOSTRA)).toBe(true);
+    expect(pediuAmostra('quero a amostra!')).toBe(true);
+    expect(pediuAmostra('quero a amostra, mas antes me diz o preço')).toBe(false);
+    expect(pediuParaSair(BOTAO_AMOSTRA)).toBe(false);
+  });
+
+  it('entrega que falhou: sem WhatsApp sai da fila; bloqueio desliga', () => {
+    expect(lojaDepoisDaFalha('131026').status).toBe('sem_whatsapp');
+    expect(lojaDepoisDaFalha('131049').motivo).toContain('muitas mensagens de empresas');
+    expect(lojaDepoisDaFalha('').status).toBe('sem_resposta');
+    expect(FALHAS_QUE_DESLIGAM.has('131048')).toBe(true);
+    expect(FALHAS_QUE_DESLIGAM.has('131026')).toBe(false);
+  });
+
+  it('qualidade amarela ou vermelha desliga; verde ou sem leitura segue', () => {
+    expect(motivoParaDesligar('GREEN', 'CONNECTED')).toBeNull();
+    expect(motivoParaDesligar('UNKNOWN', null)).toBeNull();
+    expect(motivoParaDesligar('YELLOW', 'CONNECTED')).toContain('amarelo');
+    expect(motivoParaDesligar('RED', 'CONNECTED')).toContain('vermelho');
+    expect(motivoParaDesligar('GREEN', 'FLAGGED')).toContain('FLAGGED');
   });
 });

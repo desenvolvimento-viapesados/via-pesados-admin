@@ -1,11 +1,14 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
-  conferirWhatsApp, enviarEGravar, escreverContato, instanciaDoAgente, type Loja,
+  conferirWhatsApp, enviarEGravar, enviarModeloEGravar, escreverContato, instanciaDoAgente, mensagemDoModelo,
+  situacaoDoOficial, type Loja,
 } from '../_shared/prospeccao.ts';
 import {
-  intervaloSorteado, limiteDoDia, MAX_CONTATOS, podeEnviarAgora, proximoContato, variantes,
+  canalDa, ehCelular, intervaloSorteado, limiteDoDia, MODELO_PROSPECCAO, podeEnviarAgora, proximoContato,
+  REGRAS_DO_CANAL, variantes,
 } from '../_shared/prospeccao-regras.ts';
 import { dentroDaJanela } from '../_shared/regua.ts';
+import { modeloAprovado } from '../_shared/wa.ts';
 
 /**
  * A rotina do agente de prospecção. O pg_cron chama de 5 em 5 minutos; cada
@@ -22,6 +25,10 @@ import { dentroDaJanela } from '../_shared/regua.ts';
  *
  * Três erros de envio seguidos desligam o agente com o motivo na tela —
  * número caindo é o primeiro sinal de bloqueio, e insistir piora.
+ *
+ * Pelo número oficial (03/11/2026) muda o seguinte: a mensagem é o modelo
+ * aprovado pela Meta, um contato só por loja, e antes de cada envio o
+ * número é lido na Meta — qualidade amarela ou vermelha desliga.
  */
 
 const json = (s: number, b: unknown) =>
@@ -58,10 +65,14 @@ Deno.serve(async () => {
 
     if (!cfg.ligado) return json(200, { ok: true, desligado: true });
 
-    /* Quem recebeu os 3 contatos e não respondeu sai da fila de envio. */
+    const { data: escolhido } = await db.from('wa_instancias').select('origem').eq('id', cfg.instancia_id).maybeSingle();
+    const canal = canalDa(escolhido?.origem);
+    const { maxContatos } = REGRAS_DO_CANAL[canal];
+
+    /* Quem recebeu todos os contatos do canal e não respondeu sai da fila de envio. */
     await db.from('prospeccao_lojas')
       .update({ status: 'sem_resposta', proximo_contato_em: null, atualizada_em: agora.toISOString() })
-      .eq('status', 'em_contato').gte('contatos', MAX_CONTATOS).lte('proximo_contato_em', agora.toISOString());
+      .eq('status', 'em_contato').gte('contatos', maxContatos).lte('proximo_contato_em', agora.toISOString());
 
     if (!podeEnviarAgora(agora)) return json(200, { ok: true, fora_do_horario: true });
 
@@ -71,9 +82,17 @@ Deno.serve(async () => {
       return json(200, { ok: true, sem_numero: motivo });
     }
 
-    /* Confere o WhatsApp de um lote pequeno das lojas novas a cada rodada. */
+    /* Confere o WhatsApp de um lote pequeno das lojas novas a cada rodada. O
+       oficial não tem como perguntar: celular vai para a fila, e quem não tem
+       WhatsApp volta como falha de entrega (que a Meta não cobra). */
     const { data: novas } = await db.from('prospeccao_lojas').select('id, telefone').eq('status', 'nova').order('criada_em').limit(10);
-    if (novas?.length) {
+    if (novas?.length && canal === 'oficial') {
+      for (const n of novas) {
+        await db.from('prospeccao_lojas').update({
+          status: ehCelular(n.telefone) ? 'pronta' : 'sem_whatsapp', atualizada_em: agora.toISOString(),
+        }).eq('id', n.id).eq('status', 'nova');
+      }
+    } else if (novas?.length) {
       try {
         const r = await conferirWhatsApp(inst.evolution_instance, novas.map((n) => n.telefone));
         for (const n of novas) {
@@ -91,12 +110,29 @@ Deno.serve(async () => {
 
     const { count: hoje } = await db.from('prospeccao_envios').select('id', { count: 'exact', head: true })
       .eq('tipo', 'contato').is('erro', null).gte('enviada_em', inicioDoDiaBRT(agora));
-    const teto = limiteDoDia(cfg.limite_dia, cfg.ligado_desde ? new Date(cfg.ligado_desde) : null, agora);
+    const teto = limiteDoDia(cfg.limite_dia, cfg.ligado_desde ? new Date(cfg.ligado_desde) : null, agora, canal);
     if ((hoje ?? 0) >= teto) return json(200, { ok: true, teto_do_dia: teto });
+
+    /* O oficial só manda com o número verde na Meta e o modelo aprovado. */
+    if (canal === 'oficial') {
+      const situacao = await situacaoDoOficial();
+      if (!situacao.ok) {
+        await db.from('prospeccao_config').update({
+          ...(situacao.desligar ? { ligado: false } : {}), pausado_motivo: situacao.motivo, atualizado_em: agora.toISOString(),
+        }).eq('id', 1);
+        return json(200, { ok: true, oficial: situacao.motivo });
+      }
+      if (!await modeloAprovado(MODELO_PROSPECCAO)) {
+        await db.from('prospeccao_config').update({
+          pausado_motivo: 'O modelo da prospecção ainda não foi aprovado pela Meta: nada sai até a aprovação.', atualizado_em: agora.toISOString(),
+        }).eq('id', 1);
+        return json(200, { ok: true, modelo_em_analise: MODELO_PROSPECCAO });
+      }
+    }
 
     /* A vez: lembrete vencido primeiro, depois loja nova pronta. */
     let { data: loja } = await db.from('prospeccao_lojas').select('*')
-      .eq('status', 'em_contato').lt('contatos', MAX_CONTATOS).lte('proximo_contato_em', agora.toISOString())
+      .eq('status', 'em_contato').lt('contatos', maxContatos).lte('proximo_contato_em', agora.toISOString())
       .order('proximo_contato_em').limit(1).maybeSingle();
     if (!loja) {
       ({ data: loja } = await db.from('prospeccao_lojas').select('*')
@@ -127,12 +163,25 @@ Deno.serve(async () => {
     }
 
     const numero = (loja.contatos ?? 0) + 1;
-    const { data: anteriores } = await db.from('prospeccao_envios').select('texto')
-      .eq('loja_id', loja.id).eq('tipo', 'contato').is('erro', null).order('enviada_em');
-    const { texto, por } = await escreverContato(loja as Loja, numero, (anteriores ?? []).map((a) => a.texto));
+    let texto: string, por: string;
+    if (canal === 'oficial') {
+      ({ texto } = mensagemDoModelo(loja));
+      por = 'modelo';
+    } else {
+      const { data: anteriores } = await db.from('prospeccao_envios').select('texto')
+        .eq('loja_id', loja.id).eq('tipo', 'contato').is('erro', null).order('enviada_em');
+      ({ texto, por } = await escreverContato(loja as Loja, numero, (anteriores ?? []).map((a) => a.texto)));
+    }
 
     try {
-      const { conversa_id, provider_id } = await enviarEGravar(db, inst, tel, texto, loja.nome);
+      let conversa_id: string, provider_id: string | null;
+      if (canal === 'oficial') {
+        const { count: tentativas } = await db.from('prospeccao_envios').select('id', { count: 'exact', head: true })
+          .eq('loja_id', loja.id).eq('tipo', 'contato');
+        ({ conversa_id, provider_id } = await enviarModeloEGravar(db, inst, tel, loja, `prospeccao:${loja.id}:${(tentativas ?? 0) + 1}`));
+      } else {
+        ({ conversa_id, provider_id } = await enviarEGravar(db, inst, tel, texto, loja.nome));
+      }
       await db.from('prospeccao_envios').insert({ loja_id: loja.id, tipo: 'contato', numero, texto, provider_message_id: provider_id });
       await db.from('prospeccao_lojas').update({
         status: 'em_contato', contatos: numero,
@@ -149,7 +198,13 @@ Deno.serve(async () => {
     } catch (e) {
       const erro = e instanceof Error ? e.message : String(e);
       await db.from('prospeccao_envios').insert({ loja_id: loja.id, tipo: 'contato', numero, texto, erro: erro.slice(0, 400) });
-      await db.from('prospeccao_lojas').update({ travada_ate: null }).eq('id', loja.id);
+      /* No oficial a loja que falhou sai da fila (reativar devolve): sem
+         isso, um número inválido seria tentado de novo a cada rodada até
+         somar três erros e desligar tudo. */
+      await db.from('prospeccao_lojas').update({
+        travada_ate: null,
+        ...(canal === 'oficial' ? { status: 'sem_whatsapp', motivo: `O envio falhou: ${erro.slice(0, 200)}`, atualizada_em: agora.toISOString() } : {}),
+      }).eq('id', loja.id);
       const erros = (cfg.erros_seguidos ?? 0) + 1;
       await db.from('prospeccao_config').update({
         erros_seguidos: erros,

@@ -74,6 +74,8 @@ const GATILHOS: Record<string, Parameters<typeof conferirParams>[1]> = {
   teste_gratis_volte: { body: ['Walker'], urlSuffix: 'tok123' },
   // sistema-lojista/supabase/functions/esqueci-senha
   redefinir_senha: { body: ['Walker', 'iTruck Caminhões'], urlSuffix: 'tok123' },
+  // prospeccao-enviar, pelo número oficial (paramsDoModelo)
+  prospeccao_lojista: { body: ['Claudir Caminhões', 'caminhões'] },
 };
 
 describe('o que os gatilhos mandam bate com o modelo aprovado', () => {

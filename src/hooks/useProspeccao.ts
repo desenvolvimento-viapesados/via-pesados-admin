@@ -27,6 +27,9 @@ export type EstadoProspeccao = {
   numeros: { id: string; nome: string; telefone: string | null; connection_state: string | null }[];
   contagens: Record<StatusLoja, number>;
   hoje: number; respostas_hoje: number; teto: number; horario_de_envio: boolean;
+  /* 'oficial' = o número da API da Meta: modelo aprovado, um contato por loja. */
+  canal: 'evolution' | 'oficial'; maxContatos: number; tetoInicial: number; passoSemanal: number;
+  modelo_aprovado: boolean | null;
   numero_ok: boolean; numero_motivo: string | null; google: boolean; ia: boolean;
 };
 

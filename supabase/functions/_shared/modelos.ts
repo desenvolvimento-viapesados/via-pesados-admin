@@ -715,5 +715,44 @@ export const MODELOS: Modelo[] = [
     ]
    }
   ]
+ } ,
+ /* Prospecção pelo número oficial (03/11/2026): a primeira mensagem para as lojas da lista
+    do portal Caminhões e Carretas. MARKETING porque oferece o produto; o botão "Não tenho
+    interesse" é a saída — quem toca não recebe mais nada (prospeccao-responder). */
+ {
+  "name": "prospeccao_lojista",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Olá! Aqui é o Xavier, da Via Pesados. Encontrei a {{1}} no portal Caminhões e Carretas.\n\nA Via Pesados é um sistema feito só para loja de pesados: você cadastra cada veículo uma vez e ele sai no site da loja, no Mercado Livre, no Instagram e no Facebook. Vendeu, sai de todos sozinho.\n\nPosso montar uma amostra do site da loja com os {{2}} de vocês, sem custo?",
+    "example": {
+     "body_text": [
+      [
+       "Minas Caminhões",
+       "caminhões"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "FOOTER",
+    "text": "Para não receber mais, toque em Não tenho interesse."
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "QUICK_REPLY",
+      "text": "Quero a amostra"
+     },
+     {
+      "type": "QUICK_REPLY",
+      "text": "Não tenho interesse"
+     }
+    ]
+   }
+  ]
  }
 ];

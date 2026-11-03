@@ -76,7 +76,11 @@ function Painel() {
 
   const avisos: string[] = [];
   if (!e.google) avisos.push('Falta a chave do Google Maps (GOOGLE_MAPS_API_KEY) para buscar lojas.');
-  if (!e.ia) avisos.push('Falta a chave da IA (ANTHROPIC_API_KEY): as mensagens saem dos textos prontos e o agente não responde sozinho — toda resposta vem para você.');
+  const oficial = e.canal === 'oficial';
+  if (!e.ia) avisos.push(oficial
+    ? 'Falta a chave da IA (ANTHROPIC_API_KEY): o agente só responde os dois botões da mensagem. Qualquer outra resposta vem para você.'
+    : 'Falta a chave da IA (ANTHROPIC_API_KEY): as mensagens saem dos textos prontos e o agente não responde sozinho — toda resposta vem para você.');
+  if (oficial && e.modelo_aprovado === false) avisos.push('A mensagem da prospecção ainda está em análise na Meta: nada sai até ser aprovada.');
   if (cfg?.instancia_id && !e.numero_ok && e.numero_motivo) avisos.push(e.numero_motivo);
   if (!cfg?.instancia_id) avisos.push('Escolha o número que vai prospectar.');
   if (cfg?.pausado_motivo) avisos.push(cfg.pausado_motivo);
@@ -136,7 +140,7 @@ function Painel() {
               />
             </div>
           </div>
-          <p className="text-[10.5px] text-foreground/35">Começa em 15/dia e sobe 5 por semana até o teto.</p>
+          <p className="text-[10.5px] text-foreground/35">Começa em {e.tetoInicial}/dia e sobe {e.passoSemanal} por semana até o teto.</p>
         </div>
         <div className="space-y-1.5">
           <p className="text-[10.5px] font-semibold tracking-widest uppercase text-foreground/30">Quando a loja responde</p>
@@ -157,8 +161,19 @@ function Painel() {
       )}
 
       <p className="text-[11px] text-foreground/40 leading-relaxed">
-        Só em dia útil, das 08h às 20h, uma mensagem a cada 7 a 18 minutos. Até 3 contatos em 10 dias por loja; respondeu ou
-        pediu para sair, para na hora. Ninguém que já é cliente, prospect ou conversou com a gente recebe.
+        {oficial ? (
+          <>
+            Só em dia útil, das 08h às 20h, uma mensagem a cada 7 a 18 minutos. Pelo número oficial, uma mensagem só por loja: o
+            modelo aprovado pela Meta, com os botões "Quero a amostra" e "Não tenho interesse". Antes de cada envio o número é lido
+            na Meta; se a qualidade cair para amarelo, a prospecção desliga sozinha. Ninguém que já é cliente, prospect ou
+            conversou com a gente recebe.
+          </>
+        ) : (
+          <>
+            Só em dia útil, das 08h às 20h, uma mensagem a cada 7 a 18 minutos. Até 3 contatos em 10 dias por loja; respondeu ou
+            pediu para sair, para na hora. Ninguém que já é cliente, prospect ou conversou com a gente recebe.
+          </>
+        )}
       </p>
     </Panel>
   );
@@ -192,7 +207,7 @@ function Busca() {
   );
 }
 
-function Previa({ loja, onClose }: { loja: LojaProspeccao | null; onClose: () => void }) {
+function Previa({ loja, onClose, max }: { loja: LojaProspeccao | null; onClose: () => void; max: number }) {
   const acao = useAcaoProspeccao();
   const [r, setR] = useState<{ texto: string; contato: number; por: string } | null>(null);
   useEffect(() => {
@@ -214,8 +229,10 @@ function Previa({ loja, onClose }: { loja: LojaProspeccao | null; onClose: () =>
           <div className="space-y-2">
             <div className="rounded-2xl rounded-tr-sm bg-primary/10 px-3.5 py-2.5 text-[13px] text-foreground whitespace-pre-wrap">{r.texto}</div>
             <p className="text-[11px] text-foreground/40">
-              Contato {r.contato} de 3 · {r.por === 'ia' ? 'escrita pela IA para esta loja' : 'texto pronto (a IA não está ligada)'}.
-              Cada prévia sai diferente: é só um exemplo, nada foi enviado.
+              {r.por === 'modelo'
+                ? 'Modelo aprovado pela Meta, com os botões "Quero a amostra" e "Não tenho interesse". É exatamente o que sai; nada foi enviado.'
+                : <>Contato {r.contato} de {max} · {r.por === 'ia' ? 'escrita pela IA para esta loja' : 'texto pronto (a IA não está ligada)'}.
+                  Cada prévia sai diferente: é só um exemplo, nada foi enviado.</>}
             </p>
           </div>
         )}
@@ -285,7 +302,7 @@ export function ProspeccaoTab() {
                 <div className="w-[150px]">
                   <span className={cn('text-[10.5px] font-semibold rounded-full px-2 py-0.5', s.cor)}>{s.rotulo}</span>
                   <p className="text-[10.5px] text-foreground/40 mt-1">
-                    {l.contatos > 0 ? `${l.contatos} de 3 contatos` : 'Sem contato ainda'}
+                    {l.contatos > 0 ? ((e?.maxContatos ?? 3) === 1 ? 'Mensagem enviada' : `${l.contatos} de ${e?.maxContatos ?? 3} contatos`) : 'Sem contato ainda'}
                     {l.humano_assumiu ? ' · com a equipe' : ''}
                   </p>
                 </div>
@@ -326,7 +343,7 @@ export function ProspeccaoTab() {
         </div>
       )}
 
-      <Previa loja={previa} onClose={() => setPrevia(null)} />
+      <Previa loja={previa} onClose={() => setPrevia(null)} max={e?.maxContatos ?? 3} />
     </div>
   );
 }
