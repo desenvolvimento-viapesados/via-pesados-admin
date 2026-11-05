@@ -517,3 +517,12 @@ describe('números de teste do dono (05/11/2026)', () => {
     expect(sql).toMatch(/historico_desde timestamptz/);
   });
 });
+
+describe('teste grátis fora da conversa (dono, 05/11/2026)', () => {
+  it('o conferente barra grátis, gratuito, de graça e período de teste', () => {
+    for (const t of ['Antes de pagar tem o teste grátis.', 'É gratuito no começo.', 'Dá pra usar de graça.', 'Tem um período de teste.']) {
+      expect(fiscal([t]).violacoes.some((v) => v.regra === 'proibida'), t).toBe(true);
+    }
+    expect(fiscal(['O Xavier te mostra o sistema funcionando com a realidade da loja.']).ok).toBe(true);
+  });
+});

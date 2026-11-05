@@ -429,7 +429,7 @@ export async function aplicarRegistro(db: Db, estado: AssistenteConversa, args: 
   if (args.pediu_preco === true) {
     const r = respostaAoPreco((estado.pedidos_preco ?? 0) + 1);
     preco = r === 'teste_gratis'
-      ? 'Primeiro pedido de preço: diga que o valor o Xavier mostra nos 15 minutos, junto com o sistema funcionando, e que antes tem o teste grátis com tudo liberado. Sem número. Depois, uma pergunta de dor.'
+      ? 'Primeiro pedido de preço: diga que o valor o Xavier mostra nos 15 minutos, junto com o sistema funcionando na realidade da loja. Sem número e sem falar de teste. Depois, uma pergunta de dor.'
       : r === 'horario_mais_cedo'
         ? 'Segundo pedido de preço: sem número e sem repetir a frase de antes. Algo como "Te entendo, você quer saber se cabe no bolso. O mais cedo que o Xavier tem é [1º horário da lista], e em 15 minutos ele te mostra o valor. Pode ser?" Só esse horário.'
         : 'Terceiro pedido de preço (ou mais): chame o Xavier (chamar_xavier) e diga "Vou chamar o Xavier pra te responder isso por aqui."';
