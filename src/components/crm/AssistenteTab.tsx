@@ -190,8 +190,9 @@ function PainelGeral({ config }: { config: AssistenteConfig }) {
         <div className="space-y-1 text-[11.5px] text-foreground/45 leading-relaxed">
           <p className={rotuloCls}>Como ele trabalha</p>
           <p>
-            Se apresenta como assistente virtual do Xavier. Explora o que atrapalha a venda da loja, mostra o que o sistema faz
-            e marca 15 minutos com você. Não fala preço nem prazo do teste. Você escreveu na conversa, ele sai dela.
+            É o Davi, do Via Pesados, e avisa na primeira mensagem que é atendimento automático. Pergunta da rotina da loja até
+            o lojista dizer o que atrapalha, mostra uma coisa do sistema ligada a isso e marca 15 minutos com você. Não fala preço
+            nem de teste. Você escreveu na conversa, ele sai dela.
           </p>
         </div>
       </div>
@@ -388,14 +389,14 @@ function Configuracao({ config }: { config: AssistenteConfig }) {
 
 /* ── fatos aprovados ──────────────────────────────────────────── */
 
-type FatoNaTela = { id?: string; tema: string; texto: string; nao_dizer: string; ativo: boolean; ordem: number };
+type FatoNaTela = { id?: string; tema: string; texto: string; nao_dizer: string; usar_quando: string; ativo: boolean; ordem: number };
 
 function EditorDeFato({ inicial, onFechar }: { inicial: FatoNaTela; onFechar: () => void }) {
   const salvar = useSalvarFato();
   const [f, setF] = useState(inicial);
   const gravar = async () => {
     try {
-      await salvar.mutateAsync({ ...f, nao_dizer: f.nao_dizer || null });
+      await salvar.mutateAsync({ ...f, nao_dizer: f.nao_dizer || null, usar_quando: f.usar_quando || null });
       toast.success('Fato salvo.');
       onFechar();
     } catch (e) { toast.error((e as Error).message); }
@@ -406,6 +407,8 @@ function EditorDeFato({ inicial, onFechar }: { inicial: FatoNaTela; onFechar: ()
         onChange={(e) => setF({ ...f, tema: e.target.value })} />
       <textarea className={cn(inputCls, 'w-full h-auto py-2 resize-y')} rows={3} placeholder="O que é verdade e ele pode dizer"
         value={f.texto} onChange={(e) => setF({ ...f, texto: e.target.value })} />
+      <textarea className={cn(inputCls, 'w-full h-auto py-2 resize-y')} rows={2} placeholder="Quando usar: a dor que este fato responde (opcional)"
+        value={f.usar_quando} onChange={(e) => setF({ ...f, usar_quando: e.target.value })} />
       <textarea className={cn(inputCls, 'w-full h-auto py-2 resize-y')} rows={2} placeholder="O que ele não pode dizer sobre isso (opcional)"
         value={f.nao_dizer} onChange={(e) => setF({ ...f, nao_dizer: e.target.value })} />
       <div className="flex items-center gap-2">
@@ -437,6 +440,7 @@ function LinhaDoFato({ fato, onEditar }: { fato: AssistenteFato; onEditar: () =>
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-semibold text-foreground">{fato.tema}</p>
         <p className="text-[12.5px] text-foreground/75 leading-snug mt-0.5">{fato.texto}</p>
+        {fato.usar_quando && <p className="text-[11.5px] text-foreground/45 leading-snug mt-1">Usa quando: {fato.usar_quando}</p>}
         {fato.nao_dizer && <p className="text-[11.5px] text-foreground/45 leading-snug mt-1">Não dizer: {fato.nao_dizer}</p>}
       </div>
       <div className="flex items-center gap-1 shrink-0">
@@ -489,11 +493,11 @@ function Fatos() {
       ) : (
         <div className="rounded-2xl border border-black/[0.07] dark:border-white/[0.08] divide-y divide-black/[0.06] dark:divide-white/[0.06]">
           {editando === 'novo' && (
-            <EditorDeFato inicial={{ tema: '', texto: '', nao_dizer: '', ativo: true, ordem: proximaOrdem }} onFechar={() => setEditando(null)} />
+            <EditorDeFato inicial={{ tema: '', texto: '', nao_dizer: '', usar_quando: '', ativo: true, ordem: proximaOrdem }} onFechar={() => setEditando(null)} />
           )}
           {fatos.map((f) => editando === f.id ? (
             <EditorDeFato key={f.id}
-              inicial={{ id: f.id, tema: f.tema, texto: f.texto, nao_dizer: f.nao_dizer ?? '', ativo: f.ativo, ordem: f.ordem ?? 0 }}
+              inicial={{ id: f.id, tema: f.tema, texto: f.texto, nao_dizer: f.nao_dizer ?? '', usar_quando: f.usar_quando ?? '', ativo: f.ativo, ordem: f.ordem ?? 0 }}
               onFechar={() => setEditando(null)} />
           ) : (
             <LinhaDoFato key={f.id} fato={f} onEditar={() => setEditando(f.id)} />

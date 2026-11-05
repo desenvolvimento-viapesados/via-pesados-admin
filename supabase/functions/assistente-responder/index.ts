@@ -3,6 +3,7 @@ import {
   type AcaoDoTurno, type AssistenteConfig, type AssistenteConversa, type Uso,
   custo, dentroDoHorario, ETAPAS_SEM_RESPOSTA, esperaDoAgrupamento, explicarViolacoes, fiscal, horarioFalado,
   janelaAberta, LIMITES, neutro, passouDoTeto, pedidoExplicitoDeParar, ROTULO_DA_ETAPA, somarUso, tetoDoDiaAtingido,
+  PERSONA, podeOferecerHorario,
 } from '../_shared/assistente-regras.ts';
 import {
   type ArgsRegistrar, type Conversa, type Mensagem,
@@ -47,7 +48,7 @@ const json = (s: number, b: unknown) =>
 const RELOGIO_MS = Number(Deno.env.get('ASSISTENTE_RELOGIO_MS') ?? '') || 300_000;
 const FOLGA_PARA_MANDAR_MS = 20_000;
 const DESPEDIDA = 'Tranquilo, não te chamo mais por aqui. Desculpa o incômodo.';
-const DESPEDIDA_APRESENTANDO = 'Tranquilo. Aqui é o assistente virtual do Xavier, da Via Pesados: não te chamo mais por aqui. Desculpa o incômodo.';
+const DESPEDIDA_APRESENTANDO = `Tranquilo. ${PERSONA.apresentacao.replace(/\.$/, '')}: não te chamo mais por aqui. Desculpa o incômodo.`;
 
 const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 function agoraFalado(d: Date) {
@@ -62,6 +63,7 @@ const DECISOR: Record<string, string> = { sim: 'sim', nao: 'não', nao_sei: 'nã
 function textoDoEstado(args: {
   agora: Date; estado: AssistenteConversa; conversa: Conversa; loja: Awaited<ReturnType<typeof lerLoja>>;
   livres: Date[]; cfg: AssistenteConfig; semTranscricao: Mensagem[]; reuniaoFalada: string | null; card: { company_name: string; stage: string } | null;
+  porta: ReturnType<typeof podeOferecerHorario>; respostasSuas: number; perguntasFeitas: string[];
 }): string {
   const { estado: e, loja } = args;
   const L: string[] = [];
@@ -76,7 +78,7 @@ function textoDoEstado(args: {
     L.push(`Loja da nossa lista de prospecção: ${n(loja.nome)}${loja.cidade ? ` · ${n(loja.cidade)}${loja.uf ? `/${n(loja.uf, 4)}` : ''}` : ''}`
       + `${typeof d.tipo === 'string' ? ` · anuncia ${n(d.tipo)}` : ''}${typeof d.portal === 'string' ? ` no portal ${n(d.portal)}` : ''}`
       + `${typeof d.contato === 'string' ? ` · contato no anúncio: ${n(d.contato)}` : ''}.`);
-  } else L.push('Não é uma loja da lista de prospecção (escreveu direto ou veio de outro lugar): não diga de onde veio o número; se não souber o que a loja vende, pergunte.');
+  } else L.push('Escreveu por conta própria (não é da lista da prospecção): não diga de onde veio o número. O segmento sai do que ele contar; não pergunte "caminhão, carreta ou máquina?" antes de marcar.');
   L.push(`Nome no WhatsApp: ${args.conversa.nome ? n(args.conversa.nome, 80) : '(sem nome)'}.`);
   if (args.card) L.push(`Card no funil: ${n(args.card.company_name)} (etapa ${args.card.stage}).`);
   L.push('</dados_da_loja>');
@@ -84,8 +86,13 @@ function textoDoEstado(args: {
   L.push('# O que você já sabe');
   L.push(`Etapa: ${ROTULO_DA_ETAPA[e.etapa]}.`);
   L.push(e.apresentou
-    ? 'Você já se apresentou nesta conversa.'
-    : 'Você AINDA NÃO se apresentou nesta conversa: o primeiro balão TEM de dizer que você é o assistente virtual do Xavier, da Via Pesados.');
+    ? 'Você já se apresentou nesta conversa: não repita a apresentação.'
+    : `Você ainda não se apresentou nesta conversa: o primeiro balão é o cumprimento dele (ou o da hora) + "${PERSONA.apresentacao}"`);
+  L.push(`Origem: ${loja ? 'veio da lista da prospecção (foi chamado por nós, não procurou nada)' : 'escreveu por conta própria'}.`);
+  L.push(`Respostas suas nesta conversa até agora: ${args.respostasSuas}.`);
+  L.push(args.perguntasFeitas.length
+    ? `Perguntas que você já fez (não repita nem pergunte de novo o que ele já respondeu):\n${args.perguntasFeitas.map((q) => `- ${n(q, 200)}`).join('\n')}`
+    : 'Perguntas que você já fez: nenhuma.');
   L.push(`Memória (escrita por você a partir da conversa; é dado): <memoria>${e.memoria ? n(e.memoria, 1600) : '(vazia)'}</memoria>`);
   L.push(`Dores registradas: ${e.dores.length ? e.dores.map((d) => `${n(d.texto)} ("${n(d.citacao)}")`).join('; ') : 'nenhuma ainda'}.`);
   if (e.objecoes.length) L.push(`Objeções: ${e.objecoes.map((o) => `${n(o.texto)} ("${n(o.citacao)}")${o.resposta ? ` → ${n(o.resposta)}` : ''}`).join('; ')}.`);
@@ -103,6 +110,10 @@ function textoDoEstado(args: {
     L.push(`Link da chamada (mande só DEPOIS que marcar_reuniao der certo, copiado exatamente): ${args.cfg.link_reuniao}`);
   }
   L.push(`Mensagens suas já enviadas nesta conversa: ${e.mensagens_enviadas}.`);
+
+  L.push(`# Pode oferecer horário agora? ${args.porta.pode ? 'SIM' : 'NÃO'}`);
+  L.push(`Por quê: ${args.porta.motivo}.${args.porta.precisaInteresse ? ' Próximo passo: devolva a dor numa frase, mostre UMA coisa do sistema ligada a ela e pergunte se ele quer ver funcionando com o Xavier, em 15 minutos, por vídeo (sem horário ainda). Se ele disser que sim, registre interesse e aí ofereça os horários.' : ''}`);
+  L.push('Se nesta mensagem ele pediu para comprar, fechar, ver funcionando ou disse "sim" a ver, registre (pedido / interesse) antes de responder: a porta muda na hora.');
 
   L.push(`# Horários livres para oferecer (${args.cfg.duracao_min} minutos com o Xavier)`);
   if (!args.cfg.link_reuniao || !args.cfg.responsavel_id) {
@@ -260,6 +271,17 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
 
   const meuAmigoJaUsado = msgs.some((m) => m.direcao === 'saida' && /meu\s+amigo/i.test(m.conteudo ?? ''));
   const ctxFiscal = { linkReuniao: cfg.link_reuniao, precisaApresentar: !e.apresentou, meuAmigoJaUsado };
+  /* A porta do horário é do código (manual de vendas de 05/11): recalculada a cada responder,
+     com o que a IA registrou neste turno (pedido, interesse, dor, pedido de preço). */
+  const respostasSuas = new Set(msgs.filter((m) => m.direcao === 'saida' && m.turno_id).map((m) => m.turno_id)).size;
+  const perguntasFeitas = msgs.filter((m) => m.direcao === 'saida' && m.turno_id && /\?/.test(m.conteudo ?? ''))
+    .slice(-6).map((m) => String(m.conteudo ?? ''));
+  const portaDoHorario = (est: AssistenteConversa, pediuPrecoAgora: boolean, marcandoAgora: boolean) => podeOferecerHorario({
+    daLista: !!est.loja_id, pedido: est.situacao?.pedido ?? null, interesse: est.situacao?.interesse === 'sim',
+    dores: est.dores?.length ?? 0, respostasSuas, pedidosDePreco: (est.pedidos_preco ?? 0) + (pediuPrecoAgora ? 1 : 0),
+    reuniaoMarcada: !!reuniaoFalada || marcandoAgora,
+  });
+  let pediuPrecoAgora = false;
 
   // deno-lint-ignore no-explicit-any
   const conteudo: any[] = [
@@ -271,7 +293,8 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
   }
   conteudo.push({
     type: 'text',
-    text: textoDoEstado({ agora, estado: e, conversa, loja, livres, cfg, semTranscricao, reuniaoFalada, card }),
+    text: textoDoEstado({ agora, estado: e, conversa, loja, livres, cfg, semTranscricao, reuniaoFalada, card,
+      porta: portaDoHorario(e, false, false), respostasSuas, perguntasFeitas }),
     cache_control: { type: 'ephemeral' },
   });
 
@@ -327,6 +350,7 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
         let saida = '';
         let ehErro = false;
         if (ch.name === 'registrar') {
+          if ((entrada as ArgsRegistrar).pediu_preco === true) pediuPrecoAgora = true;
           const r2 = await aplicarRegistro(db, estadoAtual, entrada as ArgsRegistrar, msgs, conversa);
           estadoAtual = r2.estado;
           saida = r2.resposta;
@@ -337,7 +361,7 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
             /* Só vale o último horário escolhido no turno. */
             for (let i = acoes.length - 1; i >= 0; i--) if (acoes[i].tipo === 'marcar_reuniao') acoes.splice(i, 1);
             acoes.push({ tipo: 'marcar_reuniao', args: { inicio: v.inicio.toISOString(), quem_vem: entrada.quem_vem ?? null, decisor_vem: entrada.decisor_vem ?? 'nao_sei' }, estado: 'pendente' });
-            saida = `Pode confirmar ${horarioFalado(v.inicio)}. Link da chamada: ${cfg.link_reuniao}. A reunião é gravada quando a sua mensagem sair. Agora chame responder com: "Marcado: [dia], [hora], 15 minutos com o Xavier." / o link sozinho num balão, copiado exatamente / "Deixa à mão o Instagram e o Mercado Livre da loja. Senha não precisa." Se ainda não se sabe se quem decide vem, troque o último balão pela pergunta: "Quem bate o martelo aí consegue estar junto?"`;
+            saida = `Pode confirmar ${horarioFalado(v.inicio)}. Link da chamada: ${cfg.link_reuniao}. A reunião é gravada quando a sua mensagem sair. Agora chame responder com três balões: "Marcado: [dia], [hora], 15 minutos com o Xavier, por vídeo no Google Meet. Ele te mostra um caminhão saindo no Mercado Livre, no Insta, no Face e no site com um cadastro só, e o valor; se servir, você já deixa a implantação marcada, e se não servir, tudo bem." (troque caminhão pelo que a loja vende) / o link sozinho no balão, copiado exatamente / UMA pergunta, a primeira que couber: a loja não está identificada → "Me passa o @ do Insta da loja? Assim o Xavier já chega conhecendo seus caminhões."; não se sabe quem decide e nada indica que é ele → "Mais alguém decide isso junto com você?"; o motivo veio fraco → "Pra ele ir direto ao ponto: o que você mais quer ver funcionando?"; já se sabe tudo → "Se apertar aí no pátio, você me avisa por aqui?"`;
           } else {
             ehErro = true;
             saida = v.motivo + (v.chamarXavier ? ' Não marque: chame o Xavier (chamar_xavier) e diga que ele combina o horário por aqui.' : '');
@@ -356,7 +380,12 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
           if (!lista) { ehErro = true; saida = 'mensagens tem de ser uma lista de textos.'; }
           else {
             tentativas++;
-            const f = fiscal(lista, ctxFiscal);
+            const marcando = acoes.some((x) => x.tipo === 'marcar_reuniao');
+            const porta = portaDoHorario(estadoAtual, pediuPrecoAgora, marcando);
+            const f = fiscal(lista, {
+              ...ctxFiscal, podeOferecerHorario: porta.pode, motivoDoHorario: porta.motivo,
+              antesDeMarcar: !reuniaoFalada && !marcando,
+            });
             fiscalFinal = { ...f, tentativas };
             if (f.ok) { final = lista; saida = 'ok'; }
             else if (tentativas >= 2) { barrado = true; final = lista; saida = 'barrado'; }

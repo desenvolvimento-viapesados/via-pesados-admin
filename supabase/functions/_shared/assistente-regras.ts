@@ -7,7 +7,8 @@
  *     conduz até 15 minutos de videochamada com o Xavier. Antes de fechar o horário,
  *     pergunta se quem decide vem junto (não bloqueia; vai para o dossiê).
  *  2. Nunca diz preço nem prazo do teste. Nunca número falso, caso inventado, depoimento.
- *  3. Diz que é o assistente virtual do Xavier na primeira mensagem; nunca finge ser gente
+ *  3. Fala como o Davi, do Via Pesados, e avisa na primeira mensagem que é atendimento
+ *     automático (05/11/2026: o dono quis nome próprio; o aviso fica, curto); nunca finge ser gente
  *     nem finge esquecimento.
  *  4. Nada automático fora das 08h–20h de São Paulo, e texto livre só com a janela de 24h
  *     da Meta aberta.
@@ -28,6 +29,17 @@ export const ROTULO_DO_MODO: Record<Modo, string> = {
   sugere: 'Sugere, você aprova',
   sozinho: 'Atende sozinho',
 };
+
+/**
+ * Quem fala (decisão do dono, 05/11/2026): o Davi, do Via Pesados. O aviso de atendimento
+ * automático vai na primeira mensagem, curto, e é a única coisa que não sai: a IA nunca se
+ * passa por gente (regra de uso da IA e confiança do lojista).
+ */
+export const PERSONA = {
+  nome: 'Davi',
+  apresentacao: 'Aqui é o Davi, do Via Pesados (atendimento automático).',
+  souAutomatico: 'Sou atendimento automático do Via Pesados, sim. Se preferir, chamo o Xavier pra falar com você por aqui.',
+} as const;
 
 export type Etapa =
   | 'conversa' | 'dor' | 'prova' | 'compromisso' | 'agendado' | 'entregue'
@@ -114,7 +126,72 @@ export type Situacao = {
   cidade?: string | null;
   segmento?: 'caminhoes' | 'implementos' | 'maquinas' | 'onibus' | 'outro' | null;
   quem_fala?: string | null;
+  /** A loja: nome ou @ do Instagram (a cidade vai em `cidade`). */
+  loja?: string | null;
+  /** Quem posta os anúncios hoje: dono, vendedor, família, agência. */
+  quem_anuncia?: string | null;
+  /** Como manda foto e ficha ao cliente, nas palavras dele. */
+  como_manda?: string | null;
+  /** Sozinho, tem vendedor, quantos. */
+  equipe?: string | null;
+  /** Época boa (máquinas e agro), nas palavras dele. */
+  epoca_boa?: string | null;
+  /** Por que agora (lead que procurou a gente), nas palavras dele. */
+  motivo?: string | null;
+  /** O que ele quer ver nos 15 minutos. */
+  o_que_quer_ver?: string | null;
+  /** Começa já ou mais pra frente, nas palavras dele. */
+  prazo?: string | null;
+  /** Não é o momento: por quê e quando volta (a porta fica aberta, não encerra). */
+  nao_e_o_momento?: string | null;
+  /** O pedido mais quente que ele fez (o código decide se já pode oferecer horário). */
+  pedido?: Pedido | null;
+  /** Disse "sim" a ver funcionando. */
+  interesse?: 'sim' | null;
 };
+
+/** O que o lead pediu, do mais quente ao mais frio (só sobe). */
+export type Pedido = 'fechar_ja' | 'comprar' | 'ver' | 'como_funciona';
+export const PEDIDOS: readonly Pedido[] = ['fechar_ja', 'comprar', 'ver', 'como_funciona'];
+/** Fica o mais quente dos dois (fechar_ja > comprar > ver > como_funciona). */
+export function pedidoMaisQuente(a: Pedido | null | undefined, b: Pedido | null | undefined): Pedido | null {
+  const ia = a ? PEDIDOS.indexOf(a) : -1, ib = b ? PEDIDOS.indexOf(b) : -1;
+  if (ia < 0) return ib < 0 ? null : b!;
+  if (ib < 0) return a!;
+  return ia <= ib ? a! : b!;
+}
+
+/**
+ * Já pode oferecer horário? A regra é do código, não do texto (manual de vendas de 05/11,
+ * tabela 1.3): o modelo tende a convidar cedo quando a trava está só nas instruções.
+ *   - reunião marcada, ou marcando agora: sim (é remarcar ou confirmar);
+ *   - pediu para fechar já: sim, na hora;
+ *   - pediu para comprar: depois de duas respostas suas (os horários vêm até a 3ª);
+ *   - pediu para ver funcionando, ou disse "sim" a ver: sim;
+ *   - segundo pedido de preço: sim (o horário mais cedo, dentro da resposta do preço);
+ *   - disse uma dor: sim se veio por conta própria; da lista da prospecção, primeiro o
+ *     "quer ver funcionando?" (precisaInteresse).
+ */
+export function podeOferecerHorario(x: {
+  daLista: boolean; pedido?: Pedido | null; interesse?: boolean; dores: number;
+  respostasSuas: number; pedidosDePreco: number; reuniaoMarcada?: boolean;
+}): { pode: boolean; precisaInteresse: boolean; motivo: string } {
+  if (x.reuniaoMarcada) return { pode: true, precisaInteresse: false, motivo: 'a reunião já está marcada (só para remarcar, se ele pedir)' };
+  if (x.pedido === 'fechar_ja') return { pode: true, precisaInteresse: false, motivo: 'ele pediu para fechar já: horários direto, perguntas depois do link' };
+  if (x.pedido === 'ver' || x.interesse) return { pode: true, precisaInteresse: false, motivo: 'ele quer ver funcionando' };
+  if (x.pedidosDePreco >= 2) return { pode: true, precisaInteresse: false, motivo: 'segundo pedido de preço: só o horário mais cedo, na resposta do preço' };
+  if (x.pedido === 'comprar') {
+    return x.respostasSuas >= 2
+      ? { pode: true, precisaInteresse: false, motivo: 'ele quer comprar e você já fez as perguntas' }
+      : { pode: false, precisaInteresse: false, motivo: `ele quer comprar: antes, ${x.respostasSuas === 0 ? 'até duas perguntas' : 'mais uma pergunta'} sobre a loja, uma por resposta` };
+  }
+  if (x.dores > 0) {
+    return x.daLista
+      ? { pode: false, precisaInteresse: true, motivo: 'ele disse a dor, mas foi chamado pela prospecção: primeiro pergunte se quer ver funcionando' }
+      : { pode: true, precisaInteresse: false, motivo: 'ele disse a dor e veio por conta própria' };
+  }
+  return { pode: false, precisaInteresse: false, motivo: 'ainda não apareceu dor, motivo nem pedido: continue entendendo a loja' };
+}
 
 export type AssistenteConversa = {
   conversa_id: string;
@@ -182,6 +259,8 @@ export type AssistenteFato = {
   tema: string;
   texto: string;
   nao_dizer: string | null;
+  /** A dor que este fato responde: assim a lista deixa de ser cardápio. */
+  usar_quando: string | null;
   ativo: boolean;
   ordem: number;
   atualizado_em: string;
@@ -317,7 +396,7 @@ export function cortarMemoria(texto: string | null | undefined): string | null {
 export type RegraFiscal =
   | 'quantidade' | 'vazia' | 'tamanho' | 'linhas' | 'lista' | 'perguntas'
   | 'preco' | 'prazo' | 'percentual' | 'link' | 'proibida' | 'pedido_sensivel'
-  | 'fingir_gente' | 'esquecimento' | 'meu_amigo' | 'apresentacao';
+  | 'fingir_gente' | 'esquecimento' | 'meu_amigo' | 'apresentacao' | 'horario_cedo' | 'despejo' | 'palco';
 
 export type Violacao = {
   regra: RegraFiscal;
@@ -336,6 +415,12 @@ export type ContextoFiscal = {
   precisaApresentar?: boolean;
   /** "meu amigo" já foi dito pelo assistente (ou pelo modelo) nesta conversa. */
   meuAmigoJaUsado?: boolean;
+  /** false = ainda não é hora de oferecer horário (podeOferecerHorario); undefined não confere. */
+  podeOferecerHorario?: boolean;
+  /** O motivo, para a IA entender na segunda tentativa. */
+  motivoDoHorario?: string;
+  /** Reunião ainda não marcada: vale a regra de uma coisa do sistema por resposta. */
+  antesDeMarcar?: boolean;
 };
 
 const NUM_EXTENSO =
@@ -354,6 +439,34 @@ const PRECO: RegExp[] = [
   /\b(?:mensalidade|mensal|plano|valor|custa|custo|fica|ficaria|sai\s+por|a\s+partir\s+de|preco|investimento|paga|pagar|cobra|cobramos)\b\D{0,20}\b\d{3,5}\b/, // fica 587, a partir de 437
   /\b(?:437|587)\b/,                                           // os valores de hoje, em qualquer lugar
 ];
+/* Frases de vendedor de palco, de pressão, de pedágio e de promessa que o assistente não
+   cumpre (manual de vendas de 05/11, seção 5.3). Sobre o texto plano. */
+const PALCO: [RegExp, string][] = [
+  [/\bteste\b|\btestar\b|\btesta-lo\b/, 'teste (não é oferecido por enquanto)'],
+  [/\bexcelente\s+pergunta\b|\bfaz\s+sentido\s+(?:pra|para)\s+(?:voce|vc)\b|\bseria\s+loucura\b|\bentendo\s+perfeitamente\b/, 'frase de vendedor de palco'],
+  [/\binvestimento\b|\bcondicao\s+especial\b|\brisco\s+zero\b|\bgarantid[oa]s?\b|\bnao\s+perca\b|\bcorra\b|\bultimas\s+vagas\b|\bso\s+hoje\b|\bagenda\s+(?:esta\s+)?lotando\b/, 'pressão ou promessa'],
+  [/\bvoce\s+(?:esta|ta)\s+perdendo\b|\bseu\s+concorrente\b|\bcaminhao\s+parado\b/, 'medo (pergunte, não acuse)'],
+  [/\bo\s+(?:comeco|primeiro\s+passo)\s+e\b|\be\s+necessario\b/, 'reunião como pedágio'],
+  [/\bcabe\s+no\s+bolso\b|\bdepende\s+do\s+plano\b|\brealidade\s+da\s+(?:sua\s+)?loja\b|\bdeixa\s+a\s+mao\b/, 'frase que o dono reprovou'],
+  [/\bte\s+(?:mando|envio|passo)\s+(?:depois|mais\s+tarde|amanha)\b|\bte\s+chamo\s+(?:amanha|depois|semana)\b|\bte\s+lembro\b|\bconseguiu\s+(?:ver|falar)\b|\bso\s+passando\b/, 'promessa ou cobrança que você não cumpre'],
+  [/\btenho\s+(?:hoje|amanha|segunda|terca|quarta|quinta|sexta|sabado|domingo)\b/, '"tenho [horário]" (o horário é do Xavier: "o Xavier pode...")'],
+];
+
+/* Temas do sistema: antes de marcar, uma resposta fala de um só (uma dor, uma prova). Os
+   fatos de risco (fidelidade, implantação, quem somos) não contam. */
+const TEMAS_DO_SISTEMA: [RegExp, string][] = [
+  [/\bmercado\s+livre\b|\binsta(?:gram)?\b|\bface(?:book)?\b|\btodos\s+os\s+canais\b|\bsai\s+de\s+todos\b/, 'anúncio nos canais'],
+  [/\bfotos?\s+na\s+ordem\b|\bficha\b[^.]{0,40}\bwhatsapp\b|\bwhatsapp\s+do\s+cliente\b/, 'envio pelo WhatsApp'],
+  [/\bcada\s+vendedor\b|\bconversa\s+fica\s+com\s+a\s+loja\b/, 'WhatsApp da equipe'],
+  [/\bquem\s+(?:ja\s+)?procurou\s+um\s+igual\b/, 'vendas na base'],
+  [/\bsimulador\b|\bparcela\b/, 'simulador'],
+  [/\bfunil\b|\brelatorios?\b|\bfinanceiro\b|\bconsignac\w*|\bponto\s+eletronico\b/, 'gestão'],
+];
+
+/* Dia e hora no mesmo balão: é oferta (ou confirmação) de horário. */
+const DIA_CITADO = /\b(?:domingo|segunda|terca|quarta|quinta|sexta|sabado|hoje|amanha)\b|\bdia\s+\d{1,2}\b|\b\d{1,2}\/\d{1,2}\b/;
+const HORA_CITADA = /\b\d{1,2}\s*(?:h|:\s*\d{2})\b|\b\d{1,2}\s*h(?:s|oras?)\b|\b\d{1,2}\s+horas?\b/;
+
 const PRAZO: RegExp[] = [
   /\b\d+\s*(?:dias?|semanas?|meses|mes|anos?)\b/,             // 60 dias, 2 meses
   new RegExp(`\\b${NUM_EXTENSO}\\s+(?:dias|semanas|meses|anos)\\b`),
@@ -391,6 +504,8 @@ const NEGA_TERMO = new RegExp(`\\b(?:nao|nunca|jamais|nem|sem)\\s+(?:\\w+\\s+)?$
 const FINGIR_GENTE: RegExp[] = [
   /(?<!\bnao\s)\bsou\s+o\s+xavier\b/,
   /\baqui\s+(?:e|eh)\s+o\s+xavier\b/,
+  /\bnao\s+sou\s+(?:um\s+)?(?:atendimento\s+)?automatico\b/,
+  /(?<!\bnao\s(?:e\s)?)\batendimento\s+humano\b/,
   /(?<!\bnao\s)\bsou\s+(?:um\s+|uma\s+)?(?:humano|humana|pessoa|gente|de\s+verdade|de\s+carne)\b/,
   /\bnao\s+sou\s+(?:um\s+|uma\s+)?(?:robo|bot|ia|inteligencia\s+artificial|maquina|assistente\s+virtual)\b/,
 ];
@@ -439,6 +554,7 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
 
   let perguntas = 0;
   let meuAmigo = 0;
+  const temas = new Set<string>();
 
   lista.forEach((bruta, i) => {
     const m = limpo(String(bruta ?? ''));
@@ -472,7 +588,7 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
     for (const r of PRAZO) {
       const achou = p.match(r);
       if (achou) {
-        v.push({ regra: 'prazo', mensagem: i, trecho: achou[0], explicacao: 'Não escreva número com dia, semana, mês ou ano, nem repetindo o que o lead disse: diga "uns dias", "esse tempo todo", "demora". O prazo do teste o Xavier acerta com eles na reunião.' });
+        v.push({ regra: 'prazo', mensagem: i, trecho: achou[0], explicacao: 'Não escreva número com dia, semana, mês ou ano, nem repetindo o que o lead disse: diga "uns dias", "esse tempo todo", "demora".' });
         break;
       }
     }
@@ -502,13 +618,25 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
     for (const r of FINGIR_GENTE) {
       const achou = p.match(r);
       if (achou) {
-        v.push({ regra: 'fingir_gente', mensagem: i, trecho: achou[0], explicacao: 'Você é o assistente virtual do Xavier: nunca diga que é o Xavier ou uma pessoa.' });
+        v.push({ regra: 'fingir_gente', mensagem: i, trecho: achou[0], explicacao: `Você é o ${PERSONA.nome}, atendimento automático do Via Pesados: nunca diga que é uma pessoa ou o Xavier. Se perguntarem, confirme que é automático.` });
         break;
       }
     }
     const esq = p.match(ESQUECIMENTO);
     if (esq) v.push({ regra: 'esquecimento', mensagem: i, trecho: esq[0], explicacao: 'Não finja esquecimento.' });
+
+    for (const [r, nome] of PALCO) {
+      const achou = p.match(r);
+      if (achou) v.push({ regra: 'palco', mensagem: i, trecho: achou[0], explicacao: `Tire isto: ${nome}.` });
+    }
+    for (const [r, tema] of TEMAS_DO_SISTEMA) if (r.test(p)) temas.add(tema);
+    if (ctx.podeOferecerHorario === false && DIA_CITADO.test(p) && HORA_CITADA.test(p)) {
+      v.push({ regra: 'horario_cedo', mensagem: i, explicacao: `Ainda não é hora de oferecer horário: ${ctx.motivoDoHorario ?? 'falta entender a loja'}. Se ele pediu para comprar, fechar ou ver funcionando, registre o pedido (registrar: pedido) antes.` });
+    }
   });
+  if (ctx.antesDeMarcar && temas.size > 1) {
+    v.push({ regra: 'despejo', mensagem: null, trecho: [...temas].join(' + '), explicacao: 'Uma coisa do sistema por resposta, a que resolve o que ele disse. Nada de lista: escolha uma.' });
+  }
 
   if (perguntas > LIMITES.MAX_PERGUNTAS) {
     v.push({ regra: 'perguntas', mensagem: null, explicacao: `Uma pergunta por vez; vieram ${perguntas}.` });
@@ -518,8 +646,9 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
   }
   if (ctx.precisaApresentar && lista.length > 0) {
     const p0 = plano(String(lista[0] ?? ''));
-    if (!(/\bassistente\s+virtual\b/.test(p0) && /\bxavier\b/.test(p0) && /\bvia\s+pesados\b/.test(p0))) {
-      v.push({ regra: 'apresentacao', mensagem: 0, explicacao: 'O primeiro balão precisa dizer que você é o assistente virtual do Xavier, da Via Pesados.' });
+    const avisa = /\batendimento\s+automatico\b|\b(?:atendente|assistente)\s+virtual\b|\binteligencia\s+artificial\b/.test(p0);
+    if (!(avisa && new RegExp(`\\b${plano(PERSONA.nome)}\\b`).test(p0) && /\bvia\s+pesados\b/.test(p0))) {
+      v.push({ regra: 'apresentacao', mensagem: 0, explicacao: `O primeiro balão precisa ter o cumprimento e "${PERSONA.apresentacao}"` });
     }
   }
 
@@ -853,9 +982,9 @@ export function passouDoTeto(mensagensEnviadas: number, etapa: Etapa): boolean {
  * 1º: teste grátis + "o valor o Xavier mostra nos 15 minutos"; 2º: oferecer o horário
  * mais cedo; 3º em diante: chamar_xavier. 0 → null.
  */
-export function respostaAoPreco(pedidos: number): 'teste_gratis' | 'horario_mais_cedo' | 'chamar_xavier' | null {
+export function respostaAoPreco(pedidos: number): 'valor_com_o_xavier' | 'horario_mais_cedo' | 'chamar_xavier' | null {
   if (!pedidos || pedidos < 1) return null;
-  if (pedidos === 1) return 'teste_gratis';
+  if (pedidos === 1) return 'valor_com_o_xavier';
   if (pedidos === 2) return 'horario_mais_cedo';
   return 'chamar_xavier';
 }

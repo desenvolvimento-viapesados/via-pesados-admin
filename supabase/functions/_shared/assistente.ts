@@ -17,6 +17,7 @@ import {
   conferirCitacoes, cortarMemoria, custo, dentroDoHorario, estagioDoCard, horarioFalado, horarioLivre,
   horariosCitados, horariosLivres, janelaAberta, LIMITES, normalizarTexto, porQueNaoPode, proximaEtapa,
   neutro, respostaAoPreco, ROTULO_DA_ETAPA, temFallbackNoServidor, textoDaMensagem, citacaoConfere,
+  PEDIDOS, pedidoMaisQuente, type Pedido,
 } from './assistente-regras.ts';
 import { INSTRUCOES_DOSSIE, SCHEMA_DOSSIE } from './assistente-roteiro.ts';
 import { BUCKET, extensaoDe, guardarMidia, paraBase64, tipoBase } from './assistente-midia.ts';
@@ -359,6 +360,10 @@ export type ArgsRegistrar = {
   memoria?: string;
   pediu_preco?: boolean;
   prova_enviada?: boolean;
+  /** O que ele pediu agora: fechar já, comprar, ver funcionando, como funciona. */
+  pedido?: Pedido;
+  /** Disse "sim" a ver funcionando. */
+  interesse?: boolean;
 };
 
 /** As mensagens de entrada como fonte de citação (texto + transcrição). */
@@ -404,13 +409,23 @@ export async function aplicarRegistro(db: Db, estado: AssistenteConversa, args: 
   if (args.situacao && typeof args.situacao === 'object') {
     const s: Situacao = { ...estado.situacao };
     let mudou = false;
-    for (const k of ['estoque', 'canais', 'sistema_atual', 'cidade', 'quem_fala'] as const) {
+    for (const k of ['estoque', 'canais', 'sistema_atual', 'cidade', 'quem_fala', 'loja', 'quem_anuncia', 'como_manda',
+      'equipe', 'epoca_boa', 'motivo', 'o_que_quer_ver', 'prazo', 'nao_e_o_momento'] as const) {
       const v = textoOuNada(args.situacao[k]);
       if (v) { s[k] = v; mudou = true; }
     }
     const seg = args.situacao.segmento;
     if (seg && ['caminhoes', 'implementos', 'maquinas', 'onibus', 'outro'].includes(seg)) { s.segmento = seg; mudou = true; }
     if (mudou) patch.situacao = s;
+  }
+  /* O pedido só esquenta (quem pediu para comprar e depois perguntou como funciona continua
+     querendo comprar); o "sim" a ver funcionando não volta atrás. */
+  if (args.pedido && PEDIDOS.includes(args.pedido) || args.interesse === true) {
+    const s: Situacao = { ...(patch.situacao ?? estado.situacao) };
+    const quente = pedidoMaisQuente(s.pedido ?? null, args.pedido ?? null);
+    if (quente) s.pedido = quente;
+    if (args.interesse === true) s.interesse = 'sim';
+    patch.situacao = s;
   }
 
   if (args.decisor_vem && ['sim', 'nao', 'nao_sei'].includes(args.decisor_vem)) patch.decisor_vem = args.decisor_vem;
@@ -428,11 +443,11 @@ export async function aplicarRegistro(db: Db, estado: AssistenteConversa, args: 
   let preco = '';
   if (args.pediu_preco === true) {
     const r = respostaAoPreco((estado.pedidos_preco ?? 0) + 1);
-    preco = r === 'teste_gratis'
-      ? 'Primeiro pedido de preço: diga que o valor o Xavier mostra nos 15 minutos, junto com o sistema funcionando na realidade da loja. Sem número e sem falar de teste. Depois, uma pergunta de dor.'
+    preco = r === 'valor_com_o_xavier'
+      ? 'Primeiro pedido de preço: sem número. Dois balões: "É mensal, sem fidelidade e sem multa pra cancelar. O valor quem te passa é o Xavier, junto com o sistema funcionando." / uma pergunta de rotina de sim ou não, com motivo (ex.: "Pra ele já te responder certinho: hoje é você mesmo que posta os anúncios da loja?").'
       : r === 'horario_mais_cedo'
-        ? 'Segundo pedido de preço: sem número e sem repetir a frase de antes. Algo como "Te entendo, você quer saber se cabe no bolso. O mais cedo que o Xavier tem é [1º horário da lista], e em 15 minutos ele te mostra o valor. Pode ser?" Só esse horário.'
-        : 'Terceiro pedido de preço (ou mais): chame o Xavier (chamar_xavier) e diga "Vou chamar o Xavier pra te responder isso por aqui."';
+        ? 'Segundo pedido de preço: sem número e sem repetir a frase de antes. Até três balões: "Justo querer saber antes." / "O Xavier mostra o valor junto com o que o sistema faz, pra você ver se compensa pra sua loja. Se achar caro, fala na hora e tudo bem." / "O mais cedo que ele pode é [1º horário da lista], 15 minutos por vídeo. Quer esse?" Só esse horário.'
+        : 'Terceiro pedido de preço (ou mais): chame o Xavier (chamar_xavier) e diga "Vou chamar o Xavier pra falar disso com você por aqui."';
   }
 
   if (Object.keys(patch).length) await salvarEstado(db, estado.conversa_id, patch);

@@ -193,7 +193,8 @@ export const useFatos = () =>
     retry: false,
   });
 
-export type FatoEditado = Pick<AssistenteFato, 'tema' | 'texto' | 'nao_dizer' | 'ativo' | 'ordem'> & { id?: string };
+export type FatoEditado = Pick<AssistenteFato, 'tema' | 'texto' | 'nao_dizer' | 'ativo' | 'ordem'>
+  & { id?: string; usar_quando?: string | null };
 
 export function useSalvarFato() {
   const qc = useQueryClient();
@@ -202,6 +203,7 @@ export function useSalvarFato() {
       const linha = {
         tema: f.tema.trim(), texto: f.texto.trim(),
         nao_dizer: f.nao_dizer?.trim() ? f.nao_dizer.trim() : null,
+        ...(f.usar_quando !== undefined ? { usar_quando: f.usar_quando?.trim() ? f.usar_quando.trim() : null } : {}),
         ativo: f.ativo, ordem: f.ordem,
       };
       if (!linha.tema || !linha.texto) throw new Error('Preencha o tema e o texto do fato.');

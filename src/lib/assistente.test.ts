@@ -9,8 +9,10 @@ import {
   dentroDoHorario, janelaAberta, podeResponderAgora, inicioDoDiaSP, esperaDoAgrupamento, filaDasPendentes,
   humanoAssumiu, passouDoTeto, respostaAoPreco, tetoDoDiaAtingido, LIMITES,
   pedidoExplicitoDeParar, neutro, temFallbackNoServidor, ehNumeroDeTeste, telefoneDeTeste,
+  podeOferecerHorario, pedidoMaisQuente, PERSONA,
   type Agenda, type Etapa,
 } from '../../supabase/functions/_shared/assistente-regras';
+import { INSTRUCOES } from '../../supabase/functions/_shared/assistente-roteiro';
 
 /* As regras do assistente de vendas, como o dono definiu em 03/11/2026.
    Datas: 03/11/2026 é terça. São Paulo = UTC-3. */
@@ -20,7 +22,7 @@ const AGENDA: Agenda = {
   duracao_min: 15, folga_min_horas: 2, max_reunioes_dia: 6,
 };
 const iso = (ds: Date[]) => ds.map((d) => d.toISOString());
-const APRESENTACAO = 'Opa! Aqui é o assistente virtual do Xavier, da Via Pesados.';
+const APRESENTACAO = 'Opa! Aqui é o Davi, do Via Pesados (atendimento automático).';
 const regras = (msgs: string[], ctx = {}) => fiscal(msgs, ctx).violacoes.map((v) => v.regra);
 
 describe('fiscal: forma', () => {
@@ -126,7 +128,7 @@ describe('fiscal: nomes, pedidos e honestidade', () => {
     expect(regras(['Me passa a senha do Instagram'])).toEqual(['pedido_sensivel']);
     expect(regras(['Manda seu CPF pra cadastro'])).toEqual(['pedido_sensivel']);
     expect(regras(['Tá certo desconfiar. Não peço senha, cartão nem pagamento.'])).toEqual([]);
-    expect(regras(['Deixa à mão o Instagram e o Mercado Livre da loja, nunca a senha.'])).toEqual([]);
+    expect(regras(['O Xavier mostra tudo por vídeo, nunca a senha.'])).toEqual([]);
   });
 
   it('nunca finge ser gente nem finge esquecimento', () => {
@@ -404,9 +406,9 @@ describe('travas da conversa', () => {
     expect(passouDoTeto(30, 'com_xavier')).toBe(false);
   });
 
-  it('preço: teste grátis, depois o horário mais cedo, depois o Xavier', () => {
+  it('preço: o valor é do Xavier, depois o horário mais cedo, depois o Xavier', () => {
     expect(respostaAoPreco(0)).toBeNull();
-    expect(respostaAoPreco(1)).toBe('teste_gratis');
+    expect(respostaAoPreco(1)).toBe('valor_com_o_xavier');
     expect(respostaAoPreco(2)).toBe('horario_mais_cedo');
     expect(respostaAoPreco(3)).toBe('chamar_xavier');
     expect(respostaAoPreco(7)).toBe('chamar_xavier');
@@ -420,14 +422,14 @@ describe('revisão de 03/11: o que a revisão achou', () => {
     expect(regras(['A mensalidade de 587 já inclui tudo'])).toContain('preco');
     expect(regras(['O plano é 587 mensais'])).toContain('preco');
     expect(regras(['O valor o Xavier te mostra nos 15 minutos, junto com o sistema funcionando.'])).toEqual([]);
-    expect(regras(['Tenho quinta 10h ou sexta 15h, 15 minutos com o Xavier.'])).toEqual([]);
+    expect(regras(['O Xavier pode quinta 10h ou sexta 15h, 15 minutos por vídeo.'])).toEqual([]);
   });
 
   it('senha, cartão e CPF: "sem" solto e negação longe não liberam o pedido', () => {
     expect(regras(['Sem compromisso: me passa a senha do Instagram que eu já deixo pronto'])).toContain('pedido_sensivel');
     expect(regras(['Não se preocupa, me manda o CPF do dono'])).toContain('pedido_sensivel');
     expect(regras(['Qual é o seu CPF'])).toContain('pedido_sensivel');
-    expect(regras(['Deixa à mão o Instagram e o Mercado Livre da loja. Senha não precisa.'])).toEqual([]);
+    expect(regras(['Senha não precisa.'])).toEqual([]);
     expect(regras(['Não precisa me passar senha nenhuma.'])).toEqual([]);
     expect(regras(['A gente nunca pede cartão nem CPF.'])).toEqual([]);
   });
@@ -523,6 +525,90 @@ describe('teste grátis fora da conversa (dono, 05/11/2026)', () => {
     for (const t of ['Antes de pagar tem o teste grátis.', 'É gratuito no começo.', 'Dá pra usar de graça.', 'Tem um período de teste.']) {
       expect(fiscal([t]).violacoes.some((v) => v.regra === 'proibida'), t).toBe(true);
     }
-    expect(fiscal(['O Xavier te mostra o sistema funcionando com a realidade da loja.']).ok).toBe(true);
+    expect(fiscal(['O Xavier te mostra o sistema funcionando e o valor.']).ok).toBe(true);
+  });
+});
+
+describe('o roteiro do Davi (manual de vendas, 05/11/2026)', () => {
+  const ctxPorta = { daLista: false, dores: 0, respostasSuas: 0, pedidosDePreco: 0 };
+
+  it('quem quer comprar recebe horário só depois de duas perguntas', () => {
+    expect(podeOferecerHorario({ ...ctxPorta, pedido: 'comprar' }).pode).toBe(false);
+    expect(podeOferecerHorario({ ...ctxPorta, pedido: 'comprar', respostasSuas: 1 }).pode).toBe(false);
+    expect(podeOferecerHorario({ ...ctxPorta, pedido: 'comprar', respostasSuas: 2 }).pode).toBe(true);
+  });
+
+  it('quem quer fechar já, ou ver funcionando, recebe horário na hora', () => {
+    expect(podeOferecerHorario({ ...ctxPorta, pedido: 'fechar_ja' }).pode).toBe(true);
+    expect(podeOferecerHorario({ ...ctxPorta, pedido: 'ver' }).pode).toBe(true);
+    expect(podeOferecerHorario({ ...ctxPorta, daLista: true, interesse: true }).pode).toBe(true);
+  });
+
+  it('lead da lista: com dor, primeiro o "quer ver funcionando?"; por conta própria, horário', () => {
+    const lista = podeOferecerHorario({ ...ctxPorta, daLista: true, dores: 1 });
+    expect(lista).toMatchObject({ pode: false, precisaInteresse: true });
+    expect(podeOferecerHorario({ ...ctxPorta, dores: 1 }).pode).toBe(true);
+    expect(podeOferecerHorario({ ...ctxPorta }).pode).toBe(false);
+  });
+
+  it('segundo pedido de preço e reunião marcada abrem a porta', () => {
+    expect(podeOferecerHorario({ ...ctxPorta, pedidosDePreco: 1 }).pode).toBe(false);
+    expect(podeOferecerHorario({ ...ctxPorta, pedidosDePreco: 2 }).pode).toBe(true);
+    expect(podeOferecerHorario({ ...ctxPorta, reuniaoMarcada: true }).pode).toBe(true);
+  });
+
+  it('o pedido só esquenta', () => {
+    expect(pedidoMaisQuente('comprar', 'como_funciona')).toBe('comprar');
+    expect(pedidoMaisQuente('como_funciona', 'fechar_ja')).toBe('fechar_ja');
+    expect(pedidoMaisQuente(null, 'ver')).toBe('ver');
+    expect(pedidoMaisQuente(undefined, null)).toBeNull();
+  });
+
+  it('horário oferecido antes da hora volta para a IA reescrever', () => {
+    const cedo = { podeOferecerHorario: false, motivoDoHorario: 'ele quer comprar: antes, até duas perguntas' };
+    expect(regras(['O Xavier pode amanhã 9h30 ou segunda 14h. Qual fica melhor?'], cedo)).toContain('horario_cedo');
+    expect(regras(['Hoje é você mesmo que posta os caminhões?'], cedo)).toEqual([]);
+    expect(regras(['O Xavier pode amanhã 9h30 ou segunda 14h. Qual fica melhor?'], { podeOferecerHorario: true })).toEqual([]);
+  });
+
+  it('antes de marcar, uma coisa do sistema por resposta (nada de lista)', () => {
+    const antes = { antesDeMarcar: true };
+    const despejo = ['Você cadastra o caminhão uma vez e ele sai no Mercado Livre, no Insta, no Face e no site.', 'E com um clique as fotos na ordem e a ficha chegam no WhatsApp do cliente.'];
+    expect(regras(despejo, antes)).toContain('despejo');
+    expect(regras([despejo[0]], antes)).toEqual([]);
+    expect(regras([despejo[0], 'A implantação é nossa: a gente traz o estoque.'], antes)).toEqual([]);
+    expect(regras(despejo, { antesDeMarcar: false })).toEqual([]);
+  });
+
+  it('frases de palco, pressão, pedágio e promessa que ele não cumpre', () => {
+    for (const t of ['Excelente pergunta!', 'Faz sentido pra você?', 'O começo é uma conversa de 15 minutos.', 'Não perca essa condição especial.',
+      'Você está perdendo vendas todo dia.', 'Tenho amanhã 10h livre.', 'Te mando depois o material.', 'Dá pra testar o sistema.', 'Deixa à mão o Insta.']) {
+      expect(regras([t]), t).toContain('palco');
+    }
+    expect(regras(['O Xavier pode amanhã 10h ou sexta 15h. Qual fica melhor?'])).toEqual([]);
+  });
+
+  it('a apresentação é do Davi e avisa que é automático; ele nunca nega ser automático', () => {
+    expect(regras([`Boa tarde! ${PERSONA.apresentacao}`], { precisaApresentar: true })).toEqual([]);
+    expect(regras(['Boa tarde! Aqui é o Davi, do Via Pesados.'], { precisaApresentar: true })).toEqual(['apresentacao']);
+    expect(regras(['Não sou atendimento automático, pode falar.'])).toContain('fingir_gente');
+    expect(regras([PERSONA.souAutomatico])).toEqual([]);
+  });
+
+  it('todos os exemplos do roteiro passam no conferente', () => {
+    const inicio = INSTRUCOES.indexOf('# Exemplos');
+    const fim = INSTRUCOES.indexOf('O que NÃO fazer');
+    const linhas = INSTRUCOES.slice(inicio, fim).split('\n').filter((l) => l.startsWith(`${PERSONA.nome}: `));
+    expect(linhas.length).toBeGreaterThanOrEqual(10);
+    for (const l of linhas) {
+      const baloes = l.slice(PERSONA.nome.length + 2).split(' / ').map((b) => b.trim()).filter((b) => b !== '[link]');
+      expect(fiscal(baloes, { antesDeMarcar: !/^Marcado/.test(baloes[0]) }).violacoes, l).toEqual([]);
+    }
+  });
+
+  it('o roteiro não fala mais em assistente do Xavier nem oferece teste', () => {
+    expect(INSTRUCOES).not.toMatch(/assistente virtual do Xavier/i);
+    expect(INSTRUCOES).not.toMatch(/teste grátis, com tudo liberado/i);
+    expect(INSTRUCOES).toContain(PERSONA.apresentacao);
   });
 });
