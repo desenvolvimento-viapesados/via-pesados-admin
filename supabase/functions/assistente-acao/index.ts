@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
   type AcaoDoTurno, type AssistenteConversa, type Modo,
-  dentroDoHorario, ETAPAS_SEM_RESPOSTA, janelaAberta, MODOS, proximaEtapa, tetoDoDiaAtingido,
+  dentroDoHorario, ehNumeroDeTeste, ETAPAS_SEM_RESPOSTA, janelaAberta, MODOS, proximaEtapa, tetoDoDiaAtingido,
 } from '../_shared/assistente-regras.ts';
 import {
   carregarConversa, chamarMotor, chaveDaIA, concluirTurno, lerConfig, lerEstado, salvarEstado, transcritor, ultimaEntradaEm,
@@ -18,6 +18,9 @@ import {
  *   descartar        joga o rascunho fora
  *   devolver         a conversa estava com o Xavier: volta para o assistente
  *   responder_agora  pede uma resposta já (a última mensagem é do lead)
+ *   recomecar        só número de teste no oficial: o assistente esquece a conversa (etapa,
+ *                    memória, dores, horários) e lê só o que vier depois; a reunião de teste é
+ *                    cancelada e o card volta para Contato
  *
  * O que sai para o lead sai daqui ou do motor, sempre dentro das 08h–20h e da janela
  * de 24h da Meta.
@@ -221,6 +224,51 @@ Deno.serve(async (req) => {
       const pensando = await pedirResposta(db, conversaId);
       if (!pensando) return json(409, { error: 'Não há mensagem do lead esperando resposta (ou já passaram 24h).' });
       return json(200, { ok: true, pensando });
+    }
+
+    /* ── recomeçar do zero (número de teste) ─────────────────────── */
+    if (acao === 'recomecar') {
+      const conversaId = String(corpo.conversa_id ?? '');
+      const { data: conversa } = await db.from('wa_conversas').select('id, telefone, instancia_id, prospect_id').eq('id', conversaId).maybeSingle();
+      if (!conversa) return json(404, { error: 'conversa não encontrada' });
+      const { data: inst } = await db.from('wa_instancias').select('origem').eq('id', conversa.instancia_id).maybeSingle();
+      const cfg = await lerConfig(db);
+      if (inst?.origem !== 'ycloud' || !ehNumeroDeTeste(conversa.telefone, cfg?.telefones_teste)) {
+        return json(403, { error: 'Só a conversa de um número de teste, no WhatsApp oficial, pode recomeçar do zero.' });
+      }
+      const e = await garantirEstado(db, conversaId);
+      if (!e) return json(404, { error: 'conversa não encontrada' });
+      /* Rodada pensando agora gravaria o estado velho por cima do zerado: espera ela acabar. */
+      const pensando = /^em:(\d+):/.exec(e.token ?? '');
+      if (pensando && Date.now() - Number(pensando[1]) < 5 * 60_000) {
+        return json(409, { error: 'Ele está pensando numa resposta agora. Espere ela sair e recomece.' });
+      }
+      const agora = new Date().toISOString();
+      const card = e.prospect_id ?? conversa.prospect_id ?? null;
+      if (card) {
+        /* O card do teste volta ao começo do funil (perdido também), para o próximo teste andar
+           de novo. Teste grátis e venda são da equipe: esses não mexe. */
+        await db.from('prospects').update({ stage: 'contato', lost_reason: null })
+          .eq('id', card).in('stage', ['contato', 'amostra', 'oportunidade', 'reuniao', 'perdido']);
+      }
+      if (e.reuniao_id) {
+        /* A reunião do teste sai da Agenda: libera o horário e não manda lembrete. */
+        await db.from('meetings').update({ status: 'cancelada', notes: 'Cancelada: teste do assistente recomeçado do zero.' })
+          .eq('id', e.reuniao_id).in('status', ['agendada', 'remarcada']);
+      }
+      await db.from('assistente_turnos')
+        .update({ status: 'descartado', erro: 'teste recomeçado do zero', decidido_por: membro.id, decidido_em: agora })
+        .eq('conversa_id', conversaId).eq('status', 'rascunho');
+      await salvarEstado(db, conversaId, {
+        modo: e.modo === 'desligado' ? 'sozinho' : e.modo,
+        etapa: 'conversa', memoria: null, dores: [], objecoes: [], situacao: {},
+        decisor_vem: null, decisor_citacao: null, quem_vem: null, pedidos_preco: 0, prova_enviada: false,
+        horarios_oferecidos: [], reuniao_id: null, prospect_id: null, dossie: null, apresentou: false,
+        token: null, pendente_desde: null, mensagens_enviadas: 0, pausado_motivo: null,
+        historico_desde: agora, ultimo_turno_em: agora,
+      });
+      await db.from('wa_conversas').update({ fixada: false, prospect_id: null }).eq('id', conversaId);
+      return json(200, { ok: true, estado: await lerEstado(db, conversaId) });
     }
 
     return json(400, { error: 'ação desconhecida' });

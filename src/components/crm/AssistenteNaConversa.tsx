@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bot, ChevronDown, Check, Loader2, Send, Pencil, X, Undo2, AlertTriangle, CalendarClock, ExternalLink,
-  PanelRightClose, Quote,
+  PanelRightClose, Quote, RotateCcw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
-  MODOS, ROTULO_DO_MODO, ROTULO_DA_ETAPA, horarioFalado, fiscal, dentroDoHorario, janelaAberta,
+  MODOS, ROTULO_DO_MODO, ROTULO_DA_ETAPA, horarioFalado, fiscal, dentroDoHorario, janelaAberta, ehNumeroDeTeste,
   useAcaoDoAssistente, useReuniaoDoAssistente, useTurnosDaConversa, useLinkDaMidia,
   type AssistenteConfig, type AssistenteConversa, type AssistenteTurno, type Modo, type Etapa, type ItemCitado,
 } from '@/hooks/useAssistente';
@@ -77,9 +77,12 @@ const dolar = (v: number) =>
 /* ── controle do cabeçalho ────────────────────────────────────── */
 
 export function ControleDoAssistente({
-  conversaId, assistente, config, painelAberto, onPainel,
+  conversaId, telefone, oficial, assistente, config, painelAberto, onPainel,
 }: {
   conversaId: string;
+  telefone: string;
+  /** A conversa é do número oficial (YCloud): só ali número de teste vale. */
+  oficial: boolean;
   assistente: AssistenteConversa | null | undefined;
   config: AssistenteConfig | null | undefined;
   painelAberto: boolean;
@@ -100,6 +103,7 @@ export function ControleDoAssistente({
   const etapa = assistente?.etapa;
   const comVoce = etapa === 'com_xavier';
   const geralDesligado = config ? !config.ligado : false;
+  const deTeste = oficial && ehNumeroDeTeste(telefone, config?.telefones_teste);
 
   const mudar = async (novo: Modo) => {
     setAberto(false);
@@ -117,8 +121,17 @@ export function ControleDoAssistente({
     } catch (e) { toast.error((e as Error).message); }
   };
 
+  const recomecar = async () => {
+    setAberto(false);
+    try {
+      await acao.mutateAsync({ acao: 'recomecar', conversa_id: conversaId });
+      toast.success('Recomeçado do zero. Mande uma mensagem como se fosse a primeira.');
+    } catch (e) { toast.error((e as Error).message); }
+  };
+
   return (
     <div className="flex items-center gap-1.5 shrink-0">
+      {deTeste && <span className="hidden md:inline text-[10.5px] px-2 py-1 rounded-lg border border-primary/30 text-primary">Teste</span>}
       {etapa && (modo !== 'desligado' || etapa !== 'conversa') && <SeloDaEtapa etapa={etapa} className="hidden md:inline" />}
 
       {comVoce && (
@@ -161,6 +174,18 @@ export function ControleDoAssistente({
                 {m === modo && <Check className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />}
               </button>
             ))}
+            {deTeste && (
+              <button
+                onClick={recomecar}
+                className="w-full text-left flex items-start gap-3 px-3.5 py-2.5 mt-1 border-t border-black/[0.06] dark:border-white/[0.08] hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors"
+              >
+                <RotateCcw className="h-3.5 w-3.5 mt-0.5 shrink-0 text-foreground/50" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-medium text-foreground">Recomeçar do zero</span>
+                  <span className="block text-[11.5px] text-foreground/45 leading-snug mt-0.5">Número de teste: ele esquece esta conversa e a próxima mensagem vale como a primeira.</span>
+                </span>
+              </button>
+            )}
             {(geralDesligado || assistente?.pausado_motivo === 'voce_assumiu') && (
               <div className="mx-3 mt-1 mb-1 rounded-xl bg-amber-500/10 px-3 py-2 space-y-1">
                 {geralDesligado && (

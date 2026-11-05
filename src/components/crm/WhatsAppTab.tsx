@@ -244,6 +244,8 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
               <div className="ml-auto" />
               <ControleDoAssistente
                 conversaId={conversa.id}
+                telefone={conversa.telefone}
+                oficial={instAtual?.origem === 'ycloud'}
                 assistente={assistente}
                 config={configAssistente}
                 painelAberto={painelAberto}

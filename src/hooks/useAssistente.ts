@@ -22,7 +22,7 @@ export type {
 } from '../../supabase/functions/_shared/assistente-regras';
 export {
   MODOS, ROTULO_DO_MODO, ROTULO_DA_ETAPA, ETAPAS_SEM_RESPOSTA, LIMITES,
-  horarioFalado, fiscal, dentroDoHorario, janelaAberta, textoDaMensagem,
+  horarioFalado, fiscal, dentroDoHorario, janelaAberta, textoDaMensagem, ehNumeroDeTeste, telefoneDeTeste,
 } from '../../supabase/functions/_shared/assistente-regras';
 
 /* ── a função do servidor ─────────────────────────────────────── */
@@ -32,7 +32,8 @@ export type AcaoDoAssistente =
   | { acao: 'modo'; conversa_id: string; modo: Modo }
   | { acao: 'devolver'; conversa_id: string }
   | { acao: 'aprovar'; conversa_id: string; turno_id: string; mensagens: string[] }
-  | { acao: 'descartar'; conversa_id: string; turno_id: string };
+  | { acao: 'descartar'; conversa_id: string; turno_id: string }
+  | { acao: 'recomecar'; conversa_id: string };
 
 export type StatusDasChaves = { chave_ia: boolean; chave_transcricao: boolean };
 
@@ -77,6 +78,7 @@ function configDaLinha(r: Record<string, unknown>): AssistenteConfig {
     dias_semana: lista<number>(c.dias_semana).map(Number),
     hora_inicio: String(c.hora_inicio ?? '09:00').slice(0, 5),
     hora_fim: String(c.hora_fim ?? '18:00').slice(0, 5),
+    telefones_teste: lista<string>(c.telefones_teste).map(String),
   };
 }
 
@@ -120,7 +122,7 @@ export const useAssistenteConfig = () =>
 
 export type MudancaNaConfig = Partial<Pick<AssistenteConfig,
   'ligado' | 'link_reuniao' | 'dias_semana' | 'hora_inicio' | 'hora_fim' | 'duracao_min'
-  | 'folga_min_horas' | 'max_reunioes_dia' | 'modo_prospeccao' | 'responsavel_id' | 'teto_usd_dia'>>;
+  | 'folga_min_horas' | 'max_reunioes_dia' | 'modo_prospeccao' | 'responsavel_id' | 'teto_usd_dia' | 'telefones_teste'>>;
 
 export function useSalvarConfig() {
   const qc = useQueryClient();
@@ -149,6 +151,7 @@ function traduzirErroDoBanco(m: string): string {
   if (/folga/i.test(m)) return 'A folga mínima vai de 0 a 72 horas.';
   if (/max_reunioes/i.test(m)) return 'O teto por dia vai de 1 a 30 reuniões.';
   if (/teto_usd/i.test(m)) return 'O teto de gasto não pode ser negativo.';
+  if (/telefones_teste/i.test(m)) return 'Números de teste: até 10, cada um com DDD (ex.: 27 99724-6060).';
   if (/modo/i.test(m)) return 'Modo inválido.';
   if (/does not exist|relation/i.test(m)) return 'O assistente ainda não está instalado no banco.';
   return m;

@@ -199,14 +199,11 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
   }
 
   if (!chaveDaIA()) {
-    /* Pausa no geral (como no teto de gasto) e a conversa continua pendente: cadastrada a
-       chave e ligado de novo, a rotina responde. Não prende cada conversa em "com você". */
-    await db.from('assistente_config').update({
-      ligado: false,
-      pausado_motivo: 'Desliguei sozinho: falta a chave da IA no painel. As conversas ficam esperando até alguém ligar de novo.',
-    }).eq('id', 1);
+    /* A conversa continua pendente e o botão geral fica como está: cadastrada a chave, a
+       rotina das pendentes responde sozinha (a tela já avisa que falta a chave). Não prende
+       cada conversa em "com você". */
     await devolver();
-    return 'sem chave da IA';
+    return 'sem chave da IA (fica pendente)';
   }
 
   /* "Novas" = as do lead depois da última mensagem nossa (de qualquer um): é o que está sem resposta. */
@@ -406,8 +403,10 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
   if (erro) {
     await db.from('assistente_turnos').insert({ ...base, mensagens: final ?? [], acoes, status: 'erro', erro });
     await somarCusto();
-    const { data: ultimos } = await db.from('assistente_turnos').select('status')
-      .eq('conversa_id', conversaId).order('criado_em', { ascending: false }).limit(2);
+    /* Teste recomeçado do zero: erro de antes do recomeço não conta. */
+    let anteriores = db.from('assistente_turnos').select('status').eq('conversa_id', conversaId);
+    if (e.historico_desde) anteriores = anteriores.gte('criado_em', e.historico_desde);
+    const { data: ultimos } = await anteriores.order('criado_em', { ascending: false }).limit(2);
     if ((ultimos ?? []).length === 2 && ultimos.every((t: { status: string }) => t.status === 'erro')) {
       await soltar();
       await chamarXavier(db, conversaId, 'O assistente teve um problema duas vezes seguidas e parou. A conversa é sua.');

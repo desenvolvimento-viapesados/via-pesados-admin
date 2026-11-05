@@ -6,7 +6,8 @@ import { chamarMotor, chaveDaIA, dossiesPendentes, fixarParaOXavier, lerConfig }
  * A rotina das pendentes do assistente de vendas (pg_cron, de 5 em 5 minutos; o SQL está
  * na migration 20261103190000_assistente_de_vendas). Chamada à toa não manda nada:
  *
- *   - fora das 08h–20h, ou com o assistente desligado no painel, não faz nada;
+ *   - fora das 08h–20h, com o assistente desligado no painel ou sem a chave da IA, não
+ *     responde ninguém (as pendentes esperam);
  *   - quem escreveu de madrugada é respondido a partir das 08h, MAIS ANTIGA PRIMEIRO,
  *     até 5 por rodada, e só se a última mensagem do lead foi há menos de 24h;
  *   - passou das 24h: não responde (só modelo aprovado poderia) e a conversa fica
@@ -43,6 +44,9 @@ Deno.serve(async () => {
 
     if (!dentroDoHorario(agora)) return json(200, { ok: true, fora_do_horario: true, dossies: await fazerDossie() });
     if (!cfg.ligado) return json(200, { ok: true, desligado: true, dossies: await fazerDossie() });
+    /* Sem a chave da IA ninguém é respondido: as pendentes esperam, e saem na primeira
+       rodada depois que a chave for cadastrada. */
+    if (!chaveDaIA()) return json(200, { ok: true, sem_chave_da_ia: true });
 
     const { data: linhas } = await db.from('assistente_conversas')
       .select('conversa_id, token, pendente_desde, etapa, modo, loja_id')

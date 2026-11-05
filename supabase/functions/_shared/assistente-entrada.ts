@@ -12,11 +12,13 @@
  *     configuração (modo_prospeccao);
  *   - loja da prospecção com o assistente desligado (no painel ou na conversa) → a
  *     conversa fica fixada para o Xavier, sem mensagem automática nenhuma;
- *   - etapa em que o assistente não fala (com você, encerrado) → só fixa para o Xavier ver.
+ *   - etapa em que o assistente não fala (com você, encerrado) → só fixa para o Xavier ver;
+ *   - número de teste do dono (assistente_config.telefones_teste) e conversa ainda sem
+ *     assistente → entra atendendo sozinho, para ele testar sem mexer em nada.
  * Fora das 08h–20h, ou com o botão geral desligado, fica pendente: a rotina
  * assistente-pendentes responde quando puder (mais antiga primeiro, janela de 24h aberta).
  */
-import { ETAPAS_SEM_RESPOSTA, dentroDoHorario, type Etapa, type Modo } from './assistente-regras.ts';
+import { ETAPAS_SEM_RESPOSTA, dentroDoHorario, ehNumeroDeTeste, type Etapa, type Modo } from './assistente-regras.ts';
 import type { LojaQueRespondeu } from './prospeccao-entrada.ts';
 
 // deno-lint-ignore no-explicit-any
@@ -50,8 +52,8 @@ async function equipeJaEstaNaConversa(db: Db, conversaId: string, lojaId: string
     !m.turno_id && (!!m.enviada_por || (inst?.origem === 'evolution' && !m.enviada_por_nome)));
 }
 
-export async function aoChegarParaOAssistente(db: Db, conversaId: string, loja: LojaQueRespondeu | null) {
-  const { data: cfg } = await db.from('assistente_config').select('ligado, modo_prospeccao').eq('id', 1).maybeSingle();
+export async function aoChegarParaOAssistente(db: Db, conversaId: string, loja: LojaQueRespondeu | null, telefone?: string) {
+  const { data: cfg } = await db.from('assistente_config').select('ligado, modo_prospeccao, telefones_teste').eq('id', 1).maybeSingle();
   let { data: ac } = await db.from('assistente_conversas')
     .select('modo, etapa, loja_id, pendente_desde').eq('conversa_id', conversaId).maybeSingle() as
     { data: { modo: Modo; etapa: Etapa; loja_id: string | null; pendente_desde: string | null } | null };
@@ -68,6 +70,14 @@ export async function aoChegarParaOAssistente(db: Db, conversaId: string, loja: 
     }
     await db.from('assistente_conversas')
       .upsert({ conversa_id: conversaId, modo, loja_id: loja.id }, { onConflict: 'conversa_id', ignoreDuplicates: true });
+    ({ data: ac } = await db.from('assistente_conversas')
+      .select('modo, etapa, loja_id, pendente_desde').eq('conversa_id', conversaId).maybeSingle());
+  }
+  if (!ac && !loja && ehNumeroDeTeste(telefone, cfg?.telefones_teste)) {
+    /* Número de teste: entra atendendo sozinho. Se o dono desligar na conversa, a linha
+       existe e fica como ele deixou. */
+    await db.from('assistente_conversas')
+      .upsert({ conversa_id: conversaId, modo: 'sozinho' }, { onConflict: 'conversa_id', ignoreDuplicates: true });
     ({ data: ac } = await db.from('assistente_conversas')
       .select('modo, etapa, loja_id, pendente_desde').eq('conversa_id', conversaId).maybeSingle());
   }

@@ -70,6 +70,7 @@ export async function lerConfig(db: Db): Promise<AssistenteConfig | null> {
     folga_min_horas: Number(data.folga_min_horas),
     max_reunioes_dia: Number(data.max_reunioes_dia),
     dias_semana: (data.dias_semana ?? []).map(Number),
+    telefones_teste: (data.telefones_teste ?? []).map(String),
   } as AssistenteConfig;
 }
 
@@ -84,7 +85,10 @@ export async function salvarEstado(db: Db, conversaId: string, patch: Partial<As
   if (error) throw new Error(`assistente_conversas: ${error.message}`);
 }
 
-/** A conversa, o número por onde ela fala e as mensagens (as últimas 400, em ordem). */
+/**
+ * A conversa, o número por onde ela fala e as mensagens (as últimas 400, em ordem). Teste
+ * recomeçado do zero: só as mensagens de depois do recomeço (historico_desde).
+ */
 export async function carregarConversa(db: Db, conversaId: string):
   Promise<{ conversa: Conversa; inst: Instancia; msgs: Mensagem[] } | null> {
   const { data: conversa } = await db.from('wa_conversas')
@@ -93,8 +97,10 @@ export async function carregarConversa(db: Db, conversaId: string):
   const { data: inst } = await db.from('wa_instancias')
     .select('id, nome, origem, evolution_instance, cloud_phone_number_id').eq('id', conversa.instancia_id).maybeSingle();
   if (!inst) return null;
-  const { data: msgs } = await db.from('wa_mensagens').select(CAMPOS_MSG)
-    .eq('conversa_id', conversaId).order('created_at', { ascending: false }).limit(400);
+  const { data: est } = await db.from('assistente_conversas').select('historico_desde').eq('conversa_id', conversaId).maybeSingle();
+  let consulta = db.from('wa_mensagens').select(CAMPOS_MSG).eq('conversa_id', conversaId);
+  if (est?.historico_desde) consulta = consulta.gte('created_at', est.historico_desde);
+  const { data: msgs } = await consulta.order('created_at', { ascending: false }).limit(400);
   return { conversa, inst, msgs: ((msgs ?? []) as Mensagem[]).reverse() };
 }
 

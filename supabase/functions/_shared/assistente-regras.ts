@@ -99,6 +99,8 @@ export type AssistenteConfig = {
   modo_prospeccao: Modo;
   responsavel_id: string | null;
   pausado_motivo: string | null;
+  /** Números do dono para testar: mensagem deles entra com o assistente atendendo sozinho. */
+  telefones_teste: string[];
   atualizado_em: string;
   atualizado_por: string | null;
 };
@@ -139,6 +141,8 @@ export type AssistenteConversa = {
   mensagens_enviadas: number;
   custo_usd: number | string;
   pausado_motivo: string | null;
+  /** Recomeço do teste: o assistente só lê a conversa daqui para a frente. */
+  historico_desde: string | null;
   frente: 'lojista' | 'transportadora';
   criado_em: string;
   atualizado_em: string;
@@ -925,4 +929,37 @@ export function somarUso(usos: (Uso | null | undefined)[]): Uso {
       ephemeral_1h_input_tokens: n(s.cache_creation?.ephemeral_1h_input_tokens) + n(u?.cache_creation?.ephemeral_1h_input_tokens),
     },
   }), { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0, cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 0 } });
+}
+
+/* ── números de teste ─────────────────────────────────────────── */
+
+/**
+ * O número como o sistema grava (só dígitos, com 55), ou null se não for telefone do Brasil.
+ * Aceita o que se digita na tela: "(27) 99724-6060", "27997246060", "+55 27 99724-6060".
+ */
+export function telefoneDeTeste(bruto: string): string | null {
+  let n = String(bruto ?? '').replace(/\D/g, '').replace(/^0+/, '');
+  if (n.length === 10 || n.length === 11) n = '55' + n;
+  return /^55\d{10,11}$/.test(n) ? n : null;
+}
+
+/** As duas grafias de um celular: o WhatsApp entrega alguns sem o 9 depois do DDD. */
+function grafias(tel: string): string[] {
+  if (tel.length === 13 && tel[4] === '9') return [tel, tel.slice(0, 4) + tel.slice(5)];
+  if (tel.length === 12 && /[6-9]/.test(tel[4])) return [tel, tel.slice(0, 4) + '9' + tel.slice(4)];
+  return [tel];
+}
+
+/**
+ * A conversa é de um número de teste do dono? (com ou sem o 9). O telefone da conversa já
+ * vem gravado com o código do país: 11 dígitos ali é número de fora, nunca ganha o 55.
+ */
+export function ehNumeroDeTeste(telefone: string | null | undefined, lista: readonly string[] | null | undefined): boolean {
+  const t = String(telefone ?? '').replace(/\D/g, '');
+  if (!/^55\d{10,11}$/.test(t) || !lista?.length) return false;
+  const daConversa = new Set(grafias(t));
+  return lista.some((x) => {
+    const n = telefoneDeTeste(x);
+    return !!n && grafias(n).some((g) => daConversa.has(g));
+  });
 }

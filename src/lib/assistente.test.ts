@@ -8,7 +8,7 @@ import {
   custo, somarUso, PRECOS,
   dentroDoHorario, janelaAberta, podeResponderAgora, inicioDoDiaSP, esperaDoAgrupamento, filaDasPendentes,
   humanoAssumiu, passouDoTeto, respostaAoPreco, tetoDoDiaAtingido, LIMITES,
-  pedidoExplicitoDeParar, neutro, temFallbackNoServidor,
+  pedidoExplicitoDeParar, neutro, temFallbackNoServidor, ehNumeroDeTeste, telefoneDeTeste,
   type Agenda, type Etapa,
 } from '../../supabase/functions/_shared/assistente-regras';
 
@@ -467,5 +467,53 @@ describe('revisão de 03/11: o que a revisão achou', () => {
     expect(temFallbackNoServidor('claude-opus-5-5')).toBe(true);
     expect(temFallbackNoServidor('claude-sonnet-5-5')).toBe(true);
     expect(temFallbackNoServidor('claude-haiku-5-5')).toBe(false);
+  });
+});
+
+describe('números de teste do dono (05/11/2026)', () => {
+  const LISTA = ['5527997246060', '5533988144005'];
+
+  it('lê o número como se digita na tela', () => {
+    expect(telefoneDeTeste('(27) 99724-6060')).toBe('5527997246060');
+    expect(telefoneDeTeste('+55 33 98814-4005')).toBe('5533988144005');
+    expect(telefoneDeTeste('2788887777')).toBe('552788887777');
+    expect(telefoneDeTeste('99724-6060')).toBeNull();
+    expect(telefoneDeTeste('abc')).toBeNull();
+  });
+
+  it('casa a conversa com e sem o 9 que o WhatsApp às vezes tira', () => {
+    expect(ehNumeroDeTeste('5527997246060', LISTA)).toBe(true);
+    expect(ehNumeroDeTeste('+55 27 99724-6060', LISTA)).toBe(true);
+    expect(ehNumeroDeTeste('552797246060', LISTA)).toBe(true);
+    expect(ehNumeroDeTeste('553388144005', LISTA)).toBe(true);
+    expect(ehNumeroDeTeste('5527997246060', ['552797246060'])).toBe(true);
+  });
+
+  it('número de fora da lista nunca é teste', () => {
+    expect(ehNumeroDeTeste('5511999910621', LISTA)).toBe(false);
+    expect(ehNumeroDeTeste('553384098409', LISTA)).toBe(false);
+    expect(ehNumeroDeTeste('5527997246061', LISTA)).toBe(false);
+    expect(ehNumeroDeTeste('5527997246060', [])).toBe(false);
+    expect(ehNumeroDeTeste('5527997246060', null)).toBe(false);
+    expect(ehNumeroDeTeste(null, LISTA)).toBe(false);
+    expect(ehNumeroDeTeste('', LISTA)).toBe(false);
+    /* O telefone da conversa já vem com o país: 11 dígitos é número de fora (+33 9 88 14 40 05). */
+    expect(ehNumeroDeTeste('33988144005', LISTA)).toBe(false);
+    expect(ehNumeroDeTeste('27997246060', LISTA)).toBe(false);
+  });
+
+  it('só o número oficial: nas caixas da equipe o número de teste não liga o assistente', () => {
+    const wa = readFileSync(new URL('../../supabase/functions/wa-receber/index.ts', import.meta.url), 'utf8');
+    expect(wa).toMatch(/aoChegarParaOAssistente\(db, conversa\.id, loja, origem === 'ycloud' \? n\.telefone : undefined\)/);
+    const acao = readFileSync(new URL('../../supabase/functions/assistente-acao/index.ts', import.meta.url), 'utf8');
+    expect(acao).toMatch(/inst\?\.origem !== 'ycloud' \|\| !ehNumeroDeTeste/);
+  });
+
+  it('a migration guarda só dígitos e no máximo 10 números', () => {
+    const sql = readFileSync(new URL('../../supabase/migrations/20261105120000_assistente_numeros_de_teste.sql', import.meta.url), 'utf8');
+    expect(sql).toMatch(/telefones_teste text\[\] not null default '\{\}'/);
+    expect(sql).toMatch(/cardinality\(lista\), 0\) <= 10/);
+    expect(sql).toMatch(/x ~ '\^55\[0-9\]\{10,11\}\$'/);
+    expect(sql).toMatch(/historico_desde timestamptz/);
   });
 });

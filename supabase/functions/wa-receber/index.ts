@@ -367,7 +367,9 @@ Deno.serve(async (req) => {
          pode custar a mensagem, que já está gravada. */
       const loja = await aoChegarMensagem(db, inst.id, n.telefone, conversa.id)
         .catch((e) => { console.error('wa-receber: prospecção', e); return null; });
-      await aoChegarParaOAssistente(db, conversa.id, loja)
+      /* Número de teste do dono só vale no número oficial: nas caixas da equipe (Evolution,
+         API antiga) o assistente não entra sozinho. */
+      await aoChegarParaOAssistente(db, conversa.id, loja, origem === 'ycloud' ? n.telefone : undefined)
         .catch((e) => console.error('wa-receber: assistente', e));
     }
 

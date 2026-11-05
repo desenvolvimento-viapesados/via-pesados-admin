@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Panel, SectionHeader, EmptyState } from '@/components/admin/ui';
 import { useTeam } from '@/hooks/useAdmin';
 import {
-  MODOS, ROTULO_DO_MODO, dentroDoHorario,
+  MODOS, ROTULO_DO_MODO, dentroDoHorario, telefoneDeTeste,
   useAssistenteConfig, useSalvarConfig, useStatusDoAssistente, useGastoHoje,
   useFatos, useSalvarFato, useApagarFato, useConversasAtendidas, useRascunhosEsperando,
   useTempoRealDoAssistente,
@@ -69,6 +69,7 @@ type Formulario = {
   max_reunioes_dia: string;
   modo_prospeccao: Modo;
   teto_usd_dia: string;
+  telefones_teste: string;
 };
 
 const doBanco = (c: AssistenteConfig): Formulario => ({
@@ -82,7 +83,19 @@ const doBanco = (c: AssistenteConfig): Formulario => ({
   max_reunioes_dia: String(c.max_reunioes_dia ?? 6),
   modo_prospeccao: c.modo_prospeccao,
   teto_usd_dia: String(Number(c.teto_usd_dia) || 0),
+  telefones_teste: (c.telefones_teste ?? []).map(fone).join(', '),
 });
+
+/** "(27) 99724-6060, 33 98814-4005" → ['5527997246060', '5533988144005'], ou o pedaço que não é telefone. */
+function lerNumerosDeTeste(texto: string): { numeros: string[]; invalido: string | null } {
+  const numeros: string[] = [];
+  for (const pedaco of texto.split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean)) {
+    const n = telefoneDeTeste(pedaco);
+    if (!n) return { numeros, invalido: pedaco };
+    if (!numeros.includes(n)) numeros.push(n);
+  }
+  return { numeros, invalido: null };
+}
 
 /** O que mudou, já no formato da tabela. Devolve erro em português se algo não vale. */
 function mudancas(f: Formulario, c: AssistenteConfig): { mudanca: MudancaNaConfig; erro: string | null } {
@@ -97,6 +110,9 @@ function mudancas(f: Formulario, c: AssistenteConfig): { mudanca: MudancaNaConfi
   if (!Number.isFinite(gasto) || gasto < 0) return { mudanca: m, erro: 'O teto de gasto precisa ser um valor de 0 para cima.' };
   if (!f.dias_semana.length) return { mudanca: m, erro: 'Escolha pelo menos um dia para as reuniões.' };
   if (!f.hora_inicio || !f.hora_fim || f.hora_fim <= f.hora_inicio) return { mudanca: m, erro: 'O fim do expediente precisa ser depois do começo.' };
+  const teste = lerNumerosDeTeste(f.telefones_teste);
+  if (teste.invalido) return { mudanca: m, erro: `"${teste.invalido}" não é um telefone com DDD.` };
+  if (teste.numeros.length > 10) return { mudanca: m, erro: 'No máximo 10 números de teste.' };
 
   if ((link || null) !== (c.link_reuniao ?? null)) m.link_reuniao = link || null;
   if ((f.responsavel_id || null) !== (c.responsavel_id ?? null)) m.responsavel_id = f.responsavel_id || null;
@@ -108,6 +124,7 @@ function mudancas(f: Formulario, c: AssistenteConfig): { mudanca: MudancaNaConfi
   if (teto !== c.max_reunioes_dia) m.max_reunioes_dia = teto;
   if (f.modo_prospeccao !== c.modo_prospeccao) m.modo_prospeccao = f.modo_prospeccao;
   if (gasto !== Number(c.teto_usd_dia)) m.teto_usd_dia = gasto;
+  if (JSON.stringify(teste.numeros) !== JSON.stringify(c.telefones_teste ?? [])) m.telefones_teste = teste.numeros;
   return { mudanca: m, erro: null };
 }
 
@@ -325,6 +342,20 @@ function Configuracao({ config }: { config: AssistenteConfig }) {
           })}
         </div>
         <p className="text-[11px] text-foreground/40">Vale para quem responder daqui para a frente. Em cada conversa você troca o modo pelo cabeçalho dela.</p>
+      </div>
+
+      {/* Teste */}
+      <div className="space-y-3">
+        <SectionHeader title="Números de teste" />
+        <input
+          className={cn(inputCls, 'w-full max-w-[520px] tabular-nums')}
+          placeholder="(27) 99724-6060, (33) 98814-4005"
+          value={f.telefones_teste}
+          onChange={(e) => muda('telefones_teste', e.target.value)}
+        />
+        <p className="text-[11px] text-foreground/40 leading-relaxed">
+          Mensagem destes números no WhatsApp oficial já entra com o assistente atendendo sozinho. Na conversa deles aparece "Recomeçar do zero", para testar de novo como se fosse a primeira mensagem.
+        </p>
       </div>
 
       {/* Gasto */}
