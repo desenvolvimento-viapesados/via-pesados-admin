@@ -7,8 +7,8 @@
  *     conduz até 15 minutos de videochamada com o Xavier. Antes de fechar o horário,
  *     pergunta se quem decide vem junto (não bloqueia; vai para o dossiê).
  *  2. Nunca diz preço nem prazo do teste. Nunca número falso, caso inventado, depoimento.
- *  3. Fala como o Davi, do Via Pesados, e avisa na primeira mensagem que é atendimento
- *     automático (05/11/2026: o dono quis nome próprio; o aviso fica, curto); nunca finge ser gente
+ *  3. Fala como o Davi, atendente virtual do Via Pesados (05/11/2026: o dono quis nome
+ *     próprio e "atendente"; o "virtual" fica, é o aviso de que é IA); nunca finge ser gente
  *     nem finge esquecimento.
  *  4. Nada automático fora das 08h–20h de São Paulo, e texto livre só com a janela de 24h
  *     da Meta aberta.
@@ -32,13 +32,13 @@ export const ROTULO_DO_MODO: Record<Modo, string> = {
 
 /**
  * Quem fala (decisão do dono, 05/11/2026): o Davi, do Via Pesados. O aviso de atendimento
- * automático vai na primeira mensagem, curto, e é a única coisa que não sai: a IA nunca se
+ * virtual vai na primeira mensagem, numa palavra, e é a única coisa que não sai: a IA nunca se
  * passa por gente (regra de uso da IA e confiança do lojista).
  */
 export const PERSONA = {
   nome: 'Davi',
-  apresentacao: 'Aqui é o Davi, do Via Pesados (atendimento automático).',
-  souAutomatico: 'Sou atendimento automático do Via Pesados, sim. Se preferir, chamo o Xavier pra falar com você por aqui.',
+  apresentacao: 'Aqui é o Davi, atendente virtual do Via Pesados.',
+  souAutomatico: 'Sou o atendente virtual do Via Pesados, sim. Se preferir, chamo o Xavier pra falar com você por aqui.',
 } as const;
 
 export type Etapa =
@@ -504,7 +504,7 @@ const NEGA_TERMO = new RegExp(`\\b(?:nao|nunca|jamais|nem|sem)\\s+(?:\\w+\\s+)?$
 const FINGIR_GENTE: RegExp[] = [
   /(?<!\bnao\s)\bsou\s+o\s+xavier\b/,
   /\baqui\s+(?:e|eh)\s+o\s+xavier\b/,
-  /\bnao\s+sou\s+(?:um\s+)?(?:atendimento\s+)?automatico\b/,
+  /\bnao\s+sou\s+(?:um\s+|o\s+)?(?:atendimento\s+automatico|automatico|atendente\s+virtual|virtual)\b/,
   /(?<!\bnao\s(?:e\s)?)\batendimento\s+humano\b/,
   /(?<!\bnao\s)\bsou\s+(?:um\s+|uma\s+)?(?:humano|humana|pessoa|gente|de\s+verdade|de\s+carne)\b/,
   /\bnao\s+sou\s+(?:um\s+|uma\s+)?(?:robo|bot|ia|inteligencia\s+artificial|maquina|assistente\s+virtual)\b/,
@@ -618,7 +618,7 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
     for (const r of FINGIR_GENTE) {
       const achou = p.match(r);
       if (achou) {
-        v.push({ regra: 'fingir_gente', mensagem: i, trecho: achou[0], explicacao: `Você é o ${PERSONA.nome}, atendimento automático do Via Pesados: nunca diga que é uma pessoa ou o Xavier. Se perguntarem, confirme que é automático.` });
+        v.push({ regra: 'fingir_gente', mensagem: i, trecho: achou[0], explicacao: `Você é o ${PERSONA.nome}, atendente virtual do Via Pesados: nunca diga que é uma pessoa ou o Xavier. Se perguntarem, confirme que é virtual.` });
         break;
       }
     }

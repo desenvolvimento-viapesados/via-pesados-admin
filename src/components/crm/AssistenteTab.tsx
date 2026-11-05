@@ -190,7 +190,7 @@ function PainelGeral({ config }: { config: AssistenteConfig }) {
         <div className="space-y-1 text-[11.5px] text-foreground/45 leading-relaxed">
           <p className={rotuloCls}>Como ele trabalha</p>
           <p>
-            É o Davi, do Via Pesados, e avisa na primeira mensagem que é atendimento automático. Pergunta da rotina da loja até
+            É o Davi, atendente virtual do Via Pesados (o "virtual" é o aviso de que é IA). Pergunta da rotina da loja até
             o lojista dizer o que atrapalha, mostra uma coisa do sistema ligada a isso e marca 15 minutos com você. Não fala preço
             nem de teste. Você escreveu na conversa, ele sai dela.
           </p>

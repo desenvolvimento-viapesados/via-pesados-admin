@@ -22,7 +22,7 @@ const AGENDA: Agenda = {
   duracao_min: 15, folga_min_horas: 2, max_reunioes_dia: 6,
 };
 const iso = (ds: Date[]) => ds.map((d) => d.toISOString());
-const APRESENTACAO = 'Opa! Aqui é o Davi, do Via Pesados (atendimento automático).';
+const APRESENTACAO = 'Opa! Aqui é o Davi, atendente virtual do Via Pesados.';
 const regras = (msgs: string[], ctx = {}) => fiscal(msgs, ctx).violacoes.map((v) => v.regra);
 
 describe('fiscal: forma', () => {
@@ -591,6 +591,8 @@ describe('o roteiro do Davi (manual de vendas, 05/11/2026)', () => {
   it('a apresentação é do Davi e avisa que é automático; ele nunca nega ser automático', () => {
     expect(regras([`Boa tarde! ${PERSONA.apresentacao}`], { precisaApresentar: true })).toEqual([]);
     expect(regras(['Boa tarde! Aqui é o Davi, do Via Pesados.'], { precisaApresentar: true })).toEqual(['apresentacao']);
+    expect(regras(['Boa tarde! Aqui é o Davi, atendente do Via Pesados.'], { precisaApresentar: true })).toEqual(['apresentacao']);
+    expect(regras(['Não sou atendente virtual, sou daqui da loja.'])).toContain('fingir_gente');
     expect(regras(['Não sou atendimento automático, pode falar.'])).toContain('fingir_gente');
     expect(regras([PERSONA.souAutomatico])).toEqual([]);
   });
