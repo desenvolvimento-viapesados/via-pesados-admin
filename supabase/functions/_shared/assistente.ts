@@ -413,7 +413,7 @@ export async function aplicarRegistro(db: Db, estado: AssistenteConversa, args: 
   if (args.situacao && typeof args.situacao === 'object') {
     const s: Situacao = { ...estado.situacao };
     let mudou = false;
-    for (const k of ['estoque', 'canais', 'sistema_atual', 'cidade', 'quem_fala', 'loja', 'quem_anuncia', 'como_manda',
+    for (const k of ['estoque', 'canais', 'sistema_atual', 'cidade', 'quem_fala', 'loja', 'cargo', 'estrutura', 'quem_anuncia', 'como_manda',
       'equipe', 'epoca_boa', 'motivo', 'o_que_quer_ver', 'prazo', 'nao_e_o_momento'] as const) {
       const v = textoOuNada(args.situacao[k]);
       if (v) { s[k] = v; mudou = true; }

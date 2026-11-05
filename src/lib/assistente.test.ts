@@ -633,3 +633,15 @@ describe('bancada de 05/11: o que irritou o lojista', () => {
     expect(regras(['Já chamei o Xavier, dono do Via Pesados. Ele te responde aqui mesmo, nesta conversa.'])).toEqual([]);
   });
 });
+
+describe('a ficha da loja (dono, 05/11/2026)', () => {
+  it('a pergunta da maior dificuldade com as opções do sistema passa no conferente', () => {
+    const q = 'Hoje o que mais te dá trabalho: anunciar os caminhões em cada lugar, responder o cliente com foto e ficha na hora, ou controlar os clientes e as negociações?';
+    expect(regras(['Entendi, você mesmo cadastra cada caminhão nos dois.', q], { antesDeMarcar: true })).toEqual([]);
+  });
+  it('o roteiro pede nome, cidade, cargo, estrutura, estoque e a maior dificuldade', () => {
+    for (const t of ['como chama e fica em que cidade', 'Você é o dono da loja ou cuida das vendas', 'têm pátio', 'quantos caminhões no pátio', 'o que mais te dá trabalho']) {
+      expect(INSTRUCOES, t).toContain(t);
+    }
+  });
+});

@@ -90,6 +90,20 @@ function textoDoEstado(args: {
     : `Você ainda não se apresentou nesta conversa: o primeiro balão é o cumprimento dele (ou o da hora) + "${PERSONA.apresentacao}"`);
   L.push(`Origem: ${loja ? 'veio da lista da prospecção (foi chamado por nós, não procurou nada)' : 'escreveu por conta própria'}.`);
   L.push(`Respostas suas nesta conversa até agora: ${args.respostasSuas}.`);
+  {
+    const s0 = e.situacao ?? {};
+    const d0 = (loja?.dados ?? {}) as Record<string, unknown>;
+    const ou = (v: unknown) => (v ? n(v, 160) : 'FALTA');
+    L.push('# Ficha da loja (complete no fio da conversa, uma pergunta por vez; o que dá para deduzir não se pergunta)');
+    L.push(`- Nome da loja: ${ou(s0.loja ?? loja?.nome)}`);
+    L.push(`- Cidade: ${ou(s0.cidade ?? (loja?.cidade ? `${loja.cidade}${loja.uf ? `/${loja.uf}` : ''}` : null))}`);
+    L.push(`- Cargo de quem fala: ${ou(s0.cargo)}`);
+    L.push(`- Estrutura física (pátio ou sem pátio): ${ou(s0.estrutura)}`);
+    L.push(`- Veículos no estoque: ${ou(s0.estoque)}`);
+    L.push(`- Segmento: ${ou(s0.segmento ?? (typeof d0.tipo === 'string' ? d0.tipo : null))}`);
+    L.push(`- Onde anuncia e quem posta: ${s0.canais || s0.quem_anuncia ? n([s0.canais, s0.quem_anuncia].filter(Boolean).join(' · '), 200) : 'FALTA'}`);
+    L.push(`- Maior dificuldade (pergunta com as opções): ${e.dores.length ? n(e.dores.map((d) => d.texto).join('; '), 200) : 'FALTA'}`);
+  }
   L.push(args.perguntasFeitas.length
     ? `Perguntas que você já fez (não repita nem pergunte de novo o que ele já respondeu):\n${args.perguntasFeitas.map((q) => `- ${n(q, 200)}`).join('\n')}`
     : 'Perguntas que você já fez: nenhuma.');
@@ -361,7 +375,7 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
             /* Só vale o último horário escolhido no turno. */
             for (let i = acoes.length - 1; i >= 0; i--) if (acoes[i].tipo === 'marcar_reuniao') acoes.splice(i, 1);
             acoes.push({ tipo: 'marcar_reuniao', args: { inicio: v.inicio.toISOString(), quem_vem: entrada.quem_vem ?? null, decisor_vem: entrada.decisor_vem ?? 'nao_sei' }, estado: 'pendente' });
-            saida = `Pode confirmar ${horarioFalado(v.inicio)}. Link da chamada: ${cfg.link_reuniao}. A reunião é gravada quando a sua mensagem sair. Agora chame responder com três balões: "Marcado: [dia] às [hora], 15 minutos com o Xavier no Google Meet. Se servir, você já deixa a implantação marcada; se não servir, tudo bem." (formato do dia: "amanhã, sexta, às 9h30" ou "segunda às 10h") / o link sozinho no balão, copiado exatamente / UMA pergunta, a primeira que couber: a loja não está identificada → "Me passa o @ do Insta da loja? Assim a gente já chega conhecendo seus caminhões."; não se sabe quem decide e nada indica que é ele → "Mais alguém decide isso junto com você?"; o motivo veio fraco → "Pra gente ir direto ao ponto: o que você mais quer ver funcionando?"; já se sabe tudo → "Se apertar, você me avisa por aqui?"`;
+            saida = `Pode confirmar ${horarioFalado(v.inicio)}. Link da chamada: ${cfg.link_reuniao}. A reunião é gravada quando a sua mensagem sair. Agora chame responder com três balões: "Marcado: [dia] às [hora], 15 minutos com o Xavier no Google Meet. Se servir, você já deixa a implantação marcada; se não servir, tudo bem." (formato do dia: "amanhã, sexta, às 9h30" ou "segunda às 10h") / o link sozinho no balão, copiado exatamente / UMA pergunta, a primeira que couber: falta o nome da loja ou a cidade → "Me passa o @ do Insta da loja? Assim a gente já chega conhecendo seus caminhões." (ou "E a loja, como chama e fica em que cidade?"); falta o cargo → "Você é o dono da loja ou cuida das vendas aí?"; falta a estrutura → "Vocês têm pátio com os caminhões aí, ou trabalham mais intermediando?"; falta o estoque → "Hoje vocês têm mais ou menos quantos caminhões no pátio?"; não se sabe quem decide e nada indica que é ele → "Mais alguém decide isso junto com você?"; o motivo veio fraco → "Pra gente ir direto ao ponto: o que você mais quer ver funcionando?"; já se sabe tudo → "Se apertar, você me avisa por aqui?"`;
           } else {
             ehErro = true;
             saida = v.motivo + (v.chamarXavier ? ' Não marque: chame o Xavier (chamar_xavier) e diga que ele combina o horário por aqui.' : '');

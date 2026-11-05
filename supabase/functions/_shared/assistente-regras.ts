@@ -128,6 +128,10 @@ export type Situacao = {
   quem_fala?: string | null;
   /** A loja: nome ou @ do Instagram (a cidade vai em `cidade`). */
   loja?: string | null;
+  /** O cargo de quem fala: dono, sócio, gerente, vendedor, quem cuida das redes... (dono, 05/11). */
+  cargo?: string | null;
+  /** Estrutura física: tem pátio/loja, ou trabalha sem pátio (intermediando), nas palavras dele. */
+  estrutura?: string | null;
   /** Quem posta os anúncios hoje: dono, vendedor, família, agência. */
   quem_anuncia?: string | null;
   /** Como manda foto e ficha ao cliente, nas palavras dele. */
@@ -638,7 +642,9 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
       const achou = p.match(r);
       if (achou) v.push({ regra: 'palco', mensagem: i, trecho: achou[0], explicacao: `Tire isto: ${nome}.` });
     }
-    for (const [r, tema] of TEMAS_DO_SISTEMA) if (r.test(p)) temas.add(tema);
+    /* Pergunta com opções ("o que mais te dá trabalho: anunciar, responder ou controlar?") não é
+       lista de funções: só conta tema o balão que afirma. */
+    if (!m.includes('?')) for (const [r, tema] of TEMAS_DO_SISTEMA) if (r.test(p)) temas.add(tema);
     if (ctx.podeOferecerHorario === false && DIA_CITADO.test(p) && HORA_CITADA.test(p)) {
       v.push({ regra: 'horario_cedo', mensagem: i, explicacao: `Ainda não é hora de oferecer horário: ${ctx.motivoDoHorario ?? 'falta entender a loja'}. Se ele pediu para comprar, fechar ou ver funcionando, registre o pedido (registrar: pedido) antes.` });
     }
