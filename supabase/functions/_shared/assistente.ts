@@ -364,6 +364,10 @@ export type ArgsRegistrar = {
   pedido?: Pedido;
   /** Disse "sim" a ver funcionando. */
   interesse?: boolean;
+  /** Recusou vídeo ou reunião, ou condicionou ao preço: a frase dele. */
+  recusou_reuniao?: string;
+  /** Depois de ter recusado, ele mesmo pediu para marcar. */
+  reabriu_reuniao?: boolean;
 };
 
 /** As mensagens de entrada como fonte de citação (texto + transcrição). */
@@ -420,7 +424,13 @@ export async function aplicarRegistro(db: Db, estado: AssistenteConversa, args: 
   }
   /* O pedido só esquenta (quem pediu para comprar e depois perguntou como funciona continua
      querendo comprar); o "sim" a ver funcionando não volta atrás. */
-  if (args.pedido && PEDIDOS.includes(args.pedido) || args.interesse === true) {
+  if (textoOuNada(args.recusou_reuniao) || args.reabriu_reuniao === true) {
+    const s: Situacao = { ...(patch.situacao ?? estado.situacao) };
+    if (args.reabriu_reuniao === true) s.recusou_reuniao = null;
+    else s.recusou_reuniao = textoOuNada(args.recusou_reuniao);
+    patch.situacao = s;
+  }
+  if ((args.pedido && PEDIDOS.includes(args.pedido)) || args.interesse === true) {
     const s: Situacao = { ...(patch.situacao ?? estado.situacao) };
     const quente = pedidoMaisQuente(s.pedido ?? null, args.pedido ?? null);
     if (quente) s.pedido = quente;
@@ -444,9 +454,9 @@ export async function aplicarRegistro(db: Db, estado: AssistenteConversa, args: 
   if (args.pediu_preco === true) {
     const r = respostaAoPreco((estado.pedidos_preco ?? 0) + 1);
     preco = r === 'valor_com_o_xavier'
-      ? 'Primeiro pedido de preço: sem número. Dois balões: "É mensal, sem fidelidade e sem multa pra cancelar. O valor a gente mostra na demonstração, junto com o sistema funcionando." / uma pergunta de rotina de sim ou não, pelo lado dele (ex.: "Pra eu entender o seu caso: hoje é você mesmo que posta os anúncios da loja?").'
+      ? 'Primeiro pedido de preço: sem número. "É mensal, sem fidelidade e sem multa pra cancelar. O valor quem te passa é o Xavier, dono do Via Pesados." Não prenda o valor à demonstração. Se ainda não houve convite, mais um balão com uma pergunta simples da rotina dele ("Me conta: hoje é você mesmo que posta os anúncios da loja?"); se o convite já foi feito, já a escolha: "Posso chamar o Xavier pra falar com você por aqui, ou ele te mostra [horário mais cedo], em 15 minutos, com o sistema na tela. Qual você prefere?"'
       : r === 'horario_mais_cedo'
-        ? 'Segundo pedido de preço: sem número e sem repetir a frase de antes. Até três balões: "Justo querer saber antes." / "O valor a gente mostra junto com o que o sistema faz, pra você ver se compensa pra sua loja. Se achar caro, fala na hora e tudo bem." / "O mais cedo que dá é [1º horário da lista], 15 minutos por vídeo com o Xavier. Quer esse?" Só esse horário.'
+        ? 'Segundo pedido de preço: sem número e sem repetir a frase de antes. Se a escolha ainda não foi dada: "Justo." (ou o motivo dele: "Justo, o seu Antônio vai perguntar isso primeiro.") / "Posso chamar o Xavier pra falar com você por aqui, ou ele te mostra [1º horário da lista], em 15 minutos, com o sistema na tela. Qual você prefere?" Se a escolha já foi dada, ou ele recusou vídeo: a passagem ("Fechado, vou chamar o Xavier, dono do Via Pesados, pra falar com você por aqui." e chamar_xavier).'
         : 'Terceiro pedido de preço (ou mais): chame o Xavier (chamar_xavier) e diga "Vou chamar o Xavier, dono do Via Pesados, pra falar disso com você por aqui."';
   }
 

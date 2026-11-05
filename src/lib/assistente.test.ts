@@ -616,3 +616,20 @@ describe('o roteiro do Davi (manual de vendas, 05/11/2026)', () => {
     expect(INSTRUCOES).toContain(PERSONA.apresentacao);
   });
 });
+
+describe('bancada de 05/11: o que irritou o lojista', () => {
+  const base = { daLista: false, dores: 1, respostasSuas: 3, pedidosDePreco: 0 };
+  it('quem recusou vídeo ou reunião não recebe convite de novo', () => {
+    expect(podeOferecerHorario({ ...base, recusou: 'nao vou entrar em video' }).pode).toBe(false);
+    expect(podeOferecerHorario({ ...base, interesse: true, recusou: 'sem preço nao marco nada' }).pode).toBe(false);
+    expect(podeOferecerHorario({ ...base, recusou: null }).pode).toBe(true);
+    expect(podeOferecerHorario({ ...base, recusou: 'nao', reuniaoMarcada: true }).pode).toBe(true);
+  });
+  it('pressão disfarçada, "em tudo" e o valor como isca voltam para reescrever', () => {
+    for (const t of ['São só 15 minutos.', 'Vou ser sem rodeio.', 'Só pra você saber: o sistema faz isso.', 'O Xavier continua com você por aqui.',
+      'Ele sai em tudo com um cadastro só.', 'Pra ele te responder certinho.', 'Você vê se compensa.', 'Se achar caro, fala na hora.']) {
+      expect(regras([t]), t).toContain('palco');
+    }
+    expect(regras(['Já chamei o Xavier, dono do Via Pesados. Ele te responde aqui mesmo, nesta conversa.'])).toEqual([]);
+  });
+});

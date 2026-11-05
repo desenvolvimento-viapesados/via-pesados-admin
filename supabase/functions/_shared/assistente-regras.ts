@@ -148,6 +148,8 @@ export type Situacao = {
   pedido?: Pedido | null;
   /** Disse "sim" a ver funcionando. */
   interesse?: 'sim' | null;
+  /** Recusou vídeo ou reunião, ou condicionou ao preço (a frase dele): o convite só volta se ele pedir. */
+  recusou_reuniao?: string | null;
 };
 
 /** O que o lead pediu, do mais quente ao mais frio (só sobe). */
@@ -174,9 +176,10 @@ export function pedidoMaisQuente(a: Pedido | null | undefined, b: Pedido | null 
  */
 export function podeOferecerHorario(x: {
   daLista: boolean; pedido?: Pedido | null; interesse?: boolean; dores: number;
-  respostasSuas: number; pedidosDePreco: number; reuniaoMarcada?: boolean;
+  respostasSuas: number; pedidosDePreco: number; reuniaoMarcada?: boolean; recusou?: string | null;
 }): { pode: boolean; precisaInteresse: boolean; motivo: string } {
   if (x.reuniaoMarcada) return { pode: true, precisaInteresse: false, motivo: 'a reunião já está marcada (só para remarcar, se ele pedir)' };
+  if (x.recusou) return { pode: false, precisaInteresse: false, motivo: `ele recusou vídeo ou reunião ("${x.recusou.slice(0, 120)}"): não convide de novo; ofereça, uma vez, falar com o Xavier por aqui. Se ele mesmo pedir para marcar, registre reabriu_reuniao` };
   if (x.pedido === 'fechar_ja') return { pode: true, precisaInteresse: false, motivo: 'ele pediu para fechar já: horários direto, perguntas depois do link' };
   if (x.pedido === 'ver' || x.interesse) return { pode: true, precisaInteresse: false, motivo: 'ele quer ver funcionando' };
   if (x.pedidosDePreco >= 2) return { pode: true, precisaInteresse: false, motivo: 'segundo pedido de preço: só o horário mais cedo, na resposta do preço' };
@@ -452,6 +455,10 @@ const PALCO: [RegExp, string][] = [
   [/\btenho\s+(?:hoje|amanha|segunda|terca|quarta|quinta|sexta|sabado|domingo)\b/, '"tenho [horário]" (o horário é do Xavier: "o Xavier pode...")'],
   /* Dono, 05/11: o Davi pergunta para entender e ajudar a loja, não para passar adiante. */
   [/\b(?:adiantar|passar|repassar|levar)\s+(?:isso\s+|tudo\s+)?(?:pro|pra|para\s+o)\s+xavier\b|\bpro\s+xavier\s+(?:ja\s+)?(?:saber|chegar|entender)\b/, 'pergunta "pro Xavier" (você pergunta para entender e ajudar a loja dele)'],
+  /* Bancada de 05/11: o que irritou o lojista simulado. */
+  [/\bsao\s+so\b|\bsem\s+rodeio\b|\bso\s+pra\s+(?:voce\s+saber|constar)\b|\bcontinua\s+com\s+voce\b/, 'pressão disfarçada ou promessa vaga'],
+  [/\bem\s+tudo\b|\bem\s+todo\s+lugar\b/, '"em tudo" (diga os lugares: Mercado Livre, Insta, Face e site)'],
+  [/\bcertinho\b|\bcompensa\b|\bse\s+achar\s+caro\b|\bsair\s+sabendo\s+o\s+valor\b/, 'o valor como isca ou promessa de resposta que não vem'],
 ];
 
 /* Temas do sistema: antes de marcar, uma resposta fala de um só (uma dor, uma prova). Os

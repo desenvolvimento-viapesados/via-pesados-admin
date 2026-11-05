@@ -279,7 +279,7 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
   const portaDoHorario = (est: AssistenteConversa, pediuPrecoAgora: boolean, marcandoAgora: boolean) => podeOferecerHorario({
     daLista: !!est.loja_id, pedido: est.situacao?.pedido ?? null, interesse: est.situacao?.interesse === 'sim',
     dores: est.dores?.length ?? 0, respostasSuas, pedidosDePreco: (est.pedidos_preco ?? 0) + (pediuPrecoAgora ? 1 : 0),
-    reuniaoMarcada: !!reuniaoFalada || marcandoAgora,
+    reuniaoMarcada: !!reuniaoFalada || marcandoAgora, recusou: est.situacao?.recusou_reuniao ?? null,
   });
   let pediuPrecoAgora = false;
 
@@ -361,7 +361,7 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
             /* Só vale o último horário escolhido no turno. */
             for (let i = acoes.length - 1; i >= 0; i--) if (acoes[i].tipo === 'marcar_reuniao') acoes.splice(i, 1);
             acoes.push({ tipo: 'marcar_reuniao', args: { inicio: v.inicio.toISOString(), quem_vem: entrada.quem_vem ?? null, decisor_vem: entrada.decisor_vem ?? 'nao_sei' }, estado: 'pendente' });
-            saida = `Pode confirmar ${horarioFalado(v.inicio)}. Link da chamada: ${cfg.link_reuniao}. A reunião é gravada quando a sua mensagem sair. Agora chame responder com três balões: "Marcado: [dia], [hora], 15 minutos com o Xavier, por vídeo no Google Meet. Ele te mostra um caminhão saindo no Mercado Livre, no Insta, no Face e no site com um cadastro só, e o valor; se servir, você já deixa a implantação marcada, e se não servir, tudo bem." (troque caminhão pelo que a loja vende) / o link sozinho no balão, copiado exatamente / UMA pergunta, a primeira que couber: a loja não está identificada → "Me passa o @ do Insta da loja? Assim a gente já chega conhecendo seus caminhões."; não se sabe quem decide e nada indica que é ele → "Mais alguém decide isso junto com você?"; o motivo veio fraco → "Pra gente ir direto ao ponto: o que você mais quer ver funcionando?"; já se sabe tudo → "Se apertar aí no pátio, você me avisa por aqui?"`;
+            saida = `Pode confirmar ${horarioFalado(v.inicio)}. Link da chamada: ${cfg.link_reuniao}. A reunião é gravada quando a sua mensagem sair. Agora chame responder com três balões: "Marcado: [dia] às [hora], 15 minutos com o Xavier no Google Meet. Se servir, você já deixa a implantação marcada; se não servir, tudo bem." (formato do dia: "amanhã, sexta, às 9h30" ou "segunda às 10h") / o link sozinho no balão, copiado exatamente / UMA pergunta, a primeira que couber: a loja não está identificada → "Me passa o @ do Insta da loja? Assim a gente já chega conhecendo seus caminhões."; não se sabe quem decide e nada indica que é ele → "Mais alguém decide isso junto com você?"; o motivo veio fraco → "Pra gente ir direto ao ponto: o que você mais quer ver funcionando?"; já se sabe tudo → "Se apertar, você me avisa por aqui?"`;
           } else {
             ehErro = true;
             saida = v.motivo + (v.chamarXavier ? ' Não marque: chame o Xavier (chamar_xavier) e diga que ele combina o horário por aqui.' : '');
