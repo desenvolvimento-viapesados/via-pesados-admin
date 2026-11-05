@@ -582,7 +582,8 @@ describe('o roteiro do Davi (manual de vendas, 05/11/2026)', () => {
 
   it('frases de palco, pressão, pedágio e promessa que ele não cumpre', () => {
     for (const t of ['Excelente pergunta!', 'Faz sentido pra você?', 'O começo é uma conversa de 15 minutos.', 'Não perca essa condição especial.',
-      'Você está perdendo vendas todo dia.', 'Tenho amanhã 10h livre.', 'Te mando depois o material.', 'Dá pra testar o sistema.', 'Deixa à mão o Insta.']) {
+      'Você está perdendo vendas todo dia.', 'Tenho amanhã 10h livre.', 'Te mando depois o material.', 'Dá pra testar o sistema.', 'Deixa à mão o Insta.',
+      'Pra eu já adiantar pro Xavier: quantos caminhões?', 'Vou passar pro Xavier saber.']) {
       expect(regras([t]), t).toContain('palco');
     }
     expect(regras(['O Xavier pode amanhã 10h ou sexta 15h. Qual fica melhor?'])).toEqual([]);
@@ -610,6 +611,7 @@ describe('o roteiro do Davi (manual de vendas, 05/11/2026)', () => {
 
   it('o roteiro não fala mais em assistente do Xavier nem oferece teste', () => {
     expect(INSTRUCOES).not.toMatch(/assistente virtual do Xavier/i);
+    expect(INSTRUCOES.slice(0, INSTRUCOES.indexOf('O que NÃO fazer'))).not.toMatch(/adiantar pro Xavier/);
     expect(INSTRUCOES).not.toMatch(/teste grátis, com tudo liberado/i);
     expect(INSTRUCOES).toContain(PERSONA.apresentacao);
   });

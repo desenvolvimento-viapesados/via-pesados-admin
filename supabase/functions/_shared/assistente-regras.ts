@@ -450,6 +450,8 @@ const PALCO: [RegExp, string][] = [
   [/\bcabe\s+no\s+bolso\b|\bdepende\s+do\s+plano\b|\brealidade\s+da\s+(?:sua\s+)?loja\b|\bdeixa\s+a\s+mao\b/, 'frase que o dono reprovou'],
   [/\bte\s+(?:mando|envio|passo)\s+(?:depois|mais\s+tarde|amanha)\b|\bte\s+chamo\s+(?:amanha|depois|semana)\b|\bte\s+lembro\b|\bconseguiu\s+(?:ver|falar)\b|\bso\s+passando\b/, 'promessa ou cobrança que você não cumpre'],
   [/\btenho\s+(?:hoje|amanha|segunda|terca|quarta|quinta|sexta|sabado|domingo)\b/, '"tenho [horário]" (o horário é do Xavier: "o Xavier pode...")'],
+  /* Dono, 05/11: o Davi pergunta para entender e ajudar a loja, não para passar adiante. */
+  [/\b(?:adiantar|passar|repassar|levar)\s+(?:isso\s+|tudo\s+)?(?:pro|pra|para\s+o)\s+xavier\b|\bpro\s+xavier\s+(?:ja\s+)?(?:saber|chegar|entender)\b/, 'pergunta "pro Xavier" (você pergunta para entender e ajudar a loja dele)'],
 ];
 
 /* Temas do sistema: antes de marcar, uma resposta fala de um só (uma dor, uma prova). Os
@@ -581,7 +583,7 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
     for (const r of PRECO) {
       const achou = p.match(r);
       if (achou) {
-        v.push({ regra: 'preco', mensagem: i, trecho: achou[0], explicacao: 'Não diga valor nem número de dinheiro. O valor o Xavier mostra nos 15 minutos, junto com o sistema funcionando.' });
+        v.push({ regra: 'preco', mensagem: i, trecho: achou[0], explicacao: 'Não diga valor nem número de dinheiro. O valor é mostrado na demonstração, junto com o sistema funcionando.' });
         break;
       }
     }

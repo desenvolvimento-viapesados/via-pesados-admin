@@ -444,10 +444,10 @@ export async function aplicarRegistro(db: Db, estado: AssistenteConversa, args: 
   if (args.pediu_preco === true) {
     const r = respostaAoPreco((estado.pedidos_preco ?? 0) + 1);
     preco = r === 'valor_com_o_xavier'
-      ? 'Primeiro pedido de preço: sem número. Dois balões: "É mensal, sem fidelidade e sem multa pra cancelar. O valor quem te passa é o Xavier, junto com o sistema funcionando." / uma pergunta de rotina de sim ou não, com motivo (ex.: "Pra ele já te responder certinho: hoje é você mesmo que posta os anúncios da loja?").'
+      ? 'Primeiro pedido de preço: sem número. Dois balões: "É mensal, sem fidelidade e sem multa pra cancelar. O valor a gente mostra na demonstração, junto com o sistema funcionando." / uma pergunta de rotina de sim ou não, pelo lado dele (ex.: "Pra eu entender o seu caso: hoje é você mesmo que posta os anúncios da loja?").'
       : r === 'horario_mais_cedo'
-        ? 'Segundo pedido de preço: sem número e sem repetir a frase de antes. Até três balões: "Justo querer saber antes." / "O Xavier mostra o valor junto com o que o sistema faz, pra você ver se compensa pra sua loja. Se achar caro, fala na hora e tudo bem." / "O mais cedo que ele pode é [1º horário da lista], 15 minutos por vídeo. Quer esse?" Só esse horário.'
-        : 'Terceiro pedido de preço (ou mais): chame o Xavier (chamar_xavier) e diga "Vou chamar o Xavier pra falar disso com você por aqui."';
+        ? 'Segundo pedido de preço: sem número e sem repetir a frase de antes. Até três balões: "Justo querer saber antes." / "O valor a gente mostra junto com o que o sistema faz, pra você ver se compensa pra sua loja. Se achar caro, fala na hora e tudo bem." / "O mais cedo que dá é [1º horário da lista], 15 minutos por vídeo com o Xavier. Quer esse?" Só esse horário.'
+        : 'Terceiro pedido de preço (ou mais): chame o Xavier (chamar_xavier) e diga "Vou chamar o Xavier, dono do Via Pesados, pra falar disso com você por aqui."';
   }
 
   if (Object.keys(patch).length) await salvarEstado(db, estado.conversa_id, patch);
