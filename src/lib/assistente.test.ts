@@ -36,14 +36,16 @@ describe('fiscal: forma', () => {
     expect(regras(['Opa! Quem posta os caminhões aí hoje?'], { precisaApresentar: false })).toEqual([]);
   });
 
-  it('até 3 balões, até 320 caracteres, até 2 linhas, sem lista, sem balão vazio', () => {
+  it('até 3 balões, até 700 caracteres, até 10 linhas, lista de até 4 itens, negrito do WhatsApp, sem balão vazio', () => {
     expect(regras(['a', 'b', 'c', 'd'])).toContain('quantidade');
-    expect(regras(['x'.repeat(321)])).toEqual(['tamanho']);
-    expect(regras(['x'.repeat(320)])).toEqual([]);
-    expect(regras(['um\ndois\ntrês'])).toEqual(['linhas']);
-    expect(regras(['um\n\ndois'])).toEqual([]);
-    expect(regras(['- anúncio\n- site'])).toContain('lista');
-    expect(regras(['1. anúncio'])).toContain('lista');
+    expect(regras(['x'.repeat(701)])).toEqual(['tamanho']);
+    expect(regras(['x'.repeat(700)])).toEqual([]);
+    expect(regras([Array.from({ length: 11 }, (_, i) => `linha ${i}`).join('\n')])).toEqual(['linhas']);
+    expect(regras(['O Xavier te mostra:\n\n• o anúncio\n• o WhatsApp\n• e o *valor*'])).toEqual([]);
+    expect(regras(['• a\n• b\n• c\n• d\n• e'])).toContain('lista');
+    expect(regras(['O *único software do Brasil* pra loja de pesados.'])).toEqual([]);
+    expect(regras(['O **único** do Brasil.'])).toContain('markdown');
+    expect(regras(['# Via Pesados'])).toContain('markdown');
     expect(regras(['  '])).toEqual(['vazia']);
   });
 
@@ -532,10 +534,12 @@ describe('teste grátis fora da conversa (dono, 05/11/2026)', () => {
 describe('o roteiro do Davi (manual de vendas, 05/11/2026)', () => {
   const ctxPorta = { daLista: false, dores: 0, respostasSuas: 0, pedidosDePreco: 0 };
 
-  it('quem quer comprar recebe horário só depois de duas perguntas', () => {
+  it('quem quer comprar recebe horário a partir da 2ª resposta; os demais a partir da 3ª (dono, 06/11)', () => {
     expect(podeOferecerHorario({ ...ctxPorta, pedido: 'comprar' }).pode).toBe(false);
-    expect(podeOferecerHorario({ ...ctxPorta, pedido: 'comprar', respostasSuas: 1 }).pode).toBe(false);
-    expect(podeOferecerHorario({ ...ctxPorta, pedido: 'comprar', respostasSuas: 2 }).pode).toBe(true);
+    expect(podeOferecerHorario({ ...ctxPorta, pedido: 'comprar', respostasSuas: 1 }).pode).toBe(true);
+    expect(podeOferecerHorario({ ...ctxPorta, respostasSuas: 1 }).pode).toBe(false);
+    expect(podeOferecerHorario({ ...ctxPorta, respostasSuas: 2 }).pode).toBe(true);
+    expect(podeOferecerHorario({ ...ctxPorta, daLista: true, respostasSuas: 2 }).pode).toBe(true);
   });
 
   it('quem quer fechar já, ou ver funcionando, recebe horário na hora', () => {
@@ -544,9 +548,8 @@ describe('o roteiro do Davi (manual de vendas, 05/11/2026)', () => {
     expect(podeOferecerHorario({ ...ctxPorta, daLista: true, interesse: true }).pode).toBe(true);
   });
 
-  it('lead da lista: com dor, primeiro o "quer ver funcionando?"; por conta própria, horário', () => {
-    const lista = podeOferecerHorario({ ...ctxPorta, daLista: true, dores: 1 });
-    expect(lista).toMatchObject({ pode: false, precisaInteresse: true });
+  it('quem conta o que atrapalha já pode receber o convite; sem nada, primeiro a apresentação', () => {
+    expect(podeOferecerHorario({ ...ctxPorta, daLista: true, dores: 1 }).pode).toBe(true);
     expect(podeOferecerHorario({ ...ctxPorta, dores: 1 }).pode).toBe(true);
     expect(podeOferecerHorario({ ...ctxPorta }).pode).toBe(false);
   });
@@ -601,11 +604,20 @@ describe('o roteiro do Davi (manual de vendas, 05/11/2026)', () => {
   it('todos os exemplos do roteiro passam no conferente', () => {
     const inicio = INSTRUCOES.indexOf('# Exemplos');
     const fim = INSTRUCOES.indexOf('O que NÃO fazer');
-    const linhas = INSTRUCOES.slice(inicio, fim).split('\n').filter((l) => l.startsWith(`${PERSONA.nome}: `));
-    expect(linhas.length).toBeGreaterThanOrEqual(10);
+    const linhas = INSTRUCOES.slice(inicio, fim).split('\n');
+    const respostas: string[][] = [];
+    let atual: string[] | null = null;
     for (const l of linhas) {
-      const baloes = l.slice(PERSONA.nome.length + 2).split(' / ').map((b) => b.trim()).filter((b) => b !== '[link]');
-      expect(fiscal(baloes, { antesDeMarcar: !/^Marcado/.test(baloes[0]) }).violacoes, l).toEqual([]);
+      if (l === `${PERSONA.nome}:`) { atual = ['']; respostas.push(atual); continue; }
+      if (!atual) continue;
+      if (/^Lead/.test(l) || /^Lead da lista/.test(l)) { atual = null; continue; }
+      if (l === '---') { atual.push(''); continue; }
+      atual[atual.length - 1] += (atual[atual.length - 1] ? '\n' : '') + l;
+    }
+    expect(respostas.length).toBeGreaterThanOrEqual(4);
+    for (const r of respostas) {
+      const baloes = r.map((b) => b.trim()).filter(Boolean);
+      expect(fiscal(baloes, {}).violacoes, baloes.join(' / ')).toEqual([]);
     }
   });
 
@@ -640,7 +652,7 @@ describe('a ficha da loja (dono, 05/11/2026)', () => {
     expect(regras(['Entendi, você mesmo cadastra cada caminhão nos dois.', q], { antesDeMarcar: true })).toEqual([]);
   });
   it('o roteiro pede nome, cidade, cargo, estrutura, estoque e a maior dificuldade', () => {
-    for (const t of ['como chama e fica em que cidade', 'Você é o dono da loja ou cuida das vendas', 'têm pátio', 'quantos caminhões no pátio', 'o que mais te dá trabalho']) {
+    for (const t of ['Como chama a loja e de que cidade', 'Você é o dono da loja ou cuida das vendas', 'têm pátio', 'quantos veículos tem no estoque', 'único software do Brasil']) {
       expect(INSTRUCOES, t).toContain(t);
     }
   });

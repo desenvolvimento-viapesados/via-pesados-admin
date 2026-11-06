@@ -69,10 +69,12 @@ export const ROTULO_DA_ETAPA: Record<Etapa, string> = {
 export const LIMITES = {
   /** Balões por turno. */
   MAX_MENSAGENS: 3,
-  /** Caracteres por balão. */
-  MAX_CARACTERES: 320,
+  /** Caracteres por balão (dono, 05/11: parágrafo, negrito e lista curta; nada embolado). */
+  MAX_CARACTERES: 700,
   /** Linhas (não vazias) por balão. */
-  MAX_LINHAS: 2,
+  MAX_LINHAS: 10,
+  /** Itens de lista ("• ") por balão. */
+  MAX_ITENS_DE_LISTA: 4,
   /** Perguntas no turno inteiro. */
   MAX_PERGUNTAS: 1,
   /** Espera depois da última mensagem do lead antes de pensar. */
@@ -187,17 +189,12 @@ export function podeOferecerHorario(x: {
   if (x.pedido === 'fechar_ja') return { pode: true, precisaInteresse: false, motivo: 'ele pediu para fechar já: horários direto, perguntas depois do link' };
   if (x.pedido === 'ver' || x.interesse) return { pode: true, precisaInteresse: false, motivo: 'ele quer ver funcionando' };
   if (x.pedidosDePreco >= 2) return { pode: true, precisaInteresse: false, motivo: 'segundo pedido de preço: só o horário mais cedo, na resposta do preço' };
-  if (x.pedido === 'comprar') {
-    return x.respostasSuas >= 2
-      ? { pode: true, precisaInteresse: false, motivo: 'ele quer comprar e você já fez as perguntas' }
-      : { pode: false, precisaInteresse: false, motivo: `ele quer comprar: antes, ${x.respostasSuas === 0 ? 'até duas perguntas' : 'mais uma pergunta'} sobre a loja, uma por resposta` };
-  }
-  if (x.dores > 0) {
-    return x.daLista
-      ? { pode: false, precisaInteresse: true, motivo: 'ele disse a dor, mas foi chamado pela prospecção: primeiro pergunte se quer ver funcionando' }
-      : { pode: true, precisaInteresse: false, motivo: 'ele disse a dor e veio por conta própria' };
-  }
-  return { pode: false, precisaInteresse: false, motivo: 'ainda não apareceu dor, motivo nem pedido: continue entendendo a loja' };
+  /* Dono, 05/11: poucas perguntas e a reunião o tempo inteiro — a partir da 2ª resposta (quem quer
+     comprar) ou da 3ª (os demais), ou assim que ele contar uma dor. */
+  if (x.pedido === 'comprar' && x.respostasSuas >= 1) return { pode: true, precisaInteresse: false, motivo: 'ele quer comprar e já se apresentou o Via Pesados' };
+  if (x.respostasSuas >= 2) return { pode: true, precisaInteresse: false, motivo: 'você já apresentou o Via Pesados e perguntou da loja' };
+  if (x.dores > 0) return { pode: true, precisaInteresse: false, motivo: 'ele contou o que atrapalha' };
+  return { pode: false, precisaInteresse: false, motivo: 'primeiro apresente o Via Pesados e pergunte o nome da loja' };
 }
 
 export type AssistenteConversa = {
@@ -403,7 +400,7 @@ export function cortarMemoria(texto: string | null | undefined): string | null {
 export type RegraFiscal =
   | 'quantidade' | 'vazia' | 'tamanho' | 'linhas' | 'lista' | 'perguntas'
   | 'preco' | 'prazo' | 'percentual' | 'link' | 'proibida' | 'pedido_sensivel'
-  | 'fingir_gente' | 'esquecimento' | 'meu_amigo' | 'apresentacao' | 'horario_cedo' | 'despejo' | 'palco';
+  | 'fingir_gente' | 'esquecimento' | 'meu_amigo' | 'apresentacao' | 'horario_cedo' | 'despejo' | 'palco' | 'markdown';
 
 export type Violacao = {
   regra: RegraFiscal;
@@ -583,9 +580,13 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
     if (linhas.length > LIMITES.MAX_LINHAS) {
       v.push({ regra: 'linhas', mensagem: i, explicacao: `Até ${LIMITES.MAX_LINHAS} linhas por balão; vieram ${linhas.length}.` });
     }
-    const itemDeLista = linhas.find((l) => /^\s*(?:[-*•·–]|\d+[.)])\s+/.test(l));
-    if (itemDeLista) {
-      v.push({ regra: 'lista', mensagem: i, trecho: itemDeLista.trim(), explicacao: 'Sem lista: escreva como conversa.' });
+    const itens = linhas.filter((l) => /^\s*(?:[-*•·–]|\d+[.)])\s+/.test(l));
+    if (itens.length > LIMITES.MAX_ITENS_DE_LISTA) {
+      v.push({ regra: 'lista', mensagem: i, trecho: itens[0].trim(), explicacao: `Lista de no máximo ${LIMITES.MAX_ITENS_DE_LISTA} itens ("• "), curtos.` });
+    }
+    const md = m.match(/\*\*[^*]+\*\*|^\s*#{1,6}\s/m);
+    if (md) {
+      v.push({ regra: 'markdown', mensagem: i, trecho: md[0].trim(), explicacao: 'No WhatsApp o negrito é *um asterisco de cada lado*; nada de ** nem # título.' });
     }
 
     perguntas += (m.match(/\?+/g) ?? []).length;
