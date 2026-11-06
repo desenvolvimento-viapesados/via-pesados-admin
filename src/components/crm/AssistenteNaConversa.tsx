@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   MODOS, ROTULO_DO_MODO, ROTULO_DA_ETAPA, horarioFalado, fiscal, dentroDoHorario, janelaAberta, ehNumeroDeTeste,
+  precoDeHoje, valoresLiberados,
   useAcaoDoAssistente, useReuniaoDoAssistente, useTurnosDaConversa, useLinkDaMidia,
   type AssistenteConfig, type AssistenteConversa, type AssistenteTurno, type Modo, type Etapa, type ItemCitado,
 } from '@/hooks/useAssistente';
@@ -269,9 +270,10 @@ export function RascunhoDoAssistente({
     const r = fiscal(finais, {
       linkReuniao: config?.link_reuniao ?? null,
       precisaApresentar: assistente ? !assistente.apresentou : false,
+      precoPermitido: valoresLiberados(precoDeHoje(config)),
     });
     return Array.from(new Set(r.violacoes.map((v) => v.explicacao)));
-  }, [finais.join('\u0000'), config?.link_reuniao, assistente?.apresentou]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [finais.join('\u0000'), config?.link_reuniao, config?.preco_mensal, config?.preco_cheio, config?.oferta_ate, assistente?.apresentou]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const foraDoHorario = !dentroDoHorario();
   /* Mesma regra do servidor: depois de 24h da última mensagem da loja, o assistente não

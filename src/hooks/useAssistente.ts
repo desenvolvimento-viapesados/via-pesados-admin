@@ -23,6 +23,7 @@ export type {
 export {
   MODOS, ROTULO_DO_MODO, ROTULO_DA_ETAPA, ETAPAS_SEM_RESPOSTA, LIMITES,
   horarioFalado, fiscal, dentroDoHorario, janelaAberta, textoDaMensagem, ehNumeroDeTeste, telefoneDeTeste,
+  precoDeHoje, valoresLiberados,
 } from '../../supabase/functions/_shared/assistente-regras';
 
 /* ── a função do servidor ─────────────────────────────────────── */

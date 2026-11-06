@@ -4,13 +4,13 @@ import {
   custo, dentroDoHorario, ETAPAS_SEM_RESPOSTA, esperaDoAgrupamento, explicarViolacoes, fiscal, horarioFalado,
   janelaAberta, LIMITES, neutro, passouDoTeto, pedidoExplicitoDeParar, ROTULO_DA_ETAPA, somarUso, tetoDoDiaAtingido,
   PERSONA, pedidoComOBotao, podeOferecerHorario, falaDoPreco, precoDeHoje, valoresLiberados,
-  faltaNaQualificacao, PERGUNTA_DA_QUALIFICACAO, perguntouAlgo,
+  faltaNaQualificacao, PERGUNTA_DA_QUALIFICACAO, perguntouAlgo, soSimCurto,
 } from '../_shared/assistente-regras.ts';
 import {
   type ArgsRegistrar, type Conversa, type Mensagem,
   aplicarRegistro, carregarConversa, chamarClaude, chamarXavier, chaveDaIA, concluirTurno, dormir, encerrarConversa,
   equipeEscreveu, fixarParaOXavier, horariosParaOferecer, imagensRecentes, lerConfig, lerEstado, lerFatos, lerLoja,
-  linhaDaConversa, salvarEstado, segredoConfere, transcreverAudios, ultimaEntradaEm, validarMarcacao,
+  linhaDaConversa, REMETENTE_PROSPECCAO, salvarEstado, segredoConfere, transcreverAudios, ultimaEntradaEm, validarMarcacao,
 } from '../_shared/assistente.ts';
 import { FERRAMENTAS, INSTRUCOES, textoDosFatos } from '../_shared/assistente-roteiro.ts';
 
@@ -125,7 +125,8 @@ function textoDoEstado(args: {
     ? 'Valor: você não diz; quem passa é o Xavier.'
     : preco.cheio
       ? `Valor e OFERTA DE LANÇAMENTO (a Black Friday de novembro, vale até ${preco.ofertaAte!.slice(8, 10)}/${preco.ofertaAte!.slice(5, 7)}): "${falaDoPreco(preco)}" Só esses dois números; a taxa de implantação não tem valor pra dizer (em novembro ela não é cobrada). É essa a "oferta especial de lançamento" da mensagem da prospecção. Nunca outro desconto, valor ou porcentagem.`
-      : `Valor do Via Pesados que você PODE dizer: "${falaDoPreco(preco)}" Só esse; nunca desconto, outro valor ou porcentagem.`);
+      : `Valor do Via Pesados que você PODE dizer: "${falaDoPreco(preco)}" Só esse; nunca desconto, outro valor ou porcentagem.`
+        + (preco.ofertaAcabouEm ? ` A oferta de lançamento (a de novembro, das mensagens da prospecção) acabou em ${preco.ofertaAcabouEm.slice(8, 10)}/${preco.ofertaAcabouEm.slice(5, 7)}: se ele falar dela ou de ter sido selecionado, diga que ela valeu até essa data, sem número, e que hoje é este valor. Não chame este valor de oferta.` : ''));
   L.push(`Mostrou o sistema ligado à dor: ${e.prova_enviada ? 'sim' : 'não'}.`);
   if (e.horarios_oferecidos?.length) L.push(`Horários já oferecidos: ${e.horarios_oferecidos.map((h) => horarioFalado(new Date(h))).join('; ')}.`);
   L.push(args.reuniaoFalada
@@ -138,7 +139,7 @@ function textoDoEstado(args: {
 
   L.push(`# Pode oferecer horário agora? ${args.porta.pode ? 'SIM' : 'NÃO'}`);
   L.push(`Por quê: ${args.porta.motivo}.${args.porta.precisaInteresse ? ' Próximo passo: devolva a dor numa frase, mostre UMA coisa do sistema ligada a ela e pergunte se ele quer ver funcionando com o Xavier, em 15 minutos, por vídeo (sem horário ainda). Se ele disser que sim, registre interesse e aí ofereça os horários.' : ''}`);
-  L.push('Se nesta mensagem ele pediu para comprar, fechar, ver funcionando ou disse "sim" a ver, registre (pedido / interesse) antes de responder: a porta muda na hora.');
+  L.push('Se nesta mensagem ele pediu para comprar, fechar, ver funcionando ou disse "sim" a ver, registre (pedido / interesse) antes de responder: a porta muda na hora. "Bora!" ao convite das perguntinhas é sim às perguntas, não à demonstração: não registre interesse por isso.');
 
   L.push(`# Horários livres para oferecer (${args.cfg.duracao_min} minutos com o Xavier)`);
   if (!args.cfg.link_reuniao || !args.cfg.responsavel_id) {
@@ -306,6 +307,11 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
   const meuAmigoJaUsado = msgs.some((m) => m.direcao === 'saida' && /meu\s+amigo/i.test(m.conteudo ?? ''));
   const ultimaDoLead = [...msgs].reverse().find((m) => m.direcao === 'entrada');
   const leadPerguntou = perguntouAlgo(ultimaDoLead?.transcricao || ultimaDoLead?.conteudo);
+  /* O que ele mandou desde a nossa última mensagem é só um "Bora!"/"sim" ao convite das perguntas? */
+  const ultimaNossa = msgs.reduce((i, m, k) => (m.direcao === 'saida' ? k : i), -1);
+  const novasDoLead = msgs.slice(ultimaNossa + 1).filter((m) => m.direcao === 'entrada');
+  const soTopouAsPerguntas = ultimaNossa >= 0 && msgs[ultimaNossa].enviada_por_nome === REMETENTE_PROSPECCAO
+    && novasDoLead.length > 0 && novasDoLead.every((m) => soSimCurto(m.transcricao || m.conteudo));
   const ctxFiscal = { linkReuniao: cfg.link_reuniao, precisaApresentar: !e.apresentou, meuAmigoJaUsado };
   /* A porta do horário é do código (manual de vendas de 05/11): recalculada a cada responder,
      com o que a IA registrou neste turno (pedido, interesse, dor, pedido de preço). */
@@ -388,9 +394,20 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
         let ehErro = false;
         if (ch.name === 'registrar') {
           if ((entrada as ArgsRegistrar).pediu_preco === true) pediuPrecoAgora = true;
-          const r2 = await aplicarRegistro(db, estadoAtual, entrada as ArgsRegistrar, msgs, conversa);
+          let args = entrada as ArgsRegistrar;
+          /* "Bora!" (ou outro sim curto) ao convite da prospecção é sim às perguntas, não à
+             demonstração: o código não deixa isso abrir a porta (dono, 06/11). */
+          if (soTopouAsPerguntas && (args.interesse || args.pedido === 'ver')) {
+            args = { ...args, interesse: undefined, pedido: args.pedido === 'ver' ? undefined : args.pedido };
+          }
+          const r2 = await aplicarRegistro(db, estadoAtual, args, msgs, conversa);
           estadoAtual = r2.estado;
-          saida = r2.resposta;
+          /* A porta pode ter mudado com o que ele acabou de contar (a última pergunta da
+             qualificação respondida): a IA precisa saber neste mesmo turno. */
+          const agoraPorta = portaDoHorario(estadoAtual, pediuPrecoAgora, false);
+          const faltaAgora = faltaNaQualificacao({ loja: estadoAtual.situacao?.loja ?? loja?.nome ?? null, estoque: estadoAtual.situacao?.estoque, cargo: estadoAtual.situacao?.cargo });
+          saida = `${r2.resposta} Agora, pode oferecer horário? ${agoraPorta.pode ? 'SIM' : 'NÃO'} (${agoraPorta.motivo}).`
+            + (faltaAgora.length ? ` Próxima pergunta da qualificação: ${PERGUNTA_DA_QUALIFICACAO[faltaAgora[0]]}.` : ' A qualificação está completa.');
           acoes.push({ tipo: 'registrar', args: entrada, estado: 'executada' });
         } else if (ch.name === 'marcar_reuniao') {
           const v = await validarMarcacao(db, cfg, estadoAtual, String(entrada.inicio ?? ''), new Date());

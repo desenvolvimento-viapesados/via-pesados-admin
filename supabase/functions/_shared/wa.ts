@@ -106,9 +106,10 @@ function textos(vals: string[]) {
   return vals.map((t) => ({ type: 'text', text: String(t ?? '') }));
 }
 
-/* Os modelos aprovados na conta, lidos no máximo a cada 10 minutos. */
+/* Os modelos da conta e o status de cada um, lidos no máximo a cada 10 minutos. */
 let aprovadosEm = 0;
 let aprovados: Set<string> = new Set();
+let statusDosModelos: Map<string, string> = new Map();
 
 /**
  * O modelo já pode ser usado? Modelo em análise ou reprovado NÃO pode ir
@@ -121,15 +122,21 @@ export async function modeloAprovado(nome: string): Promise<boolean> {
   if (Date.now() - aprovadosEm > 10 * 60 * 1000) {
     const cfg = configYCloud();
     try {
-      aprovados = cfg
-        ? new Set((await listarTemplates(cfg)).filter((t) => t.status === 'APPROVED').map((t) => t.name))
-        : new Set();
+      const lista = cfg ? await listarTemplates(cfg) : [];
+      aprovados = new Set(lista.filter((t) => t.status === 'APPROVED').map((t) => t.name));
+      statusDosModelos = new Map(lista.map((t) => [t.name, String(t.status)]));
       aprovadosEm = Date.now();
     } catch {
       return false;
     }
   }
   return aprovados.has(nome);
+}
+
+/** O status do modelo na Meta (APPROVED, PENDING, REJECTED, PAUSED, DISABLED), ou null se não está na conta. */
+export async function statusDoModelo(nome: string): Promise<string | null> {
+  await modeloAprovado(nome);
+  return statusDosModelos.get(nome) ?? null;
 }
 
 /**

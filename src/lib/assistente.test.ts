@@ -14,6 +14,7 @@ import {
   falaDoPreco, precoDeHoje, valoresLiberados,
   faltaNaQualificacao, PERGUNTA_DA_QUALIFICACAO, RESPOSTAS_ATE_CONVIDAR,
   perguntouAlgo,
+  soSimCurto,
 } from '../../supabase/functions/_shared/assistente-regras';
 import { INSTRUCOES } from '../../supabase/functions/_shared/assistente-roteiro';
 import { ROTULO_DO_VIDEO } from '../../supabase/functions/_shared/prospeccao-regras';
@@ -758,7 +759,7 @@ describe('a oferta de lançamento de novembro (dono, 06/11/2026)', () => {
 
   it('acabou a oferta: vale o cheio com a taxa, e o 437 volta a ser barrado', () => {
     const p = precoDeHoje(cfg, dezembro)!;
-    expect(p).toEqual({ mensal: 587, cheio: null, ofertaAte: null, comTaxa: true });
+    expect(p).toEqual({ mensal: 587, cheio: null, ofertaAte: null, comTaxa: true, ofertaAcabouEm: '2026-11-30' });
     expect(falaDoPreco(p)).toBe('É *R$ 587 por mês*, mais a taxa de implantação. Sem fidelidade e sem multa pra cancelar.');
     expect(regras(['É *R$ 437 por mês*.'], { precoPermitido: valoresLiberados(p) })).toContain('preco');
   });
@@ -838,5 +839,19 @@ describe('no meio das perguntas, sem vender e sem "cês" (dono, 06/11/2026)', ()
     expect(perguntouAlgo('Sou dono')).toBe(false);
     expect(perguntouAlgo('Bora!')).toBe(false);
     expect(perguntouAlgo(null)).toBe(false);
+  });
+});
+
+describe('revisão de 06/11: "Bora!", oferta vencida', () => {
+  it('"Bora!" e outros sins curtos não contam como interesse na demonstração', () => {
+    for (const t of ['Bora!', 'bora', 'Pode', 'sim', 'Gostei', 'manda']) expect(soSimCurto(t), t).toBe(true);
+    for (const t of ['quero ver funcionando', 'bora marcar amanhã', 'sim, quanto custa?', 'uns 35', null]) expect(soSimCurto(t), String(t)).toBe(false);
+  });
+
+  it('depois da data, o valor de hoje não é oferta e o Davi sabe quando ela acabou', () => {
+    const p = precoDeHoje({ preco_mensal: 437, preco_cheio: 587, oferta_ate: '2026-11-30' }, new Date('2026-12-02T12:00:00Z'))!;
+    expect(p.ofertaAcabouEm).toBe('2026-11-30');
+    expect(p.mensal).toBe(587);
+    expect(precoDeHoje({ preco_mensal: 437, preco_cheio: 587, oferta_ate: '2026-11-30' }, new Date('2026-11-20T12:00:00Z'))!.ofertaAcabouEm).toBeUndefined();
   });
 });

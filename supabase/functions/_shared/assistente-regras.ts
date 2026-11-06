@@ -134,7 +134,11 @@ export type AssistenteConfig = {
  * por mês e a implantação não é cobrada. Passou a data, vale o cheio com a taxa. Sem
  * preco_cheio, só o preco_mensal, como antes; sem nenhum, o valor é com o Xavier (null).
  */
-export type PrecoDeHoje = { mensal: number; cheio: number | null; ofertaAte: string | null; comTaxa: boolean };
+export type PrecoDeHoje = {
+  mensal: number; cheio: number | null; ofertaAte: string | null; comTaxa: boolean;
+  /** A oferta existiu e acabou nesta data (AAAA-MM-DD): o Davi não chama o valor de hoje de oferta. */
+  ofertaAcabouEm?: string | null;
+};
 
 export function precoDeHoje(
   cfg: Pick<AssistenteConfig, 'preco_mensal' | 'preco_cheio' | 'oferta_ate'> | null | undefined, agora = new Date(),
@@ -146,7 +150,7 @@ export function precoDeHoje(
   if (cheio && ate) {
     return cfg.preco_mensal && hoje <= ate
       ? { mensal: Number(cfg.preco_mensal), cheio, ofertaAte: ate, comTaxa: false }
-      : { mensal: cheio, cheio: null, ofertaAte: null, comTaxa: true };
+      : { mensal: cheio, cheio: null, ofertaAte: null, comTaxa: true, ofertaAcabouEm: ate };
   }
   return cfg.preco_mensal ? { mensal: Number(cfg.preco_mensal), cheio: null, ofertaAte: null, comTaxa: false } : null;
 }
@@ -258,6 +262,16 @@ export function perguntouAlgo(texto: string | null | undefined): boolean {
   if (!t) return false;
   if (String(texto).includes('?')) return true;
   return /^(e\s+)?(quanto|quantos|quanta|como|qual|quais|onde|quando|porque|por\s+que|pq|tem|funciona|serve|da\s+pra|da\s+para|precisa|posso|consigo|voces|o\s+que|e\s+o|e\s+a|e\s+no|e\s+na)\b/.test(t);
+}
+
+/**
+ * Um sim curto e sem conteúdo ("Bora!", "pode", "sim", "manda", "gostei"): ao convite das
+ * perguntinhas da prospecção, é sim às perguntas, não à demonstração (dono, 06/11).
+ */
+export function soSimCurto(texto: string | null | undefined): boolean {
+  const t = normalizarTexto(String(texto ?? ''));
+  if (!t || t.split(' ').length > 3) return false;
+  return /^(bora|bora la|vamos|vamo|pode|pode ser|pode mandar|pode perguntar|manda|sim|claro|ok|okay|beleza|blz|show|top|gostei|massa|fechou|opa|uhum|isso)$/.test(t);
 }
 
 /** Depois de tantas respostas suas sem completar a qualificação, convida mesmo assim. */

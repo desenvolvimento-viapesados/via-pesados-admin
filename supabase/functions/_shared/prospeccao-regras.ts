@@ -361,6 +361,14 @@ export const MODELO_OFERTA = 'prospeccao_oferta';
 export const MODELO_CTA = 'prospeccao_cta';
 /** Todos precisam estar aprovados para a prospecção sair. */
 export const MODELOS_DA_PROSPECCAO = [MODELO_ABERTURA, MODELO_ABERTURA_NOME, MODELO_OFERTA, MODELO_CTA] as const;
+/** Como cada modelo aparece para o dono (no aviso de por que a prospecção não sai). */
+export const NOME_DA_MENSAGEM: Record<string, string> = {
+  [MODELO_ABERTURA]: 'a 1ª mensagem (vídeo)', [MODELO_ABERTURA_NOME]: 'a 1ª mensagem com o nome do vendedor',
+  [MODELO_OFERTA]: 'a 2ª (oferta)', [MODELO_CTA]: 'a 3ª (convite)',
+};
+export const STATUS_NA_META: Record<string, string> = {
+  PENDING: 'em análise', REJECTED: 'reprovada', PAUSED: 'pausada pela Meta', DISABLED: 'desativada pela Meta', APPROVED: 'aprovada',
+};
 /** Segundos entre uma mensagem e a próxima: dá tempo de a anterior chegar primeiro. */
 export const PAUSA_ENTRE_MENSAGENS_MS = 4_000;
 export const BOTAO_BORA = 'Bora!';

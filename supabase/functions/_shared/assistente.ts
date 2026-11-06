@@ -27,6 +27,8 @@ export type Db = any;
 
 /** Como as mensagens do assistente aparecem na caixa do CRM. */
 export const REMETENTE = 'Assistente';
+/** Quem assina na caixa as mensagens automáticas da prospecção (prospeccao.ts, REMETENTE_AGENTE). */
+export const REMETENTE_PROSPECCAO = 'Agente de prospecção';
 const GRAPH = 'https://graph.facebook.com/v21.0';
 
 const agoraISO = () => new Date().toISOString();
@@ -460,7 +462,7 @@ export async function aplicarRegistro(db: Db, estado: AssistenteConversa, args: 
   if (args.pediu_preco === true && hoje) {
     /* Dono, 06/11: o Davi diz o valor (e a oferta do mês). A demonstração passa a ser para ver o sistema. */
     preco = (estado.pedidos_preco ?? 0) === 0
-      ? `Pedido de preço: diga o valor direto, no primeiro balão: "${falaDoPreco(hoje)}" Se ele respondeu algo na mesma mensagem, reconheça em meia frase antes. Depois, se a porta deixar, o convite ("Na demonstração de *15 minutos* o Xavier te mostra tudo funcionando na sua loja."); se não, a próxima pergunta da ficha. Nunca desconto, outro valor ou porcentagem.`
+      ? `Pedido de preço: diga o valor direto, no primeiro balão: "${falaDoPreco(hoje)}" Se ele respondeu algo na mesma mensagem, reconheça em meia frase antes. Depois, se a porta deixar, o convite ("Na demonstração de *15 minutos* o Xavier te mostra tudo funcionando na sua loja."); se não, a próxima pergunta da qualificação (a do estado). Nunca desconto, outro valor ou porcentagem.`
       : `Ele perguntou de novo: repita o valor sem rodeio ("${falaDoPreco(hoje)}") e responda o que mais ele quis saber (o que está incluso, como paga). Nunca desconto nem outro valor; condição diferente, só o Xavier: chame o Xavier se ele pedir desconto.`;
   } else if (args.pediu_preco === true) {
     const r = respostaAoPreco((estado.pedidos_preco ?? 0) + 1);
@@ -646,7 +648,7 @@ export async function chamarClaude(params: Record<string, unknown>, opcoes: { ti
 export const quemFalou = (m: Mensagem) =>
   m.direcao === 'entrada' ? 'LEAD'
     : m.turno_id || m.enviada_por_nome === REMETENTE ? 'ASSISTENTE'
-      : m.enviada_por_nome === 'Agente de prospecção' ? 'MENSAGEM AUTOMÁTICA DA PROSPECÇÃO'
+      : m.enviada_por_nome === REMETENTE_PROSPECCAO ? 'MENSAGEM AUTOMÁTICA DA PROSPECÇÃO'
         : m.enviada_por_nome ? `EQUIPE (${m.enviada_por_nome})`
           : 'NÓS (mensagem automática ou do celular)';
 

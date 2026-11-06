@@ -4,10 +4,11 @@ import {
   situacaoDoOficial, type Loja,
 } from '../_shared/prospeccao.ts';
 import {
-  canalDa, ehCelular, intervaloSorteado, limiteDoDia, MODELOS_DA_PROSPECCAO, podeEnviarAgora, proximoContato,
+  canalDa, ehCelular, intervaloSorteado, limiteDoDia, MODELOS_DA_PROSPECCAO, NOME_DA_MENSAGEM, podeEnviarAgora, proximoContato,
+  STATUS_NA_META,
   REGRAS_DO_CANAL, variantes,
 } from '../_shared/prospeccao-regras.ts';
-import { modeloAprovado } from '../_shared/wa.ts';
+import { modeloAprovado, statusDoModelo } from '../_shared/wa.ts';
 import { precoDeHoje } from '../_shared/assistente-regras.ts';
 
 /**
@@ -108,13 +109,16 @@ Deno.serve(async () => {
         }).eq('id', 1);
         return json(200, { ok: true, oficial: situacao.motivo });
       }
-      const emAnalise: string[] = [];
-      for (const m of MODELOS_DA_PROSPECCAO) if (!await modeloAprovado(m)) emAnalise.push(m);
-      if (emAnalise.length) {
+      const travando: string[] = [];
+      for (const m of MODELOS_DA_PROSPECCAO) {
+        if (await modeloAprovado(m)) continue;
+        travando.push(`${NOME_DA_MENSAGEM[m]}: ${STATUS_NA_META[await statusDoModelo(m) ?? ''] ?? 'não está na Meta'}`);
+      }
+      if (travando.length) {
         await db.from('prospeccao_config').update({
-          pausado_motivo: 'As mensagens da prospecção ainda não foram aprovadas pela Meta: nada sai até a aprovação.', atualizado_em: agora.toISOString(),
+          pausado_motivo: `Nada sai até a Meta aprovar as mensagens da prospecção. ${travando.join('; ')}.`, atualizado_em: agora.toISOString(),
         }).eq('id', 1);
-        return json(200, { ok: true, modelo_em_analise: emAnalise });
+        return json(200, { ok: true, modelo_em_analise: travando });
       }
       /* A 2ª mensagem fala da "oferta especial de lançamento": sem a oferta valendo, não sai. */
       const { data: cfgPreco } = await db.from('assistente_config').select('preco_mensal, preco_cheio, oferta_ate').eq('id', 1).maybeSingle();
@@ -172,28 +176,30 @@ Deno.serve(async () => {
 
     try {
       let conversa_id: string, provider_id: string | null;
-      let seguintes: { tipo: 'oferta' | 'cta'; texto: string; provider_id: string | null; erro: string | null }[] = [];
-      if (canal === 'oficial') {
-        const { count: tentativas } = await db.from('prospeccao_envios').select('id', { count: 'exact', head: true })
-          .eq('loja_id', loja.id).eq('tipo', 'contato');
-        ({ conversa_id, provider_id, seguintes } = await enviarSequenciaEGravar(db, inst, tel, loja, `prospeccao:${loja.id}:${(tentativas ?? 0) + 1}`));
-      } else {
-        ({ conversa_id, provider_id } = await enviarEGravar(db, inst, tel, texto, loja.nome));
-      }
-      await db.from('prospeccao_envios').insert({ loja_id: loja.id, tipo: 'contato', numero, texto, provider_message_id: provider_id });
-      /* A oferta e o convite: cada um com o próprio registro, para a falha de entrega achar a loja. */
-      for (const sg of seguintes) {
-        await db.from('prospeccao_envios').insert({
-          loja_id: loja.id, tipo: sg.tipo, numero, texto: sg.texto, provider_message_id: sg.provider_id, erro: sg.erro?.slice(0, 400) ?? null,
-        });
-      }
-      await db.from('prospeccao_lojas').update({
+      const emContato = (conversaId: string | null) => ({
         status: 'em_contato', contatos: numero,
         primeiro_contato_em: loja.primeiro_contato_em ?? agora.toISOString(),
         ultimo_contato_em: agora.toISOString(),
         proximo_contato_em: proximoContato(numero, agora).toISOString(),
-        conversa_id: conversa_id ?? loja.conversa_id, travada_ate: null, atualizada_em: agora.toISOString(),
-      }).eq('id', loja.id);
+        conversa_id: conversaId ?? loja.conversa_id, travada_ate: null, atualizada_em: agora.toISOString(),
+      });
+      if (canal === 'oficial') {
+        const { count: tentativas } = await db.from('prospeccao_envios').select('id', { count: 'exact', head: true })
+          .eq('loja_id', loja.id).eq('tipo', 'contato');
+        /* Cada mensagem é registrada assim que sai (e a loja vira "em contato" com a abertura),
+           para o aviso de falha de entrega da Meta achar a loja. */
+        ({ conversa_id, provider_id } = await enviarSequenciaEGravar(db, inst, tel, loja, `prospeccao:${loja.id}:${(tentativas ?? 0) + 1}`,
+          async (e) => {
+            await db.from('prospeccao_envios').insert({
+              loja_id: loja.id, tipo: e.tipo, numero, texto: e.texto, provider_message_id: e.provider_id, erro: e.erro?.slice(0, 400) ?? null,
+            });
+            if (e.tipo === 'contato') await db.from('prospeccao_lojas').update(emContato(e.conversa_id)).eq('id', loja.id);
+          }));
+      } else {
+        ({ conversa_id, provider_id } = await enviarEGravar(db, inst, tel, texto, loja.nome));
+        await db.from('prospeccao_envios').insert({ loja_id: loja.id, tipo: 'contato', numero, texto, provider_message_id: provider_id });
+        await db.from('prospeccao_lojas').update(emContato(conversa_id)).eq('id', loja.id);
+      }
       await db.from('prospeccao_config').update({
         proximo_envio_em: new Date(agora.getTime() + intervaloSorteado(cfg.intervalo_min, cfg.intervalo_max) * 60_000).toISOString(),
         erros_seguidos: 0, pausado_motivo: null, atualizado_em: agora.toISOString(),

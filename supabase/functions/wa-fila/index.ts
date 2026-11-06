@@ -43,6 +43,7 @@ Deno.serve(async () => {
     .is('processado_em', null)
     .lte('enviar_apos', agora)
     .order('enviar_apos')
+    .order('criado_em') // mesma hora (a sequência da prospecção às 08h): sai na ordem em que entrou
     .limit(40);
   if (error) return json(500, { error: error.message });
 

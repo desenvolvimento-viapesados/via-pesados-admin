@@ -307,32 +307,42 @@ export function mensagensDaProspeccao(loja: LojaDoModelo): { mensagens: Mensagem
  * A primeira que falhar para tudo (nada sai, a loja fica com o erro). Se a 2ª ou a 3ª falhar,
  * a abertura já saiu: a loja segue em contato e a falha volta em `falhas`.
  */
-export async function enviarSequenciaEGravar(db: Db, inst: Instancia, telefone: string, loja: LojaDoModelo, chave: string):
-  Promise<{ conversa_id: string; provider_id: string | null; texto: string; seguintes: { tipo: 'oferta' | 'cta'; texto: string; provider_id: string | null; erro: string | null }[] }> {
+export type EnvioDaSequencia = { tipo: 'contato' | 'oferta' | 'cta'; texto: string; provider_id: string | null; erro: string | null; conversa_id: string | null };
+
+export async function enviarSequenciaEGravar(
+  db: Db, inst: Instancia, telefone: string, loja: LojaDoModelo, chave: string,
+  /* Chamado logo depois de cada mensagem, antes da pausa: o registro tem de existir quando o
+     aviso de falha de entrega da Meta chegar (ele chega em 1 ou 2 segundos). */
+  aoEnviar: (e: EnvioDaSequencia) => Promise<void>,
+): Promise<{ conversa_id: string; provider_id: string | null; texto: string }> {
   const { mensagens, texto } = mensagensDaProspeccao(loja);
   let conversaId = '';
   let providerAbertura: string | null = null;
-  const seguintes: { tipo: 'oferta' | 'cta'; texto: string; provider_id: string | null; erro: string | null }[] = [];
+  let aberturaAgendada = false;
   for (const [i, m] of mensagens.entries()) {
     if (i > 0) await new Promise((ok) => setTimeout(ok, PAUSA_ENTRE_MENSAGENS_MS));
     const r = await enviarTemplate(db, {
       para: telefone, template: m.modelo, chave: i === 0 ? chave : `${chave}:${i + 1}`,
       params: { ...(m.video ? { video: { link: VIDEO_DO_MODELO } } : {}), ...(m.params.length ? { body: m.params } : {}) },
+      /* A abertura saiu agora: a oferta e o convite não esperam a janela de amanhã (a loja pode
+         pedir para sair à noite). Se a abertura ficou para as 08h, as três vão juntas, na ordem. */
+      ...(i > 0 && !aberturaAgendada ? { validoAte: new Date(Date.now() + 2 * 60_000).toISOString() } : {}),
     });
-    /* Agendado = virou 20h no meio da rodada: a fila manda às 08h, na ordem. Conta como enviado. */
     const ok = r.ok || !!r.agendado;
     const motivo = r.ok ? '' : r.motivo;
     const providerId = r.ok ? r.message_id || null : null;
     if (i === 0) {
       if (!ok) throw new Error(motivo);
       providerAbertura = providerId;
-    } else {
-      seguintes.push({ tipo: i === 1 ? 'oferta' : 'cta', texto: m.texto, provider_id: providerId, erro: ok ? null : motivo || 'falhou' });
-      if (!ok) continue;
+      aberturaAgendada = !r.ok;
     }
-    conversaId = await gravarNaCaixa(db, inst, telefone, m.texto, loja.nome, providerId) || conversaId;
+    if (ok) conversaId = await gravarNaCaixa(db, inst, telefone, m.texto, loja.nome, providerId) || conversaId;
+    await aoEnviar({
+      tipo: i === 0 ? 'contato' : i === 1 ? 'oferta' : 'cta', texto: m.texto, provider_id: providerId,
+      erro: ok ? null : motivo || 'falhou', conversa_id: conversaId || null,
+    });
   }
-  return { conversa_id: conversaId, provider_id: providerAbertura, texto, seguintes };
+  return { conversa_id: conversaId, provider_id: providerAbertura, texto };
 }
 
 /**
