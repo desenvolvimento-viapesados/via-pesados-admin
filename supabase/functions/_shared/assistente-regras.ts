@@ -296,7 +296,7 @@ export function podeOferecerHorario(x: {
 }): { pode: boolean; precisaInteresse: boolean; motivo: string } {
   if (x.reuniaoMarcada) return { pode: true, precisaInteresse: false, motivo: 'a reunião já está marcada (só para remarcar, se ele pedir)' };
   if (x.recusou) return { pode: false, precisaInteresse: false, motivo: `ele recusou vídeo ou reunião ("${x.recusou.slice(0, 120)}"): não convide de novo; ofereça, uma vez, falar com o Xavier por aqui. Se ele mesmo pedir para marcar, registre reabriu_reuniao` };
-  if (x.pedido === 'fechar_ja') return { pode: true, precisaInteresse: false, motivo: 'ele pediu para fechar já: horários direto, perguntas depois do link' };
+  if (x.pedido === 'fechar_ja') return { pode: true, precisaInteresse: false, motivo: 'ele pediu para fechar já: horários direto; o que faltar o Xavier vê na reunião' };
   if (x.pedido === 'ver' || x.interesse) return { pode: true, precisaInteresse: false, motivo: 'ele quer ver funcionando' };
   if (x.pedidosDePreco >= 2) return { pode: true, precisaInteresse: false, motivo: 'segundo pedido de preço: só o horário mais cedo, na resposta do preço' };
   /* Dono, 05/11: poucas perguntas e a reunião o tempo inteiro — a partir da 2ª resposta (quem quer
@@ -305,7 +305,7 @@ export function podeOferecerHorario(x: {
   /* Dono, 06/11: a qualificação curta (nome da loja se não souber, estoque, cargo) vem antes do convite. */
   if (x.falta) {
     if (!x.falta.length) return { pode: true, precisaInteresse: false, motivo: 'a qualificação curta está completa (loja, estoque e cargo): é a hora do convite' };
-    if (x.respostasSuas >= RESPOSTAS_ATE_CONVIDAR) return { pode: true, precisaInteresse: false, motivo: `já foram ${x.respostasSuas} respostas suas: convide; o que faltar (${x.falta.map((k) => PERGUNTA_DA_QUALIFICACAO[k]).join('; ')}) vem depois do link` };
+    if (x.respostasSuas >= RESPOSTAS_ATE_CONVIDAR) return { pode: true, precisaInteresse: false, motivo: `já foram ${x.respostasSuas} respostas suas: convide; o que faltar (${x.falta.map((k) => PERGUNTA_DA_QUALIFICACAO[k]).join('; ')}) o Xavier vê na reunião` };
     return { pode: false, precisaInteresse: false, motivo: `falta a qualificação curta; a próxima pergunta é ${PERGUNTA_DA_QUALIFICACAO[x.falta[0]]}` };
   }
   if (x.respostasSuas >= 2) return { pode: true, precisaInteresse: false, motivo: 'você já apresentou o Via Pesados e perguntou da loja' };
@@ -517,7 +517,7 @@ export type RegraFiscal =
   | 'quantidade' | 'vazia' | 'tamanho' | 'linhas' | 'lista' | 'perguntas'
   | 'preco' | 'prazo' | 'percentual' | 'link' | 'proibida' | 'pedido_sensivel'
   | 'fingir_gente' | 'esquecimento' | 'meu_amigo' | 'apresentacao' | 'horario_cedo' | 'despejo' | 'palco' | 'markdown'
-  | 'vendendo';
+  | 'vendendo' | 'pergunta_de_ficha' | 'pergunta_depois_de_marcar';
 
 export type Violacao = {
   regra: RegraFiscal;
@@ -546,7 +546,67 @@ export type ContextoFiscal = {
   soPerguntar?: boolean;
   /** Os valores liberados (valoresLiberados): só eles passam no conferente. */
   precoPermitido?: number | number[] | null;
+  /** A reunião está marcada (ou é marcada neste turno): nada de pergunta (dono, 06/11). */
+  reuniaoMarcada?: boolean;
+  /** A reunião é marcada (ou remarcada) neste turno: o Marcado vai sem pergunta. */
+  marcandoAgora?: boolean;
+  /** A última mensagem do lead pergunta algo (perguntouAlgo). */
+  leadPerguntou?: boolean;
+  /** O nome da loja já se sabe: a cidade sozinha não se pergunta. */
+  lojaConhecida?: boolean;
 };
+
+/*
+ * Perguntas sobre a loja fora da qualificação curta (dono, 06/11): o Davi perguntou "têm
+ * pátio ou trabalham intermediando?" a quem já tinha dito que tem 35 caminhões, e com a
+ * reunião já marcada. Antes de marcar, só as três da qualificação; o resto o Xavier vê na
+ * reunião. Vale só a última oração da pergunta ("35 no pátio já é bom, e você é o dono?").
+ */
+const FICHA_ANTES_DE_MARCAR: RegExp[] = [
+  /\bpatios?\b/, /\bintermed\w*/, /\bloja\s+fisica\b/, /\bgalpao\b/, /\bde\s+terceiros\b/, /\bconsign\w*/,
+  /\binsta(?:gram)?\b/, /@/, /\bonde\s+(?:voces\s+)?(?:ja\s+)?anunci\w*/, /\bvoces\s+(?:ja\s+)?anunciam\b/,
+  /\bquem\s+(?:posta|anuncia|cuida\s+d[oa]s?\s+(?:anuncio|rede|insta))/, /\bdecide\w*/,
+  /\batrapalha\w*/, /\bmais\s+te\s+(?:toma|da)\s+(?:tempo|trabalho)\b/, /\bdificuldade\b/,
+];
+/* A cidade sozinha, quando o nome da loja já se sabe (junto do nome ela é a pergunta 1). */
+const SO_A_CIDADE = /\bcidade\b|\bde\s+onde\b|\bfica\s+onde\b|\bonde\s+(?:fica|voces\s+(?:sao|estao|ficam))\b/;
+/* Depois de marcar, nada que fale da loja dele. */
+const FALA_DA_LOJA: RegExp[] = [
+  ...FICHA_ANTES_DE_MARCAR, SO_A_CIDADE,
+  /\bvoces\b/, /\bloja\b/, /\bhoje\b/, /\baqui?\b\W*$/, /\bestoque\b/, /\bquant[oa]s\b/, /\bdono\b/, /\bvendedor\w*/,
+  /\bcargo\b/, /\bgerente\b/, /\bsocio\w*/, /\bsistema\b/, /\bmercado\s+livre\b/, /\bface(?:book)?\b/, /\banunci\w*/,
+  /\bpost\w*/, /\bfotos?\b/, /\bchamada\b/, /\bjunto\b/, /\bsegmento\b/, /\btrabalham\b/, /\bvendem\b/,
+  /\bquer\s+ver\b/, /\bdor\b/, /\bfalta\b/, /\bduvida\b/,
+];
+/* Escolha de horário: só vale com o horário oferecido no turno (remarcar). */
+const ESCOLHA_DE_HORARIO = /\bqual\b|\bpode\s+ser\b|\bprefere\b|\bfica\s+(?:bom|melhor)\b|\bconsegue\b|\bserve\b|\bmelhor\s+pra\s+voce\b/;
+/* "tá?", "beleza?", "sabe?" no fim de uma afirmação não são pergunta. */
+const MULETA = /(?:,\s*|\s+)(?:ta|ne|beleza|blz|sabe|entendeu|combinado|tranquilo|ok|ta\s+bom|fechou|certo)\s*\?+$/;
+
+/** As frases que perguntam, no texto plano: as que terminam em "?" e os "me conta...". */
+function frasesQuePerguntam(p: string): string[] {
+  const t = p
+    .replace(/[❓❔🤔]/gu, '?').replace(/!\?|\?!/g, '?')
+    .replace(/\.{2,}|…/g, ' ');
+  const frases: string[] = [];
+  for (const bruta of t.split(/(?<=[.!?])\s+|\n+/)) {
+    const f = bruta.trim();
+    if (!f) continue;
+    if (/\?\s*\W*$/.test(f)) {
+      const semMuleta = f.replace(/\?[\s\W]*$/, '?').replace(MULETA, '').trim();
+      if (/\?$/.test(semMuleta)) frases.push(semMuleta);
+    } else if (/(?:^|[,:;]\s*|\b(?:e|agora)\s+)me\s+(?:conta|fala|passa|manda|diz)\s+\S+\s+\S+/.test(f)) frases.push(f);
+    /* Pergunta sem o "?" no fim do balão: "E aí, vocês têm pátio ou trabalham intermediando". */
+    else if (!/[.!]\W*$/.test(f) && /^(?:e\s+ai,?\s+|e\s+)?(?:voces\s+(?:ja\s+)?(?:tem|trabalham|usam|vendem|anunciam|postam|ficam|sao|estao)|quantos|quantas)\b/.test(f)) frases.push(`${f}?`);
+  }
+  return frases;
+}
+
+/** A última oração da pergunta (depois da última vírgula, ponto e vírgula ou dois-pontos). */
+function ultimaOracao(f: string): string {
+  const partes = f.split(/[,;:]\s*/);
+  return partes[partes.length - 1] ?? f;
+}
 
 /** Tira do texto plano as menções aos valores liberados ("r$ 437", "437 reais", "587 por mes"). */
 function semPrecoPermitido(p: string, valor: number | number[] | null | undefined): string {
@@ -611,7 +671,7 @@ const TEMAS_DO_SISTEMA: [RegExp, string][] = [
 
 /* Dia e hora no mesmo balão: é oferta (ou confirmação) de horário. */
 const DIA_CITADO = /\b(?:domingo|segunda|terca|quarta|quinta|sexta|sabado|hoje|amanha)\b|\bdia\s+\d{1,2}\b|\b\d{1,2}\/\d{1,2}\b/;
-const HORA_CITADA = /\b\d{1,2}\s*(?:h|:\s*\d{2})\b|\b\d{1,2}\s*h(?:s|oras?)\b|\b\d{1,2}\s+horas?\b/;
+const HORA_CITADA = /\b\d{1,2}\s*(?:h|:\s*\d{2})\b|\b\d{1,2}h\d{2}(?:min)?\b|\b\d{1,2}\s*h(?:s|oras?)\b|\b\d{1,2}\s+horas?\b|\b\d{1,2}\s+da\s+(?:manha|tarde|noite)\b/;
 
 const PRAZO: RegExp[] = [
   /\b\d+\s*(?:dias?|semanas?|meses|mes|anos?)\b/,             // 60 dias, 2 meses
@@ -798,6 +858,34 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
       v.push({ regra: 'vendendo', mensagem: null, explicacao: 'Ele está respondendo as perguntas e não perguntou nada: reconheça a resposta em poucas palavras e faça a próxima pergunta, num balão só. Nada de sistema, canal ou "imagina" agora; isso volta no convite.' });
     }
   }
+  /* Perguntas fora de hora (dono, 06/11). Depois de marcar só passam: a escolha do horário
+     novo (remarcar, com o horário oferecido no turno) e o esclarecimento do que ele
+     perguntou, sem falar da loja. No turno da marcação, nenhuma. */
+  /* Sem os links: um "?" dentro do link da reunião não é pergunta. */
+  const planos = lista.map((b) => plano(String(b ?? '')).replace(/https?:\/\/\S+/g, ' '));
+  const ofereceHorario = !ctx.marcandoAgora && planos.some((p) => HORA_CITADA.test(p));
+  planos.forEach((p, i) => {
+    for (const f of frasesQuePerguntam(p)) {
+      if (ctx.reuniaoMarcada) {
+        const daLoja = FALA_DA_LOJA.some((r) => r.test(f));
+        const escolha = ofereceHorario && ESCOLHA_DE_HORARIO.test(f) && !FICHA_ANTES_DE_MARCAR.some((r) => r.test(f));
+        const esclarece = !ctx.marcandoAgora && !!ctx.leadPerguntou && !daLoja;
+        if (ctx.marcandoAgora || !(escolha || esclarece)) {
+          v.push({ regra: 'pergunta_depois_de_marcar', mensagem: i, trecho: f.slice(0, 120), explicacao: ctx.marcandoAgora
+            ? 'No Marcado não vai pergunta nenhuma: só o "Marcado!" e o link.'
+            : 'A reunião já está marcada: não pergunte mais nada da loja (o Xavier vê o resto na reunião). Responda curto o que ele disse ou perguntou e se despeça ("Fechou, até segunda!"). Só cabe pergunta para remarcar, com os horários da lista.' });
+          return;
+        }
+        continue;
+      }
+      const oracao = ultimaOracao(f);
+      if (/\bquant[oa]s\b/.test(oracao)) continue; // "quantos caminhões no pátio?" é a pergunta do estoque
+      if (FICHA_ANTES_DE_MARCAR.some((r) => r.test(oracao)) || (ctx.lojaConhecida && SO_A_CIDADE.test(oracao))) {
+        v.push({ regra: 'pergunta_de_ficha', mensagem: i, trecho: f.slice(0, 120), explicacao: 'Antes da reunião, só as três perguntas da qualificação (nome da loja se não souber, estoque, dono ou vendedor). Pátio, cidade, Instagram, onde anuncia, quem decide e o que atrapalha o Xavier vê na reunião. Nunca pergunte o que dá para deduzir (quem tem 35 caminhões tem estoque).' });
+        return;
+      }
+    }
+  });
   if (ctx.antesDeMarcar && temas.size > 1) {
     v.push({ regra: 'despejo', mensagem: null, trecho: [...temas].join(' + '), explicacao: 'Uma coisa do sistema por resposta, a que resolve o que ele disse. Nada de lista: escolha uma.' });
   }

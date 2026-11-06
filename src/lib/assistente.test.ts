@@ -32,13 +32,13 @@ const regras = (msgs: string[], ctx = {}) => fiscal(msgs, ctx).violacoes.map((v)
 
 describe('fiscal: forma', () => {
   it('passa a primeira mensagem certa', () => {
-    const r = fiscal([APRESENTACAO, 'A gente faz o sistema pra loja de caminhão, não vende caminhão. Quem posta os caminhões aí hoje?'], { precisaApresentar: true });
+    const r = fiscal([APRESENTACAO, 'A gente faz o sistema pra loja de caminhão, não vende caminhão. Quantos veículos vocês têm hoje no estoque?'], { precisaApresentar: true });
     expect(r).toEqual({ ok: true, violacoes: [] });
   });
 
   it('a primeira mensagem diz quem fala', () => {
-    expect(regras(['Opa! Quem posta os caminhões aí hoje?'], { precisaApresentar: true })).toEqual(['apresentacao']);
-    expect(regras(['Opa! Quem posta os caminhões aí hoje?'], { precisaApresentar: false })).toEqual([]);
+    expect(regras(['Opa! Quantos veículos vocês têm hoje no estoque?'], { precisaApresentar: true })).toEqual(['apresentacao']);
+    expect(regras(['Opa! Quantos veículos vocês têm hoje no estoque?'], { precisaApresentar: false })).toEqual([]);
   });
 
   it('até 3 balões, até 700 caracteres, até 10 linhas, lista de até 4 itens, negrito do WhatsApp, sem balão vazio', () => {
@@ -55,7 +55,7 @@ describe('fiscal: forma', () => {
   });
 
   it('uma pergunta no turno inteiro, somando os balões', () => {
-    expect(regras(['Tudo bem?', 'Quem posta?'])).toEqual(['perguntas']);
+    expect(regras(['Tudo bem?', 'Quantos são?'])).toEqual(['perguntas']);
     expect(regras(['Terça 10h ou quarta 16h??'])).toEqual([]);
   });
 
@@ -133,7 +133,7 @@ describe('fiscal: nomes, pedidos e honestidade', () => {
   });
 
   it('nunca pede senha, cartão ou CPF; pode dizer que não pede', () => {
-    expect(regras(['Me passa a senha do Instagram'])).toEqual(['pedido_sensivel']);
+    expect(regras(['Me passa a senha do Instagram'])).toContain('pedido_sensivel');
     expect(regras(['Manda seu CPF pra cadastro'])).toEqual(['pedido_sensivel']);
     expect(regras(['Tá certo desconfiar. Não peço senha, cartão nem pagamento.'])).toEqual([]);
     expect(regras(['O Xavier mostra tudo por vídeo, nunca a senha.'])).toEqual([]);
@@ -853,5 +853,120 @@ describe('revisão de 06/11: "Bora!", oferta vencida', () => {
     expect(p.ofertaAcabouEm).toBe('2026-11-30');
     expect(p.mensal).toBe(587);
     expect(precoDeHoje({ preco_mensal: 437, preco_cheio: 587, oferta_ate: '2026-11-30' }, new Date('2026-11-20T12:00:00Z'))!.ofertaAcabouEm).toBeUndefined();
+  });
+});
+
+describe('depois da reunião marcada, nenhuma pergunta da loja (dono, 06/11/2026)', () => {
+  const marcada = { reuniaoMarcada: true };
+
+  it('as perguntas que o dono reprovou voltam para reescrever', () => {
+    expect(regras(['Boa, Valadares! E vocês têm pátio com os caminhões aí ou trabalham mais intermediando, sem pátio?'], marcada))
+      .toContain('pergunta_depois_de_marcar');
+    expect(regras(['E a loja de vocês fica em que cidade?'], marcada)).toContain('pergunta_depois_de_marcar');
+    expect(regras(['Me passa o @ do Insta da loja? Assim a gente já chega conhecendo seus caminhões.'], marcada)).toContain('pergunta_depois_de_marcar');
+    expect(regras(['Mais alguém decide isso junto com você?'], marcada)).toContain('pergunta_depois_de_marcar');
+    expect(regras(['Se apertar, você me avisa por aqui?'], marcada)).toContain('pergunta_depois_de_marcar');
+  });
+
+  it('o Marcado, o link e a despedida passam', () => {
+    expect(regras([
+      'Marcado! ✅\n\n*Segunda às 9h*, 15 minutos com o Xavier no Google Meet.\nSe servir, você já deixa a implantação marcada; se não servir, tudo bem.',
+      'https://meet.google.com/abc-defg-hij',
+    ], { ...marcada, linkReuniao: 'https://meet.google.com/abc-defg-hij' })).toEqual([]);
+    expect(regras(['Fechou, até segunda!'], marcada)).toEqual([]);
+  });
+
+  it('remarcar com os horários pode perguntar', () => {
+    expect(regras(['Sem problema! Ele pode *terça às 9h30* ou *quarta às 13h*. Qual fica melhor?'], marcada)).toEqual([]);
+    expect(regras(['Qual dia fica melhor pra você?'], marcada)).toContain('pergunta_depois_de_marcar');
+  });
+
+  it('se ele perguntou, uma pergunta de volta cabe, desde que não seja da loja', () => {
+    expect(regras(['Você fala da carreta ou do cavalo?'], { ...marcada, leadPerguntou: true })).toEqual([]);
+    expect(regras(['Pode sim! E quantos caminhões vocês têm hoje?'], { ...marcada, leadPerguntou: true })).toContain('pergunta_depois_de_marcar');
+  });
+
+  it('antes de marcar, a qualificação passa e pátio/intermediando não', () => {
+    expect(regras(['Quantos veículos vocês têm hoje no estoque?'], {})).toEqual([]);
+    expect(regras(['Boa, 35 já é estoque bom! E você é o dono ou vendedor aí?'], {})).toEqual([]);
+    expect(regras(['Pra eu te mostrar como fica na sua loja: como ela chama e de que cidade vocês são?'], {})).toEqual([]);
+    expect(regras(['Vocês têm pátio com os caminhões aí, ou trabalham mais intermediando?'], {})).toContain('pergunta_de_ficha');
+    expect(regras(['Vocês trabalham mais intermediando?'], {})).toContain('pergunta_de_ficha');
+  });
+
+  it('pátio sem ser pergunta continua livre', () => {
+    expect(regras(['Sem precisar ir no pátio tirar foto de novo.'], {})).not.toContain('pergunta_de_ficha');
+  });
+
+  it('o roteiro não manda mais perguntar a ficha depois do link', () => {
+    expect(INSTRUCOES).not.toMatch(/pergunte o que falta na ficha/i);
+    expect(INSTRUCOES).not.toMatch(/só depois do link/i);
+    expect(INSTRUCOES).toMatch(/Depois do Marcado, nenhuma pergunta/);
+    const motor = readFileSync('supabase/functions/assistente-responder/index.ts', 'utf8');
+    expect(motor).not.toMatch(/Vocês têm pátio com os caminhões aí/);
+    expect(motor).not.toMatch(/três balões/);
+  });
+});
+
+describe('as perguntas fora de hora que a revisão achou (06/11/2026)', () => {
+  const marcado = 'Marcado! ✅\n\n*Segunda às 9h*, 15 minutos com o Xavier no Google Meet.\nSe servir, você já deixa a implantação marcada; se não servir, tudo bem.';
+  const link = 'https://meet.google.com/abc-defg-hij';
+  const r = (b: string[], ctx: Record<string, unknown>) => regras(b, { linkReuniao: link, ...ctx });
+
+  it('no turno da marcação, nenhuma pergunta, nem se ele escolheu perguntando', () => {
+    const marcando = { reuniaoMarcada: true, marcandoAgora: true };
+    expect(r([marcado, link], marcando)).toEqual([]);
+    expect(r([`${marcado}\n\nE a loja de vocês fica onde?`, link], marcando)).toContain('pergunta_depois_de_marcar');
+    expect(r([`${marcado} Fica bom pra você?`, link], marcando)).toContain('pergunta_depois_de_marcar');
+    expect(r([marcado, link, 'Fechou! Mais alguém vai entrar na chamada com você?'], { ...marcando, leadPerguntou: true })).toContain('pergunta_depois_de_marcar');
+  });
+
+  it('marcada: dia e hora na despedida não liberam pergunta', () => {
+    const m = { reuniaoMarcada: true };
+    for (const b of ['Fechado, *segunda às 9h*! Vocês vendem mais cavalo ou carreta?', 'Até *segunda às 9h*! Alguma dúvida até lá?',
+      'Combinado, *segunda às 9h*. Vocês já usam algum sistema hoje?', 'Me conta como vocês anunciam hoje.', 'Vocês têm pátio 🤔',
+      'E aí, vocês têm pátio ou trabalham intermediando']) {
+      expect(r([b], m), b).toContain('pergunta_depois_de_marcar');
+    }
+  });
+
+  it('marcada: remarcar com os horários passa, mesmo com a pergunta em outro balão', () => {
+    const m = { reuniaoMarcada: true };
+    expect(r(['Sem problema, a gente remarca! O Xavier pode *terça às 9h30* ou *quarta às 13h*.', 'Qual fica melhor?'], m)).toEqual([]);
+    expect(r(['Ele pode *às 9h30* ou *às 11h*. Qual fica melhor?'], m)).toEqual([]);
+    expect(r(['Consegue *terça às 10 da manhã* ou *quarta às 2 da tarde*?'], m)).toEqual([]);
+    expect(r(['Fechou, até segunda! Se precisar remarcar, me fala.'], m)).toEqual([]);
+  });
+
+  it('marcada e ele perguntou: esclarecer passa, falar da loja não', () => {
+    const m = { reuniaoMarcada: true, leadPerguntou: true };
+    expect(r(['Você fala da carreta ou do cavalo?'], m)).toEqual([]);
+    for (const b of ['É esse mesmo! E a loja de vocês fica onde?', 'Vocês já estão no Mercado Livre?', 'Quantas pessoas trabalham na loja?']) {
+      expect(r([b], m), b).toContain('pergunta_depois_de_marcar');
+    }
+  });
+
+  it('"tá?", "beleza?" e "sabe?" no fim de uma resposta não são pergunta', () => {
+    const m = { reuniaoMarcada: true, leadPerguntou: true };
+    for (const b of ['Cada vendedor fica com o seu WhatsApp e a conversa fica com a loja, sabe?',
+      'Não precisa ter pátio, funciona igual pra quem intermedia, tá?', 'Pode trazer o seu sócio sim, quanto mais gente da loja melhor, beleza?']) {
+      expect(r([b], m), b).toEqual([]);
+    }
+  });
+
+  it('antes de marcar: a pergunta do estoque com "pátio" passa; ter pátio, intermediar, Insta e onde anuncia não', () => {
+    expect(r(['Quantos caminhões vocês têm hoje no pátio?'], {})).toEqual([]);
+    expect(r(['Boa, 35 no pátio já é estoque bom, e você é o dono ou vendedor aí?'], {})).toEqual([]);
+    expect(r(['Funciona sim, pra quem intermedia também, quer ver funcionando?'], {})).toEqual([]);
+    expect(r(['Quer ver funcionando?'], {})).toEqual([]);
+    for (const b of ['Vocês intermedeiam?', 'Vocês têm pátios?', 'Vocês têm pátio!?', 'Boa! E o pátio... vocês têm?', 'Onde vocês anunciam hoje?',
+      'Me passa o @ do Insta da loja?', 'Mais alguém decide isso junto com você?']) {
+      expect(r([b], {}), b).toContain('pergunta_de_ficha');
+    }
+  });
+
+  it('antes de marcar: a cidade sozinha só não se pergunta quando a loja já é conhecida', () => {
+    expect(r(['Boa! E a loja de vocês fica em que cidade?'], { lojaConhecida: true })).toContain('pergunta_de_ficha');
+    expect(r(['Pra eu te mostrar como fica na sua loja: como ela chama e de que cidade vocês são?'], {})).toEqual([]);
   });
 });

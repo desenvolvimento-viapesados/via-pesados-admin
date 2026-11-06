@@ -80,7 +80,7 @@ function textoDoEstado(args: {
     L.push(`Loja da nossa lista de prospecção: ${n(loja.nome)}${loja.cidade ? ` · ${n(loja.cidade)}${loja.uf ? `/${n(loja.uf, 4)}` : ''}` : ''}`
       + `${typeof d.tipo === 'string' ? ` · anuncia ${n(d.tipo)}` : ''}${typeof d.portal === 'string' ? ` no portal ${n(d.portal)}` : ''}`
       + `${typeof d.contato === 'string' ? ` · contato no anúncio: ${n(d.contato)}` : ''}.`);
-  } else L.push('Escreveu por conta própria (não é da lista da prospecção): não diga de onde veio o número. O segmento sai do que ele contar; não pergunte "caminhão, carreta ou máquina?" antes de marcar.');
+  } else L.push('Escreveu por conta própria (não é da lista da prospecção): não diga de onde veio o número. O segmento sai do que ele contar; não pergunte "caminhão, carreta ou máquina?".');
   L.push(`Nome no WhatsApp: ${args.conversa.nome ? n(args.conversa.nome, 80) : '(sem nome)'}.`);
   if (args.card) L.push(`Card no funil: ${n(args.card.company_name)} (etapa ${args.card.stage}).`);
   L.push('</dados_da_loja>');
@@ -95,18 +95,25 @@ function textoDoEstado(args: {
   {
     const s0 = e.situacao ?? {};
     const d0 = (loja?.dados ?? {}) as Record<string, unknown>;
-    const ou = (v: unknown) => (v ? n(v, 160) : 'FALTA');
+    /* Marcada a reunião, nada "FALTA": o que não se sabe o Xavier vê na reunião. */
+    const ou = (v: unknown) => (v ? n(v, 160) : args.reuniaoFalada ? '—' : 'FALTA');
     const falta = faltaNaQualificacao({ loja: s0.loja ?? loja?.nome ?? null, estoque: s0.estoque, cargo: s0.cargo });
     L.push('# Qualificação curta (antes do convite, nesta ordem, uma pergunta por resposta; o que dá para deduzir não se pergunta)');
     L.push(`- 1. Nome da loja: ${ou(s0.loja ?? loja?.nome)}`);
     L.push(`- 2. Veículos no estoque: ${ou(s0.estoque)}`);
     L.push(`- 3. Dono ou vendedor (cargo de quem fala): ${ou(s0.cargo)}`);
-    L.push(falta.length ? `Próxima pergunta: ${PERGUNTA_DA_QUALIFICACAO[falta[0]]}.` : 'Qualificação completa.');
-    L.push('# Ficha (o resto: só depois do link, um por resposta, se fizer falta)');
-    L.push(`- Cidade: ${ou(s0.cidade ?? (loja?.cidade ? `${loja.cidade}${loja.uf ? `/${loja.uf}` : ''}` : null))}`);
-    L.push(`- Estrutura física (pátio ou sem pátio): ${ou(s0.estrutura)}`);
-    L.push(`- Segmento: ${ou(s0.segmento ?? (typeof d0.tipo === 'string' ? d0.tipo : null))}`);
-    L.push(`- Onde anuncia e quem posta: ${s0.canais || s0.quem_anuncia ? n([s0.canais, s0.quem_anuncia].filter(Boolean).join(' · '), 200) : 'FALTA'}`);
+    L.push(args.reuniaoFalada
+      ? 'A reunião já está marcada: não pergunte mais nada; o que faltar o Xavier vê na reunião.'
+      : !falta.length ? 'Qualificação completa.'
+        : args.porta.pode ? 'A porta está aberta: convide; o que faltar o Xavier vê na reunião.'
+          : `Próxima pergunta: ${PERGUNTA_DA_QUALIFICACAO[falta[0]]}.`);
+    /* Só para registrar se ele contar; ninguém pergunta isto (dono, 06/11). */
+    const sabe = (v: unknown) => (v ? n(v, 160) : '—');
+    L.push('# O resto da loja (NÃO pergunte: registre só se ele contar; o Xavier vê na reunião)');
+    L.push(`- Cidade: ${sabe(s0.cidade ?? (loja?.cidade ? `${loja.cidade}${loja.uf ? `/${loja.uf}` : ''}` : null))}`);
+    L.push(`- Estrutura física (pátio ou sem pátio): ${sabe(s0.estrutura)}`);
+    L.push(`- Segmento: ${sabe(s0.segmento ?? (typeof d0.tipo === 'string' ? d0.tipo : null))}`);
+    L.push(`- Onde anuncia e quem posta: ${s0.canais || s0.quem_anuncia ? n([s0.canais, s0.quem_anuncia].filter(Boolean).join(' · '), 200) : '—'}`);
     L.push(`- O que atrapalha (só se ele contar; não investigue): ${e.dores.length ? n(e.dores.map((d) => d.texto).join('; '), 200) : '—'}`);
   }
   L.push(args.perguntasFeitas.length
@@ -118,7 +125,7 @@ function textoDoEstado(args: {
   const s = e.situacao ?? {};
   const sit = Object.entries(s).filter(([, v]) => v).map(([k, v]) => `${k}: ${n(v)}`).join('; ');
   L.push(`Situação: ${sit || 'nada registrado'}.`);
-  L.push(`Quem vem à reunião: ${e.quem_vem ? n(e.quem_vem) : 'não se sabe'}. Quem decide vem: ${e.decisor_vem ? DECISOR[e.decisor_vem] : 'ainda não perguntado'}${e.decisor_citacao ? ` ("${n(e.decisor_citacao)}")` : ''}.`);
+  L.push(`Quem vem à reunião: ${e.quem_vem ? n(e.quem_vem) : 'não se sabe'}. Quem decide vem: ${e.decisor_vem ? DECISOR[e.decisor_vem] : 'não se sabe (não pergunte: o convite já chama o sócio)'}${e.decisor_citacao ? ` ("${n(e.decisor_citacao)}")` : ''}.`);
   L.push(`Pedidos de preço até agora: ${e.pedidos_preco} (se ele pediu de novo agora, esta é a vez ${e.pedidos_preco + 1}).`);
   const preco = precoDeHoje(args.cfg);
   L.push(!preco
@@ -130,7 +137,7 @@ function textoDoEstado(args: {
   L.push(`Mostrou o sistema ligado à dor: ${e.prova_enviada ? 'sim' : 'não'}.`);
   if (e.horarios_oferecidos?.length) L.push(`Horários já oferecidos: ${e.horarios_oferecidos.map((h) => horarioFalado(new Date(h))).join('; ')}.`);
   L.push(args.reuniaoFalada
-    ? `Reunião JÁ MARCADA: ${args.reuniaoFalada}. Link da chamada: ${args.cfg.link_reuniao ?? '(sem link)'}. Para remarcar, marcar_reuniao com o novo horário.`
+    ? `Reunião JÁ MARCADA: ${args.reuniaoFalada}. Link da chamada: ${args.cfg.link_reuniao ?? '(sem link)'}. Não pergunte mais nada: responda curto o que ele disse ou perguntou e se despeça. Para remarcar, dois horários da lista e marcar_reuniao com o novo.`
     : 'Reunião: ainda não marcada.');
   if (args.cfg.link_reuniao && !args.reuniaoFalada) {
     L.push(`Link da chamada (mande só DEPOIS que marcar_reuniao der certo, copiado exatamente): ${args.cfg.link_reuniao}`);
@@ -404,10 +411,17 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
           estadoAtual = r2.estado;
           /* A porta pode ter mudado com o que ele acabou de contar (a última pergunta da
              qualificação respondida): a IA precisa saber neste mesmo turno. */
-          const agoraPorta = portaDoHorario(estadoAtual, pediuPrecoAgora, false);
+          /* No turno da marcação a reunião ainda não está no banco: conta a chamada desta rodada. */
+          const jaMarcada = !!reuniaoFalada || acoes.some((x) => x.tipo === 'marcar_reuniao')
+            || chamadas.some((c: { name: string }) => c.name === 'marcar_reuniao');
+          const agoraPorta = portaDoHorario(estadoAtual, pediuPrecoAgora, jaMarcada);
           const faltaAgora = faltaNaQualificacao({ loja: estadoAtual.situacao?.loja ?? loja?.nome ?? null, estoque: estadoAtual.situacao?.estoque, cargo: estadoAtual.situacao?.cargo });
-          saida = `${r2.resposta} Agora, pode oferecer horário? ${agoraPorta.pode ? 'SIM' : 'NÃO'} (${agoraPorta.motivo}).`
-            + (faltaAgora.length ? ` Próxima pergunta da qualificação: ${PERGUNTA_DA_QUALIFICACAO[faltaAgora[0]]}.` : ' A qualificação está completa.');
+          saida = jaMarcada
+            ? `${r2.resposta} A reunião já está marcada: não pergunte mais nada; responda curto e se despeça. Se ele pediu para remarcar, dois horários da lista e "Qual fica melhor?", e marcar_reuniao quando ele escolher.`
+            : `${r2.resposta} Agora, pode oferecer horário? ${agoraPorta.pode ? 'SIM' : 'NÃO'} (${agoraPorta.motivo}).`
+              + (!faltaAgora.length ? ' A qualificação está completa.'
+                : agoraPorta.pode ? ' O que faltar da qualificação o Xavier vê na reunião.'
+                  : ` Próxima pergunta da qualificação: ${PERGUNTA_DA_QUALIFICACAO[faltaAgora[0]]}.`);
           acoes.push({ tipo: 'registrar', args: entrada, estado: 'executada' });
         } else if (ch.name === 'marcar_reuniao') {
           const v = await validarMarcacao(db, cfg, estadoAtual, String(entrada.inicio ?? ''), new Date());
@@ -415,7 +429,7 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
             /* Só vale o último horário escolhido no turno. */
             for (let i = acoes.length - 1; i >= 0; i--) if (acoes[i].tipo === 'marcar_reuniao') acoes.splice(i, 1);
             acoes.push({ tipo: 'marcar_reuniao', args: { inicio: v.inicio.toISOString(), quem_vem: entrada.quem_vem ?? null, decisor_vem: entrada.decisor_vem ?? 'nao_sei' }, estado: 'pendente' });
-            saida = `Pode confirmar ${horarioFalado(v.inicio)}. Link da chamada: ${cfg.link_reuniao}. A reunião é gravada quando a sua mensagem sair. Agora chame responder com três balões: "Marcado! ✅\n\n*[dia] às [hora]*, 15 minutos com o Xavier no Google Meet.\nSe servir, você já deixa a implantação marcada; se não servir, tudo bem." (formato do dia: "amanhã, sexta, às 9h30" ou "segunda às 10h") / o link sozinho no balão, copiado exatamente / UMA pergunta, a primeira que couber: falta o nome da loja ou a cidade → "Me passa o @ do Insta da loja? Assim a gente já chega conhecendo seus caminhões." (ou "E a loja, como chama e fica em que cidade?"); falta o cargo → "Você é o dono da loja ou cuida das vendas aí?"; falta a estrutura → "Vocês têm pátio com os caminhões aí, ou trabalham mais intermediando?"; falta o estoque → "Hoje vocês têm mais ou menos quantos caminhões no pátio?"; não se sabe quem decide e nada indica que é ele → "Mais alguém decide isso junto com você?"; o motivo veio fraco → "Pra gente ir direto ao ponto: o que você mais quer ver funcionando?"; já se sabe tudo → "Se apertar, você me avisa por aqui?"`;
+            saida = `Pode confirmar ${horarioFalado(v.inicio)}. Link da chamada: ${cfg.link_reuniao}. A reunião é gravada quando a sua mensagem sair. Agora chame responder com dois balões, sem pergunta nenhuma (dono, 06/11): "Marcado! ✅\n\n*[dia] às [hora]*, 15 minutos com o Xavier no Google Meet.\nSe servir, você já deixa a implantação marcada; se não servir, tudo bem." (formato do dia: "amanhã, sexta, às 9h30" ou "segunda às 10h") / o link sozinho no balão, copiado exatamente. O que faltar da loja o Xavier vê na reunião.`;
           } else {
             ehErro = true;
             saida = v.motivo + (v.chamarXavier ? ' Não marque: chame o Xavier (chamar_xavier) e diga que ele combina o horário por aqui.' : '');
@@ -439,7 +453,11 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
             /* Qualificação em andamento e ele só respondeu: nada de vender (dono, 06/11). */
             const soPerguntar = !porta.pode && !pediuPrecoAgora && !leadPerguntou && (!!loja || estadoAtual.apresentou)
               && faltaNaQualificacao({ loja: estadoAtual.situacao?.loja ?? loja?.nome ?? null, estoque: estadoAtual.situacao?.estoque, cargo: estadoAtual.situacao?.cargo }).length > 0;
-            const f = fiscal(lista, { ...ctxFiscal, podeOferecerHorario: porta.pode, motivoDoHorario: porta.motivo, precoPermitido: valoresLiberados(precoDeHoje(cfg)), soPerguntar });
+            const f = fiscal(lista, {
+              ...ctxFiscal, podeOferecerHorario: porta.pode, motivoDoHorario: porta.motivo, precoPermitido: valoresLiberados(precoDeHoje(cfg)), soPerguntar,
+              reuniaoMarcada: !!reuniaoFalada || marcando, marcandoAgora: marcando, leadPerguntou,
+              lojaConhecida: !!(estadoAtual.situacao?.loja ?? loja?.nome),
+            });
             fiscalFinal = { ...f, tentativas };
             if (f.ok) { final = lista; saida = 'ok'; }
             else if (tentativas >= 2) { barrado = true; final = lista; saida = 'barrado'; }
