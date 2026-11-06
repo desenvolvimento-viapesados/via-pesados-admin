@@ -511,7 +511,9 @@ const PROIBIDAS: [RegExp, string][] = [
   /* Decisão do dono (05/11/2026): teste grátis fora da conversa por enquanto. */
   [/\bgratis\b|\bgratuit\w*|\bde\s+graca\b|\bperiodo\s+de\s+teste\b|\bteste\s+(?:sem\s+custo|liberado)\b/, 'teste grátis (fora por decisão do dono)'],
   [/\bconsulta\s+(?:pela|por|de)\s+placa\b/, 'consulta pela placa'],
-  [/\b(?:nstech|totvs|bsoft|ssw|brudam|truckpad|webmotors|olx)\b/, 'concorrente pelo nome'],
+  /* OLX e Webmotors são portais onde o lojista anuncia, não concorrentes do sistema: o Davi pode
+     responder sobre eles (dono, 06/11). */
+  [/\b(?:nstech|totvs|bsoft|ssw|brudam|truckpad)\b/, 'concorrente pelo nome'],
   [/\b(?:ycloud|z-?api|evolution\s*api|prompt|anthropic|openai|chatgpt|claude|gpt)\b/, 'nome interno'],
 ];
 

@@ -670,3 +670,10 @@ describe('o valor que o Davi fala (dono, 06/11/2026: R$ 437)', () => {
     expect(regras(['É R$ 437 por mês.'])).toContain('preco');
   });
 });
+
+describe('portais (06/11/2026)', () => {
+  it('o Davi pode responder sobre a OLX; concorrente de sistema continua barrado', () => {
+    expect(regras(['Na OLX o sistema não publica: lá você segue postando como hoje.'])).toEqual([]);
+    expect(regras(['A gente é melhor que a Totvs.'])).toContain('proibida');
+  });
+});
