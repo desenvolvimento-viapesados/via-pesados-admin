@@ -115,6 +115,9 @@ function textoDoEstado(args: {
   L.push(`Situação: ${sit || 'nada registrado'}.`);
   L.push(`Quem vem à reunião: ${e.quem_vem ? n(e.quem_vem) : 'não se sabe'}. Quem decide vem: ${e.decisor_vem ? DECISOR[e.decisor_vem] : 'ainda não perguntado'}${e.decisor_citacao ? ` ("${n(e.decisor_citacao)}")` : ''}.`);
   L.push(`Pedidos de preço até agora: ${e.pedidos_preco} (se ele pediu de novo agora, esta é a vez ${e.pedidos_preco + 1}).`);
+  L.push(args.cfg.preco_mensal
+    ? `Valor do Via Pesados que você PODE dizer: R$ ${args.cfg.preco_mensal} por mês, sem fidelidade e sem multa pra cancelar (implantação nossa). Só esse; nunca desconto, outro valor ou porcentagem.`
+    : 'Valor: você não diz; quem passa é o Xavier.');
   L.push(`Mostrou o sistema ligado à dor: ${e.prova_enviada ? 'sim' : 'não'}.`);
   if (e.horarios_oferecidos?.length) L.push(`Horários já oferecidos: ${e.horarios_oferecidos.map((h) => horarioFalado(new Date(h))).join('; ')}.`);
   L.push(args.reuniaoFalada
@@ -396,7 +399,7 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
             tentativas++;
             const marcando = acoes.some((x) => x.tipo === 'marcar_reuniao');
             const porta = portaDoHorario(estadoAtual, pediuPrecoAgora, marcando);
-            const f = fiscal(lista, { ...ctxFiscal, podeOferecerHorario: porta.pode, motivoDoHorario: porta.motivo });
+            const f = fiscal(lista, { ...ctxFiscal, podeOferecerHorario: porta.pode, motivoDoHorario: porta.motivo, precoPermitido: cfg.preco_mensal });
             fiscalFinal = { ...f, tentativas };
             if (f.ok) { final = lista; saida = 'ok'; }
             else if (tentativas >= 2) { barrado = true; final = lista; saida = 'barrado'; }

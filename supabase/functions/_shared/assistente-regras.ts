@@ -115,6 +115,8 @@ export type AssistenteConfig = {
   pausado_motivo: string | null;
   /** Números do dono para testar: mensagem deles entra com o assistente atendendo sozinho. */
   telefones_teste: string[];
+  /** O valor por mês que o Davi pode dizer (dono, 06/11: R$ 437). Vazio = o valor é só com o Xavier. */
+  preco_mensal: number | null;
   atualizado_em: string;
   atualizado_por: string | null;
 };
@@ -425,7 +427,20 @@ export type ContextoFiscal = {
   motivoDoHorario?: string;
   /** Reunião ainda não marcada: vale a regra de uma coisa do sistema por resposta. */
   antesDeMarcar?: boolean;
+  /** O valor por mês liberado (assistente_config.preco_mensal): só ele passa no conferente. */
+  precoPermitido?: number | null;
 };
+
+/** Tira do texto plano as menções ao valor liberado ("r$ 437", "437 reais", "437 por mes"). */
+function semPrecoPermitido(p: string, valor: number | null | undefined): string {
+  if (!valor || !Number.isFinite(valor)) return p;
+  const n = String(Math.round(valor));
+  const num = `${n}(?:,00)?`;
+  return p
+    .replace(new RegExp(`r\\s*\\$\\s*${num}(?:\\s*(?:por|ao|\\/|no)\\s*mes)?`, 'g'), ' valor ')
+    .replace(new RegExp(`\\b${num}\\s*(?:reais|real)?\\s*(?:por|ao|\\/|no)\\s*mes\\b`, 'g'), ' valor ')
+    .replace(new RegExp(`\\b${num}\\s*(?:reais|mensais)\\b`, 'g'), ' valor ');
+}
 
 const NUM_EXTENSO =
   '(?:dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzentos|trezentos|quatrocentos|quinhentos|seiscentos|setecentos|oitocentos|novecentos)';
@@ -592,10 +607,13 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
     perguntas += (m.match(/\?+/g) ?? []).length;
     meuAmigo += (p.match(/\bmeu\s+amigo\b/g) ?? []).length;
 
+    const pPreco = semPrecoPermitido(p, ctx.precoPermitido);
     for (const r of PRECO) {
-      const achou = p.match(r);
+      const achou = pPreco.match(r);
       if (achou) {
-        v.push({ regra: 'preco', mensagem: i, trecho: achou[0], explicacao: 'Não diga valor nem número de dinheiro. O valor é mostrado na demonstração, junto com o sistema funcionando.' });
+        v.push({ regra: 'preco', mensagem: i, trecho: achou[0], explicacao: ctx.precoPermitido
+          ? `Só pode o valor de R$ ${ctx.precoPermitido} por mês, escrito assim. Nada de desconto, outro valor ou número de dinheiro.`
+          : 'Não diga valor nem número de dinheiro. O valor é mostrado na demonstração, junto com o sistema funcionando.' });
         break;
       }
     }

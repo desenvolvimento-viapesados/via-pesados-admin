@@ -70,6 +70,7 @@ type Formulario = {
   modo_prospeccao: Modo;
   teto_usd_dia: string;
   telefones_teste: string;
+  preco_mensal: string;
 };
 
 const doBanco = (c: AssistenteConfig): Formulario => ({
@@ -84,6 +85,7 @@ const doBanco = (c: AssistenteConfig): Formulario => ({
   modo_prospeccao: c.modo_prospeccao,
   teto_usd_dia: String(Number(c.teto_usd_dia) || 0),
   telefones_teste: (c.telefones_teste ?? []).map(fone).join(', '),
+  preco_mensal: c.preco_mensal == null ? '' : String(c.preco_mensal),
 });
 
 /** "(27) 99724-6060, 33 98814-4005" → ['5527997246060', '5533988144005'], ou o pedaço que não é telefone. */
@@ -125,6 +127,10 @@ function mudancas(f: Formulario, c: AssistenteConfig): { mudanca: MudancaNaConfi
   if (f.modo_prospeccao !== c.modo_prospeccao) m.modo_prospeccao = f.modo_prospeccao;
   if (gasto !== Number(c.teto_usd_dia)) m.teto_usd_dia = gasto;
   if (JSON.stringify(teste.numeros) !== JSON.stringify(c.telefones_teste ?? [])) m.telefones_teste = teste.numeros;
+  const precoTxt = f.preco_mensal.trim().replace(/[^\d,.]/g, '').replace(',', '.');
+  const preco = precoTxt ? Number(precoTxt) : null;
+  if (preco !== null && (!Number.isFinite(preco) || preco <= 0)) return { mudanca: m, erro: 'O valor por mês precisa ser maior que zero (ou vazio).' };
+  if (preco !== (c.preco_mensal ?? null)) m.preco_mensal = preco;
   return { mudanca: m, erro: null };
 }
 
@@ -343,6 +349,20 @@ function Configuracao({ config }: { config: AssistenteConfig }) {
           })}
         </div>
         <p className="text-[11px] text-foreground/40">Vale para quem responder daqui para a frente. Em cada conversa você troca o modo pelo cabeçalho dela.</p>
+      </div>
+
+      {/* Valor */}
+      <div className="space-y-3">
+        <SectionHeader title="O valor que ele fala" />
+        <div className="flex items-center gap-2">
+          <span className="text-[12.5px] text-foreground/45">R$</span>
+          <input className={cn(inputCls, 'w-28 text-center tabular-nums')} placeholder="437"
+            value={f.preco_mensal} onChange={(e) => muda('preco_mensal', e.target.value)} />
+          <span className="text-[12.5px] text-foreground/60">por mês, sem fidelidade.</span>
+        </div>
+        <p className="text-[11px] text-foreground/40 leading-relaxed">
+          Quando perguntarem o preço, ele diz este valor direto. Desconto ou outro valor ele nunca fala: passa para você. Deixe vazio para ele não falar valor.
+        </p>
       </div>
 
       {/* Teste */}

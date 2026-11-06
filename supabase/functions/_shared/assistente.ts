@@ -72,6 +72,7 @@ export async function lerConfig(db: Db): Promise<AssistenteConfig | null> {
     max_reunioes_dia: Number(data.max_reunioes_dia),
     dias_semana: (data.dias_semana ?? []).map(Number),
     telefones_teste: (data.telefones_teste ?? []).map(String),
+    preco_mensal: data.preco_mensal == null ? null : Number(data.preco_mensal),
   } as AssistenteConfig;
 }
 
@@ -451,7 +452,16 @@ export async function aplicarRegistro(db: Db, estado: AssistenteConversa, args: 
   /* O pedido de preço só conta quando a resposta sai (concluirTurno): rascunho descartado
      ou turno refeito não podem somar a mesma pergunta duas vezes. Aqui só orienta a IA. */
   let preco = '';
-  if (args.pediu_preco === true) {
+  const { data: cfgPreco } = args.pediu_preco === true
+    ? await db.from('assistente_config').select('preco_mensal').eq('id', 1).maybeSingle()
+    : { data: null };
+  const valor = cfgPreco?.preco_mensal == null ? null : Number(cfgPreco.preco_mensal);
+  if (args.pediu_preco === true && valor) {
+    /* Dono, 06/11: o Davi diz o valor. A demonstração passa a ser para ver o sistema. */
+    preco = (estado.pedidos_preco ?? 0) === 0
+      ? `Pedido de preço: diga o valor direto, no primeiro balão: "É *R$ ${valor} por mês*, sem fidelidade e sem multa pra cancelar. A implantação é nossa." Se ele respondeu algo na mesma mensagem, reconheça em meia frase antes. Depois, se a porta deixar, o convite ("Na demonstração de *15 minutos* o Xavier te mostra tudo funcionando na sua loja."); se não, a próxima pergunta da ficha. Nunca desconto, outro valor ou porcentagem.`
+      : `Ele perguntou de novo: repita o valor sem rodeio ("São *R$ ${valor} por mês*, sem fidelidade.") e responda o que mais ele quis saber (o que está incluso, como paga). Nunca desconto nem outro valor; condição diferente, só o Xavier: chame o Xavier se ele pedir desconto.`;
+  } else if (args.pediu_preco === true) {
     const r = respostaAoPreco((estado.pedidos_preco ?? 0) + 1);
     preco = r === 'valor_com_o_xavier'
       ? 'Primeiro pedido de preço: sem número. Se ele respondeu algo na mesma mensagem, reconheça em meia frase antes. Se ele ainda não sabe o que é o Via Pesados, uma frase do que é. Depois: "É mensal, sem fidelidade e sem multa pra cancelar. O valor quem te passa é o Xavier, dono do Via Pesados, numa demonstração de 15 minutos por vídeo; se preferir, ele te responde aqui mesmo na conversa." Se ele já disse a dor, termine com a escolha ("Prefere ver com ele [horário mais cedo], por vídeo, ou que eu chame ele aqui?"); se não, com uma pergunta que continua a frase do que é ("Hoje vocês anunciam onde?"). Nunca uma pergunta de outro assunto.'

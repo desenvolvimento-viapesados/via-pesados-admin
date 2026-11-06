@@ -657,3 +657,16 @@ describe('a ficha da loja (dono, 05/11/2026)', () => {
     }
   });
 });
+
+describe('o valor que o Davi fala (dono, 06/11/2026: R$ 437)', () => {
+  it('só o valor configurado passa; desconto, outro valor e porcentagem continuam barrados', () => {
+    const ctx = { precoPermitido: 437 };
+    expect(regras(['É *R$ 437 por mês*, sem fidelidade e sem multa pra cancelar.'], ctx)).toEqual([]);
+    expect(regras(['São R$437/mês.'], ctx)).toEqual([]);
+    expect(regras(['Fica 437 reais por mês.'], ctx)).toEqual([]);
+    expect(regras(['É R$ 400 por mês.'], ctx)).toContain('preco');
+    expect(regras(['É R$ 587 por mês.'], ctx)).toContain('preco');
+    expect(regras(['Com 10% de desconto.'], ctx)).toContain('percentual');
+    expect(regras(['É R$ 437 por mês.'])).toContain('preco');
+  });
+});
