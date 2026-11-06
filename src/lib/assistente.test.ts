@@ -13,6 +13,7 @@ import {
   type Agenda, type Etapa,
   falaDoPreco, precoDeHoje, valoresLiberados,
   faltaNaQualificacao, PERGUNTA_DA_QUALIFICACAO, RESPOSTAS_ATE_CONVIDAR,
+  perguntouAlgo,
 } from '../../supabase/functions/_shared/assistente-regras';
 import { INSTRUCOES } from '../../supabase/functions/_shared/assistente-roteiro';
 import { ROTULO_DO_VIDEO } from '../../supabase/functions/_shared/prospeccao-regras';
@@ -802,5 +803,40 @@ describe('a qualificação curta antes do convite (dono, 06/11/2026)', () => {
   it('quem não responde as perguntas recebe o convite depois de 4 respostas suas', () => {
     expect(podeOferecerHorario({ ...base, respostasSuas: RESPOSTAS_ATE_CONVIDAR - 1, falta: ['estoque'] }).pode).toBe(false);
     expect(podeOferecerHorario({ ...base, respostasSuas: RESPOSTAS_ATE_CONVIDAR, falta: ['estoque'] }).pode).toBe(true);
+  });
+});
+
+describe('no meio das perguntas, sem vender e sem "cês" (dono, 06/11/2026)', () => {
+  it('a mensagem que o dono reprovou volta para reescrever', () => {
+    const reprovada = [
+      'Show, 35 já é um estoque bom! Com esse tanto, imagina o cliente chamando e cê mandando *foto, ficha e preço* direto no WhatsApp dele com *um clique*, sem ir no pátio procurar. E vendeu, o anúncio sai de todo lugar sozinho.',
+      'E você é o dono ou vendedor aí?',
+    ];
+    const r = regras(reprovada, { soPerguntar: true });
+    expect(r).toContain('vendendo');
+    expect(r).toContain('palco'); // o "cê"
+  });
+
+  it('reconhecer e perguntar passa', () => {
+    expect(regras(['Boa, 35 já é estoque bom! E você é o dono ou vendedor aí?'], { soPerguntar: true })).toEqual([]);
+  });
+
+  it('fora da qualificação (ou quando ele perguntou), falar do sistema continua livre', () => {
+    expect(regras(['Sai no Mercado Livre, no Insta e no Face com um cadastro só.'], {})).not.toContain('vendendo');
+  });
+
+  it('"cê" e "cês" voltam; "você" e "vocês" passam', () => {
+    expect(regras(['Quantos veículos cês têm hoje?'], {})).toContain('palco');
+    expect(regras(['Quantos veículos vocês têm hoje?'], {})).toEqual([]);
+  });
+
+  it('o que conta como pergunta dele', () => {
+    expect(perguntouAlgo('e o mercado livre entra')).toBe(true);
+    expect(perguntouAlgo('Quanto custa')).toBe(true);
+    expect(perguntouAlgo('funciona pra carreta?')).toBe(true);
+    expect(perguntouAlgo('Hoje a gente tá com uns 35')).toBe(false);
+    expect(perguntouAlgo('Sou dono')).toBe(false);
+    expect(perguntouAlgo('Bora!')).toBe(false);
+    expect(perguntouAlgo(null)).toBe(false);
   });
 });

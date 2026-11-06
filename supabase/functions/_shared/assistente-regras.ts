@@ -248,6 +248,18 @@ export function faltaNaQualificacao(s: Partial<Record<ItemDaQualificacao, string
   return ORDEM_DA_QUALIFICACAO.filter((k) => !String(s[k] ?? '').trim());
 }
 
+/**
+ * A última mensagem dele é uma pergunta? ("e o Mercado Livre entra?", "quanto custa",
+ * "como funciona"). Quando é, o Davi responde o que ele perguntou; quando não é, no meio da
+ * qualificação, só reconhece e pergunta (soPerguntar no conferente).
+ */
+export function perguntouAlgo(texto: string | null | undefined): boolean {
+  const t = normalizarTexto(String(texto ?? ''));
+  if (!t) return false;
+  if (String(texto).includes('?')) return true;
+  return /^(e\s+)?(quanto|quantos|quanta|como|qual|quais|onde|quando|porque|por\s+que|pq|tem|funciona|serve|da\s+pra|da\s+para|precisa|posso|consigo|voces|o\s+que|e\s+o|e\s+a|e\s+no|e\s+na)\b/.test(t);
+}
+
 /** Depois de tantas respostas suas sem completar a qualificação, convida mesmo assim. */
 export const RESPOSTAS_ATE_CONVIDAR = 4;
 
@@ -490,7 +502,8 @@ export function cortarMemoria(texto: string | null | undefined): string | null {
 export type RegraFiscal =
   | 'quantidade' | 'vazia' | 'tamanho' | 'linhas' | 'lista' | 'perguntas'
   | 'preco' | 'prazo' | 'percentual' | 'link' | 'proibida' | 'pedido_sensivel'
-  | 'fingir_gente' | 'esquecimento' | 'meu_amigo' | 'apresentacao' | 'horario_cedo' | 'despejo' | 'palco' | 'markdown';
+  | 'fingir_gente' | 'esquecimento' | 'meu_amigo' | 'apresentacao' | 'horario_cedo' | 'despejo' | 'palco' | 'markdown'
+  | 'vendendo';
 
 export type Violacao = {
   regra: RegraFiscal;
@@ -515,6 +528,8 @@ export type ContextoFiscal = {
   motivoDoHorario?: string;
   /** Reunião ainda não marcada: vale a regra de uma coisa do sistema por resposta. */
   antesDeMarcar?: boolean;
+  /** Qualificação em andamento e ele não perguntou nada: só reconhecer e perguntar, sem vender (dono, 06/11). */
+  soPerguntar?: boolean;
   /** Os valores liberados (valoresLiberados): só eles passam no conferente. */
   precoPermitido?: number | number[] | null;
 };
@@ -565,6 +580,8 @@ const PALCO: [RegExp, string][] = [
   [/\bsao\s+so\b|\bsem\s+rodeio\b|\bso\s+pra\s+(?:voce\s+saber|constar)\b|\bcontinua\s+com\s+voce\b/, 'pressão disfarçada ou promessa vaga'],
   [/\bem\s+tudo\b|\bem\s+todo\s+lugar\b/, '"em tudo" (diga os lugares: Mercado Livre, Insta, Face e site)'],
   [/\bcertinho\b|\bcompensa\b|\bse\s+achar\s+caro\b|\bsair\s+sabendo\s+o\s+valor\b/, 'o valor como isca ou promessa de resposta que não vem'],
+  /* Dono, 06/11: "esse 'cês' não precisa, deixa menos forçado". */
+  [/\bces\b|\bce\b|\bceis\b/, '"cê"/"cês" (escreva "você"/"vocês": o jeito do Xavier sem forçar)'],
 ];
 
 /* Temas do sistema: antes de marcar, uma resposta fala de um só (uma dor, uma prova). Os
@@ -761,6 +778,12 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
       v.push({ regra: 'horario_cedo', mensagem: i, explicacao: `Ainda não é hora de oferecer horário: ${ctx.motivoDoHorario ?? 'falta entender a loja'}. Se ele pediu para comprar, fechar ou ver funcionando, registre o pedido (registrar: pedido) antes.` });
     }
   });
+  if (ctx.soPerguntar) {
+    const vendeu = lista.map((m) => plano(String(m ?? ''))).find((p) => /\bimagina\b/.test(p) || TEMAS_DO_SISTEMA.some(([r]) => r.test(p)));
+    if (vendeu !== undefined) {
+      v.push({ regra: 'vendendo', mensagem: null, explicacao: 'Ele está respondendo as perguntas e não perguntou nada: reconheça a resposta em poucas palavras e faça a próxima pergunta, num balão só. Nada de sistema, canal ou "imagina" agora; isso volta no convite.' });
+    }
+  }
   if (ctx.antesDeMarcar && temas.size > 1) {
     v.push({ regra: 'despejo', mensagem: null, trecho: [...temas].join(' + '), explicacao: 'Uma coisa do sistema por resposta, a que resolve o que ele disse. Nada de lista: escolha uma.' });
   }

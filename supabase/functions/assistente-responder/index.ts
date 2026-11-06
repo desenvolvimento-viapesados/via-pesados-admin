@@ -4,7 +4,7 @@ import {
   custo, dentroDoHorario, ETAPAS_SEM_RESPOSTA, esperaDoAgrupamento, explicarViolacoes, fiscal, horarioFalado,
   janelaAberta, LIMITES, neutro, passouDoTeto, pedidoExplicitoDeParar, ROTULO_DA_ETAPA, somarUso, tetoDoDiaAtingido,
   PERSONA, pedidoComOBotao, podeOferecerHorario, falaDoPreco, precoDeHoje, valoresLiberados,
-  faltaNaQualificacao, PERGUNTA_DA_QUALIFICACAO,
+  faltaNaQualificacao, PERGUNTA_DA_QUALIFICACAO, perguntouAlgo,
 } from '../_shared/assistente-regras.ts';
 import {
   type ArgsRegistrar, type Conversa, type Mensagem,
@@ -304,6 +304,8 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
   ].filter(Boolean).join('\n');
 
   const meuAmigoJaUsado = msgs.some((m) => m.direcao === 'saida' && /meu\s+amigo/i.test(m.conteudo ?? ''));
+  const ultimaDoLead = [...msgs].reverse().find((m) => m.direcao === 'entrada');
+  const leadPerguntou = perguntouAlgo(ultimaDoLead?.transcricao || ultimaDoLead?.conteudo);
   const ctxFiscal = { linkReuniao: cfg.link_reuniao, precisaApresentar: !e.apresentou, meuAmigoJaUsado };
   /* A porta do horário é do código (manual de vendas de 05/11): recalculada a cada responder,
      com o que a IA registrou neste turno (pedido, interesse, dor, pedido de preço). */
@@ -417,7 +419,10 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
             tentativas++;
             const marcando = acoes.some((x) => x.tipo === 'marcar_reuniao');
             const porta = portaDoHorario(estadoAtual, pediuPrecoAgora, marcando);
-            const f = fiscal(lista, { ...ctxFiscal, podeOferecerHorario: porta.pode, motivoDoHorario: porta.motivo, precoPermitido: valoresLiberados(precoDeHoje(cfg)) });
+            /* Qualificação em andamento e ele só respondeu: nada de vender (dono, 06/11). */
+            const soPerguntar = !porta.pode && !pediuPrecoAgora && !leadPerguntou && (!!loja || estadoAtual.apresentou)
+              && faltaNaQualificacao({ loja: estadoAtual.situacao?.loja ?? loja?.nome ?? null, estoque: estadoAtual.situacao?.estoque, cargo: estadoAtual.situacao?.cargo }).length > 0;
+            const f = fiscal(lista, { ...ctxFiscal, podeOferecerHorario: porta.pode, motivoDoHorario: porta.motivo, precoPermitido: valoresLiberados(precoDeHoje(cfg)), soPerguntar });
             fiscalFinal = { ...f, tentativas };
             if (f.ok) { final = lista; saida = 'ok'; }
             else if (tentativas >= 2) { barrado = true; final = lista; saida = 'barrado'; }
