@@ -71,6 +71,8 @@ type Formulario = {
   teto_usd_dia: string;
   telefones_teste: string;
   preco_mensal: string;
+  preco_cheio: string;
+  oferta_ate: string;
 };
 
 const doBanco = (c: AssistenteConfig): Formulario => ({
@@ -86,6 +88,8 @@ const doBanco = (c: AssistenteConfig): Formulario => ({
   teto_usd_dia: String(Number(c.teto_usd_dia) || 0),
   telefones_teste: (c.telefones_teste ?? []).map(fone).join(', '),
   preco_mensal: c.preco_mensal == null ? '' : String(c.preco_mensal),
+  preco_cheio: c.preco_cheio == null ? '' : String(c.preco_cheio),
+  oferta_ate: c.oferta_ate ?? '',
 });
 
 /** "(27) 99724-6060, 33 98814-4005" → ['5527997246060', '5533988144005'], ou o pedaço que não é telefone. */
@@ -131,6 +135,12 @@ function mudancas(f: Formulario, c: AssistenteConfig): { mudanca: MudancaNaConfi
   const preco = precoTxt ? Number(precoTxt) : null;
   if (preco !== null && (!Number.isFinite(preco) || preco <= 0)) return { mudanca: m, erro: 'O valor por mês precisa ser maior que zero (ou vazio).' };
   if (preco !== (c.preco_mensal ?? null)) m.preco_mensal = preco;
+  const cheioTxt = f.preco_cheio.trim().replace(/[^\d,.]/g, '').replace(',', '.');
+  const cheio = cheioTxt ? Number(cheioTxt) : null;
+  if (cheio !== null && (!Number.isFinite(cheio) || cheio <= 0)) return { mudanca: m, erro: 'O valor normal precisa ser maior que zero (ou vazio, sem oferta).' };
+  if (cheio !== null && !f.oferta_ate) return { mudanca: m, erro: 'Com valor normal, diga até quando vale a oferta.' };
+  if (cheio !== (c.preco_cheio ?? null)) m.preco_cheio = cheio;
+  if ((f.oferta_ate || null) !== (c.oferta_ate ?? null)) m.oferta_ate = f.oferta_ate || null;
   return { mudanca: m, erro: null };
 }
 
@@ -360,8 +370,16 @@ function Configuracao({ config }: { config: AssistenteConfig }) {
             value={f.preco_mensal} onChange={(e) => muda('preco_mensal', e.target.value)} />
           <span className="text-[12.5px] text-foreground/60">por mês, sem fidelidade.</span>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[12.5px] text-foreground/60">Oferta: o normal é R$</span>
+          <input className={cn(inputCls, 'w-24 text-center tabular-nums')} placeholder="587"
+            value={f.preco_cheio} onChange={(e) => muda('preco_cheio', e.target.value)} />
+          <span className="text-[12.5px] text-foreground/60">+ taxa de implantação, até</span>
+          <input type="date" className={cn(inputCls, 'w-40 tabular-nums')}
+            value={f.oferta_ate} onChange={(e) => muda('oferta_ate', e.target.value)} />
+        </div>
         <p className="text-[11px] text-foreground/40 leading-relaxed">
-          Quando perguntarem o preço, ele diz este valor direto. Desconto ou outro valor ele nunca fala: passa para você. Deixe vazio para ele não falar valor.
+          Quando perguntarem o preço, ele diz este valor direto. Com a oferta preenchida, diz o normal e o da oferta (a implantação por nossa conta) até a data; depois dela passa a dizer o normal com a taxa, e a prospecção para, porque a mensagem fala da oferta. Desconto ou outro valor ele nunca fala: passa para você. Deixe o valor vazio para ele não falar valor.
         </p>
       </div>
 

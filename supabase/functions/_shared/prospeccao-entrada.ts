@@ -53,13 +53,16 @@ export async function aoChegarMensagem(db: Db, instanciaId: string, telefone: st
 export async function aoFalharEntrega(db: Db, ids: string[], codigo: string, motivo: string) {
   if (!ids.length) return;
   const { data: envio } = await db.from('prospeccao_envios')
-    .select('id, loja_id').in('provider_message_id', ids).eq('tipo', 'contato').limit(1).maybeSingle();
+    .select('id, loja_id, tipo').in('provider_message_id', ids).in('tipo', ['contato', 'oferta', 'cta']).limit(1).maybeSingle();
   if (!envio) return;
   const agora = new Date().toISOString();
   await db.from('prospeccao_envios').update({ erro: `${codigo ? `[${codigo}] ` : ''}${motivo}`.slice(0, 400) }).eq('id', envio.id);
-  const depois = lojaDepoisDaFalha(codigo);
-  await db.from('prospeccao_lojas').update({ ...depois, proximo_contato_em: null, atualizada_em: agora })
-    .eq('id', envio.loja_id).eq('status', 'em_contato');
+  /* Só a abertura decide a loja: se a oferta ou o convite não chegou, a abertura chegou. */
+  if (envio.tipo === 'contato') {
+    const depois = lojaDepoisDaFalha(codigo);
+    await db.from('prospeccao_lojas').update({ ...depois, proximo_contato_em: null, atualizada_em: agora })
+      .eq('id', envio.loja_id).eq('status', 'em_contato');
+  }
   if (FALHAS_QUE_DESLIGAM.has(codigo)) {
     await db.from('prospeccao_config').update({
       ligado: false, atualizado_em: agora,

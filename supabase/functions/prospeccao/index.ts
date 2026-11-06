@@ -1,9 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
-  buscarNoGoogle, claudeConfigurado, escreverContato, googleConfigurado, instanciaDoAgente, mensagemDoModelo,
+  buscarNoGoogle, claudeConfigurado, escreverContato, googleConfigurado, instanciaDoAgente, mensagensDaProspeccao,
   telefonesConhecidos, type Loja,
 } from '../_shared/prospeccao.ts';
-import { canalDa, limiteDoDia, MODELO_PROSPECCAO, podeEnviarAgora, REGRAS_DO_CANAL, variantes } from '../_shared/prospeccao-regras.ts';
+import { canalDa, limiteDoDia, MODELOS_DA_PROSPECCAO, podeEnviarAgora, REGRAS_DO_CANAL, variantes } from '../_shared/prospeccao-regras.ts';
 import { modeloAprovado } from '../_shared/wa.ts';
 
 /**
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
         config: cfg, numeros: numeros ?? [], contagens,
         hoje: hoje ?? 0, respostas_hoje: respostasHoje ?? 0,
         canal, ...REGRAS_DO_CANAL[canal],
-        modelo_aprovado: canal === 'oficial' ? await modeloAprovado(MODELO_PROSPECCAO) : null,
+        modelo_aprovado: canal === 'oficial' ? (await Promise.all(MODELOS_DA_PROSPECCAO.map((m) => modeloAprovado(m)))).every(Boolean) : null,
         teto: limiteDoDia(cfg?.limite_dia ?? 15, cfg?.ligado_desde ? new Date(cfg.ligado_desde) : null, agora, canal),
         horario_de_envio: podeEnviarAgora(agora),
         numero_ok: !!inst, numero_motivo: motivo,
@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
       const { data: inst } = await db.from('wa_instancias').select('origem').eq('id', cfg?.instancia_id).maybeSingle();
       const canal = canalDa(inst?.origem);
       /* Pelo oficial a prévia é exata: é o modelo aprovado, com a loja nas variáveis. */
-      if (canal === 'oficial') return json(200, { ok: true, contato: 1, texto: mensagemDoModelo(loja).texto, por: 'modelo' });
+      if (canal === 'oficial') return json(200, { ok: true, contato: 1, texto: mensagensDaProspeccao(loja).texto, por: 'modelo' });
       const numero = Math.min((loja.contatos ?? 0) + 1, REGRAS_DO_CANAL.evolution.maxContatos);
       const { data: anteriores } = await db.from('prospeccao_envios').select('texto')
         .eq('loja_id', loja.id).eq('tipo', 'contato').is('erro', null).order('enviada_em');

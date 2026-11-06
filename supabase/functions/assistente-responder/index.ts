@@ -3,7 +3,8 @@ import {
   type AcaoDoTurno, type AssistenteConfig, type AssistenteConversa, type Uso,
   custo, dentroDoHorario, ETAPAS_SEM_RESPOSTA, esperaDoAgrupamento, explicarViolacoes, fiscal, horarioFalado,
   janelaAberta, LIMITES, neutro, passouDoTeto, pedidoExplicitoDeParar, ROTULO_DA_ETAPA, somarUso, tetoDoDiaAtingido,
-  PERSONA, podeOferecerHorario,
+  PERSONA, pedidoComOBotao, podeOferecerHorario, falaDoPreco, precoDeHoje, valoresLiberados,
+  faltaNaQualificacao, PERGUNTA_DA_QUALIFICACAO,
 } from '../_shared/assistente-regras.ts';
 import {
   type ArgsRegistrar, type Conversa, type Mensagem,
@@ -27,7 +28,8 @@ import { FERRAMENTAS, INSTRUCOES, textoDosFatos } from '../_shared/assistente-ro
  *     equipe escreveu ("você assumiu"), janela de 24h da Meta, teto de gasto do dia,
  *     25 mensagens sem marcar, chave da IA.
  *  4. Pediu, sem dúvida nenhuma, para parar: despedida fixa e encerra, sem IA. O resto
- *     ("não", "não quero perder venda", "não preciso, já tenho site") a IA julga.
+ *     ("não", "não quero perder venda", "não preciso, já tenho site") a IA julga. Tocou
+ *     "Quero ver funcionando" no modelo da prospecção: grava o pedido 'ver' (a porta abre).
  *  5. Ouve os áudios (transcrição), olha as fotos, monta o contexto e chama a IA com as
  *     ferramentas (registrar, marcar_reuniao, chamar_xavier, encerrar, responder).
  *  6. Fiscal: reprovou, a IA reescreve uma vez; reprovou de novo, barra e chama o Xavier.
@@ -94,12 +96,15 @@ function textoDoEstado(args: {
     const s0 = e.situacao ?? {};
     const d0 = (loja?.dados ?? {}) as Record<string, unknown>;
     const ou = (v: unknown) => (v ? n(v, 160) : 'FALTA');
-    L.push('# Ficha da loja (complete no fio da conversa, uma pergunta por vez; o que dá para deduzir não se pergunta)');
-    L.push(`- Nome da loja: ${ou(s0.loja ?? loja?.nome)}`);
+    const falta = faltaNaQualificacao({ loja: s0.loja ?? loja?.nome ?? null, estoque: s0.estoque, cargo: s0.cargo });
+    L.push('# Qualificação curta (antes do convite, nesta ordem, uma pergunta por resposta; o que dá para deduzir não se pergunta)');
+    L.push(`- 1. Nome da loja: ${ou(s0.loja ?? loja?.nome)}`);
+    L.push(`- 2. Veículos no estoque: ${ou(s0.estoque)}`);
+    L.push(`- 3. Dono ou vendedor (cargo de quem fala): ${ou(s0.cargo)}`);
+    L.push(falta.length ? `Próxima pergunta: ${PERGUNTA_DA_QUALIFICACAO[falta[0]]}.` : 'Qualificação completa.');
+    L.push('# Ficha (o resto: só depois do link, um por resposta, se fizer falta)');
     L.push(`- Cidade: ${ou(s0.cidade ?? (loja?.cidade ? `${loja.cidade}${loja.uf ? `/${loja.uf}` : ''}` : null))}`);
-    L.push(`- Cargo de quem fala: ${ou(s0.cargo)}`);
     L.push(`- Estrutura física (pátio ou sem pátio): ${ou(s0.estrutura)}`);
-    L.push(`- Veículos no estoque: ${ou(s0.estoque)}`);
     L.push(`- Segmento: ${ou(s0.segmento ?? (typeof d0.tipo === 'string' ? d0.tipo : null))}`);
     L.push(`- Onde anuncia e quem posta: ${s0.canais || s0.quem_anuncia ? n([s0.canais, s0.quem_anuncia].filter(Boolean).join(' · '), 200) : 'FALTA'}`);
     L.push(`- O que atrapalha (só se ele contar; não investigue): ${e.dores.length ? n(e.dores.map((d) => d.texto).join('; '), 200) : '—'}`);
@@ -115,9 +120,12 @@ function textoDoEstado(args: {
   L.push(`Situação: ${sit || 'nada registrado'}.`);
   L.push(`Quem vem à reunião: ${e.quem_vem ? n(e.quem_vem) : 'não se sabe'}. Quem decide vem: ${e.decisor_vem ? DECISOR[e.decisor_vem] : 'ainda não perguntado'}${e.decisor_citacao ? ` ("${n(e.decisor_citacao)}")` : ''}.`);
   L.push(`Pedidos de preço até agora: ${e.pedidos_preco} (se ele pediu de novo agora, esta é a vez ${e.pedidos_preco + 1}).`);
-  L.push(args.cfg.preco_mensal
-    ? `Valor do Via Pesados que você PODE dizer: R$ ${args.cfg.preco_mensal} por mês, sem fidelidade e sem multa pra cancelar (implantação nossa). Só esse; nunca desconto, outro valor ou porcentagem.`
-    : 'Valor: você não diz; quem passa é o Xavier.');
+  const preco = precoDeHoje(args.cfg);
+  L.push(!preco
+    ? 'Valor: você não diz; quem passa é o Xavier.'
+    : preco.cheio
+      ? `Valor e OFERTA DE LANÇAMENTO (a Black Friday de novembro, vale até ${preco.ofertaAte!.slice(8, 10)}/${preco.ofertaAte!.slice(5, 7)}): "${falaDoPreco(preco)}" Só esses dois números; a taxa de implantação não tem valor pra dizer (em novembro ela não é cobrada). É essa a "oferta especial de lançamento" da mensagem da prospecção. Nunca outro desconto, valor ou porcentagem.`
+      : `Valor do Via Pesados que você PODE dizer: "${falaDoPreco(preco)}" Só esse; nunca desconto, outro valor ou porcentagem.`);
   L.push(`Mostrou o sistema ligado à dor: ${e.prova_enviada ? 'sim' : 'não'}.`);
   if (e.horarios_oferecidos?.length) L.push(`Horários já oferecidos: ${e.horarios_oferecidos.map((h) => horarioFalado(new Date(h))).join('; ')}.`);
   L.push(args.reuniaoFalada
@@ -262,6 +270,15 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
     return 'pediu para sair';
   }
 
+  /* ── o botão "Quero ver funcionando" do modelo: pedido 'ver' ── */
+  /* Conta no código, antes da IA: a porta do horário abre já neste turno e fica gravada. */
+  const pedidoDoBotao = pedidoComOBotao(e.situacao?.pedido, msgs);
+  if (pedidoDoBotao && pedidoDoBotao !== (e.situacao?.pedido ?? null)) {
+    const situacao = { ...(e.situacao ?? {}), pedido: pedidoDoBotao };
+    await salvarEstado(db, conversaId, { situacao });
+    e = { ...e, situacao };
+  }
+
   /* ── ouvir, ver, montar o contexto ───────────────────────────── */
   const semTranscricaoIds = await transcreverAudios(db, msgs, inst, limite - 120_000);
   const semTranscricao = msgs.filter((m) => semTranscricaoIds.includes(m.id));
@@ -295,6 +312,7 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
     .slice(-6).map((m) => String(m.conteudo ?? ''));
   const portaDoHorario = (est: AssistenteConversa, pediuPrecoAgora: boolean, marcandoAgora: boolean) => podeOferecerHorario({
     daLista: !!est.loja_id, pedido: est.situacao?.pedido ?? null, interesse: est.situacao?.interesse === 'sim',
+    falta: faltaNaQualificacao({ loja: est.situacao?.loja ?? loja?.nome ?? null, estoque: est.situacao?.estoque, cargo: est.situacao?.cargo }),
     dores: est.dores?.length ?? 0, respostasSuas, pedidosDePreco: (est.pedidos_preco ?? 0) + (pediuPrecoAgora ? 1 : 0),
     reuniaoMarcada: !!reuniaoFalada || marcandoAgora, recusou: est.situacao?.recusou_reuniao ?? null,
   });
@@ -399,7 +417,7 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
             tentativas++;
             const marcando = acoes.some((x) => x.tipo === 'marcar_reuniao');
             const porta = portaDoHorario(estadoAtual, pediuPrecoAgora, marcando);
-            const f = fiscal(lista, { ...ctxFiscal, podeOferecerHorario: porta.pode, motivoDoHorario: porta.motivo, precoPermitido: cfg.preco_mensal });
+            const f = fiscal(lista, { ...ctxFiscal, podeOferecerHorario: porta.pode, motivoDoHorario: porta.motivo, precoPermitido: valoresLiberados(precoDeHoje(cfg)) });
             fiscalFinal = { ...f, tentativas };
             if (f.ok) { final = lista; saida = 'ok'; }
             else if (tentativas >= 2) { barrado = true; final = lista; saida = 'barrado'; }

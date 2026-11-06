@@ -1,17 +1,18 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
-  conferirWhatsApp, enviarEGravar, enviarModeloEGravar, escreverContato, instanciaDoAgente, mensagemDoModelo,
+  conferirWhatsApp, enviarEGravar, enviarSequenciaEGravar, escreverContato, instanciaDoAgente, mensagensDaProspeccao,
   situacaoDoOficial, type Loja,
 } from '../_shared/prospeccao.ts';
 import {
-  canalDa, ehCelular, intervaloSorteado, limiteDoDia, MODELO_PROSPECCAO, podeEnviarAgora, proximoContato,
+  canalDa, ehCelular, intervaloSorteado, limiteDoDia, MODELOS_DA_PROSPECCAO, podeEnviarAgora, proximoContato,
   REGRAS_DO_CANAL, variantes,
 } from '../_shared/prospeccao-regras.ts';
 import { modeloAprovado } from '../_shared/wa.ts';
+import { precoDeHoje } from '../_shared/assistente-regras.ts';
 
 /**
  * A rotina do agente de prospecção. O pg_cron chama de 5 em 5 minutos; cada
- * chamada manda NO MÁXIMO UMA mensagem, e só se tudo isto for verdade:
+ * chamada aborda NO MÁXIMO UMA loja (pelo oficial, as três mensagens da sequência), e só se tudo isto for verdade:
  *
  *   - o dono ligou o agente na tela (desligado por padrão);
  *   - é dia útil, entre 08h e 20h de Brasília;
@@ -107,11 +108,22 @@ Deno.serve(async () => {
         }).eq('id', 1);
         return json(200, { ok: true, oficial: situacao.motivo });
       }
-      if (!await modeloAprovado(MODELO_PROSPECCAO)) {
+      const emAnalise: string[] = [];
+      for (const m of MODELOS_DA_PROSPECCAO) if (!await modeloAprovado(m)) emAnalise.push(m);
+      if (emAnalise.length) {
         await db.from('prospeccao_config').update({
-          pausado_motivo: 'O modelo da prospecção ainda não foi aprovado pela Meta: nada sai até a aprovação.', atualizado_em: agora.toISOString(),
+          pausado_motivo: 'As mensagens da prospecção ainda não foram aprovadas pela Meta: nada sai até a aprovação.', atualizado_em: agora.toISOString(),
         }).eq('id', 1);
-        return json(200, { ok: true, modelo_em_analise: MODELO_PROSPECCAO });
+        return json(200, { ok: true, modelo_em_analise: emAnalise });
+      }
+      /* A 2ª mensagem fala da "oferta especial de lançamento": sem a oferta valendo, não sai. */
+      const { data: cfgPreco } = await db.from('assistente_config').select('preco_mensal, preco_cheio, oferta_ate').eq('id', 1).maybeSingle();
+      if (!precoDeHoje(cfgPreco, agora)?.cheio) {
+        await db.from('prospeccao_config').update({
+          pausado_motivo: 'A mensagem da prospecção fala da oferta de lançamento, e ela não está valendo (passou da data ou foi tirada na aba Assistente). Troque o texto antes de ligar de novo.',
+          atualizado_em: agora.toISOString(),
+        }).eq('id', 1);
+        return json(200, { ok: true, oferta: 'fora do prazo' });
       }
     }
 
@@ -150,7 +162,7 @@ Deno.serve(async () => {
     const numero = (loja.contatos ?? 0) + 1;
     let texto: string, por: string;
     if (canal === 'oficial') {
-      ({ texto } = mensagemDoModelo(loja));
+      ({ texto } = mensagensDaProspeccao(loja));
       por = 'modelo';
     } else {
       const { data: anteriores } = await db.from('prospeccao_envios').select('texto')
@@ -160,14 +172,21 @@ Deno.serve(async () => {
 
     try {
       let conversa_id: string, provider_id: string | null;
+      let seguintes: { tipo: 'oferta' | 'cta'; texto: string; provider_id: string | null; erro: string | null }[] = [];
       if (canal === 'oficial') {
         const { count: tentativas } = await db.from('prospeccao_envios').select('id', { count: 'exact', head: true })
           .eq('loja_id', loja.id).eq('tipo', 'contato');
-        ({ conversa_id, provider_id } = await enviarModeloEGravar(db, inst, tel, loja, `prospeccao:${loja.id}:${(tentativas ?? 0) + 1}`));
+        ({ conversa_id, provider_id, seguintes } = await enviarSequenciaEGravar(db, inst, tel, loja, `prospeccao:${loja.id}:${(tentativas ?? 0) + 1}`));
       } else {
         ({ conversa_id, provider_id } = await enviarEGravar(db, inst, tel, texto, loja.nome));
       }
       await db.from('prospeccao_envios').insert({ loja_id: loja.id, tipo: 'contato', numero, texto, provider_message_id: provider_id });
+      /* A oferta e o convite: cada um com o próprio registro, para a falha de entrega achar a loja. */
+      for (const sg of seguintes) {
+        await db.from('prospeccao_envios').insert({
+          loja_id: loja.id, tipo: sg.tipo, numero, texto: sg.texto, provider_message_id: sg.provider_id, erro: sg.erro?.slice(0, 400) ?? null,
+        });
+      }
       await db.from('prospeccao_lojas').update({
         status: 'em_contato', contatos: numero,
         primeiro_contato_em: loja.primeiro_contato_em ?? agora.toISOString(),

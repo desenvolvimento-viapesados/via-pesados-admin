@@ -17,7 +17,7 @@ import {
   conferirCitacoes, cortarMemoria, custo, dentroDoHorario, estagioDoCard, horarioFalado, horarioLivre,
   horariosCitados, horariosLivres, janelaAberta, LIMITES, normalizarTexto, porQueNaoPode, proximaEtapa,
   neutro, respostaAoPreco, ROTULO_DA_ETAPA, temFallbackNoServidor, textoDaMensagem, citacaoConfere,
-  PEDIDOS, pedidoMaisQuente, type Pedido,
+  PEDIDOS, pedidoMaisQuente, type Pedido, falaDoPreco, precoDeHoje,
 } from './assistente-regras.ts';
 import { INSTRUCOES_DOSSIE, SCHEMA_DOSSIE } from './assistente-roteiro.ts';
 import { BUCKET, extensaoDe, guardarMidia, paraBase64, tipoBase } from './assistente-midia.ts';
@@ -73,6 +73,7 @@ export async function lerConfig(db: Db): Promise<AssistenteConfig | null> {
     dias_semana: (data.dias_semana ?? []).map(Number),
     telefones_teste: (data.telefones_teste ?? []).map(String),
     preco_mensal: data.preco_mensal == null ? null : Number(data.preco_mensal),
+    preco_cheio: data.preco_cheio == null ? null : Number(data.preco_cheio),
   } as AssistenteConfig;
 }
 
@@ -453,14 +454,14 @@ export async function aplicarRegistro(db: Db, estado: AssistenteConversa, args: 
      ou turno refeito não podem somar a mesma pergunta duas vezes. Aqui só orienta a IA. */
   let preco = '';
   const { data: cfgPreco } = args.pediu_preco === true
-    ? await db.from('assistente_config').select('preco_mensal').eq('id', 1).maybeSingle()
+    ? await db.from('assistente_config').select('preco_mensal, preco_cheio, oferta_ate').eq('id', 1).maybeSingle()
     : { data: null };
-  const valor = cfgPreco?.preco_mensal == null ? null : Number(cfgPreco.preco_mensal);
-  if (args.pediu_preco === true && valor) {
-    /* Dono, 06/11: o Davi diz o valor. A demonstração passa a ser para ver o sistema. */
+  const hoje = precoDeHoje(cfgPreco);
+  if (args.pediu_preco === true && hoje) {
+    /* Dono, 06/11: o Davi diz o valor (e a oferta do mês). A demonstração passa a ser para ver o sistema. */
     preco = (estado.pedidos_preco ?? 0) === 0
-      ? `Pedido de preço: diga o valor direto, no primeiro balão: "É *R$ ${valor} por mês*, sem fidelidade e sem multa pra cancelar. A implantação é nossa." Se ele respondeu algo na mesma mensagem, reconheça em meia frase antes. Depois, se a porta deixar, o convite ("Na demonstração de *15 minutos* o Xavier te mostra tudo funcionando na sua loja."); se não, a próxima pergunta da ficha. Nunca desconto, outro valor ou porcentagem.`
-      : `Ele perguntou de novo: repita o valor sem rodeio ("São *R$ ${valor} por mês*, sem fidelidade.") e responda o que mais ele quis saber (o que está incluso, como paga). Nunca desconto nem outro valor; condição diferente, só o Xavier: chame o Xavier se ele pedir desconto.`;
+      ? `Pedido de preço: diga o valor direto, no primeiro balão: "${falaDoPreco(hoje)}" Se ele respondeu algo na mesma mensagem, reconheça em meia frase antes. Depois, se a porta deixar, o convite ("Na demonstração de *15 minutos* o Xavier te mostra tudo funcionando na sua loja."); se não, a próxima pergunta da ficha. Nunca desconto, outro valor ou porcentagem.`
+      : `Ele perguntou de novo: repita o valor sem rodeio ("${falaDoPreco(hoje)}") e responda o que mais ele quis saber (o que está incluso, como paga). Nunca desconto nem outro valor; condição diferente, só o Xavier: chame o Xavier se ele pedir desconto.`;
   } else if (args.pediu_preco === true) {
     const r = respostaAoPreco((estado.pedidos_preco ?? 0) + 1);
     preco = r === 'valor_com_o_xavier'

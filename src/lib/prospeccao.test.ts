@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   diaUtil, podeEnviarAgora, proximoContato, limiteDoDia, intervaloSorteado, telefoneBR, ehCelular, variantes,
-  pediuParaSair, nomeFalado, textoDeReserva, pareceLojaDePesados,
-  canalDa, REGRAS_DO_CANAL, paramsDoModelo, textoDoModelo, pediuTeste, BOTAO_TESTE, BOTAO_SAIR,
-  MODELO_PROSPECCAO, lojaDepoisDaFalha, FALHAS_QUE_DESLIGAM, motivoParaDesligar, VIDEO_DO_MODELO,
+  pediuParaSair, nomeFalado, paramDaMeta, textoDeReserva, pareceLojaDePesados,
+  canalDa, REGRAS_DO_CANAL, nomeDaLojaNaMensagem, textoDoModelo, pediuParaVer, BOTAO_VER, BOTAO_SAIR, BOTAO_BORA,
+  MODELO_ABERTURA, MODELO_ABERTURA_NOME, MODELO_OFERTA, MODELO_CTA, MODELOS_DA_PROSPECCAO, ROTULO_DO_VIDEO,
+  primeiroNomeDoVendedor, sequenciaDaProspeccao,
+  lojaDepoisDaFalha, FALHAS_QUE_DESLIGAM, motivoParaDesligar, VIDEO_DO_MODELO,
 } from '../../supabase/functions/_shared/prospeccao-regras';
 import { MODELOS } from '../../supabase/functions/_shared/modelos';
 
@@ -84,7 +86,7 @@ describe('quem pediu para sair', () => {
 
 describe('o texto', () => {
   it('fala o nome da loja como gente', () => {
-    expect(nomeFalado('RODOLIMA CAMINHOES LTDA')).toBe('Rodolima Caminhoes');
+    expect(nomeFalado('RODOLIMA CAMINHOES LTDA')).toBe('Rodolima Caminhões');
     expect(nomeFalado('Eixo Forte Caminhões - ')).toBe('Eixo Forte Caminhões');
   });
 
@@ -110,10 +112,163 @@ describe('o texto', () => {
   });
 });
 
-/* Pelo número oficial, como o dono decidiu em 03/11/2026. */
+/* O {{1}} do modelo: "foto, ficha e preço dos veículos da {{1}} pros seus clientes" (06/11/2026).
+   Os exemplos são nomes reais da lista do portal Caminhões e Carretas. */
+describe('o nome da loja na mensagem', () => {
+  it('fica o primeiro trecho antes de " - ", " – ", " | " ou " / " (marca, cidade, UF, Matriz, descrição)', () => {
+    expect(nomeFalado('Hohl Máquinas Agrícolas - John Deere')).toBe('Hohl Máquinas Agrícolas');
+    expect(nomeFalado('Garra Caminhões - Goiânia')).toBe('Garra Caminhões');
+    expect(nomeFalado('SM Tratores - Massey - Matriz')).toBe('SM Tratores');
+    expect(nomeFalado('LM Caminhões - Compra, venda e troca de caminhões')).toBe('LM Caminhões');
+    expect(nomeFalado('P. B. Lopes - Scania - Campo Grande MS')).toBe('P. B. Lopes');
+    expect(nomeFalado('Betânia Veículos - Matriz')).toBe('Betânia Veículos');
+    expect(nomeFalado('Dimaq - GO')).toBe('Dimaq');
+    expect(nomeFalado('Via Trucks - DAF - Guarulhos-SP')).toBe('Via Trucks');
+    expect(nomeFalado('M.A. Máquinas Agrícolas - Cascavel')).toBe('M.A. Máquinas Agrícolas');
+    expect(nomeFalado('GOTEMBURGO / SEMINOVOS')).toBe('Gotemburgo');
+    expect(nomeFalado('Cotrama Máquinas Agrícolas / Seminovos')).toBe('Cotrama Máquinas Agrícolas');
+    expect(nomeFalado('Fulano Caminhões | Goiânia')).toBe('Fulano Caminhões');
+    expect(nomeFalado('Fulano Caminhões – Goiânia')).toBe('Fulano Caminhões');
+    expect(nomeFalado('DAF Nova Caminhões - Recife/PE')).toBe('DAF Nova Caminhões');
+  });
+
+  it('hífen sem espaço é parte do nome, não separador', () => {
+    expect(nomeFalado('E-Machine Comercial S.A.')).toBe('E-Machine Comercial');
+    expect(nomeFalado('Rodo.Via Caminhões e Implementos')).toBe('Rodo.Via Caminhões e Implementos');
+  });
+
+  it('primeiro trecho que sozinho não é nome: só marca pula, só palavra genérica junta com o próximo', () => {
+    expect(nomeFalado('Volks / Confia - Volkswagen')).toBe('Confia');
+    expect(nomeFalado('Seminovos - Tracbel')).toBe('Seminovos Tracbel');
+    expect(nomeFalado('A - Fulano Caminhões')).toBe('Fulano Caminhões');
+    /* Tudo genérico: fica o primeiro, que é o nome da loja. */
+    expect(nomeFalado('Agro Caminhão - Caminhões e Máquinas Agrícolas')).toBe('Agro Caminhão');
+    /* Sigla é nome. */
+    expect(nomeFalado('PDM - Ponto das Máquinas')).toBe('PDM');
+  });
+
+  it('palavra inteira em maiúsculas com 5+ letras vira Primeira Maiúscula; sigla de até 4 fica', () => {
+    expect(nomeFalado('RODOCAPITAL - TRUCKVAN')).toBe('Rodocapital');
+    expect(nomeFalado('ZEROBALA Caminhões')).toBe('Zerobala Caminhões');
+    expect(nomeFalado('DATERRA Implementos Agrícolas')).toBe('Daterra Implementos Agrícolas');
+    expect(nomeFalado('TRUCKCISO')).toBe('Truckciso');
+    for (const n of ['BC Caminhões Seminovos', 'JDM Caminhões', 'NG Caminhões', '4R Caminhões', '2F Caminhões', '63 Caminhões', 'TSG',
+      'Ello MS TruckVan', 'SelecTrucks', 'K LOG Caminhões', 'GANA Equipamentos Agrícolas', 'Nery Caminhões N.C.V.']) {
+      expect(nomeFalado(n), n).toBe(n);
+    }
+  });
+
+  it('nome todo em maiúsculas (ou todo em minúsculas) fica como gente escreve', () => {
+    expect(nomeFalado('TREDIESEL CAMINHÕES LTDA')).toBe('Trediesel Caminhões');
+    expect(nomeFalado('BC CAMINHÕES E MÁQUINAS')).toBe('BC Caminhões e Máquinas');
+    expect(nomeFalado('AUTO BOM CAMINHÕES')).toBe('Auto Bom Caminhões');
+    expect(nomeFalado('fulano caminhões de minas')).toBe('Fulano Caminhões de Minas');
+  });
+
+  it('"e", "de", "da", "do" no meio do nome vão em minúscula', () => {
+    expect(nomeFalado('Paulo Mokan Compra E Venda De Máquinas Usadas')).toBe('Paulo Mokan Compra e Venda de Máquinas Usadas');
+    expect(nomeFalado('Kades Central De Máquinas')).toBe('Kades Central de Máquinas');
+    expect(nomeFalado('De Nigris - MB')).toBe('De Nigris');
+  });
+
+  it('acento nas palavras do setor, sem mexer em nome próprio', () => {
+    expect(nomeFalado('Nilson Caminhoes')).toBe('Nilson Caminhões');
+    expect(nomeFalado('Querência Maquinas - Stara')).toBe('Querência Máquinas');
+    expect(nomeFalado('SB Veiculos')).toBe('SB Veículos');
+    expect(nomeFalado('Moi Maquinas e Implementos Agricolas')).toBe('Moi Máquinas e Implementos Agrícolas');
+    expect(nomeFalado('Agricola Bavaria')).toBe('Agrícola Bavaria');
+    expect(nomeFalado('Agua Clara Caminhões')).toBe('Água Clara Caminhões');
+    expect(nomeFalado('Micro-onibus Caminhoes')).toBe('Micro-ônibus Caminhões');
+    expect(nomeFalado('Fulano Comercio de Pecas Rodoviarias')).toBe('Fulano Comércio de Peças Rodoviárias');
+    expect(nomeFalado('Itajai Caminhões')).toBe('Itajai Caminhões');
+  });
+
+  it('sem razão social, parênteses e ®', () => {
+    expect(nomeFalado('Jacó Comércio de Peças Agrícolas LTDA')).toBe('Jacó Comércio de Peças Agrícolas');
+    expect(nomeFalado('Tratornew S/A - New Holland')).toBe('Tratornew');
+    expect(nomeFalado('Comércio de Caminhões Silva Ltda - ME')).toBe('Comércio de Caminhões Silva');
+    expect(nomeFalado('Fulano Caminhões EIRELI')).toBe('Fulano Caminhões');
+    expect(nomeFalado('Fulano Caminhões EPP')).toBe('Fulano Caminhões');
+    expect(nomeFalado('Ibiporã Implementos Rodoviários - ( Fábrica )')).toBe('Ibiporã Implementos Rodoviários');
+    expect(nomeFalado('Fulano Caminhões (Matriz)')).toBe('Fulano Caminhões');
+    expect(nomeFalado('Rural Vendas®')).toBe('Rural Vendas');
+    /* "Me" só sai como razão social, no fim. */
+    expect(nomeFalado('Agro Mesa')).toBe('Agro Mesa');
+  });
+
+  it('UF solta e "Matriz" no fim saem; cidade sem separador fica', () => {
+    expect(nomeFalado('Marcelo Caminhões MG')).toBe('Marcelo Caminhões');
+    expect(nomeFalado('JK Caminhões PR')).toBe('JK Caminhões');
+    expect(nomeFalado('Edmilson Caminhões Itajubá MG')).toBe('Edmilson Caminhões Itajubá');
+    expect(nomeFalado('Fulano Caminhões Matriz')).toBe('Fulano Caminhões');
+    expect(nomeFalado('Agrícola LL')).toBe('Agrícola LL');
+    expect(nomeFalado('Beto Caminhões Piracicaba')).toBe('Beto Caminhões Piracicaba');
+  });
+
+  it('pontuação e espaço sobrando', () => {
+    expect(nomeFalado('  Eixo   Forte  Caminhões -  ')).toBe('Eixo Forte Caminhões');
+    expect(nomeFalado('Forza Caminhões, Ônibus e Implementos - Agrale')).toBe('Forza Caminhões, Ônibus e Implementos');
+    expect(nomeFalado('Fulano Caminhões &')).toBe('Fulano Caminhões');
+  });
+
+  it('higiene da Meta: sem quebra de linha, tab ou 4 espaços seguidos, e até 60 caracteres cortados na palavra', () => {
+    expect(paramDaMeta('Minas\nCaminhões')).toBe('Minas Caminhões');
+    expect(paramDaMeta('Minas\tCaminhões     Ltda')).toBe('Minas Caminhões Ltda');
+    expect(nomeFalado('Fulano\r\nCaminhões')).toBe('Fulano Caminhões');
+    const longo = nomeFalado('Caminhões Seminovos Transportadora Rodoviária e Comércio de Peças Agrícolas do Brasil Central Ltda');
+    expect(longo.length).toBeLessThanOrEqual(60);
+    expect(longo).toBe('Caminhões Seminovos Transportadora Rodoviária e Comércio');
+    expect(paramDaMeta('x'.repeat(80)).length).toBe(60);
+  });
+
+  it('nunca devolve vazio', () => {
+    for (const n of ['', '   ', 'LTDA', '- Matriz', '( )', '®']) {
+      const r = nomeFalado(n);
+      expect(r.trim(), JSON.stringify(n)).not.toBe('');
+      expect(r).not.toMatch(/[\n\t]| {4}/);
+    }
+    expect(nomeFalado('')).toBe('sua loja');
+  });
+
+  it('a correção à mão (dados.nome_mensagem) vale mais que a regra, com a mesma higiene', () => {
+    expect(nomeDaLojaNaMensagem({ nome: 'P. B. Lopes - Scania - Campo Grande MS', dados: { nome_mensagem: 'PB Lopes' } })).toBe('PB Lopes');
+    expect(nomeDaLojaNaMensagem({ nome: 'X', dados: { nome_mensagem: '  Minas\nCaminhões  ' } })).toBe('Minas Caminhões');
+    expect(nomeDaLojaNaMensagem({ nome: 'GOTEMBURGO / SEMINOVOS', dados: { nome_mensagem: '   ' } })).toBe('Gotemburgo');
+    expect(nomeDaLojaNaMensagem({ nome: 'GOTEMBURGO / SEMINOVOS', dados: { nome_mensagem: 42 } })).toBe('Gotemburgo');
+    expect(nomeDaLojaNaMensagem({ nome: 'GOTEMBURGO / SEMINOVOS', dados: null })).toBe('Gotemburgo');
+    expect(nomeDaLojaNaMensagem({ nome: 'Y', dados: { nome_mensagem: 'a'.repeat(70) } }).length).toBe(60);
+  });
+});
+
+/* As regras da Meta para modelo: o que ela recusa na aprovação, conferido antes de submeter. */
+describe('os modelos seguem as regras da Meta', () => {
+  for (const m of MODELOS) {
+    it(m.name, () => {
+      const corpo = m.components.find((c) => c.type === 'BODY') as { text: string; example?: { body_text?: string[][] } } | undefined;
+      expect(corpo, 'todo modelo tem corpo').toBeTruthy();
+      const texto = String(corpo!.text);
+      expect(texto.length, 'corpo até 1024').toBeLessThanOrEqual(1024);
+      expect(texto.trim(), 'corpo não começa com variável').not.toMatch(/^\{\{\d+\}\}/);
+      expect(texto.trim(), 'corpo não termina com variável').not.toMatch(/\{\{\d+\}\}$/);
+      const numeros = [...new Set([...texto.matchAll(/\{\{(\d+)\}\}/g)].map((x) => Number(x[1])))].sort((a, b) => a - b);
+      expect(numeros, 'variáveis em sequência, de 1 em 1').toEqual(numeros.map((_, i) => i + 1));
+      if (numeros.length) expect(corpo!.example?.body_text?.[0]?.length, 'um exemplo por variável').toBe(numeros.length);
+      const rodape = m.components.find((c) => c.type === 'FOOTER');
+      if (rodape) expect(String(rodape.text).length, 'rodapé até 60').toBeLessThanOrEqual(60);
+      const topo = m.components.find((c) => c.type === 'HEADER');
+      if (topo && (topo.format ?? 'TEXT') === 'TEXT') expect(String(topo.text).length, 'cabeçalho até 60').toBeLessThanOrEqual(60);
+      const botoes = (m.components.find((c) => c.type === 'BUTTONS') as { buttons?: { type: string; text: string }[] } | undefined)?.buttons ?? [];
+      for (const b of botoes) expect(b.text.length, `botão "${b.text}" até 25`).toBeLessThanOrEqual(25);
+    });
+  }
+});
+
+/* Pelo número oficial: o canal em 03/11/2026; as três mensagens em 06/11/2026. */
 describe('prospecção pelo número oficial', () => {
-  const modelo = MODELOS.find((m) => m.name === MODELO_PROSPECCAO)!;
-  const corpo = String(modelo.components.find((c) => c.type === 'BODY')!.text);
+  const modelo = (nome: string) => MODELOS.find((m) => m.name === nome)!;
+  const corpo = (nome: string) => String(modelo(nome).components.find((c) => c.type === 'BODY')!.text);
+  const botoes = (nome: string) =>
+    (modelo(nome).components.find((c) => c.type === 'BUTTONS') as unknown as { buttons: { type: string; text: string }[] } | undefined)?.buttons ?? [];
 
   it('o número da YCloud é o oficial; o resto é QR code', () => {
     expect(canalDa('ycloud')).toBe('oficial');
@@ -130,37 +285,84 @@ describe('prospecção pelo número oficial', () => {
     expect(limiteDoDia(40, ini, ini)).toBe(15); // o QR code continua como era
   });
 
-  it('o modelo é de marketing, com o vídeo no topo, as duas variáveis e os dois botões', () => {
-    expect(modelo.category).toBe('MARKETING');
-    const topo = modelo.components.find((c) => c.type === 'HEADER') as unknown as { format: string; example: { header_url: string[] } };
-    expect(topo.format).toBe('VIDEO');
-    expect(topo.example.header_url).toEqual([VIDEO_DO_MODELO]);
-    expect(corpo.match(/\{\{\d\}\}/g)).toEqual(['{{1}}']);
-    const botoes = (modelo.components.find((c) => c.type === 'BUTTONS') as unknown as { buttons: { type: string; text: string }[] }).buttons;
-    expect(botoes.map((b) => b.text)).toEqual([BOTAO_TESTE, BOTAO_SAIR]);
-    expect(botoes.every((b) => b.type === 'QUICK_REPLY' && b.text.length <= 25)).toBe(true);
-    const rodape = modelo.components.find((c) => c.type === 'FOOTER');
-    if (rodape) expect(String(rodape.text).length).toBeLessThanOrEqual(60);
+  it('os quatro modelos existem, todos de marketing; o antigo com teste grátis não sai mais', () => {
+    for (const m of MODELOS_DA_PROSPECCAO) expect(modelo(m)?.category, m).toBe('MARKETING');
+    expect(MODELOS.some((m) => m.name === 'prospeccao_lojista' || m.name === 'prospeccao_lojista_v2')).toBe(false);
   });
 
-  it('a loja entra com o nome falado, no texto do dono', () => {
-    expect(paramsDoModelo({ nome: 'TREDIESEL CAMINHÕES LTDA', dados: { tipo: 'Caminhões' } })).toEqual(['Trediesel Caminhões']);
-    const texto = textoDoModelo(corpo, paramsDoModelo({ nome: 'Claudir Caminhões' }));
-    expect(texto).toMatch(/^Aqui é ferramenta, meu amigo!/);
-    expect(texto).toContain('foto, ficha e preço dos veículos da Claudir Caminhões pros seus clientes com um toque');
-    expect(texto).toContain('Mercado Livre, Insta, Face e no site da loja');
-    expect(texto).toContain('teste grátis. Bora!');
-    expect(texto).not.toMatch(/\d+ dias/); // o prazo do teste ainda não foi definido
-    expect(texto).not.toContain('amostra');
-    expect(texto).not.toContain('{{');
+  it('a abertura: o vídeo e a frase do dono; com o nome do vendedor, "Fala, {{1}}!"', () => {
+    for (const m of [MODELO_ABERTURA, MODELO_ABERTURA_NOME]) {
+      const topo = modelo(m).components.find((c) => c.type === 'HEADER') as unknown as { format: string; example: { header_url: string[] } };
+      expect(topo.format).toBe('VIDEO');
+      expect(topo.example.header_url).toEqual([VIDEO_DO_MODELO]);
+      expect(botoes(m)).toEqual([]);
+    }
+    expect(corpo(MODELO_ABERTURA)).toBe('Imagina você que é vendedor de pesados, meu amigo, usando uma ferramenta dessa.');
+    expect(corpo(MODELO_ABERTURA_NOME)).toBe('Fala, {{1}}! Imagina você que é vendedor de pesados, meu amigo, usando uma ferramenta dessa.');
   });
 
-  it('os botões: "Não tenho interesse" é saída, "Quero testar grátis" vai para o Xavier', () => {
+  it('a oferta: a loja selecionada, no texto do dono (com "e WhatsApp", escolha dele)', () => {
+    expect(corpo(MODELO_OFERTA)).toBe('E a boa parte é que a {{1}} foi selecionada para a oferta especial de lançamento do Via Pesados, o único software do Brasil feito para veículos pesados, com conexão oficial do Mercado Livre, Facebook, Instagram e WhatsApp.');
+    expect(botoes(MODELO_OFERTA)).toEqual([]);
+  });
+
+  it('o convite para a qualificação curta leva o rodapé e os dois botões', () => {
+    expect(corpo(MODELO_CTA)).toBe('Bora ver como isso fica aí na sua loja? Me responde umas perguntinhas rápidas e eu já te mostro.');
+    expect(modelo(MODELO_CTA).components.find((c) => c.type === 'FOOTER')?.text).toBe('Xavier · Via Pesados');
+    expect(botoes(MODELO_CTA).map((b) => b.text)).toEqual([BOTAO_BORA, BOTAO_SAIR]);
+    expect(botoes(MODELO_CTA).every((b) => b.type === 'QUICK_REPLY')).toBe(true);
+  });
+
+  it('nenhuma das mensagens fala de teste grátis nem de prazo', () => {
+    for (const m of MODELOS_DA_PROSPECCAO) {
+      expect(corpo(m)).not.toMatch(/gr[áa]tis|gratuit|teste|testar|amostra/i);
+      expect(corpo(m)).not.toMatch(/\d+ dias/);
+    }
+  });
+
+  it('a sequência: abertura (com ou sem o vendedor), oferta com o nome da loja, convite', () => {
+    const comVendedor = sequenciaDaProspeccao({ nome: 'Hohl Máquinas Agrícolas - John Deere', dados: { contato: 'vendedor: Marcelo Cristo' } });
+    expect(comVendedor.map((m) => m.modelo)).toEqual([MODELO_ABERTURA_NOME, MODELO_OFERTA, MODELO_CTA]);
+    expect(comVendedor.map((m) => m.params)).toEqual([['Marcelo'], ['Hohl Máquinas Agrícolas'], []]);
+    expect(comVendedor.map((m) => m.video)).toEqual([true, false, false]);
+    const daLoja = sequenciaDaProspeccao({ nome: 'TREDIESEL CAMINHÕES LTDA', dados: { contato: 'loja' } });
+    expect(daLoja.map((m) => m.modelo)).toEqual([MODELO_ABERTURA, MODELO_OFERTA, MODELO_CTA]);
+    expect(daLoja.map((m) => m.params)).toEqual([[], ['Trediesel Caminhões'], []]);
+    const texto = textoDoModelo(corpo(MODELO_OFERTA), daLoja[1].params);
+    expect(texto).toMatch(/^E a boa parte é que a Trediesel Caminhões foi selecionada/);
+    expect(ROTULO_DO_VIDEO.startsWith('[vídeo')).toBe(true); // é por aqui que o Davi reconhece a prospecção
+  });
+
+  it('o primeiro nome do vendedor, do jeito que o portal escreve', () => {
+    const v = (contato: string) => primeiroNomeDoVendedor({ contato });
+    expect(v('vendedor: Marcelo')).toBe('Marcelo');
+    expect(v('vendedor: Marcelo Cristo')).toBe('Marcelo');
+    expect(v('vendedor: João Paulo')).toBe('João Paulo');
+    expect(v('vendedor: Luiz Fernando')).toBe('Luiz Fernando');
+    expect(v('vendedor: Pedro Paulo (Vendas)')).toBe('Pedro Paulo');
+    expect(v('vendedor: Erick (Implementos)')).toBe('Erick');
+    expect(v('vendedor: Rafaela Fernanda - FINANCIAMENTOS')).toBe('Rafaela');
+    expect(v('vendedor: Guilherme - Vendas de Peças')).toBe('Guilherme');
+    expect(v('vendedor: Edson Natal RIGO Filho')).toBe('Edson');
+    expect(v('vendedor: MARCELO')).toBe('Marcelo');
+    expect(v('vendedor: Junior ou Amarildo')).toBeNull(); // dois no mesmo número
+    expect(v('vendedor: Jr. Mahnic')).toBeNull();
+    expect(v('vendedor: Vendas')).toBeNull();
+    expect(v('loja')).toBeNull();
+    expect(primeiroNomeDoVendedor(null)).toBeNull();
+    expect(primeiroNomeDoVendedor({ contato: 'vendedor: Bil AutoSueco', vendedor_mensagem: 'Bill' })).toBe('Bill');
+    expect(primeiroNomeDoVendedor({ contato: 'vendedor: Cowboy', vendedor_mensagem: '' })).toBeNull();
+  });
+
+  it('o botão "Bora!" não é pedido de ver nem de sair; "Não tenho interesse" é saída', () => {
     expect(pediuParaSair(BOTAO_SAIR)).toBe(true);
-    expect(pediuTeste(BOTAO_TESTE)).toBe(true);
-    expect(pediuTeste('quero testar grátis!')).toBe(true);
-    expect(pediuTeste('quero testar grátis, mas quanto custa depois?')).toBe(false);
-    expect(pediuParaSair(BOTAO_TESTE)).toBe(false);
+    expect(pediuParaSair(BOTAO_BORA)).toBe(false);
+    expect(pediuParaVer(BOTAO_BORA)).toBe(false);
+    expect(pediuParaVer(BOTAO_VER)).toBe(true);
+    expect(pediuParaVer('quero ver funcionando!')).toBe(true);
+    expect(pediuParaVer('quero ver funcionando, quanto custa?')).toBe(false);
+    expect(pediuParaVer(null)).toBe(false);
+    expect(pediuParaSair(BOTAO_VER)).toBe(false);
   });
 
   it('entrega que falhou: sem WhatsApp sai da fila; bloqueio desliga', () => {

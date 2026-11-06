@@ -100,6 +100,10 @@ export function exemploDoModelo(template: string): ParamsConferidos | null {
           ?? (ex?.header_handle as string[] | undefined)?.[0];
         if (link) p.documento = { link, filename: 'Exemplo — Via Pesados.pdf' };
       }
+      if (c.format === 'VIDEO') {
+        const link = (ex?.header_url as string[] | undefined)?.[0];
+        if (link) p.video = { link };
+      }
     }
     if (c.type === 'BUTTONS') {
       const b = (c.buttons as { type: string; url?: string; example?: string[] }[] | undefined) ?? [];

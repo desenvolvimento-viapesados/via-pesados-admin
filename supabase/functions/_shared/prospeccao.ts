@@ -11,8 +11,8 @@ import Anthropic from 'npm:@anthropic-ai/sdk@1.3.0';
 import { evolution, paraEnvio } from './evolution.ts';
 import { MODELOS } from './modelos.ts';
 import {
-  BUSCAS, MODELO_PROSPECCAO, motivoParaDesligar, nomeFalado, paramsDoModelo, pareceLojaDePesados, telefoneBR,
-  textoDeReserva, textoDoModelo, variantes, VIDEO_DO_MODELO, type LojaDoModelo,
+  BUSCAS, motivoParaDesligar, nomeFalado, PAUSA_ENTRE_MENSAGENS_MS, pareceLojaDePesados, ROTULO_DO_VIDEO, sequenciaDaProspeccao,
+  telefoneBR, textoDeReserva, textoDoModelo, variantes, VIDEO_DO_MODELO, type LojaDoModelo, type MensagemDaSequencia,
 } from './prospeccao-regras.ts';
 import { enviarTemplate } from './wa.ts';
 import { configYCloud, enviarTextoPorYCloud, lerNumero } from './ycloud.ts';
@@ -280,32 +280,59 @@ async function gravarNaCaixa(db: Db, inst: Instancia, telefone: string, texto: s
 
 /* ── o número oficial ─────────────────────────────────────────── */
 
-const CORPO_DO_MODELO = String(
-  MODELOS.find((m) => m.name === MODELO_PROSPECCAO)?.components.find((c) => c.type === 'BODY')?.text ?? '',
+const corpoDo = (modelo: string) => String(
+  MODELOS.find((m) => m.name === modelo)?.components.find((c) => c.type === 'BODY')?.text ?? '',
 );
 
-/** O primeiro contato pelo oficial, como sai: o modelo com a loja no lugar das variáveis. */
-export function mensagemDoModelo(loja: LojaDoModelo): { params: string[]; texto: string } {
-  const params = paramsDoModelo(loja);
-  return { params, texto: `[vídeo: envio de fotos e recorrência]\n\n${textoDoModelo(CORPO_DO_MODELO, params)}` };
+export type MensagemPronta = MensagemDaSequencia & { texto: string };
+
+/**
+ * As três mensagens do primeiro contato pelo oficial, como saem (06/11/2026): os modelos com o
+ * vendedor e a loja no lugar das variáveis. Na caixa do CRM o vídeo vira o ROTULO_DO_VIDEO,
+ * e é por ele ("[vídeo") que o Davi reconhece que a conversa começou pela prospecção.
+ */
+export function mensagensDaProspeccao(loja: LojaDoModelo): { mensagens: MensagemPronta[]; texto: string } {
+  const mensagens = sequenciaDaProspeccao(loja).map((m) => {
+    const corpo = textoDoModelo(corpoDo(m.modelo), m.params);
+    return { ...m, texto: m.video ? `${ROTULO_DO_VIDEO}\n\n${corpo}` : corpo };
+  });
+  return { mensagens, texto: mensagens.map((m) => m.texto).join('\n\n---\n\n') };
 }
 
 /**
- * Manda o modelo aprovado pelo enviarTemplate — o mesmo caminho da cobrança,
- * com a janela das 08h–20h e a trava de repetição. `chave` muda a cada
- * tentativa da mesma loja: a trava queima a chave mesmo quando a entrega
- * falha, e "reativar" a loja tem de poder mandar de novo.
+ * Manda as três mensagens pelo enviarTemplate — o mesmo caminho da cobrança, com a janela
+ * das 08h–20h e a trava de repetição —, uma depois da outra, com uma pausa para chegarem na
+ * ordem. `chave` muda a cada tentativa da mesma loja: a trava queima a chave mesmo quando a
+ * entrega falha, e "reativar" a loja tem de poder mandar de novo.
+ * A primeira que falhar para tudo (nada sai, a loja fica com o erro). Se a 2ª ou a 3ª falhar,
+ * a abertura já saiu: a loja segue em contato e a falha volta em `falhas`.
  */
-export async function enviarModeloEGravar(db: Db, inst: Instancia, telefone: string, loja: LojaDoModelo, chave: string):
-  Promise<{ conversa_id: string; provider_id: string | null; texto: string }> {
-  const { params, texto } = mensagemDoModelo(loja);
-  const r = await enviarTemplate(db, {
-    para: telefone, template: MODELO_PROSPECCAO, params: { video: { link: VIDEO_DO_MODELO }, body: params }, chave,
-  });
-  /* Agendado = virou 20h no meio da rodada: a fila manda às 08h. Conta como enviado. */
-  if (!r.ok && !r.agendado) throw new Error(r.motivo);
-  const providerId = r.ok ? r.message_id || null : null;
-  return { conversa_id: await gravarNaCaixa(db, inst, telefone, texto, loja.nome, providerId), provider_id: providerId, texto };
+export async function enviarSequenciaEGravar(db: Db, inst: Instancia, telefone: string, loja: LojaDoModelo, chave: string):
+  Promise<{ conversa_id: string; provider_id: string | null; texto: string; seguintes: { tipo: 'oferta' | 'cta'; texto: string; provider_id: string | null; erro: string | null }[] }> {
+  const { mensagens, texto } = mensagensDaProspeccao(loja);
+  let conversaId = '';
+  let providerAbertura: string | null = null;
+  const seguintes: { tipo: 'oferta' | 'cta'; texto: string; provider_id: string | null; erro: string | null }[] = [];
+  for (const [i, m] of mensagens.entries()) {
+    if (i > 0) await new Promise((ok) => setTimeout(ok, PAUSA_ENTRE_MENSAGENS_MS));
+    const r = await enviarTemplate(db, {
+      para: telefone, template: m.modelo, chave: i === 0 ? chave : `${chave}:${i + 1}`,
+      params: { ...(m.video ? { video: { link: VIDEO_DO_MODELO } } : {}), ...(m.params.length ? { body: m.params } : {}) },
+    });
+    /* Agendado = virou 20h no meio da rodada: a fila manda às 08h, na ordem. Conta como enviado. */
+    const ok = r.ok || !!r.agendado;
+    const motivo = r.ok ? '' : r.motivo;
+    const providerId = r.ok ? r.message_id || null : null;
+    if (i === 0) {
+      if (!ok) throw new Error(motivo);
+      providerAbertura = providerId;
+    } else {
+      seguintes.push({ tipo: i === 1 ? 'oferta' : 'cta', texto: m.texto, provider_id: providerId, erro: ok ? null : motivo || 'falhou' });
+      if (!ok) continue;
+    }
+    conversaId = await gravarNaCaixa(db, inst, telefone, m.texto, loja.nome, providerId) || conversaId;
+  }
+  return { conversa_id: conversaId, provider_id: providerAbertura, texto, seguintes };
 }
 
 /**

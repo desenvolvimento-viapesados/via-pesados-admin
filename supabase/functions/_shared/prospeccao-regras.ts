@@ -158,14 +158,144 @@ export function pediuParaSair(texto: string | null | undefined): boolean {
 
 export type LojaParaTexto = { nome: string; cidade?: string | null };
 
-/** Nome da loja como gente escreve: sem "LTDA", sem tudo em maiúsculas. */
-export function nomeFalado(nome: string): string {
-  let n = nome.replace(/\b(ltda|me|eireli|s\.?\/?a\.?|epp)\b\.?/gi, '').replace(/\s{2,}/g, ' ').trim();
-  n = n.replace(/[-–|·]\s*$/, '').trim();
-  if (n === n.toUpperCase() && /[A-Z]/.test(n)) {
-    n = n.toLowerCase().replace(/(^|\s)(\p{L})/gu, (_, a, b) => a + b.toUpperCase());
+/* ── o nome da loja como gente fala ───────────────────────────── */
+
+const semAcento = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+/**
+ * Parâmetro de modelo do jeito que a Meta aceita: sem quebra de linha, sem tab e sem
+ * 4 espaços seguidos (é recusa, não texto torto), e com tamanho de nome — 60 caracteres,
+ * cortados no fim de uma palavra. Devolve '' quando não sobra nada.
+ */
+export function paramDaMeta(texto: string | null | undefined, max = 60): string {
+  let t = String(texto ?? '').replace(/[\r\n\t\v\f]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!/[\p{L}\d]/u.test(t)) return '';
+  if (t.length > max) {
+    const corte = t.slice(0, max + 1).lastIndexOf(' ');
+    t = (corte > 0 ? t.slice(0, corte) : t.slice(0, max)).trim();
+    t = t.replace(/(\s+(e|de|da|do|das|dos|em|com|&|\+))+$/i, '').replace(/[\s,;:\-–—|/·&+]+$/, '').trim();
   }
-  return n || nome;
+  return t;
+}
+
+/* Razão social no fim do nome: "Ltda", "ME", "EPP", "Eireli", "S/A", "S.A.". */
+const RAZAO_SOCIAL = /[\s,.\-–]+(ltda|me|epp|eireli|s\.?\/?a)\.?\s*$/i;
+/* " - ", " – ", " | ", " / ": depois disso vem marca, cidade, UF, "Matriz" ou descrição. */
+const SEPARADOR = /\s+[-–—|/·]\s+/;
+const UFS = new Set(['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI',
+  'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']);
+/* Palavras de marca de fábrica (sem acento, minúsculas). Trecho só de marca não é o nome da loja. */
+const MARCAS = new Set(['volvo', 'scania', 'daf', 'mb', 'mercedes', 'benz', 'mercedes-benz', 'vw', 'volks', 'volkswagen', 'iveco',
+  'ford', 'foton', 'agrale', 'randon', 'librelato', 'guerra', 'facchini', 'noma', 'pastre', 'rodotecnica', 'truckvan', 'stara',
+  'jacto', 'john', 'deere', 'massey', 'ferguson', 'valtra', 'new', 'holland', 'case', 'landini', 'mahindra', 'kuhn', 'ls',
+  'tractor', 'fendt', 'horsch', 'budny', 'agritech']);
+/* Palavras que sozinhas não fazem nome ("Seminovos", "Caminhões e Máquinas"). */
+const GENERICAS = new Set(['caminhao', 'caminhoes', 'carreta', 'carretas', 'maquina', 'maquinas', 'trator', 'tratores', 'implemento',
+  'implementos', 'veiculo', 'veiculos', 'seminovo', 'seminovos', 'semi', 'novos', 'usado', 'usados', 'pesado', 'pesados', 'agro',
+  'agricola', 'agricolas', 'rodoviario', 'rodoviarios', 'grupo', 'loja', 'revenda', 'comercio', 'comercial', 'matriz', 'filial',
+  'multimarcas', 'truck', 'trucks', 'onibus', 'pecas', 'servicos', 'equipamentos', 'utilitarios', 'e', 'de', 'da', 'do', 'das',
+  'dos', '&']);
+/* Ligam palavras: no meio do nome vão em minúscula ("Compra e Venda de Máquinas"). */
+const CONECTIVOS = new Set(['e', 'de', 'da', 'do', 'das', 'dos', 'em', 'com']);
+/* Palavras curtas que, num nome todo em maiúsculas, são palavra e não sigla. */
+const CURTAS_COMUNS = new Set(['auto', 'agro', 'rodo', 'sul', 'rio', 'bom', 'boa', 'top', 'mais', 'novo', 'nova', 'max', 'real',
+  'rei', 'sao', 'luz', 'sol', 'mar', 'via', 'casa', 'loja', 'cia', 'ouro', 'mato', 'vale', 'alto', 'boi']);
+/* Palavras do setor que aparecem sem acento ("Caminhoes", "Maquinas Agricolas"). */
+const ACENTOS: Record<string, string> = {
+  caminhao: 'caminhão', caminhoes: 'caminhões', maquina: 'máquina', maquinas: 'máquinas', veiculo: 'veículo', veiculos: 'veículos',
+  comercio: 'comércio', agricola: 'agrícola', agricolas: 'agrícolas', peca: 'peça', pecas: 'peças', onibus: 'ônibus',
+  rodoviario: 'rodoviário', rodoviarios: 'rodoviários', rodoviaria: 'rodoviária', rodoviarias: 'rodoviárias',
+  automovel: 'automóvel', automoveis: 'automóveis', servico: 'serviço', servicos: 'serviços', utilitario: 'utilitário',
+  utilitarios: 'utilitários', negocios: 'negócios',
+  agronegocio: 'agronegócio', agronegocios: 'agronegócios', solucao: 'solução', solucoes: 'soluções',
+  concessionaria: 'concessionária', agropecuaria: 'agropecuária', industria: 'indústria', locacao: 'locação', locacoes: 'locações',
+  representacao: 'representação', representacoes: 'representações', consignacao: 'consignação', patio: 'pátio', agua: 'água',
+  mecanica: 'mecânica', hidraulica: 'hidráulica', logistica: 'logística', agromaquinas: 'agromáquinas',
+};
+
+const letrasDe = (t: string) => t.replace(/[^\p{L}]/gu, '');
+const chave = (t: string) => semAcento(t).toLowerCase().replace(/[^a-z0-9&-]/g, '');
+const tituloDe = (t: string) => t.toLowerCase().replace(/(^|[-.'’])(\p{L})/gu, (_, a, b) => a + b.toUpperCase());
+
+/** Por que o trecho não serve sozinho como nome: curto, só marca ou só palavra genérica. */
+function fraqueza(trecho: string): 'curto' | 'marca' | 'generico' | null {
+  const palavras = trecho.split(/\s+/).filter((p) => chave(p));
+  if (letrasDe(trecho).length + (trecho.match(/\d/g)?.length ?? 0) < 2 || !palavras.length) return 'curto';
+  if (palavras.every((p) => MARCAS.has(chave(p)))) return 'marca';
+  /* UF só quando é a sigla pura ("GO"); "M.A." é nome. */
+  if (palavras.every((p) => GENERICAS.has(chave(p)) || UFS.has(p))) return 'generico';
+  return null;
+}
+
+/** Fica com o nome: o primeiro trecho, a não ser que ele sozinho não seja nome. */
+function escolherTrecho(trechos: string[]): string {
+  const [primeiro, ...resto] = trechos;
+  const f = fraqueza(primeiro);
+  if (!f || !resto.length) return primeiro;
+  const forte = resto.find((t) => !fraqueza(t));
+  if (!forte) return primeiro;
+  /* "Volks / Confia" → "Confia"; "Seminovos - Tracbel" → "Seminovos Tracbel". */
+  return f === 'generico' ? `${primeiro} ${forte}` : forte;
+}
+
+/** Maiúsculas, conectivos e acentos, palavra por palavra. */
+function ajustarPalavras(nome: string): string {
+  const tudoMaiusculo = !/\p{Ll}/u.test(nome);
+  const tudoMinusculo = !/\p{Lu}/u.test(nome);
+  return nome.split(' ').map((p, i) => {
+    const letras = letrasDe(p);
+    const k = chave(p);
+    let r = p;
+    if (letras && !/\d/.test(p)) {
+      if (i > 0 && CONECTIVOS.has(k)) return k;
+      const maiuscula = letras === letras.toUpperCase();
+      /* Palavra inteira em maiúsculas com 5+ letras é grito; até 4 é sigla (BC, JDM, TSG). Num nome
+         todo em maiúsculas, 3 ou 4 letras com vogal se lê como palavra ("JOSÉ", "SAO"), e o
+         conectivo do começo também ("DO BRASIL"). */
+      const palavraCurta = tudoMaiusculo && letras.length >= 3 && letras.length <= 4 && /[aeiouáéíóúâêôãõ]/i.test(letras);
+      if ((maiuscula && letras.length >= 5) || (tudoMaiusculo && (CURTAS_COMUNS.has(k) || CONECTIVOS.has(k) || palavraCurta))
+        || tudoMinusculo) r = tituloDe(p);
+    }
+    /* Acento por pedaço ("micro-onibus"), mantendo a maiúscula do começo. */
+    return r.split('-').map((parte) => {
+      const certo = ACENTOS[chave(parte)];
+      if (!certo) return parte;
+      const so = letrasDe(parte);
+      if (so.length > 1 && so === so.toUpperCase()) return parte.replace(/\p{L}+/u, certo.toUpperCase());
+      return parte.replace(/\p{L}+/u, /^\p{Lu}/u.test(so) ? certo[0].toUpperCase() + certo.slice(1) : certo);
+    }).join('-');
+  }).join(' ');
+}
+
+/**
+ * Nome da loja como gente fala, para "foto, ficha e preço dos veículos da {{1}}":
+ *  - fica o primeiro trecho antes de " - ", " – ", " | " ou " / " ("Garra Caminhões - Goiânia",
+ *    "SM Tratores - Massey - Matriz"); se ele sozinho não é nome (só marca, só palavra genérica,
+ *    uma letra), entra o próximo trecho que é;
+ *  - sem razão social (Ltda, ME, EPP, Eireli, S/A), sem parênteses, sem ®;
+ *  - palavra inteira em maiúsculas com 5+ letras vira Primeira Maiúscula ("ZEROBALA" → "Zerobala");
+ *    até 4 é sigla e fica ("BC", "JDM", "NG", "4R");
+ *  - acento nas palavras do setor ("Caminhoes" → "Caminhões"), "e/de/da/do" em minúscula no meio;
+ *  - UF solta no fim sai ("Marcelo Caminhões MG"), "Matriz"/"Filial" no fim também;
+ *  - por fim, a higiene da Meta (paramDaMeta). Nunca devolve vazio.
+ */
+export function nomeFalado(nome: string): string {
+  const bruto = String(nome ?? '').replace(/[®™©]/g, '').replace(/\s*\([^)]*\)?\s*/g, ' ').replace(/\s+/g, ' ').trim();
+  const trechos = bruto.split(SEPARADOR)
+    .map((t) => {
+      let x = t.trim();
+      for (let i = 0; i < 3 && RAZAO_SOCIAL.test(` ${x}`); i++) x = ` ${x}`.replace(RAZAO_SOCIAL, '').trim();
+      return x.replace(/^[\s\-–—|/·,;:&+]+|[\s\-–—|/·,;:&+]+$/g, '').trim();
+    })
+    .filter((t) => letrasDe(t) || /\d/.test(t));
+  let n = trechos.length ? escolherTrecho(trechos) : '';
+  n = ajustarPalavras(n);
+  let palavras = n.split(' ').filter(Boolean);
+  while (palavras.length > 2 && (UFS.has(palavras[palavras.length - 1]) || /^(matriz|filial)$/i.test(palavras[palavras.length - 1]))) {
+    palavras = palavras.slice(0, -1);
+  }
+  n = palavras.join(' ').replace(/\s+,/g, ',');
+  return paramDaMeta(n) || 'sua loja';
 }
 
 /**
@@ -216,25 +346,89 @@ export const BUSCAS = [
   'caminhões usados',
 ];
 
-/* ── o modelo do número oficial ───────────────────────────────── */
+/* ── os modelos do número oficial ─────────────────────────────── */
 
 /**
- * Pelo número oficial a primeira mensagem só pode ser modelo aprovado pela
- * Meta (texto livre só depois que a pessoa responde). O texto mora em
- * modelos.ts; aqui ficam as duas variáveis e o que cada botão quer dizer.
+ * Pelo número oficial a primeira mensagem só pode ser modelo aprovado pela Meta (texto livre
+ * só depois que a pessoa responde). Dono, 06/11/2026: TRÊS mensagens seguidas, segundos uma
+ * depois da outra — a abertura com o vídeo (com "Fala, <nome>!" quando o número é de um
+ * vendedor com nome no portal), a oferta com o nome da loja e o convite para a qualificação
+ * curta, com os botões. Os textos moram em modelos.ts.
  */
-export const MODELO_PROSPECCAO = 'prospeccao_lojista';
-export const BOTAO_TESTE = 'Quero testar grátis';
+export const MODELO_ABERTURA = 'prospeccao_abertura';
+export const MODELO_ABERTURA_NOME = 'prospeccao_abertura_nome';
+export const MODELO_OFERTA = 'prospeccao_oferta';
+export const MODELO_CTA = 'prospeccao_cta';
+/** Todos precisam estar aprovados para a prospecção sair. */
+export const MODELOS_DA_PROSPECCAO = [MODELO_ABERTURA, MODELO_ABERTURA_NOME, MODELO_OFERTA, MODELO_CTA] as const;
+/** Segundos entre uma mensagem e a próxima: dá tempo de a anterior chegar primeiro. */
+export const PAUSA_ENTRE_MENSAGENS_MS = 4_000;
+export const BOTAO_BORA = 'Bora!';
 export const BOTAO_SAIR = 'Não tenho interesse';
-/* O vídeo do cabeçalho (envio de fotos lado a lado, depois a Recorrência). Arquivo novo = nome
-   novo (v2, v3…): a Meta e o WhatsApp guardam em cache pelo endereço. */
+/** O botão do modelo anterior (nunca enviado). Se alguém escrever isso, é pedido de ver. */
+export const BOTAO_VER = 'Quero ver funcionando';
+/* O vídeo do cabeçalho (envio de fotos lado a lado, depois a Recorrência; vai ser trocado pela
+   gravação do Xavier). Arquivo novo = nome novo (v2, v3…): a Meta e o WhatsApp guardam em cache
+   pelo endereço. O rótulo é o que a caixa do CRM e o Davi leem no lugar do vídeo: troque junto. */
 export const VIDEO_DO_MODELO = 'https://ktjvyysqhsyvjmhumjly.supabase.co/storage/v1/object/public/logos/wa/prospeccao-v1.mp4';
+export const ROTULO_DO_VIDEO = '[vídeo do sistema]';
 
 export type LojaDoModelo = { nome: string; dados?: Record<string, unknown> | null };
 
-/** {{1}} = a loja, como gente fala ("foto dos veículos da Claudir Caminhões"). */
-export function paramsDoModelo(loja: LojaDoModelo): string[] {
-  return [nomeFalado(loja.nome)];
+/**
+ * O nome da loja na oferta ("E a boa parte é que a {{1}} foi selecionada…").
+ * `dados.nome_mensagem` é a correção à mão para uma loja: quando existe, vale ela.
+ */
+export function nomeDaLojaNaMensagem(loja: LojaDoModelo): string {
+  const manual = paramDaMeta(typeof loja.dados?.nome_mensagem === 'string' ? loja.dados.nome_mensagem : '');
+  return manual || nomeFalado(loja.nome);
+}
+
+/* Rótulos que o portal põe no lugar do nome do vendedor. */
+const NAO_E_NOME = new Set(['vendas', 'venda', 'vendedor', 'vendedora', 'comercial', 'financeiro', 'financiamento', 'financiamentos',
+  'loja', 'atendimento', 'gerente', 'escritorio', 'pecas', 'sac', 'consultor', 'consultora', 'setor', 'dep', 'departamento',
+  'administrativo', 'administracao', 'contato', 'whatsapp', 'fone', 'telefone', 'oficina', 'compras', 'seminovos']);
+/* Primeiro nome que quase sempre vem com o segundo ("João Paulo", "Luiz Fernando"). */
+const PRIMEIRO_DE_COMPOSTO = new Set(['joao', 'jose', 'ana', 'maria', 'luiz', 'luis', 'marco', 'pedro', 'paulo', 'julio', 'carlos',
+  'antonio', 'jean', 'joao']);
+const SEGUNDO_DE_COMPOSTO = new Set(['paulo', 'pedro', 'carlos', 'fernando', 'vitor', 'victor', 'aurelio', 'antonio', 'cesar',
+  'claudia', 'paula', 'maria', 'luiz', 'luis', 'henrique', 'eduardo', 'roberto', 'ricardo', 'marcos', 'gabriel', 'felipe',
+  'augusto', 'renato', 'lucas', 'miguel', 'rafael', 'clara', 'julia', 'beatriz', 'cristina', 'lucia', 'jose', 'reinaldo']);
+
+/**
+ * O primeiro nome de quem atende, quando o número é de um vendedor com nome no portal
+ * (dados.contato = "vendedor: Marcelo Cristo") — vai no "Fala, {{1}}!". Nome composto comum
+ * fica inteiro ("João Paulo"). Dois nomes no mesmo número ("Junior ou Amarildo"), rótulo
+ * ("Vendas"), inicial ("Jr.") ou coisa que não é nome: null, e sai a abertura sem nome.
+ * `dados.vendedor_mensagem` é a correção à mão: vale ela ('' = sem nome).
+ */
+export function primeiroNomeDoVendedor(dados: Record<string, unknown> | null | undefined): string | null {
+  /* Correção à mão por loja: o nome certo, ou '' para sair a abertura sem nome. */
+  if (typeof dados?.vendedor_mensagem === 'string') return paramDaMeta(dados.vendedor_mensagem, 30) || null;
+  const contato = typeof dados?.contato === 'string' ? dados.contato : '';
+  const m = /^vendedor:\s*(.+)$/i.exec(contato.trim());
+  if (!m) return null;
+  const limpo = m[1].replace(/\([^)]*\)?/g, ' ').split(/\s+[-–—|/·]\s+|,/)[0].replace(/\s+/g, ' ').trim();
+  if (/\s(ou|e|&)\s/i.test(` ${limpo} `.replace(/^\s+/, ' '))) return null;
+  const palavras = limpo.split(' ').filter(Boolean);
+  const nome = (p: string | undefined) => !!p && /^\p{L}{2,15}$/u.test(p) && !NAO_E_NOME.has(chave(p));
+  if (!nome(palavras[0])) return null;
+  const composto = PRIMEIRO_DE_COMPOSTO.has(chave(palavras[0])) && nome(palavras[1]) && SEGUNDO_DE_COMPOSTO.has(chave(palavras[1]));
+  return (composto ? palavras.slice(0, 2) : palavras.slice(0, 1)).map(tituloDe).join(' ');
+}
+
+export type MensagemDaSequencia = { modelo: string; params: string[]; video: boolean; botoes: boolean };
+
+/** As três mensagens de uma loja, na ordem em que saem. */
+export function sequenciaDaProspeccao(loja: LojaDoModelo): MensagemDaSequencia[] {
+  const vendedor = primeiroNomeDoVendedor(loja.dados);
+  return [
+    vendedor
+      ? { modelo: MODELO_ABERTURA_NOME, params: [vendedor], video: true, botoes: false }
+      : { modelo: MODELO_ABERTURA, params: [], video: true, botoes: false },
+    { modelo: MODELO_OFERTA, params: [nomeDaLojaNaMensagem(loja)], video: false, botoes: false },
+    { modelo: MODELO_CTA, params: [], video: false, botoes: true },
+  ];
 }
 
 /** O texto do modelo com as variáveis no lugar: é o que aparece na caixa do CRM. */
@@ -242,9 +436,15 @@ export function textoDoModelo(corpo: string, params: string[]): string {
   return corpo.replace(/\{\{(\d+)\}\}/g, (_, n) => params[Number(n) - 1] ?? '');
 }
 
-/** A pessoa tocou em "Quero testar grátis" (ou escreveu só isso). */
-export function pediuTeste(texto: string | null | undefined): boolean {
-  return String(texto ?? '').trim().replace(/[.!]+$/, '').toLowerCase() === BOTAO_TESTE.toLowerCase();
+const comoBotao = (t: string | null | undefined) =>
+  semAcento(String(t ?? '')).toLowerCase().replace(/\s+/g, ' ').trim().replace(/[.!]+$/, '').trim();
+
+/**
+ * A pessoa escreveu só "Quero ver funcionando" (com ou sem ponto ou exclamação, sem ligar
+ * para maiúsculas e acentos): é pedido de ver. Frase maior não conta: aí quem lê é a IA.
+ */
+export function pediuParaVer(texto: string | null | undefined): boolean {
+  return comoBotao(texto) === comoBotao(BOTAO_VER);
 }
 
 /* ── o que a Meta diz sobre o número ──────────────────────────── */

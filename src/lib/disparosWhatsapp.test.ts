@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { conferirParams } from '../../supabase/functions/_shared/conferirParams.ts';
 import { MODELOS } from '../../supabase/functions/_shared/modelos.ts';
+import { sequenciaDaProspeccao, VIDEO_DO_MODELO } from '../../supabase/functions/_shared/prospeccao-regras.ts';
 
 /**
  * Os onze modelos aprovados e o que cada gatilho manda neles.
@@ -74,8 +75,12 @@ const GATILHOS: Record<string, Parameters<typeof conferirParams>[1]> = {
   teste_gratis_volte: { body: ['Walker'], urlSuffix: 'tok123' },
   // sistema-lojista/supabase/functions/esqueci-senha
   redefinir_senha: { body: ['Walker', 'iTruck Caminhões'], urlSuffix: 'tok123' },
-  // prospeccao-enviar, pelo número oficial (paramsDoModelo)
-  prospeccao_lojista: { video: { link: 'https://exemplo/prospeccao.mp4' }, body: ['Claudir Caminhões'] },
+  // prospeccao-enviar, pelo número oficial (sequenciaDaProspeccao)
+  ...Object.fromEntries(
+    sequenciaDaProspeccao({ nome: 'Claudir Caminhões', dados: { contato: 'vendedor: Marcelo' } })
+      .concat(sequenciaDaProspeccao({ nome: 'Claudir Caminhões', dados: { contato: 'loja' } }).slice(0, 1))
+      .map((m) => [m.modelo, { ...(m.video ? { video: { link: VIDEO_DO_MODELO } } : {}), ...(m.params.length ? { body: m.params } : {}) }]),
+  ),
 };
 
 describe('o que os gatilhos mandam bate com o modelo aprovado', () => {
@@ -122,7 +127,7 @@ describe('a conferência pega o que a Meta recusaria', () => {
   });
 
   it('vídeo sem link no modelo que tem cabeçalho de vídeo', () => {
-    const r = conferirParams('prospeccao_lojista', { body: ['Claudir Caminhões'] });
+    const r = conferirParams('prospeccao_abertura_nome', { body: ['Marcelo'] });
     expect(r.join()).toContain('falta o link do vídeo');
   });
 

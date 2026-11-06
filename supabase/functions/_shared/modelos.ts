@@ -716,16 +716,24 @@ export const MODELOS: Modelo[] = [
    }
   ]
  } ,
- /* Prospecção pelo número oficial (03/11/2026): a primeira mensagem para as lojas da lista
-    do portal Caminhões e Carretas. MARKETING porque oferece o produto. Quem lê é o vendedor
-    da loja (o dono avisou): o texto fala do dia dele — envio do veículo num toque, os
-    os canais e o teste grátis. O texto é do próprio dono (03/11/2026), rústico de propósito, para
-    casar com o vídeo gravado por ele no celular. Sem prazo do teste no texto: o dono ainda vai
-    definir, e mudar texto aprovado exige nova aprovação. O vídeo do cabeçalho é gravação real: envio de fotos
-    (Vídeos do sistema/Celular 05 e 06, lado a lado) e Recorrência (10). "Não tenho interesse"
-    é a saída — quem toca recebe uma despedida e nada mais (assistente-responder). */
+ /* Prospecção pelo número oficial (06/11/2026, decisão do dono): TRÊS mensagens seguidas para
+    cada loja da lista do portal, no jeito dele de falar, segundos uma depois da outra.
+    1. O vídeo + "Imagina você que é vendedor de pesados, meu amigo, usando uma ferramenta
+       dessa." Quando o número é de um vendedor com nome no portal, sai a versão com
+       "Fala, <primeiro nome>!" (prospeccao_abertura_nome).
+    2. A oferta: a loja "selecionada para a oferta especial de lançamento" — a de novembro
+       (R$ 437 por mês com a implantação por nossa conta; o normal é R$ 587 + taxa). O texto só
+       vale enquanto a oferta vale: depois de assistente_config.oferta_ate o prospeccao-enviar
+       para sozinho. "e WhatsApp" na conexão oficial é escolha do dono (avisado de que o
+       WhatsApp das conversas do lojista entra pelo QR e só o catálogo é oficial).
+    3. O convite para a qualificação curta, com os botões: "Bora!" (o Davi se apresenta e
+       pergunta o estoque e se é dono ou vendedor) e "Não tenho interesse" (despedida e nada mais).
+    Cada uma é um modelo pago; a Meta pode segurar a 2ª ou a 3ª de quem já recebe muita
+    propaganda (o dono escolheu assim, avisado). O vídeo do exemplo é o do v1; o que sai em cada
+    envio é o VIDEO_DO_MODELO (prospeccao-regras.ts), e trocar o vídeo não pede aprovação nova.
+    Os antigos ('prospeccao_lojista', com teste grátis) seguem aprovados na conta e não saem mais. */
  {
-  "name": "prospeccao_lojista",
+  "name": "prospeccao_abertura",
   "language": "pt_BR",
   "category": "MARKETING",
   "components": [
@@ -740,7 +748,45 @@ export const MODELOS: Modelo[] = [
    },
    {
     "type": "BODY",
-    "text": "Aqui é ferramenta, meu amigo!\n\nImagina você mandando foto, ficha e preço dos veículos da {{1}} pros seus clientes com um toque, de qualquer lugar: no pátio, em visita, no escritório ou da sua casa.\n\nCê tá doido. E o veículo cadastrado uma vez já sai no Mercado Livre, Insta, Face e no site da loja.\n\nChama que tem teste grátis. Bora!",
+    "text": "Imagina você que é vendedor de pesados, meu amigo, usando uma ferramenta dessa."
+   }
+  ]
+ } ,
+ {
+  "name": "prospeccao_abertura_nome",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "HEADER",
+    "format": "VIDEO",
+    "example": {
+     "header_url": [
+      "https://ktjvyysqhsyvjmhumjly.supabase.co/storage/v1/object/public/logos/wa/prospeccao-v1.mp4"
+     ]
+    }
+   },
+   {
+    "type": "BODY",
+    "text": "Fala, {{1}}! Imagina você que é vendedor de pesados, meu amigo, usando uma ferramenta dessa.",
+    "example": {
+     "body_text": [
+      [
+       "Marcelo"
+      ]
+     ]
+    }
+   }
+  ]
+ } ,
+ {
+  "name": "prospeccao_oferta",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "E a boa parte é que a {{1}} foi selecionada para a oferta especial de lançamento do Via Pesados, o único software do Brasil feito para veículos pesados, com conexão oficial do Mercado Livre, Facebook, Instagram e WhatsApp.",
     "example": {
      "body_text": [
       [
@@ -748,6 +794,17 @@ export const MODELOS: Modelo[] = [
       ]
      ]
     }
+   }
+  ]
+ } ,
+ {
+  "name": "prospeccao_cta",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Bora ver como isso fica aí na sua loja? Me responde umas perguntinhas rápidas e eu já te mostro."
    },
    {
     "type": "FOOTER",
@@ -758,7 +815,7 @@ export const MODELOS: Modelo[] = [
     "buttons": [
      {
       "type": "QUICK_REPLY",
-      "text": "Quero testar grátis"
+      "text": "Bora!"
      },
      {
       "type": "QUICK_REPLY",

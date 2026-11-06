@@ -9,10 +9,13 @@ import {
   dentroDoHorario, janelaAberta, podeResponderAgora, inicioDoDiaSP, esperaDoAgrupamento, filaDasPendentes,
   humanoAssumiu, passouDoTeto, respostaAoPreco, tetoDoDiaAtingido, LIMITES,
   pedidoExplicitoDeParar, neutro, temFallbackNoServidor, ehNumeroDeTeste, telefoneDeTeste,
-  podeOferecerHorario, pedidoMaisQuente, PERSONA,
+  podeOferecerHorario, pedidoMaisQuente, pedidoComOBotao, PERSONA,
   type Agenda, type Etapa,
+  falaDoPreco, precoDeHoje, valoresLiberados,
+  faltaNaQualificacao, PERGUNTA_DA_QUALIFICACAO, RESPOSTAS_ATE_CONVIDAR,
 } from '../../supabase/functions/_shared/assistente-regras';
 import { INSTRUCOES } from '../../supabase/functions/_shared/assistente-roteiro';
+import { ROTULO_DO_VIDEO } from '../../supabase/functions/_shared/prospeccao-regras';
 
 /* As regras do assistente de vendas, como o dono definiu em 03/11/2026.
    Datas: 03/11/2026 é terça. São Paulo = UTC-3. */
@@ -630,6 +633,58 @@ describe('o roteiro do Davi (manual de vendas, 05/11/2026)', () => {
   });
 });
 
+describe('o botão "Quero ver funcionando" do modelo da prospecção (06/11/2026)', () => {
+  const modelo = { direcao: 'saida', conteudo: '[vídeo do Xavier]\n\nAqui é ferramenta, meu amigo! Bora ver funcionando? Em 15 minutos te mostro tudo.' };
+  const ctxPorta = { daLista: true, dores: 0, respostasSuas: 0, pedidosDePreco: 0 };
+
+  it('tocou o botão: o pedido vira "ver" no código, e a porta do horário abre já na primeira resposta', () => {
+    const msgs = [modelo, { direcao: 'entrada', conteudo: 'Quero ver funcionando' }];
+    expect(pedidoComOBotao(null, msgs)).toBe('ver');
+    expect(pedidoComOBotao(undefined, msgs)).toBe('ver');
+    expect(podeOferecerHorario({ ...ctxPorta, pedido: pedidoComOBotao(null, msgs) }).pode).toBe(true);
+    expect(podeOferecerHorario({ ...ctxPorta, pedido: null }).pode).toBe(false);
+  });
+
+  it('vale o botão em qualquer entrada da conversa, com ou sem pontuação, maiúscula ou acento', () => {
+    const msgs = [modelo, { direcao: 'entrada', conteudo: 'QUERO VER FUNCIONANDO!' }, { direcao: 'entrada', conteudo: 'que horas?' }];
+    expect(pedidoComOBotao(null, msgs)).toBe('ver');
+  });
+
+  it('o pedido só esquenta: quem pediu para comprar ou fechar continua', () => {
+    const msgs = [modelo, { direcao: 'entrada', conteudo: 'Quero ver funcionando' }];
+    expect(pedidoComOBotao('comprar', msgs)).toBe('comprar');
+    expect(pedidoComOBotao('fechar_ja', msgs)).toBe('fechar_ja');
+    expect(pedidoComOBotao('como_funciona', msgs)).toBe('ver');
+  });
+
+  it('sem o botão, nada muda; e a nossa mensagem (o modelo) não conta como pedido dele', () => {
+    expect(pedidoComOBotao(null, [modelo])).toBeNull();
+    expect(pedidoComOBotao('como_funciona', [modelo, { direcao: 'entrada', conteudo: 'como funciona?' }])).toBe('como_funciona');
+    expect(pedidoComOBotao(null, [{ direcao: 'saida', conteudo: 'Quero ver funcionando' }])).toBeNull();
+    expect(pedidoComOBotao(null, [{ direcao: 'entrada', conteudo: 'quero ver funcionando, mas quanto custa?' }])).toBeNull();
+    expect(pedidoComOBotao(null, [{ direcao: 'entrada', conteudo: null }])).toBeNull();
+    expect(pedidoComOBotao(null, [])).toBeNull();
+  });
+
+  it('o roteiro sabe que a conversa começou pelas três mensagens: não repete o diferencial e segue a qualificação', () => {
+    expect(INSTRUCOES).toContain('MENSAGENS AUTOMÁTICAS DA PROSPECÇÃO');
+    expect(INSTRUCOES).toContain('"Bora!"');
+    expect(INSTRUCOES).toMatch(/Não repita o diferencial nem a lista dos canais/);
+    expect(INSTRUCOES).toMatch(/é o sim às perguntas, não à demonstração/);
+    expect(INSTRUCOES).toMatch(/comece pelo estoque/);
+    /* O rótulo do vídeo na caixa do CRM é o que o roteiro manda reconhecer. */
+    expect(ROTULO_DO_VIDEO.startsWith('[vídeo')).toBe(true);
+    expect(INSTRUCOES).toContain('começa com "[vídeo"');
+  });
+
+  it('o responder marca o pedido do botão antes de calcular a porta do horário', () => {
+    const fonte = readFileSync('supabase/functions/assistente-responder/index.ts', 'utf8');
+    const botao = fonte.indexOf('pedidoComOBotao(e.situacao?.pedido, msgs)');
+    expect(botao).toBeGreaterThan(0);
+    expect(botao).toBeLessThan(fonte.indexOf('const portaDoHorario ='));
+  });
+});
+
 describe('bancada de 05/11: o que irritou o lojista', () => {
   const base = { daLista: false, dores: 1, respostasSuas: 3, pedidosDePreco: 0 };
   it('quem recusou vídeo ou reunião não recebe convite de novo', () => {
@@ -652,10 +707,13 @@ describe('a ficha da loja (dono, 05/11/2026)', () => {
     const q = 'Hoje o que mais te dá trabalho: anunciar os caminhões em cada lugar, responder o cliente com foto e ficha na hora, ou controlar os clientes e as negociações?';
     expect(regras(['Entendi, você mesmo cadastra cada caminhão nos dois.', q], { antesDeMarcar: true })).toEqual([]);
   });
-  it('o roteiro pede nome, cidade, cargo, estrutura, estoque e a maior dificuldade', () => {
-    for (const t of ['Como chama a loja e de que cidade', 'Você é o dono da loja ou cuida das vendas', 'têm pátio', 'quantos veículos tem no estoque', 'único software do Brasil']) {
+  it('a qualificação curta (06/11): nome da loja se não souber, estoque e dono ou vendedor, nessa ordem', () => {
+    for (const t of ['o nome da loja, só se você não souber', 'quantos veículos tem no estoque', 'se quem fala é o dono ou vendedor', 'único software do Brasil']) {
       expect(INSTRUCOES, t).toContain(t);
     }
+    const i = (t: string) => INSTRUCOES.indexOf(t);
+    expect(i('1. o nome da loja')).toBeLessThan(i('2. quantos veículos'));
+    expect(i('2. quantos veículos')).toBeLessThan(i('3. se quem fala é o dono'));
   });
 });
 
@@ -676,5 +734,73 @@ describe('portais (06/11/2026)', () => {
   it('o Davi pode responder sobre a OLX; concorrente de sistema continua barrado', () => {
     expect(regras(['Na OLX o sistema não publica: lá você segue postando como hoje.'])).toEqual([]);
     expect(regras(['A gente é melhor que a Totvs.'])).toContain('proibida');
+  });
+});
+
+describe('a oferta de lançamento de novembro (dono, 06/11/2026)', () => {
+  const cfg = { preco_mensal: 437, preco_cheio: 587, oferta_ate: '2026-11-30' };
+  const novembro = new Date('2026-11-20T15:00:00Z');
+  const dezembro = new Date('2026-12-01T12:00:00Z');
+
+  it('em novembro: R$ 437 com a implantação de graça, o normal R$ 587 com a taxa', () => {
+    const p = precoDeHoje(cfg, novembro)!;
+    expect(p).toEqual({ mensal: 437, cheio: 587, ofertaAte: '2026-11-30', comTaxa: false });
+    expect(falaDoPreco(p)).toContain('*R$ 437 por mês*');
+    expect(falaDoPreco(p)).toContain('R$ 587 por mês mais a taxa de implantação');
+    expect(valoresLiberados(p)).toEqual([437, 587]);
+  });
+
+  it('o último dia conta pela hora de Brasília', () => {
+    expect(precoDeHoje(cfg, new Date('2026-12-01T02:59:00Z'))!.cheio).toBe(587); // 30/11, 23h59 em Brasília
+    expect(precoDeHoje(cfg, new Date('2026-12-01T03:00:00Z'))!.cheio).toBeNull();
+  });
+
+  it('acabou a oferta: vale o cheio com a taxa, e o 437 volta a ser barrado', () => {
+    const p = precoDeHoje(cfg, dezembro)!;
+    expect(p).toEqual({ mensal: 587, cheio: null, ofertaAte: null, comTaxa: true });
+    expect(falaDoPreco(p)).toBe('É *R$ 587 por mês*, mais a taxa de implantação. Sem fidelidade e sem multa pra cancelar.');
+    expect(regras(['É *R$ 437 por mês*.'], { precoPermitido: valoresLiberados(p) })).toContain('preco');
+  });
+
+  it('sem valor cheio: só o preco_mensal, como antes; sem nada, o valor é do Xavier', () => {
+    expect(precoDeHoje({ preco_mensal: 437, preco_cheio: null, oferta_ate: null }, novembro))
+      .toEqual({ mensal: 437, cheio: null, ofertaAte: null, comTaxa: false });
+    expect(precoDeHoje({ preco_mensal: null, preco_cheio: null, oferta_ate: null }, novembro)).toBeNull();
+  });
+
+  it('o conferente deixa passar a frase da oferta inteira e barra outro valor', () => {
+    const liberados = valoresLiberados(precoDeHoje(cfg, novembro));
+    expect(regras([falaDoPreco(precoDeHoje(cfg, novembro)!)], { precoPermitido: liberados })).toEqual([]);
+    expect(regras(['Sai por R$ 399 por mês.'], { precoPermitido: liberados })).toContain('preco');
+  });
+});
+
+describe('a qualificação curta antes do convite (dono, 06/11/2026)', () => {
+  const base = { daLista: true, dores: 0, pedidosDePreco: 0 };
+
+  it('o que falta sai na ordem: loja, estoque, cargo', () => {
+    expect(faltaNaQualificacao({})).toEqual(['loja', 'estoque', 'cargo']);
+    expect(faltaNaQualificacao({ loja: 'iTruck Caminhões' })).toEqual(['estoque', 'cargo']);
+    expect(faltaNaQualificacao({ loja: 'iTruck', estoque: 'uns 25', cargo: '  ' })).toEqual(['cargo']);
+    expect(faltaNaQualificacao({ loja: 'iTruck', estoque: 'uns 25', cargo: 'vendedor' })).toEqual([]);
+  });
+
+  it('sem as três respostas, nada de horário; com elas, o convite', () => {
+    const p1 = podeOferecerHorario({ ...base, respostasSuas: 1, falta: ['estoque', 'cargo'] });
+    expect(p1.pode).toBe(false);
+    expect(p1.motivo).toContain(PERGUNTA_DA_QUALIFICACAO.estoque);
+    expect(podeOferecerHorario({ ...base, respostasSuas: 2, falta: ['cargo'] }).pode).toBe(false);
+    expect(podeOferecerHorario({ ...base, respostasSuas: 2, falta: [] }).pode).toBe(true);
+  });
+
+  it('a dor contada não pula a qualificação; quem pede para ver ou fechar não espera', () => {
+    expect(podeOferecerHorario({ ...base, dores: 2, respostasSuas: 2, falta: ['cargo'] }).pode).toBe(false);
+    expect(podeOferecerHorario({ ...base, respostasSuas: 1, falta: ['estoque', 'cargo'], pedido: 'ver' }).pode).toBe(true);
+    expect(podeOferecerHorario({ ...base, respostasSuas: 0, falta: ['loja', 'estoque', 'cargo'], pedido: 'fechar_ja' }).pode).toBe(true);
+  });
+
+  it('quem não responde as perguntas recebe o convite depois de 4 respostas suas', () => {
+    expect(podeOferecerHorario({ ...base, respostasSuas: RESPOSTAS_ATE_CONVIDAR - 1, falta: ['estoque'] }).pode).toBe(false);
+    expect(podeOferecerHorario({ ...base, respostasSuas: RESPOSTAS_ATE_CONVIDAR, falta: ['estoque'] }).pode).toBe(true);
   });
 });

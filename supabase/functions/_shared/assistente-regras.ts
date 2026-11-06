@@ -19,6 +19,7 @@
  * importa os rótulos e tipos daqui.
  */
 import { dentroDaJanela, proximaAbertura } from './regua.ts';
+import { pediuParaVer } from './prospeccao-regras.ts';
 
 /* ── vocabulário ──────────────────────────────────────────────── */
 
@@ -117,9 +118,52 @@ export type AssistenteConfig = {
   telefones_teste: string[];
   /** O valor por mês que o Davi pode dizer (dono, 06/11: R$ 437). Vazio = o valor é só com o Xavier. */
   preco_mensal: number | null;
+  /** O valor normal, sem a oferta (dono, 06/11: R$ 587 + taxa de implantação). Vazio = não há oferta. */
+  preco_cheio?: number | null;
+  /** Último dia da oferta (AAAA-MM-DD, hora de Brasília). Depois dele vale o preco_cheio com a taxa. */
+  oferta_ate?: string | null;
   atualizado_em: string;
   atualizado_por: string | null;
 };
+
+/* ── o valor e a oferta do mês ────────────────────────────────── */
+
+/**
+ * O que o Davi diz de valor hoje. Dono, 06/11/2026 (oferta de lançamento, a Black Friday de
+ * novembro): o normal é R$ 587 por mês mais a taxa de implantação; até oferta_ate sai R$ 437
+ * por mês e a implantação não é cobrada. Passou a data, vale o cheio com a taxa. Sem
+ * preco_cheio, só o preco_mensal, como antes; sem nenhum, o valor é com o Xavier (null).
+ */
+export type PrecoDeHoje = { mensal: number; cheio: number | null; ofertaAte: string | null; comTaxa: boolean };
+
+export function precoDeHoje(
+  cfg: Pick<AssistenteConfig, 'preco_mensal' | 'preco_cheio' | 'oferta_ate'> | null | undefined, agora = new Date(),
+): PrecoDeHoje | null {
+  if (!cfg) return null;
+  const hoje = new Date(agora.getTime() - 3 * 3_600_000).toISOString().slice(0, 10); // Brasília
+  const cheio = cfg.preco_cheio ? Number(cfg.preco_cheio) : null;
+  const ate = cfg.oferta_ate ? String(cfg.oferta_ate).slice(0, 10) : null;
+  if (cheio && ate) {
+    return cfg.preco_mensal && hoje <= ate
+      ? { mensal: Number(cfg.preco_mensal), cheio, ofertaAte: ate, comTaxa: false }
+      : { mensal: cheio, cheio: null, ofertaAte: null, comTaxa: true };
+  }
+  return cfg.preco_mensal ? { mensal: Number(cfg.preco_mensal), cheio: null, ofertaAte: null, comTaxa: false } : null;
+}
+
+/** Os números que o conferente deixa passar hoje. */
+export function valoresLiberados(p: PrecoDeHoje | null): number[] {
+  return p ? [p.mensal, ...(p.cheio ? [p.cheio] : [])] : [];
+}
+
+/** A frase do valor, pronta: a IA usa como está. */
+export function falaDoPreco(p: PrecoDeHoje): string {
+  if (p.cheio) {
+    return `Em novembro tá *R$ ${p.mensal} por mês* e a implantação é por nossa conta. O normal é R$ ${p.cheio} por mês mais a taxa de implantação. Sem fidelidade e sem multa pra cancelar.`;
+  }
+  if (p.comTaxa) return `É *R$ ${p.mensal} por mês*, mais a taxa de implantação. Sem fidelidade e sem multa pra cancelar.`;
+  return `É *R$ ${p.mensal} por mês*, sem fidelidade e sem multa pra cancelar. A implantação é nossa.`;
+}
 
 export type ItemCitado = { texto: string; citacao: string | null; mensagem_id: string | null; resposta?: string | null };
 
@@ -172,6 +216,42 @@ export function pedidoMaisQuente(a: Pedido | null | undefined, b: Pedido | null 
 }
 
 /**
+ * O botão "Quero ver funcionando" do modelo da prospecção (06/11/2026) é pedido 'ver' no
+ * código, não só na leitura da IA: tocou, a porta do horário abre na hora. `msgs` são as
+ * mensagens da conversa já cortadas no historico_desde (carregarConversa); vale qualquer
+ * entrada do lead que seja o botão. Devolve o pedido como fica (só esquenta).
+ */
+export function pedidoComOBotao(
+  atual: Pedido | null | undefined, msgs: { direcao: string; conteudo: string | null }[],
+): Pedido | null {
+  const tocou = msgs.some((m) => m.direcao === 'entrada' && pediuParaVer(m.conteudo));
+  return tocou ? pedidoMaisQuente(atual, 'ver') : (atual ?? null);
+}
+
+/* ── a qualificação curta ─────────────────────────────────────── */
+
+/**
+ * Dono, 06/11/2026: antes do convite, três perguntas, nesta ordem e uma por resposta: o nome
+ * da loja (só se não souber; a loja da lista já vem com o nome), o estoque e se quem fala é o
+ * dono ou vendedor. Com as três, o convite.
+ */
+export type ItemDaQualificacao = 'loja' | 'estoque' | 'cargo';
+export const ORDEM_DA_QUALIFICACAO: readonly ItemDaQualificacao[] = ['loja', 'estoque', 'cargo'];
+export const PERGUNTA_DA_QUALIFICACAO: Record<ItemDaQualificacao, string> = {
+  loja: 'o nome da loja (e a cidade, se couber na mesma pergunta)',
+  estoque: 'quantos veículos tem no estoque',
+  cargo: 'se ele é o dono ou vendedor (ou outro cargo)',
+};
+
+/** O que falta da qualificação curta, na ordem em que se pergunta. */
+export function faltaNaQualificacao(s: Partial<Record<ItemDaQualificacao, string | null>>): ItemDaQualificacao[] {
+  return ORDEM_DA_QUALIFICACAO.filter((k) => !String(s[k] ?? '').trim());
+}
+
+/** Depois de tantas respostas suas sem completar a qualificação, convida mesmo assim. */
+export const RESPOSTAS_ATE_CONVIDAR = 4;
+
+/**
  * Já pode oferecer horário? A regra é do código, não do texto (manual de vendas de 05/11,
  * tabela 1.3): o modelo tende a convidar cedo quando a trava está só nas instruções.
  *   - reunião marcada, ou marcando agora: sim (é remarcar ou confirmar);
@@ -185,6 +265,8 @@ export function pedidoMaisQuente(a: Pedido | null | undefined, b: Pedido | null 
 export function podeOferecerHorario(x: {
   daLista: boolean; pedido?: Pedido | null; interesse?: boolean; dores: number;
   respostasSuas: number; pedidosDePreco: number; reuniaoMarcada?: boolean; recusou?: string | null;
+  /** O que falta da qualificação curta (faltaNaQualificacao). Sem isto vale a regra antiga. */
+  falta?: ItemDaQualificacao[];
 }): { pode: boolean; precisaInteresse: boolean; motivo: string } {
   if (x.reuniaoMarcada) return { pode: true, precisaInteresse: false, motivo: 'a reunião já está marcada (só para remarcar, se ele pedir)' };
   if (x.recusou) return { pode: false, precisaInteresse: false, motivo: `ele recusou vídeo ou reunião ("${x.recusou.slice(0, 120)}"): não convide de novo; ofereça, uma vez, falar com o Xavier por aqui. Se ele mesmo pedir para marcar, registre reabriu_reuniao` };
@@ -194,6 +276,12 @@ export function podeOferecerHorario(x: {
   /* Dono, 05/11: poucas perguntas e a reunião o tempo inteiro — a partir da 2ª resposta (quem quer
      comprar) ou da 3ª (os demais), ou assim que ele contar uma dor. */
   if (x.pedido === 'comprar' && x.respostasSuas >= 1) return { pode: true, precisaInteresse: false, motivo: 'ele quer comprar e já se apresentou o Via Pesados' };
+  /* Dono, 06/11: a qualificação curta (nome da loja se não souber, estoque, cargo) vem antes do convite. */
+  if (x.falta) {
+    if (!x.falta.length) return { pode: true, precisaInteresse: false, motivo: 'a qualificação curta está completa (loja, estoque e cargo): é a hora do convite' };
+    if (x.respostasSuas >= RESPOSTAS_ATE_CONVIDAR) return { pode: true, precisaInteresse: false, motivo: `já foram ${x.respostasSuas} respostas suas: convide; o que faltar (${x.falta.map((k) => PERGUNTA_DA_QUALIFICACAO[k]).join('; ')}) vem depois do link` };
+    return { pode: false, precisaInteresse: false, motivo: `falta a qualificação curta; a próxima pergunta é ${PERGUNTA_DA_QUALIFICACAO[x.falta[0]]}` };
+  }
   if (x.respostasSuas >= 2) return { pode: true, precisaInteresse: false, motivo: 'você já apresentou o Via Pesados e perguntou da loja' };
   if (x.dores > 0) return { pode: true, precisaInteresse: false, motivo: 'ele contou o que atrapalha' };
   return { pode: false, precisaInteresse: false, motivo: 'primeiro apresente o Via Pesados e pergunte o nome da loja' };
@@ -427,19 +515,21 @@ export type ContextoFiscal = {
   motivoDoHorario?: string;
   /** Reunião ainda não marcada: vale a regra de uma coisa do sistema por resposta. */
   antesDeMarcar?: boolean;
-  /** O valor por mês liberado (assistente_config.preco_mensal): só ele passa no conferente. */
-  precoPermitido?: number | null;
+  /** Os valores liberados (valoresLiberados): só eles passam no conferente. */
+  precoPermitido?: number | number[] | null;
 };
 
-/** Tira do texto plano as menções ao valor liberado ("r$ 437", "437 reais", "437 por mes"). */
-function semPrecoPermitido(p: string, valor: number | null | undefined): string {
-  if (!valor || !Number.isFinite(valor)) return p;
-  const n = String(Math.round(valor));
-  const num = `${n}(?:,00)?`;
-  return p
-    .replace(new RegExp(`r\\s*\\$\\s*${num}(?:\\s*(?:por|ao|\\/|no)\\s*mes)?`, 'g'), ' valor ')
-    .replace(new RegExp(`\\b${num}\\s*(?:reais|real)?\\s*(?:por|ao|\\/|no)\\s*mes\\b`, 'g'), ' valor ')
-    .replace(new RegExp(`\\b${num}\\s*(?:reais|mensais)\\b`, 'g'), ' valor ');
+/** Tira do texto plano as menções aos valores liberados ("r$ 437", "437 reais", "587 por mes"). */
+function semPrecoPermitido(p: string, valor: number | number[] | null | undefined): string {
+  const valores = (Array.isArray(valor) ? valor : [valor]).filter((v): v is number => !!v && Number.isFinite(v));
+  for (const v of valores) {
+    const num = `${String(Math.round(v))}(?:,00)?`;
+    p = p
+      .replace(new RegExp(`r\\s*\\$\\s*${num}(?:\\s*(?:por|ao|\\/|no)\\s*mes)?`, 'g'), ' valor ')
+      .replace(new RegExp(`\\b${num}\\s*(?:reais|real)?\\s*(?:por|ao|\\/|no)\\s*mes\\b`, 'g'), ' valor ')
+      .replace(new RegExp(`\\b${num}\\s*(?:reais|mensais)\\b`, 'g'), ' valor ');
+  }
+  return p;
 }
 
 const NUM_EXTENSO =
@@ -613,8 +703,9 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
     for (const r of PRECO) {
       const achou = pPreco.match(r);
       if (achou) {
-        v.push({ regra: 'preco', mensagem: i, trecho: achou[0], explicacao: ctx.precoPermitido
-          ? `Só pode o valor de R$ ${ctx.precoPermitido} por mês, escrito assim. Nada de desconto, outro valor ou número de dinheiro.`
+        const liberados = ([] as number[]).concat(ctx.precoPermitido ?? []);
+        v.push({ regra: 'preco', mensagem: i, trecho: achou[0], explicacao: liberados.length
+          ? `Só pode ${liberados.map((x) => `R$ ${x} por mês`).join(' ou ')}, escrito assim. Nada de desconto, outro valor ou número de dinheiro.`
           : 'Não diga valor nem número de dinheiro. O valor é mostrado na demonstração, junto com o sistema funcionando.' });
         break;
       }
