@@ -122,7 +122,8 @@ describe('fiscal: nomes, pedidos e honestidade', () => {
     expect(regras(['Tem o Match'])).toContain('proibida');
     expect(regras(['Sem comissão'])).toContain('proibida');
     expect(regras(['Sem comissao'])).toContain('proibida');
-    expect(regras(['Melhor que a Webmotors'])).toContain('proibida');
+    expect(regras(['Melhor que a Bsoft'])).toContain('proibida');
+    expect(regras(['Na Webmotors o sistema não publica.'])).toEqual([]);
     expect(regras(['É uma solução completa'])).toContain('proibida');
   });
 
