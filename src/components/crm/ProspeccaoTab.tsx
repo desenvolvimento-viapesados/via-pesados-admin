@@ -15,6 +15,7 @@ import {
 import {
   MODOS, ROTULO_DO_MODO, useAssistenteConfig, useSalvarConfig, type Modo,
 } from '@/hooks/useAssistente';
+import { FunilDaProspeccao } from './FunilDaProspeccao';
 
 /**
  * O agente de prospecção, numa tela.
@@ -262,7 +263,26 @@ function Previa({ loja, onClose, max }: { loja: LojaProspeccao | null; onClose: 
   );
 }
 
+/** Duas telas: o funil (onde cada loja está) e o envio (ligar, fila, busca). */
 export function ProspeccaoTab() {
+  const [vista, setVista] = useState<'funil' | 'envio'>('funil');
+  return (
+    <div className="space-y-4">
+      <div className="inline-flex rounded-xl border border-black/[0.08] dark:border-white/[0.08] p-0.5">
+        {([['funil', 'Funil'], ['envio', 'Envio e fila']] as const).map(([chave, rotulo]) => (
+          <button key={chave} onClick={() => setVista(chave)}
+            className={cn('h-8 px-3.5 rounded-[10px] text-[12.5px] font-medium transition-colors',
+              vista === chave ? 'bg-primary/10 text-primary' : 'text-foreground/50 hover:text-foreground/80')}>
+            {rotulo}
+          </button>
+        ))}
+      </div>
+      {vista === 'funil' ? <FunilDaProspeccao /> : <EnvioEFila />}
+    </div>
+  );
+}
+
+function EnvioEFila() {
   const navigate = useNavigate();
   const { data: e } = useEstadoProspeccao();
   const [aba, setAba] = useState(ABAS[0].chave);
