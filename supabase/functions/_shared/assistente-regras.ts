@@ -122,6 +122,8 @@ export type AssistenteConfig = {
   preco_cheio?: number | null;
   /** Último dia da oferta (AAAA-MM-DD, hora de Brasília). Depois dele vale o preco_cheio com a taxa. */
   oferta_ate?: string | null;
+  /** O WhatsApp que recebe o aviso de reunião marcada (dono, 09/11: o 98814-4005). Vazio = sem aviso. */
+  aviso_whatsapp?: string | null;
   atualizado_em: string;
   atualizado_por: string | null;
 };

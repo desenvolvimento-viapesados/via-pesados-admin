@@ -20,6 +20,7 @@ import {
   PEDIDOS, pedidoMaisQuente, type Pedido, falaDoPreco, precoDeHoje,
 } from './assistente-regras.ts';
 import { INSTRUCOES_DOSSIE, SCHEMA_DOSSIE } from './assistente-roteiro.ts';
+import { enviarTemplate, statusDoModelo } from './wa.ts';
 import { BUCKET, extensaoDe, guardarMidia, paraBase64, tipoBase } from './assistente-midia.ts';
 
 // deno-lint-ignore no-explicit-any
@@ -970,11 +971,55 @@ export async function concluirTurno(db: Db, args: {
   /* 7. etapa e card */
   await atualizarEtapaECard(db, args.conversaId, c.conversa);
 
+  /* 8. o aviso ao dono: só depois que o Marcado (com o link) saiu para o lead */
+  if (marcada?.ok && finais.length) await avisarReuniaoMarcada(db, args.cfg, c.conversa, marcada);
+
   await db.from('assistente_turnos').update({
     status: args.status, mensagens_finais: finais, acoes,
     decidido_por: args.decididoPor ?? null, decidido_em: args.decididoPor ? agoraISO() : null,
   }).eq('id', args.turnoId);
   return { ok: true, enviadas: finais.length, acoes };
+}
+
+/** Parâmetro de modelo: uma linha só, sem espaço sobrando (a Meta recusa quebra de linha). */
+function umaLinha(t: string, max = 80): string {
+  return t.replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+/**
+ * Avisa o dono no WhatsApp que o Davi marcou ou remarcou uma reunião (dono, 09/11/2026),
+ * pelo modelo aviso_reuniao_marcada. Sem o modelo aprovado não manda (e não queima a trava);
+ * falhar aqui nunca derruba o turno: a reunião já está na Agenda.
+ */
+export async function avisarReuniaoMarcada(db: Db, cfg: AssistenteConfig, conversa: Conversa, r: { reuniao_id: string; inicio: Date; remarcou: boolean }) {
+  try {
+    const para = String(cfg.aviso_whatsapp ?? '').replace(/\D/g, '');
+    if (!para) return;
+    if ((await statusDoModelo('aviso_reuniao_marcada')) !== 'APPROVED') {
+      console.warn('assistente: aviso de reunião não saiu: o modelo aviso_reuniao_marcada ainda não foi aprovado');
+      return;
+    }
+    const e = await lerEstado(db, conversa.id);
+    const loja = await lerLoja(db, e?.loja_id ?? null);
+    const { data: card } = e?.prospect_id
+      ? await db.from('prospects').select('company_name, city').eq('id', e.prospect_id).maybeSingle()
+      : { data: null };
+    const nome = card?.company_name || e?.situacao?.loja || loja?.nome || conversa.nome || conversa.telefone || 'sem nome';
+    const cidade = e?.situacao?.cidade || card?.city || (loja?.cidade ? `${loja.cidade}${loja.uf ? `/${loja.uf}` : ''}` : '');
+    const res = await enviarTemplate(db, {
+      para,
+      template: 'aviso_reuniao_marcada',
+      params: {
+        body: [r.remarcou ? 'remarcou' : 'marcou', umaLinha(cidade ? `${nome}, ${cidade}` : String(nome)), horarioFalado(r.inicio)],
+        urlSuffix: conversa.id,
+      },
+      chave: `aviso_reuniao:${r.reuniao_id}:${r.inicio.toISOString()}`,
+      validoAte: r.inicio.toISOString(),
+    });
+    if (!res.ok) console.warn('assistente: aviso de reunião não saiu', res.motivo);
+  } catch (err) {
+    console.warn('assistente: aviso de reunião falhou', err instanceof Error ? err.message : err);
+  }
 }
 
 /* ── chamar o motor ──────────────────────────────────────────────── */

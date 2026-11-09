@@ -824,5 +824,40 @@ export const MODELOS: Modelo[] = [
     ]
    }
   ]
+ } ,
+ /* Aviso ao dono (09/11/2026): o Davi marcou ou remarcou uma reunião. Vai para o
+    assistente_config.aviso_whatsapp; o botão abre a conversa no CRM. */
+ {
+  "name": "aviso_reuniao_marcada",
+  "language": "pt_BR",
+  "category": "UTILITY",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "O Davi {{1}} uma reunião pelo WhatsApp.\n\nLoja: {{2}}\nQuando: {{3}}\n\nO resumo da conversa fica no CRM.",
+    "example": {
+     "body_text": [
+      [
+       "marcou",
+       "Minas Caminhões, Governador Valadares/MG",
+       "segunda, 10/11, 9h"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "URL",
+      "text": "Abrir a conversa",
+      "url": "https://viapesados.com.br/admin/crm?tab=whatsapp&conversa={{1}}",
+      "example": [
+       "https://viapesados.com.br/admin/crm?tab=whatsapp&conversa=exemplo123"
+      ]
+     }
+    ]
+   }
+  ]
  }
 ];

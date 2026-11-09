@@ -127,7 +127,7 @@ export const useAssistenteConfig = () =>
 export type MudancaNaConfig = Partial<Pick<AssistenteConfig,
   'ligado' | 'link_reuniao' | 'dias_semana' | 'hora_inicio' | 'hora_fim' | 'duracao_min'
   | 'folga_min_horas' | 'max_reunioes_dia' | 'modo_prospeccao' | 'responsavel_id' | 'teto_usd_dia' | 'telefones_teste' | 'preco_mensal'
-  | 'preco_cheio' | 'oferta_ate'>>;
+  | 'preco_cheio' | 'oferta_ate' | 'aviso_whatsapp'>>;
 
 export function useSalvarConfig() {
   const qc = useQueryClient();
