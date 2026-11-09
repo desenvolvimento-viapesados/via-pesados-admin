@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Loader2, Search, MessageCircle, Eye, Ban, RotateCcw, AlertTriangle, Star, Bot, Kanban,
 } from 'lucide-react';
@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Panel, EmptyState } from '@/components/admin/ui';
 import { CidadeUF } from './CidadeUF';
+import { AssistenteTab } from './AssistenteTab';
 import {
   useEstadoProspeccao, useLojas, useAcaoProspeccao, type LojaProspeccao, type StatusLoja,
 } from '@/hooks/useProspeccao';
@@ -262,16 +263,37 @@ function Previa({ loja, onClose, max }: { loja: LojaProspeccao | null; onClose: 
   );
 }
 
-/** O envio (ligar, fila, busca). O funil das lojas abordadas mora na aba Funil › Prospecção automática. */
+/**
+ * O envio (ligar, fila, busca) e a configuração do assistente, que saiu do topo do CRM
+ * (dono, 09/11). O avanço das lojas abordadas fica no Funil › Prospecção automática.
+ */
 export function ProspeccaoTab() {
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const vista = params.get('vista') === 'assistente' ? 'assistente' : 'envio';
+  const escolher = (v: 'envio' | 'assistente') => {
+    const novo = new URLSearchParams(params);
+    if (v === 'envio') novo.delete('vista'); else novo.set('vista', v);
+    setParams(novo, { replace: true });
+  };
   return (
     <div className="max-w-6xl mx-auto space-y-4">
-      <button onClick={() => navigate('/crm?tab=funil&funil=automatica')}
-        className="h-9 px-3.5 rounded-xl text-[12.5px] font-medium border border-black/[0.1] dark:border-white/[0.1] text-foreground/75 hover:text-foreground flex items-center gap-1.5">
-        <Kanban className="h-4 w-4" /> Ver o funil da prospecção automática
-      </button>
-      <EnvioEFila />
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="inline-flex rounded-xl border border-black/[0.08] dark:border-white/[0.08] p-0.5">
+          {([['envio', 'Envio e fila'], ['assistente', 'Configurar o assistente']] as const).map(([chave, rotulo]) => (
+            <button key={chave} onClick={() => escolher(chave)}
+              className={cn('h-8 px-3.5 rounded-[10px] text-[12.5px] font-medium transition-colors',
+                vista === chave ? 'bg-primary/10 text-primary' : 'text-foreground/50 hover:text-foreground/80')}>
+              {rotulo}
+            </button>
+          ))}
+        </div>
+        <button onClick={() => navigate('/crm?tab=funil&funil=automatica')}
+          className="ml-auto h-9 px-3.5 rounded-xl text-[12.5px] font-medium border border-black/[0.1] dark:border-white/[0.1] text-foreground/75 hover:text-foreground flex items-center gap-1.5">
+          <Kanban className="h-4 w-4" /> Ver o funil da prospecção automática
+        </button>
+      </div>
+      {vista === 'assistente' ? <AssistenteTab /> : <EnvioEFila />}
     </div>
   );
 }
