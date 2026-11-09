@@ -53,7 +53,7 @@ async function equipeJaEstaNaConversa(db: Db, conversaId: string, lojaId: string
 }
 
 export async function aoChegarParaOAssistente(db: Db, conversaId: string, loja: LojaQueRespondeu | null, telefone?: string) {
-  const { data: cfg } = await db.from('assistente_config').select('ligado, modo_prospeccao, telefones_teste').eq('id', 1).maybeSingle();
+  const { data: cfg } = await db.from('assistente_config').select('ligado, modo_prospeccao, telefones_teste, aviso_whatsapp').eq('id', 1).maybeSingle();
   let { data: ac } = await db.from('assistente_conversas')
     .select('modo, etapa, loja_id, pendente_desde').eq('conversa_id', conversaId).maybeSingle() as
     { data: { modo: Modo; etapa: Etapa; loja_id: string | null; pendente_desde: string | null } | null };
@@ -73,7 +73,9 @@ export async function aoChegarParaOAssistente(db: Db, conversaId: string, loja: 
     ({ data: ac } = await db.from('assistente_conversas')
       .select('modo, etapa, loja_id, pendente_desde').eq('conversa_id', conversaId).maybeSingle());
   }
-  if (!ac && !loja && ehNumeroDeTeste(telefone, cfg?.telefones_teste)) {
+  /* O número que recebe o aviso de reunião: responder ou reagir ao aviso não é conversa de teste. */
+  const doAviso = !!cfg?.aviso_whatsapp && String(telefone ?? '').replace(/\D/g, '') === String(cfg.aviso_whatsapp).replace(/\D/g, '');
+  if (!ac && !loja && !doAviso && ehNumeroDeTeste(telefone, cfg?.telefones_teste)) {
     /* Número de teste: entra atendendo sozinho. Se o dono desligar na conversa, a linha
        existe e fica como ele deixou. */
     await db.from('assistente_conversas')

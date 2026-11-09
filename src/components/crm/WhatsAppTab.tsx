@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import {
   useInstancias, useConversas, useMensagens, useEnviar, useAcaoWa, useTempoReal,
   type Conversa, type Instancia,
@@ -50,9 +51,20 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
      pessoas diferentes na mesma lista — e quem atende precisa saber por qual
      número a conversa entrou antes de responder, porque a regra das 24h só
      vale num deles. */
+  /* ?conversa= sem ?numero= (o botão do aviso de reunião): o número é o da conversa. */
+  const [numeroDaConversa, setNumeroDaConversa] = useState<'buscando' | 'pronto'>(
+    params.get('conversa') && !params.get('numero') ? 'buscando' : 'pronto',
+  );
   useEffect(() => {
-    if (!instanciaId && instancias.length) setInstanciaId(instancias[0].id);
-  }, [instancias, instanciaId]);
+    const c = params.get('conversa');
+    if (!c || params.get('numero')) return;
+    supabase.from('wa_conversas').select('instancia_id').eq('id', c).maybeSingle()
+      .then(({ data }) => { if (data?.instancia_id) setInstanciaId(data.instancia_id); setNumeroDaConversa('pronto'); },
+        () => setNumeroDaConversa('pronto'));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (numeroDaConversa === 'pronto' && !instanciaId && instancias.length) setInstanciaId(instancias[0].id);
+  }, [instancias, instanciaId, numeroDaConversa]);
   const [conversaId, setConversaId] = useState<string | null>(params.get('conversa'));
   const [busca, setBusca] = useState('');
   const [texto, setTexto] = useState('');

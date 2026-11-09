@@ -536,6 +536,17 @@ export async function encerrarConversa(db: Db, conversaId: string, motivo: strin
     await db.from('prospeccao_lojas').update({ status: 'sem_interesse', motivo: texto, proximo_contato_em: null, atualizada_em: agoraISO() }).eq('id', e.loja_id);
   }
   if (motivo === 'xingou') await db.from('wa_conversas').update({ fixada: true }).eq('id', conversaId);
+  /* Desistiu com a reunião marcada: ela cai (sem lembrete para quem pediu para parar) e o dono sabe. */
+  if (e?.reuniao_id && motivo !== 'ja_cliente') {
+    const { data: r } = await db.from('meetings').select('id, status, scheduled_at, notes').eq('id', e.reuniao_id).maybeSingle();
+    if (r && r.status !== 'cancelada' && r.status !== 'realizada' && new Date(r.scheduled_at).getTime() > Date.now()) {
+      await db.from('meetings').update({
+        status: 'cancelada', notes: [r.notes, `Cancelada sozinha: ${texto}`].filter(Boolean).join('\n'),
+      }).eq('id', r.id);
+      const cv = await carregarConversa(db, conversaId);
+      if (cv) await avisarReuniao(db, await lerConfig(db), cv.conversa, { evento: 'cancelou', reuniao_id: r.id, inicio: new Date(r.scheduled_at), chave: `cancelou:${r.id}` });
+    }
+  }
   if (e?.prospect_id && motivo !== 'ja_cliente') {
     const { error } = await db.rpc('assistente_mover_card', {
       p_prospect: e.prospect_id, p_stage: 'perdido', p_motivo: (textoOuNada(lostReason) ?? texto).slice(0, 300),
@@ -860,12 +871,27 @@ export async function concluirTurno(db: Db, args: {
   const acoes: AcaoDoTurno[] = args.acoes.map((a) => ({ ...a }));
   let marcada: Awaited<ReturnType<typeof marcarReuniao>> | null = null;
   let marcadaAcao: AcaoDoTurno | null = null;
+  /** O aviso ao dono, se a reunião foi marcada (ou mudou de horário) neste turno. */
+  const avisarSeMarcou = async (conversa: Conversa) => {
+    if (!marcada?.ok) return;
+    const mesmoHorario = marcada.remarcou && !!marcada.antes.scheduled_at
+      && new Date(marcada.antes.scheduled_at).getTime() === marcada.inicio.getTime();
+    if (mesmoHorario) return;
+    await avisarReuniao(db, args.cfg, conversa, {
+      evento: marcada.remarcou ? 'remarcou' : 'marcou', reuniao_id: marcada.reuniao_id, inicio: marcada.inicio, chave: args.turnoId,
+    });
+  };
 
   const falhar = async (motivo: string, tipo: MotivoDaFalha, chamar: boolean, enviadas: number, finais: string[], tecnico?: string): Promise<Conclusao> => {
     if (enviadas === 0 && marcada?.ok && marcadaAcao) {
       await desfazerMarcacao(db, args.conversaId, marcada).catch((e) => console.warn('assistente: desfazer marcação', e));
       marcadaAcao.estado = 'pendente';
       delete marcadaAcao.resultado;
+    }
+    /* Parte saiu e a reunião ficou de pé (o lead pode estar sem o link): o dono precisa saber. */
+    if (enviadas > 0 && marcada?.ok) {
+      const cv = await carregarConversa(db, args.conversaId);
+      if (cv) await avisarSeMarcou(cv.conversa);
     }
     const erro = (tecnico ? `${motivo} (${tecnico})` : motivo).slice(0, 500);
     if (enviadas === 0 && args.rascunhoSeNadaSair) {
@@ -972,7 +998,7 @@ export async function concluirTurno(db: Db, args: {
   await atualizarEtapaECard(db, args.conversaId, c.conversa);
 
   /* 8. o aviso ao dono: só depois que o Marcado (com o link) saiu para o lead */
-  if (marcada?.ok && finais.length) await avisarReuniaoMarcada(db, args.cfg, c.conversa, marcada);
+  if (finais.length) await avisarSeMarcou(c.conversa);
 
   await db.from('assistente_turnos').update({
     status: args.status, mensagens_finais: finais, acoes,
@@ -987,13 +1013,17 @@ function umaLinha(t: string, max = 80): string {
 }
 
 /**
- * Avisa o dono no WhatsApp que o Davi marcou ou remarcou uma reunião (dono, 09/11/2026),
- * pelo modelo aviso_reuniao_marcada. Sem o modelo aprovado não manda (e não queima a trava);
- * falhar aqui nunca derruba o turno: a reunião já está na Agenda.
+ * Avisa o dono no WhatsApp que o Davi marcou, remarcou ou cancelou uma reunião (dono,
+ * 09/11/2026), pelo modelo aviso_reuniao_marcada. Sem o modelo aprovado não manda (e não
+ * queima a trava); falhar aqui nunca derruba o turno: a reunião já está na Agenda.
+ * `chave` é do evento (o turno, ou o cancelamento), nunca do horário: remarcar de volta
+ * para um horário antigo também avisa.
  */
-export async function avisarReuniaoMarcada(db: Db, cfg: AssistenteConfig, conversa: Conversa, r: { reuniao_id: string; inicio: Date; remarcou: boolean }) {
+export async function avisarReuniao(db: Db, cfg: AssistenteConfig | null, conversa: Conversa, r: {
+  evento: 'marcou' | 'remarcou' | 'cancelou'; reuniao_id: string; inicio: Date; chave: string;
+}) {
   try {
-    const para = String(cfg.aviso_whatsapp ?? '').replace(/\D/g, '');
+    const para = String(cfg?.aviso_whatsapp ?? '').replace(/\D/g, '');
     if (!para) return;
     if ((await statusDoModelo('aviso_reuniao_marcada')) !== 'APPROVED') {
       console.warn('assistente: aviso de reunião não saiu: o modelo aviso_reuniao_marcada ainda não foi aprovado');
@@ -1010,11 +1040,13 @@ export async function avisarReuniaoMarcada(db: Db, cfg: AssistenteConfig, conver
       para,
       template: 'aviso_reuniao_marcada',
       params: {
-        body: [r.remarcou ? 'remarcou' : 'marcou', umaLinha(cidade ? `${nome}, ${cidade}` : String(nome)), horarioFalado(r.inicio)],
+        body: [r.evento, umaLinha(cidade ? `${nome}, ${cidade}` : String(nome)), horarioFalado(r.inicio)],
         urlSuffix: conversa.id,
       },
-      chave: `aviso_reuniao:${r.reuniao_id}:${r.inicio.toISOString()}`,
+      chave: `aviso_reuniao:${r.chave}`,
       validoAte: r.inicio.toISOString(),
+      /* Se esperar a janela das 08h e a reunião cair nesse meio-tempo, o aviso não sai. */
+      condicao: r.evento === 'cancelou' ? null : { tipo: 'reuniao_agendada', meeting_id: r.reuniao_id },
     });
     if (!res.ok) console.warn('assistente: aviso de reunião não saiu', res.motivo);
   } catch (err) {

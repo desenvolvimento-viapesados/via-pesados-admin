@@ -6,6 +6,7 @@ import {
 import {
   carregarConversa, chamarMotor, chaveDaIA, concluirTurno, lerConfig, lerEstado, salvarEstado, transcritor, ultimaEntradaEm,
 } from '../_shared/assistente.ts';
+import { statusDoModelo } from '../_shared/wa.ts';
 
 /**
  * Os botões do assistente de vendas na tela (CRM › WhatsApp e aba Assistente).
@@ -92,6 +93,9 @@ Deno.serve(async (req) => {
       if (!t) avisos.push('Falta a chave de transcrição: áudio não será entendido.');
       if (!cfg?.link_reuniao) avisos.push('Falta o link da reunião: o assistente não marca horário.');
       if (!cfg?.responsavel_id) avisos.push('Falta escolher quem recebe as reuniões: o assistente não marca horário.');
+      if (cfg?.aviso_whatsapp && (await statusDoModelo('aviso_reuniao_marcada')) !== 'APPROVED') {
+        avisos.push('O aviso de reunião marcada ainda não foi aprovado pela Meta: a reunião entra na Agenda, mas o aviso no WhatsApp não sai.');
+      }
       if (cfg && tetoDoDiaAtingido(Number(gasto ?? 0), Number(cfg.teto_usd_dia))) avisos.push('O gasto de hoje chegou ao teto: o assistente para até alguém ligar de novo.');
       return json(200, {
         ok: true,
