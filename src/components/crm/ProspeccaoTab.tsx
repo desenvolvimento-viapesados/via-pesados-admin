@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Loader2, Search, MessageCircle, Eye, Ban, RotateCcw, AlertTriangle, Star, Bot,
+  Loader2, Search, MessageCircle, Eye, Ban, RotateCcw, AlertTriangle, Star, Bot, Kanban,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -15,7 +15,6 @@ import {
 import {
   MODOS, ROTULO_DO_MODO, useAssistenteConfig, useSalvarConfig, type Modo,
 } from '@/hooks/useAssistente';
-import { FunilDaProspeccao } from './FunilDaProspeccao';
 
 /**
  * O agente de prospecção, numa tela.
@@ -263,21 +262,16 @@ function Previa({ loja, onClose, max }: { loja: LojaProspeccao | null; onClose: 
   );
 }
 
-/** Duas telas: o funil (onde cada loja está) e o envio (ligar, fila, busca). */
+/** O envio (ligar, fila, busca). O funil das lojas abordadas mora na aba Funil › Prospecção automática. */
 export function ProspeccaoTab() {
-  const [vista, setVista] = useState<'funil' | 'envio'>('funil');
+  const navigate = useNavigate();
   return (
-    <div className="space-y-4">
-      <div className="inline-flex rounded-xl border border-black/[0.08] dark:border-white/[0.08] p-0.5">
-        {([['funil', 'Funil'], ['envio', 'Envio e fila']] as const).map(([chave, rotulo]) => (
-          <button key={chave} onClick={() => setVista(chave)}
-            className={cn('h-8 px-3.5 rounded-[10px] text-[12.5px] font-medium transition-colors',
-              vista === chave ? 'bg-primary/10 text-primary' : 'text-foreground/50 hover:text-foreground/80')}>
-            {rotulo}
-          </button>
-        ))}
-      </div>
-      {vista === 'funil' ? <FunilDaProspeccao /> : <div className="max-w-6xl mx-auto"><EnvioEFila /></div>}
+    <div className="max-w-6xl mx-auto space-y-4">
+      <button onClick={() => navigate('/crm?tab=funil&funil=automatica')}
+        className="h-9 px-3.5 rounded-xl text-[12.5px] font-medium border border-black/[0.1] dark:border-white/[0.1] text-foreground/75 hover:text-foreground flex items-center gap-1.5">
+        <Kanban className="h-4 w-4" /> Ver o funil da prospecção automática
+      </button>
+      <EnvioEFila />
     </div>
   );
 }

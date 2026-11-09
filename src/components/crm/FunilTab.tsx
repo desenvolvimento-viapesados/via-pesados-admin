@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { StatusBadge } from '@/components/admin/ui';
 import { useTestesGratis } from '@/hooks/useTesteGratis';
 import { situacaoDoTeste, type SituacaoDoTeste } from '@/lib/testeGratis';
+import { FunilDaProspeccao } from './FunilDaProspeccao';
 
 const PIPELINE: { key: ProspectStage; label: string }[] = [
   { key: 'contato',      label: 'Contato' },
@@ -163,6 +164,14 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
   /* Qual funil está na tela: ?funil=fria|anuncios|indicacao, ou todos. */
   const [params, setParams] = useSearchParams();
   const funilAtual: ChaveDoFunil | 'todos' = ehFunil(params.get('funil')) ? (params.get('funil') as ChaveDoFunil) : 'todos';
+  /* O funil da prospecção automática (dono, 09/11): separado, com as fases dele, e quem
+     move as lojas é o sistema. Mora aqui, ao lado dos outros, em ?funil=automatica. */
+  const automatica = params.get('funil') === 'automatica';
+  const escolherAutomatica = () => {
+    const novo = new URLSearchParams(params);
+    novo.set('funil', 'automatica');
+    setParams(novo, { replace: true });
+  };
   const escolherFunil = (f: ChaveDoFunil | 'todos') => {
     const novo = new URLSearchParams(params);
     if (f === 'todos') novo.delete('funil'); else novo.set('funil', f);
@@ -256,7 +265,7 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
         <div className="flex items-end gap-0.5 overflow-x-auto -mb-px" style={{ scrollbarWidth: 'none' }}>
           {OPCOES.map(({ chave, rotulo }) => {
             const r = resumo[chave];
-            const ativo = funilAtual === chave;
+            const ativo = !automatica && funilAtual === chave;
             return (
               <button
                 key={chave}
@@ -280,14 +289,29 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
               </button>
             );
           })}
+          <span className="self-center mx-2 h-4 w-px bg-black/[0.1] dark:bg-white/[0.12]" />
+          <button
+            onClick={escolherAutomatica}
+            className={cn(
+              'group relative h-10 px-3 text-[12.5px] whitespace-nowrap transition-colors flex items-center gap-1.5',
+              automatica ? 'text-foreground font-semibold' : 'text-foreground/40 font-medium hover:text-foreground/75',
+            )}
+          >
+            Prospecção automática
+            <span className={cn(
+              'absolute inset-x-2 bottom-0 h-[3px] rounded-full transition-all',
+              automatica ? 'bg-primary' : 'bg-transparent group-hover:bg-foreground/10',
+            )} />
+          </button>
         </div>
-        {resumo[funilAtual].valor > 0 && (
+        {!automatica && resumo[funilAtual].valor > 0 && (
           <p className="ml-auto mb-2.5 text-[11.5px] text-foreground/40 whitespace-nowrap hidden sm:block">
             <span className="font-semibold text-foreground/70 tabular-nums">{brl(resumo[funilAtual].valor)}</span>/mês em negociação
           </p>
         )}
       </div>
 
+      {automatica ? <FunilDaProspeccao /> : (
       <div className="overflow-x-auto pb-4">
         <div className="flex gap-3 min-w-max">
           {PIPELINE.map(({ key, label }) => {
@@ -370,6 +394,7 @@ export function FunilTab({ newOpen, onCloseNew }: { newOpen: boolean; onCloseNew
           })}
         </div>
       </div>
+      )}
 
       <NewProspectDialog open={newOpen} onClose={onCloseNew} funilInicial={funilAtual === 'todos' ? 'fria' : funilAtual} />
       {reuniaoPara && (
