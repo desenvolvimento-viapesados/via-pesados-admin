@@ -277,7 +277,7 @@ export function ProspeccaoTab() {
           </button>
         ))}
       </div>
-      {vista === 'funil' ? <FunilDaProspeccao /> : <EnvioEFila />}
+      {vista === 'funil' ? <FunilDaProspeccao /> : <div className="max-w-6xl mx-auto"><EnvioEFila /></div>}
     </div>
   );
 }

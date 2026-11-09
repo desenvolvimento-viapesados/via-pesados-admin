@@ -8,7 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { EmptyState, Kpi } from '@/components/admin/ui';
 import { horarioFalado } from '@/hooks/useAssistente';
 import { useFunilDaProspeccao, nomeDaLoja, type LinhaDoFunil } from '@/hooks/useFunilDaProspeccao';
-import { FASES, LADOS, chegaramAte, respostas, taxa, type Fase, type Lado } from '@/lib/funilDaProspeccao';
+import {
+  FASES, LADOS, cargoCurto, chegaramAte, estoqueCurto, respostas, taxa, vendedorDoAnuncio, type Fase, type Lado,
+} from '@/lib/funilDaProspeccao';
 import { Dossie } from './AssistenteNaConversa';
 
 /**
@@ -46,10 +48,14 @@ const NEUTRA = 'bg-black/[0.05] dark:bg-white/[0.07] text-foreground/55';
 function Etiquetas({ l }: { l: LinhaDoFunil }) {
   const s = l.conversa?.situacao ?? {};
   const itens: { texto: string; cls: string; icone?: ReactNode }[] = [];
+  const dePe = l.reuniao && (l.reuniao.status === 'agendada' || l.reuniao.status === 'remarcada');
+  if (l.teste) itens.push({ texto: 'Teste', cls: 'bg-sky-500/15 text-sky-600 dark:text-sky-400' });
   if (l.posicao.reuniaoPassou) itens.push({ texto: 'Reunião passou: conte na Agenda como foi', cls: 'bg-amber-500/15 text-amber-600 dark:text-amber-400', icone: <AlertTriangle className="h-2.5 w-2.5" /> });
-  else if (l.reuniao && l.posicao.fase === 'reuniao') itens.push({ texto: horarioFalado(new Date(l.reuniao.scheduled_at)), cls: 'bg-primary/10 text-primary', icone: <CalendarClock className="h-2.5 w-2.5" /> });
-  if (s.estoque) itens.push({ texto: `Estoque: ${String(s.estoque).slice(0, 24)}`, cls: NEUTRA });
-  if (s.cargo) itens.push({ texto: String(s.cargo).slice(0, 24), cls: NEUTRA });
+  else if (dePe) itens.push({ texto: horarioFalado(new Date(l.reuniao!.scheduled_at)), cls: 'bg-primary/10 text-primary', icone: <CalendarClock className="h-2.5 w-2.5" /> });
+  else if (l.posicao.reuniaoCancelada) itens.push({ texto: 'Reunião cancelada', cls: NEUTRA });
+  const estoque = estoqueCurto(s.estoque), cargo = cargoCurto(s.cargo);
+  if (estoque) itens.push({ texto: estoque, cls: NEUTRA });
+  if (cargo) itens.push({ texto: cargo, cls: NEUTRA });
   if ((l.conversa?.pedidos_preco ?? 0) > 0) itens.push({ texto: 'Perguntou o preço', cls: NEUTRA });
   if (l.conversa?.etapa === 'pausa') itens.push({ texto: 'Pediu para falar depois', cls: NEUTRA });
   if (l.conversa?.etapa === 'frio') itens.push({ texto: 'Esfriou', cls: NEUTRA });
@@ -105,6 +111,7 @@ function Coluna({ titulo, explica, linhas, onAbrir, destaque }: {
 /** As de lado que não pedem nada agora: lista recolhida, abre quando quiser. */
 function Recolhida({ titulo, explica, linhas, onAbrir }: { titulo: string; explica: string; linhas: LinhaDoFunil[]; onAbrir: (l: LinhaDoFunil) => void }) {
   const [aberta, setAberta] = useState(false);
+  const [quantas, setQuantas] = useState(300);
   if (!linhas.length) return null;
   const rotuloDaFase = (f: Fase | null) => FASES.find((x) => x.chave === f)?.rotulo ?? '';
   return (
@@ -117,7 +124,7 @@ function Recolhida({ titulo, explica, linhas, onAbrir }: { titulo: string; expli
       </button>
       {aberta && (
         <div className="divide-y divide-black/[0.06] dark:divide-white/[0.06] border-t border-black/[0.06] dark:border-white/[0.06]">
-          {linhas.slice(0, 300).map((l) => (
+          {linhas.slice(0, quantas).map((l) => (
             <button key={l.loja.id} onClick={() => onAbrir(l)} className="w-full flex flex-wrap items-center gap-x-4 gap-y-0.5 px-4 py-2.5 text-left hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
               <span className="text-[12.5px] font-medium text-foreground min-w-[200px] flex-1 truncate">{nomeDaLoja(l.loja)}</span>
               <span className="text-[11px] text-foreground/45 w-[160px] truncate">{[l.loja.cidade, l.loja.uf].filter(Boolean).join('/')}</span>
@@ -125,6 +132,11 @@ function Recolhida({ titulo, explica, linhas, onAbrir }: { titulo: string; expli
               <span className="text-[11px] text-foreground/35 w-[90px] text-right">{haQuanto(l.mexeuEm)}</span>
             </button>
           ))}
+          {linhas.length > quantas && (
+            <button onClick={() => setQuantas((q) => q + 300)} className="w-full h-10 text-[12px] text-foreground/50 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
+              Ver mais {Math.min(300, linhas.length - quantas)} de {linhas.length - quantas}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -149,7 +161,7 @@ function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
   );
 }
 
-const DECISOR: Record<string, string> = { sim: 'Vem à reunião', nao: 'Não vem', nao_sei: 'Não se sabe' };
+const DECISOR: Record<string, string> = { sim: 'Vem à reunião', nao: 'Não vem à reunião', nao_sei: 'Não se sabe se vem' };
 const STATUS_DA_REUNIAO: Record<string, string> = { agendada: 'Marcada', remarcada: 'Remarcada', realizada: 'Aconteceu', cancelada: 'Cancelada' };
 
 function Detalhe({ l, onClose }: { l: LinhaDoFunil | null; onClose: () => void }) {
@@ -161,7 +173,7 @@ function Detalhe({ l, onClose }: { l: LinhaDoFunil | null; onClose: () => void }
   const lado = LADOS.find((x) => x.chave === l.posicao.lado);
   const dados = (l.loja.dados ?? {}) as Record<string, unknown>;
   const texto = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
-  const vendedor = texto(dados.vendedor_mensagem) ?? texto(dados.vendedor) ?? texto(dados.contato);
+  const vendedor = vendedorDoAnuncio(dados);
   const portal = texto(l.loja.fonte_ref)?.startsWith('http') ? l.loja.fonte_ref! : null;
 
   const linhaDoTempo = [
@@ -222,24 +234,29 @@ function Detalhe({ l, onClose }: { l: LinhaDoFunil | null; onClose: () => void }
                   <Video className="h-3.5 w-3.5" /> {l.reuniao.meet_link.replace(/^https?:\/\//, '')}
                 </a>
               )}
-              {(c?.quem_vem || c?.decisor_vem) && (
-                <p className="text-[12px] text-foreground/60">
-                  {[c?.quem_vem && `Quem vem: ${c.quem_vem}`, c?.decisor_vem && `Quem decide: ${DECISOR[c.decisor_vem] ?? c.decisor_vem}`].filter(Boolean).join(' · ')}
-                </p>
-              )}
             </div>
           </Secao>
         )}
 
         <Secao titulo="O que o Davi descobriu">
           {!c ? (
-            <p className="text-[12.5px] text-foreground/45">Ainda não respondeu: o Davi não conversou com esta loja.</p>
+            <p className="text-[12.5px] text-foreground/45">
+              {l.loja.respondeu_em
+                ? 'Respondeu, mas o Davi não entrou nesta conversa (estava desligado ou alguém da equipe já estava nela).'
+                : 'Ainda não respondeu: o Davi não conversou com esta loja.'}
+            </p>
           ) : (
             <div className="space-y-3">
               {sabe.length > 0 ? (
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
                   {sabe.map((r) => <Campo key={r.rotulo} rotulo={r.rotulo}>{r.valor}</Campo>)}
                   {(c.pedidos_preco ?? 0) > 0 && <Campo rotulo="Preço">Perguntou {c.pedidos_preco === 1 ? 'uma vez' : `${c.pedidos_preco} vezes`}</Campo>}
+                  {c.quem_vem && <Campo rotulo="Quem vem">{c.quem_vem}</Campo>}
+                  {c.decisor_vem && (
+                    <Campo rotulo="Quem decide">
+                      {DECISOR[c.decisor_vem] ?? c.decisor_vem}{c.decisor_citacao && <span className="text-foreground/45"> · "{c.decisor_citacao}"</span>}
+                    </Campo>
+                  )}
                 </div>
               ) : <p className="text-[12.5px] text-foreground/45">Nada registrado ainda.</p>}
               {c.dores?.length > 0 && (
@@ -257,11 +274,7 @@ function Detalhe({ l, onClose }: { l: LinhaDoFunil | null; onClose: () => void }
           )}
         </Secao>
 
-        {c?.dossie && (
-          <Secao titulo="Resumo para a reunião">
-            <Dossie dossie={c.dossie} />
-          </Secao>
-        )}
+        {c?.dossie && <Dossie dossie={c.dossie} />}
 
         {(vendedor || texto(dados.tipo) || portal) && (
           <Secao titulo="Do anúncio no portal">
@@ -318,7 +331,7 @@ export function FunilDaProspeccao() {
   }, [linhas]);
 
   /* As contas valem para todas as abordadas, não só para a busca. */
-  const n = useMemo(() => chegaramAte((data?.linhas ?? []).map((l) => l.posicao)), [data]);
+  const n = useMemo(() => chegaramAte((data?.linhas ?? []).filter((l) => !l.teste).map((l) => l.posicao)), [data]);
 
   if (isLoading) return <div className="flex justify-center py-16"><Loader2 className="h-5 w-5 animate-spin text-foreground/30" /></div>;
   if (error) return <EmptyState icon={<AlertTriangle />} title="Não deu para carregar o funil" sub={(error as Error).message} />;
@@ -339,6 +352,10 @@ export function FunilDaProspeccao() {
         <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar loja ou cidade"
           className="w-full h-9 pl-9 pr-3 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1] text-[12.5px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50" />
       </div>
+
+      {data?.cortado && (
+        <p className="text-[11.5px] text-amber-600 dark:text-amber-400">Mais de 10 mil lojas abordadas: o quadro mostra as 10 mil primeiras.</p>
+      )}
 
       {(data?.linhas.length ?? 0) === 0 ? (
         <EmptyState icon={<Kanban />} title="Nenhuma loja abordada ainda" sub="Quando a prospecção estiver ligada, cada loja aparece aqui e anda sozinha pelas fases." />

@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { AssistenteConversa } from '@/hooks/useAssistente';
-import { posicaoNoFunil, type PosicaoNoFunil, type StatusDaLoja } from '@/lib/funilDaProspeccao';
+import {
+  maiorEtapaDoCard, posicaoNoFunil, reuniaoQueVale, type PosicaoNoFunil, type StatusDaLoja,
+} from '@/lib/funilDaProspeccao';
 
 /**
  * O funil da prospecção automática: as lojas abordadas, a conversa de cada uma
@@ -21,8 +23,8 @@ export type ConversaDoFunil = Pick<AssistenteConversa,
   | 'quem_vem' | 'pedidos_preco' | 'horarios_oferecidos' | 'reuniao_id' | 'prospect_id' | 'loja_id' | 'dossie'
   | 'pausado_motivo' | 'atualizado_em'>;
 
-export type ReuniaoDoFunil = { id: string; scheduled_at: string; status: string; meet_link: string | null };
-export type CardDoFunil = { id: string; stage: string; company_name: string | null };
+export type ReuniaoDoFunil = { id: string; scheduled_at: string; status: string; meet_link: string | null; prospect_id: string | null };
+export type CardDoFunil = { id: string; stage: string; company_name: string | null; maiorEtapa: string | null };
 
 export type LinhaDoFunil = {
   loja: LojaDoFunil;
@@ -32,6 +34,8 @@ export type LinhaDoFunil = {
   posicao: PosicaoNoFunil;
   /** A última novidade da loja (mensagem, resposta, conversa). */
   mexeuEm: string;
+  /** Loja do número de teste do dono: aparece marcada e fica fora das contas. */
+  teste: boolean;
 };
 
 const ABORDADAS: StatusDaLoja[] = ['em_contato', 'sem_resposta', 'conversando', 'com_voce', 'sem_interesse'];
@@ -69,45 +73,82 @@ export const useFunilDaProspeccao = () =>
   useQuery({
     queryKey: ['prospeccao', 'funil'],
     queryFn: async () => {
-      const [lojas, conversas, { count: naFila }] = await Promise.all([
+      /* Ordem por id: único e imutável, então nenhuma loja se repete nem some entre uma página e outra. */
+      const [lojas, conversas, comCard, { count: naFila }, { data: cfg }] = await Promise.all([
         todas<LojaDoFunil>((de, ate) => supabase.from('prospeccao_lojas')
           .select('id, nome, cidade, uf, telefone, dados, status, contatos, primeiro_contato_em, ultimo_contato_em, respondeu_em, conversa_id, motivo, humano_assumiu, atualizada_em, fonte_ref')
-          .in('status', ABORDADAS).order('atualizada_em', { ascending: false }).range(de, ate)),
+          .in('status', ABORDADAS).order('id').range(de, ate)),
         todas<ConversaDoFunil>((de, ate) => supabase.from('assistente_conversas')
           .select('conversa_id, modo, etapa, situacao, dores, objecoes, memoria, decisor_vem, decisor_citacao, quem_vem, pedidos_preco, horarios_oferecidos, reuniao_id, prospect_id, loja_id, dossie, pausado_motivo, atualizado_em')
-          .not('loja_id', 'is', null).order('atualizado_em', { ascending: false }).range(de, ate)),
+          .not('loja_id', 'is', null).order('conversa_id').range(de, ate)),
+        /* O card de cada conversa, inclusive o que a equipe criou à mão. */
+        todas<{ id: string; prospect_id: string }>((de, ate) => supabase.from('wa_conversas')
+          .select('id, prospect_id').not('prospect_id', 'is', null).order('id').range(de, ate)),
         supabase.from('prospeccao_lojas').select('id', { count: 'exact', head: true }).in('status', ['nova', 'pronta']),
+        supabase.from('assistente_config').select('telefones_teste').eq('id', 1).maybeSingle(),
       ]);
 
-      const [reunioes, cards] = await Promise.all([
-        porIds<ReuniaoDoFunil>(conversas.map((c) => c.reuniao_id ?? ''), (ids) =>
-          supabase.from('meetings').select('id, scheduled_at, status, meet_link').in('id', ids)),
-        porIds<CardDoFunil>(conversas.map((c) => c.prospect_id ?? ''), (ids) =>
-          supabase.from('prospects').select('id, stage, company_name').in('id', ids)),
-      ]);
-
-      /* Uma conversa por loja: a mais recente, se houver mais de uma. */
+      /* Uma conversa por loja: a mexida mais recentemente. */
       const conversaDaLoja = new Map<string, ConversaDoFunil>();
-      for (const c of conversas) if (c.loja_id && !conversaDaLoja.has(c.loja_id)) conversaDaLoja.set(c.loja_id, c);
-      const reuniaoPorId = new Map(reunioes.map((r) => [r.id, r]));
-      const cardPorId = new Map(cards.map((c) => [c.id, c]));
+      for (const c of conversas) {
+        const atual = c.loja_id ? conversaDaLoja.get(c.loja_id) : undefined;
+        if (c.loja_id && (!atual || c.atualizado_em > atual.atualizado_em)) conversaDaLoja.set(c.loja_id, c);
+      }
+      const cardDaConversa = new Map(comCard.map((w) => [w.id, w.prospect_id]));
+      const cardDaLoja = (l: LojaDoFunil) => conversaDaLoja.get(l.id)?.prospect_id ?? (l.conversa_id ? cardDaConversa.get(l.conversa_id) : undefined) ?? null;
+      const idsDosCards = lojas.map(cardDaLoja).filter((x): x is string => !!x);
+
+      const [cards, eventos, reunioesDoCard, reunioesDoDavi] = await Promise.all([
+        porIds<{ id: string; stage: string; company_name: string | null }>(idsDosCards, (ids) =>
+          supabase.from('prospects').select('id, stage, company_name').in('id', ids)),
+        porIds<{ prospect_id: string; to_stage: string }>(idsDosCards, (ids) =>
+          supabase.from('prospect_events').select('prospect_id, to_stage').in('prospect_id', ids)),
+        /* A reunião marcada à mão na Agenda fica no card, não na conversa do Davi. */
+        porIds<ReuniaoDoFunil>(idsDosCards, (ids) =>
+          supabase.from('meetings').select('id, scheduled_at, status, meet_link, prospect_id').in('prospect_id', ids)),
+        porIds<ReuniaoDoFunil>(conversas.map((c) => c.reuniao_id ?? ''), (ids) =>
+          supabase.from('meetings').select('id, scheduled_at, status, meet_link, prospect_id').in('id', ids)),
+      ]);
+
+      const etapasDoCard = new Map<string, string[]>();
+      for (const e of eventos) etapasDoCard.set(e.prospect_id, [...(etapasDoCard.get(e.prospect_id) ?? []), e.to_stage]);
+      const cardPorId = new Map(cards.map((c) => [c.id, { ...c, maiorEtapa: maiorEtapaDoCard(etapasDoCard.get(c.id) ?? []) }]));
+      const reuniaoPorId = new Map([...reunioesDoCard, ...reunioesDoDavi].map((r) => [r.id, r]));
+      const reunioesDoCardPor = new Map<string, ReuniaoDoFunil[]>();
+      for (const r of reunioesDoCard) if (r.prospect_id) reunioesDoCardPor.set(r.prospect_id, [...(reunioesDoCardPor.get(r.prospect_id) ?? []), r]);
+
+      const soDigitos = (t: string) => t.replace(/\D/g, '');
+      const deTeste = new Set(((cfg?.telefones_teste ?? []) as string[]).map(soDigitos));
 
       const agora = new Date();
-      const linhas: LinhaDoFunil[] = lojas.map((loja) => {
+      const vistas = new Set<string>();
+      const linhas: LinhaDoFunil[] = [];
+      for (const loja of lojas) {
+        if (vistas.has(loja.id)) continue;
+        vistas.add(loja.id);
         const conversa = conversaDaLoja.get(loja.id) ?? null;
-        const reuniao = conversa?.reuniao_id ? reuniaoPorId.get(conversa.reuniao_id) ?? null : null;
-        const card = conversa?.prospect_id ? cardPorId.get(conversa.prospect_id) ?? null : null;
+        const cardId = cardDaLoja(loja);
+        const card = cardId ? cardPorId.get(cardId) ?? null : null;
+        const candidatas = [
+          ...(conversa?.reuniao_id && reuniaoPorId.get(conversa.reuniao_id) ? [reuniaoPorId.get(conversa.reuniao_id)!] : []),
+          ...(cardId ? reunioesDoCardPor.get(cardId) ?? [] : []),
+        ];
+        const reuniao = reuniaoQueVale([...new Map(candidatas.map((r) => [r.id, r])).values()]);
         const posicao = posicaoNoFunil({
-          loja: { status: loja.status, humano_assumiu: loja.humano_assumiu, respondeu_em: loja.respondeu_em, nome: nomeDaLoja(loja) },
+          loja: {
+            status: loja.status, nome: nomeDaLoja(loja), respondeu_em: loja.respondeu_em,
+            primeiro_contato_em: loja.primeiro_contato_em, contatos: loja.contatos,
+          },
           conversa, reuniao, card,
         }, agora);
-        return {
+        linhas.push({
           loja, conversa, reuniao, card, posicao,
           mexeuEm: maisRecente(loja.ultimo_contato_em, loja.respondeu_em, conversa?.atualizado_em, loja.atualizada_em),
-        };
-      });
+          teste: deTeste.has(soDigitos(loja.telefone)),
+        });
+      }
       linhas.sort((a, b) => b.mexeuEm.localeCompare(a.mexeuEm));
-      return { linhas, naFila: naFila ?? 0 };
+      return { linhas, naFila: naFila ?? 0, cortado: lojas.length >= PAGINA * MAX_PAGINAS };
     },
     refetchInterval: 60_000,
   });

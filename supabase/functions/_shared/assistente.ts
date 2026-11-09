@@ -972,6 +972,11 @@ export async function concluirTurno(db: Db, args: {
 
   /* 5. o que saiu */
   const e = await lerEstado(db, args.conversaId);
+  /* O Davi voltou a atender: a loja sai de "Esperando você" no funil da prospecção. */
+  if (e?.loja_id && finais.length) {
+    await db.from('prospeccao_lojas').update({ status: 'conversando', motivo: null, atualizada_em: agoraISO() })
+      .eq('id', e.loja_id).eq('status', 'com_voce');
+  }
   if (e && finais.length) {
     const livres = await horariosParaOferecer(db, args.cfg, e, agora, 20);
     const citados = horariosCitados(finais, livres, agora).map((d) => d.toISOString());

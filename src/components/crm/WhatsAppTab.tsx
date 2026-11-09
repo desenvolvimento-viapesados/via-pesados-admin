@@ -1,5 +1,6 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Loader2, Send, Search, Plus, QrCode, RefreshCw, ChevronDown, Check, Settings2, Radio, Bot,
 } from 'lucide-react';
@@ -90,7 +91,18 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
   const [painelAberto, setPainelAberto] = useState(false);
   const rascunho = turnos?.rascunho ?? null;
 
-  const conversa = conversas.find((c) => c.id === conversaId) ?? null;
+  /* A conversa aberta pelo link (?conversa=) pode estar fora das 200 mais recentes da lista. */
+  const naLista = conversas.find((c) => c.id === conversaId) ?? null;
+  const { data: foraDaLista = null } = useQuery({
+    queryKey: ['wa', 'conversa', conversaId],
+    enabled: !!conversaId && !naLista && !carregandoConv,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('wa_conversas').select('*').eq('id', conversaId!).maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as Conversa | null;
+    },
+  });
+  const conversa = naLista ?? (foraDaLista && foraDaLista.instancia_id === instanciaId ? foraDaLista : null);
   const instAtual = instancias.find((i) => i.id === (conversa?.instancia_id ?? instanciaId)) ?? null;
 
   /* A janela de 24h da Meta conta da última mensagem da loja. */

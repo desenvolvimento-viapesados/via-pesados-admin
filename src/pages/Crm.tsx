@@ -171,7 +171,7 @@ export default function Crm() {
 
       {/* ── Conteúdo ───────────────────────────────────────── */}
       <main className={cn('flex-1 w-full py-5',
-        tab === 'funil' || tab === 'whatsapp' || tab === 'reunioes' ? 'px-4 sm:px-6' : 'px-4 sm:px-6 max-w-6xl mx-auto')}>
+        tab === 'funil' || tab === 'whatsapp' || tab === 'reunioes' || tab === 'prospeccao' ? 'px-4 sm:px-6' : 'px-4 sm:px-6 max-w-6xl mx-auto')}>
         {tab === 'whatsapp' && <WhatsAppTab newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'funil'    && <FunilTab    newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'reunioes' && <AgendaTab   newOpen={newOpen} onCloseNew={closeNew} defaultProspectId={defaultProspect} />}
