@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Kanban, CalendarDays, Radar } from 'lucide-react';
+import { ArrowLeft, Plus, Kanban, CalendarDays, Radar, Rocket, Hourglass } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useFrente } from '@/contexts/FrenteContext';
@@ -11,9 +11,12 @@ import { AgendaTab } from '@/components/crm/AgendaTab';
 import { WhatsAppTab } from '@/components/crm/WhatsAppTab';
 import { ProspeccaoTab } from '@/components/crm/ProspeccaoTab';
 import viaPesadosLogoLight from '@/assets/via-pesados-icon-color.png';
+/* As telas que saíram da Home e viraram abas (dono, 09/11): carregam só quando abertas. */
+const Implantacao = lazy(() => import('@/pages/Implantacao'));
+const TestesGratis = lazy(() => import('@/pages/TestesGratis'));
 import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
 
-type TabKey = 'whatsapp' | 'funil' | 'reunioes' | 'prospeccao';
+type TabKey = 'whatsapp' | 'funil' | 'reunioes' | 'prospeccao' | 'implantacao' | 'testes';
 
 /**
  * As abas do CRM. A amostra não tem aba: mora na ficha do prospect (clicar
@@ -41,6 +44,10 @@ const TABS: { key: TabKey; label: string; newLabel: string | null; icon: IconeDa
   // O agente que acha lojas e manda a primeira mensagem. Quem responde
   // aparece no WhatsApp e entra no funil pelo cadastro breve, como todo mundo.
   { key: 'prospeccao', label: 'Prospecção', newLabel: null, icon: Radar },
+  /* Da venda (ou do teste) ao primeiro anúncio no ar, e os 60 dias do teste grátis.
+     Saíram da Home em 09/11 a pedido do dono: "vamos jogar isso no CRM mesmo". */
+  { key: 'implantacao', label: 'Implantação', newLabel: null, icon: Rocket },
+  { key: 'testes', label: 'Teste grátis', newLabel: null, icon: Hourglass },
   /* O assistente não tem aba (dono, 09/11: "pode remover essa sessão assistente"): o avanço
      das lojas fica no Funil › Prospecção automática e a configuração, na aba Prospecção. */
 ];
@@ -62,7 +69,7 @@ export default function Crm() {
   useEffect(() => {
     const t = params.get('tab');
     // A implantação saiu do CRM e virou seção própria.
-    if (t === 'conexao') { navigate('/implantacao', { replace: true }); return; }
+    if (t === 'conexao') { navigate('/crm?tab=implantacao', { replace: true }); return; }
     if (t === 'assistente') { navigate('/crm?tab=prospeccao&vista=assistente', { replace: true }); return; }
     if (isTab(t)) setTab(t);
     if (params.get('new') === '1') {
@@ -174,6 +181,11 @@ export default function Crm() {
         {tab === 'funil'    && <FunilTab    newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'reunioes' && <AgendaTab   newOpen={newOpen} onCloseNew={closeNew} defaultProspectId={defaultProspect} />}
         {tab === 'prospeccao' && <ProspeccaoTab />}
+        {(tab === 'implantacao' || tab === 'testes') && (
+          <Suspense fallback={<div className="flex justify-center py-16"><div className="h-6 w-6 rounded-full border border-primary/30 border-t-primary animate-spin" /></div>}>
+            {tab === 'implantacao' ? <Implantacao /> : <TestesGratis />}
+          </Suspense>
+        )}
       </main>
     </div>
   );

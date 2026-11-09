@@ -293,7 +293,7 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
       /* A cobrança é o próximo passo real: manda o link e espera. Cair na
          ficha obrigava a procurar o link no meio de um checklist. No teste,
          o próximo passo é implantar — o link de assinar vai nos avisos. */
-      navigate(modoTeste ? '/implantacao?aba=teste' : `/clientes/${client.id}/cobranca`);
+      navigate(modoTeste ? '/crm?tab=implantacao&aba=teste' : `/clientes/${client.id}/cobranca`);
     } catch {
       toast.error('Erro ao registrar venda');
       setSalvando(false);

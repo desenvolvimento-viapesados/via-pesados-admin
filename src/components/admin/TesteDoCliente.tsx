@@ -23,7 +23,7 @@ export function TesteDoCliente({ teste }: { teste: TesteGratis }) {
     <div>
       <SectionHeader title="Teste grátis" />
       <Panel className="p-4">
-        <button onClick={() => navigate('/testes')} className="w-full text-left flex items-start gap-3 group">
+        <button onClick={() => navigate('/crm?tab=testes')} className="w-full text-left flex items-start gap-3 group">
           <Hourglass className={cn('h-4 w-4 mt-0.5 shrink-0', cor.texto)} />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">

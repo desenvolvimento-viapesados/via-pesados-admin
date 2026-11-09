@@ -440,7 +440,7 @@ function DetalhesDaTarefa({ tarefa, onClose }: { tarefa: Tarefa | null; onClose:
               </a>
             )}
             {tarefa.client_id && (
-              <button onClick={() => navigate(tarefa.origem === 'teste_gratis' ? '/testes' : `/clientes/${tarefa.client_id}`)} className={cn(botao, 'border border-black/[0.08] dark:border-white/[0.1] text-foreground/70 hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.05]')}>
+              <button onClick={() => navigate(tarefa.origem === 'teste_gratis' ? '/crm?tab=testes' : `/clientes/${tarefa.client_id}`)} className={cn(botao, 'border border-black/[0.08] dark:border-white/[0.1] text-foreground/70 hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.05]')}>
                 <Building2 className="h-3.5 w-3.5" /> {tarefa.origem === 'teste_gratis' ? 'Ver o teste' : 'Abrir loja'}
               </button>
             )}

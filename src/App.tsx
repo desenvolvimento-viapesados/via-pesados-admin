@@ -16,7 +16,6 @@ import DevFrentes from '@/pages/DevFrentes';
 
 const Home           = lazy(() => import('@/pages/Home'));
 const Crm            = lazy(() => import('@/pages/Crm'));
-const Implantacao    = lazy(() => import('@/pages/Implantacao'));
 const Clientes       = lazy(() => import('@/pages/Clientes'));
 const ClienteDetalhe = lazy(() => import('@/pages/ClienteDetalhe'));
 const Pagamentos     = lazy(() => import('@/pages/Pagamentos'));
@@ -33,11 +32,18 @@ const Metas          = lazy(() => import('@/pages/Metas'));
 const Conselho       = lazy(() => import('@/pages/Conselho'));
 const Planos         = lazy(() => import('@/pages/Planos'));
 const Saude          = lazy(() => import('@/pages/Saude'));
-const TestesGratis   = lazy(() => import('@/pages/TestesGratis'));
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
 });
+
+/** Endereço antigo de uma seção que virou aba do CRM: abre a aba, com o resto da URL. */
+const ParaOCrm = ({ aba }: { aba: string }) => {
+  const { search } = useLocation();
+  const p = new URLSearchParams(search);
+  p.set('tab', aba);
+  return <Navigate to={`/crm?${p.toString()}`} replace />;
+};
 
 const Loader = () => (
   <div className="min-h-[60vh] flex items-center justify-center">
@@ -116,8 +122,10 @@ const Gate = () => {
           <Route path="/crm/venda/:id" element={<RegistrarVenda />} />
           <Route path="/crm/venda"     element={<RegistrarVenda />} />
           <Route path="/crm/teste/:id" element={<RegistrarVenda teste />} />
-          <Route path="/implantacao"   element={<Implantacao />} />
-          <Route path="/testes"        element={<TestesGratis />} />
+          {/* Implantação e Teste grátis moram no CRM desde 09/11/2026 (pedido do dono):
+              os endereços antigos abrem a aba certa, com o que vier na URL (?aba=teste). */}
+          <Route path="/implantacao"   element={<ParaOCrm aba="implantacao" />} />
+          <Route path="/testes"        element={<ParaOCrm aba="testes" />} />
           <Route path="/clientes"      element={<Clientes />} />
           <Route path="/clientes/:id"  element={<ClienteDetalhe />} />
           <Route path="/clientes/:id/cobranca" element={<Cobranca />} />

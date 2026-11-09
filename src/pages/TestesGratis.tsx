@@ -187,7 +187,7 @@ function Loja({
           </button>
         )}
         {teste.status === 'aguardando_implantacao' && (
-          <button onClick={() => navigate('/implantacao?aba=teste')} className="h-8 px-3 rounded-lg border border-black/[0.08] dark:border-white/[0.1] text-[12px] font-medium text-foreground/70 hover:text-foreground flex items-center gap-1.5">
+          <button onClick={() => navigate('/crm?tab=implantacao&aba=teste')} className="h-8 px-3 rounded-lg border border-black/[0.08] dark:border-white/[0.1] text-[12px] font-medium text-foreground/70 hover:text-foreground flex items-center gap-1.5">
             Ver implantação <ArrowRight className="h-3 w-3" />
           </button>
         )}
