@@ -131,9 +131,9 @@ function textoDoEstado(args: {
   L.push(!preco
     ? 'Valor: você não diz; quem passa é o Xavier.'
     : preco.cheio
-      ? `Valor e OFERTA DE LANÇAMENTO (a Black Friday de novembro, vale até ${preco.ofertaAte!.slice(8, 10)}/${preco.ofertaAte!.slice(5, 7)}): "${falaDoPreco(preco)}" Só esses dois números; a taxa de implantação não tem valor pra dizer (em novembro ela não é cobrada). É essa a "oferta especial de lançamento" da mensagem da prospecção. Nunca outro desconto, valor ou porcentagem.`
+      ? `Valor e OFERTA DE LANÇAMENTO (a Black Friday de novembro, vale até ${preco.ofertaAte!.slice(8, 10)}/${preco.ofertaAte!.slice(5, 7)}): "${falaDoPreco(preco)}" Só esses dois números; a taxa de implantação não tem valor pra dizer (em novembro ela não é cobrada). É a Black Friday de que o Xavier fala no vídeo da prospecção (nas conversas antigas, a "oferta especial de lançamento" da 2ª mensagem). Nunca outro desconto, valor ou porcentagem.`
       : `Valor do Via Pesados que você PODE dizer: "${falaDoPreco(preco)}" Só esse; nunca desconto, outro valor ou porcentagem.`
-        + (preco.ofertaAcabouEm ? ` A oferta de lançamento (a de novembro, das mensagens da prospecção) acabou em ${preco.ofertaAcabouEm.slice(8, 10)}/${preco.ofertaAcabouEm.slice(5, 7)}: se ele falar dela ou de ter sido selecionado, diga que ela valeu até essa data, sem número, e que hoje é este valor. Não chame este valor de oferta.` : ''));
+        + (preco.ofertaAcabouEm ? ` A oferta de lançamento (a Black Friday de novembro, a do vídeo da prospecção) acabou em ${preco.ofertaAcabouEm.slice(8, 10)}/${preco.ofertaAcabouEm.slice(5, 7)}: se ele falar dela ou de ter sido selecionado, diga que ela valeu até essa data, sem número, e que hoje é este valor. Não chame este valor de oferta.` : ''));
   L.push(`Mostrou o sistema ligado à dor: ${e.prova_enviada ? 'sim' : 'não'}.`);
   if (e.horarios_oferecidos?.length) L.push(`Horários já oferecidos: ${e.horarios_oferecidos.map((h) => horarioFalado(new Date(h))).join('; ')}.`);
   L.push(args.reuniaoFalada
@@ -450,8 +450,11 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
             tentativas++;
             const marcando = acoes.some((x) => x.tipo === 'marcar_reuniao');
             const porta = portaDoHorario(estadoAtual, pediuPrecoAgora, marcando);
-            /* Qualificação em andamento e ele só respondeu: nada de vender (dono, 06/11). */
-            const soPerguntar = !porta.pode && !pediuPrecoAgora && !leadPerguntou && (!!loja || estadoAtual.apresentou)
+            /* Qualificação em andamento e ele só respondeu: nada de vender (dono, 06/11). Vale depois
+               que o Davi se apresentou, ou no "Bora!"/"sim" curto à mensagem da prospecção. Antes era
+               qualquer loja da lista já na 1ª resposta: com a mensagem do vídeo (10/11), quem escreve
+               "me explica" de cara tem de receber a explicação. */
+            const soPerguntar = !porta.pode && !pediuPrecoAgora && !leadPerguntou && (estadoAtual.apresentou || soTopouAsPerguntas)
               && faltaNaQualificacao({ loja: estadoAtual.situacao?.loja ?? loja?.nome ?? null, estoque: estadoAtual.situacao?.estoque, cargo: estadoAtual.situacao?.cargo }).length > 0;
             const f = fiscal(lista, {
               ...ctxFiscal, podeOferecerHorario: porta.pode, motivoDoHorario: porta.motivo, precoPermitido: valoresLiberados(precoDeHoje(cfg)), soPerguntar,

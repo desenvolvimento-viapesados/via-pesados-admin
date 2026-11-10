@@ -185,8 +185,8 @@ function Painel() {
       <p className="text-[11px] text-foreground/40 leading-relaxed">
         {oficial ? (
           <>
-            Só em dia útil, das 08h às 20h, uma loja a cada 7 a 18 minutos. Pelo número oficial, um contato só por loja:
-            três mensagens aprovadas pela Meta, segundos uma depois da outra: o vídeo (com o nome do vendedor, quando o portal tem), a oferta de lançamento com o nome da loja e o convite com os botões "Bora!" e "Não tenho interesse". Antes de cada envio o número é lido
+            Só em dia útil, das 08h às 20h, uma loja a cada 7 a 18 minutos. Pelo número oficial, uma mensagem só por loja,
+            aprovada pela Meta: o seu vídeo, a frase e o fecho, com "Fala, &lt;vendedor&gt;!" quando o portal tem o nome, e os botões "Quero ver funcionando" e "Não tenho interesse". Antes de cada envio o número é lido
             na Meta; se a qualidade cair para amarelo, a prospecção desliga sozinha. Ninguém que já é cliente, prospect ou
             conversou com a gente recebe.
           </>
@@ -252,7 +252,7 @@ function Previa({ loja, onClose, max }: { loja: LojaProspeccao | null; onClose: 
             <div className="rounded-2xl rounded-tr-sm bg-primary/10 px-3.5 py-2.5 text-[13px] text-foreground whitespace-pre-wrap">{r.texto}</div>
             <p className="text-[11px] text-foreground/40">
               {r.por === 'modelo'
-                ? 'As três mensagens aprovadas pela Meta (o vídeo, a oferta e o convite com os botões "Bora!" e "Não tenho interesse"). É exatamente o que sai; nada foi enviado.'
+                ? 'A mensagem aprovada pela Meta (o vídeo, o texto e os botões "Quero ver funcionando" e "Não tenho interesse"). É exatamente o que sai; nada foi enviado.'
                 : <>Contato {r.contato} de {max} · {r.por === 'ia' ? 'escrita pela IA para esta loja' : 'texto pronto (a IA não está ligada)'}.
                   Cada prévia sai diferente: é só um exemplo, nada foi enviado.</>}
             </p>

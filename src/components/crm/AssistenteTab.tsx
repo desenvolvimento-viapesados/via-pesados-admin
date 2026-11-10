@@ -396,7 +396,7 @@ function Configuracao({ config }: { config: AssistenteConfig }) {
             value={f.oferta_ate} onChange={(e) => muda('oferta_ate', e.target.value)} />
         </div>
         <p className="text-[11px] text-foreground/40 leading-relaxed">
-          Quando perguntarem o preço, ele diz este valor direto. Com a oferta preenchida, diz o normal e o da oferta (a implantação por nossa conta) até a data; depois dela passa a dizer o normal com a taxa, e a prospecção para, porque a mensagem fala da oferta. Desconto ou outro valor ele nunca fala: passa para você. Deixe o valor vazio para ele não falar valor.
+          Quando perguntarem o preço, ele diz este valor direto. Com a oferta preenchida, diz o normal e o da oferta (a implantação por nossa conta) até a data; depois dela passa a dizer o normal com a taxa, e a prospecção para, porque o vídeo dela fala da Black Friday. Desconto ou outro valor ele nunca fala: passa para você. Deixe o valor vazio para ele não falar valor.
         </p>
       </div>
 

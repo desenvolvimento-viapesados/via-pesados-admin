@@ -716,7 +716,100 @@ export const MODELOS: Modelo[] = [
    }
   ]
  } ,
- /* Prospecção pelo número oficial (06/11/2026, decisão do dono): TRÊS mensagens seguidas para
+ /* Prospecção pelo número oficial (10/11/2026, decisão do dono): UMA mensagem só por loja.
+    O vídeo dele já faz o trabalho das três de antes (mostra o envio, diz que é o Via Pesados, fala
+    da Black Friday e pede para responder); o texto precisa vender mesmo sem o play, porque no 4G
+    o WhatsApp não baixa vídeo sozinho. Texto escolhido pelo dono, com o fecho dele ("O único
+    sistema de gestão do Brasil, para lojas de veículos pesados", sem ponto, como ele escreveu).
+    Quando o número é de um vendedor com nome no portal, sai com "Fala, <primeiro nome>!"
+    (prospeccao_simples_nome). Botões: "Quero ver funcionando" (pedido de ver: o Davi convida
+    direto para a demonstração) e "Não tenho interesse" (despedida e nada mais). Sem oferta e sem
+    data no texto: a Black Friday está só no vídeo, e trocar o vídeo não pede aprovação nova (o
+    que sai em cada envio é o VIDEO_DO_MODELO de prospeccao-regras.ts; aqui é só o exemplo). */
+ {
+  "name": "prospeccao_simples",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "HEADER",
+    "format": "VIDEO",
+    "example": {
+     "header_url": [
+      "https://ktjvyysqhsyvjmhumjly.supabase.co/storage/v1/object/public/logos/wa/prospeccao-v2.mp4"
+     ]
+    }
+   },
+   {
+    "type": "BODY",
+    "text": "Já imaginou atender seus clientes com essa facilidade? Foto, ficha e preço do veículo no WhatsApp dele, com um clique.\n\nO único sistema de gestão do Brasil, para lojas de veículos pesados"
+   },
+   {
+    "type": "FOOTER",
+    "text": "Xavier · Via Pesados"
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "QUICK_REPLY",
+      "text": "Quero ver funcionando"
+     },
+     {
+      "type": "QUICK_REPLY",
+      "text": "Não tenho interesse"
+     }
+    ]
+   }
+  ]
+ } ,
+ {
+  "name": "prospeccao_simples_nome",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "HEADER",
+    "format": "VIDEO",
+    "example": {
+     "header_url": [
+      "https://ktjvyysqhsyvjmhumjly.supabase.co/storage/v1/object/public/logos/wa/prospeccao-v2.mp4"
+     ]
+    }
+   },
+   {
+    "type": "BODY",
+    "text": "Fala, {{1}}! Já imaginou atender seus clientes com essa facilidade? Foto, ficha e preço do veículo no WhatsApp dele, com um clique.\n\nO único sistema de gestão do Brasil, para lojas de veículos pesados",
+    "example": {
+     "body_text": [
+      [
+       "Marcelo"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "FOOTER",
+    "text": "Xavier · Via Pesados"
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "QUICK_REPLY",
+      "text": "Quero ver funcionando"
+     },
+     {
+      "type": "QUICK_REPLY",
+      "text": "Não tenho interesse"
+     }
+    ]
+   }
+  ]
+ } ,
+ /* RESERVA — não saem desde 10/11/2026 (a mensagem única acima tomou o lugar). Seguem aprovadas
+    na Meta e ficam aqui para a conta nova recriar. Como eram:
+    Prospecção pelo número oficial (06/11/2026, decisão do dono): TRÊS mensagens seguidas para
     cada loja da lista do portal, no jeito dele de falar, segundos uma depois da outra.
     1. O vídeo + "Imagina você que é vendedor de pesados, meu amigo, usando uma ferramenta
        dessa." Quando o número é de um vendedor com nome no portal, sai a versão com

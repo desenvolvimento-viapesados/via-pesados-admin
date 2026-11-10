@@ -668,15 +668,27 @@ describe('o botão "Quero ver funcionando" do modelo da prospecção (06/11/2026
     expect(pedidoComOBotao(null, [])).toBeNull();
   });
 
-  it('o roteiro sabe que a conversa começou pelas três mensagens: não repete o diferencial e segue a qualificação', () => {
-    expect(INSTRUCOES).toContain('MENSAGENS AUTOMÁTICAS DA PROSPECÇÃO');
-    expect(INSTRUCOES).toContain('"Bora!"');
-    expect(INSTRUCOES).toMatch(/Não repita o diferencial nem a lista dos canais/);
-    expect(INSTRUCOES).toMatch(/é o sim às perguntas, não à demonstração/);
+  it('o roteiro sabe que a conversa começou pela mensagem do vídeo: o botão vira convite direto; sem repetir o que o vídeo disse', () => {
+    expect(INSTRUCOES).toContain('MENSAGEM AUTOMÁTICA DA PROSPECÇÃO');
+    expect(INSTRUCOES).toContain('Tocou "Quero ver funcionando"');
+    expect(INSTRUCOES).toMatch(/faça o convite direto/);
+    expect(INSTRUCOES).toContain('O único sistema de gestão do Brasil, para lojas de veículos pesados');
+    expect(INSTRUCOES).toMatch(/Não repita isso/);
     expect(INSTRUCOES).toMatch(/comece pelo estoque/);
+    /* Conversa antiga, das três mensagens: o "Bora!" segue sendo sim às perguntas. */
+    expect(INSTRUCOES).toContain('"Bora!"');
+    expect(INSTRUCOES).toMatch(/é o sim às perguntas, não à demonstração/);
     /* O rótulo do vídeo na caixa do CRM é o que o roteiro manda reconhecer. */
     expect(ROTULO_DO_VIDEO.startsWith('[vídeo')).toBe(true);
     expect(INSTRUCOES).toContain('começa com "[vídeo"');
+    expect(INSTRUCOES).toMatch(/fala da Black Friday de novembro/); // o que o vídeo diz, já que o rótulo é curto
+  });
+
+  it('a 1ª resposta a uma loja da lista não é "só perguntar": quem pede explicação recebe; o "Bora!" curto, sim', () => {
+    const fonte = readFileSync('supabase/functions/assistente-responder/index.ts', 'utf8');
+    expect(fonte).toContain('(estadoAtual.apresentou || soTopouAsPerguntas)');
+    expect(fonte).not.toContain('(!!loja || estadoAtual.apresentou)');
+    expect(fonte).not.toMatch(/É essa a "oferta especial de lançamento" da mensagem da prospecção/);
   });
 
   it('o responder marca o pedido do botão antes de calcular a porta do horário', () => {
@@ -839,6 +851,10 @@ describe('no meio das perguntas, sem vender e sem "cês" (dono, 06/11/2026)', ()
     expect(perguntouAlgo('Sou dono')).toBe(false);
     expect(perguntouAlgo('Bora!')).toBe(false);
     expect(perguntouAlgo(null)).toBe(false);
+    /* Pedido de explicação sem "?" também é pergunta (revisão de 10/11). */
+    for (const t of ['me explica como funciona', 'antes me explica', 'manda como funciona', 'quero saber mais', 'manda material', 'me fala mais'])
+      expect(perguntouAlgo(t), t).toBe(true);
+    expect(perguntouAlgo('Quero ver funcionando')).toBe(false); // é pedido de ver, não pergunta
   });
 });
 

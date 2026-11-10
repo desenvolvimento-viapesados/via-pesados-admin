@@ -263,6 +263,8 @@ export function perguntouAlgo(texto: string | null | undefined): boolean {
   const t = normalizarTexto(String(texto ?? ''));
   if (!t) return false;
   if (String(texto).includes('?')) return true;
+  /* Pedido de explicação sem "?" ("me explica como funciona", "quero saber mais", "manda material"). */
+  if (/\b(me\s+)?explica\w*\b|\bcomo\s+funciona\b|\bsaber\s+mais\b|\bme\s+(fala|conta)\s+mais\b|\bmanda\s+(material|informac\w*|mais\s+informac\w*)\b/.test(t)) return true;
   return /^(e\s+)?(quanto|quantos|quanta|como|qual|quais|onde|quando|porque|por\s+que|pq|tem|funciona|serve|da\s+pra|da\s+para|precisa|posso|consigo|voces|o\s+que|e\s+o|e\s+a|e\s+no|e\s+na)\b/.test(t);
 }
 

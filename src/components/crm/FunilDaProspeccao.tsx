@@ -177,7 +177,7 @@ function Detalhe({ l, onClose }: { l: LinhaDoFunil | null; onClose: () => void }
   const portal = texto(l.loja.fonte_ref)?.startsWith('http') ? l.loja.fonte_ref! : null;
 
   const linhaDoTempo = [
-    { quando: l.loja.primeiro_contato_em, o_que: 'Recebeu as mensagens da prospecção' },
+    { quando: l.loja.primeiro_contato_em, o_que: 'Recebeu a mensagem da prospecção' },
     { quando: l.loja.respondeu_em, o_que: 'Respondeu' },
     { quando: l.reuniao?.scheduled_at, o_que: `Reunião (${STATUS_DA_REUNIAO[l.reuniao?.status ?? ''] ?? l.reuniao?.status ?? ''})` },
   ].filter((x) => !!x.quando).sort((a, b) => String(a.quando).localeCompare(String(b.quando)));

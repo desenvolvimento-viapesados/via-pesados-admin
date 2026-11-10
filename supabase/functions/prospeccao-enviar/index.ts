@@ -13,7 +13,7 @@ import { precoDeHoje } from '../_shared/assistente-regras.ts';
 
 /**
  * A rotina do agente de prospecção. O pg_cron chama de 5 em 5 minutos; cada
- * chamada aborda NO MÁXIMO UMA loja (pelo oficial, as três mensagens da sequência), e só se tudo isto for verdade:
+ * chamada aborda NO MÁXIMO UMA loja (pelo oficial, a mensagem do vídeo), e só se tudo isto for verdade:
  *
  *   - o dono ligou o agente na tela (desligado por padrão);
  *   - é dia útil, entre 08h e 20h de Brasília;
@@ -116,15 +116,15 @@ Deno.serve(async () => {
       }
       if (travando.length) {
         await db.from('prospeccao_config').update({
-          pausado_motivo: `Nada sai até a Meta aprovar as mensagens da prospecção. ${travando.join('; ')}.`, atualizado_em: agora.toISOString(),
+          pausado_motivo: `Nada sai até a Meta aprovar a mensagem da prospecção (${travando.join('; ')}).`, atualizado_em: agora.toISOString(),
         }).eq('id', 1);
         return json(200, { ok: true, modelo_em_analise: travando });
       }
-      /* A 2ª mensagem fala da "oferta especial de lançamento": sem a oferta valendo, não sai. */
+      /* O vídeo fala da Black Friday de novembro: sem a oferta valendo, não sai. */
       const { data: cfgPreco } = await db.from('assistente_config').select('preco_mensal, preco_cheio, oferta_ate').eq('id', 1).maybeSingle();
       if (!precoDeHoje(cfgPreco, agora)?.cheio) {
         await db.from('prospeccao_config').update({
-          pausado_motivo: 'A mensagem da prospecção fala da oferta de lançamento, e ela não está valendo (passou da data ou foi tirada na aba Assistente). Troque o texto antes de ligar de novo.',
+          pausado_motivo: 'O vídeo da prospecção fala da Black Friday de novembro, e a oferta não está valendo (passou da data ou foi tirada na aba Assistente). Troque o vídeo antes de ligar de novo.',
           atualizado_em: agora.toISOString(),
         }).eq('id', 1);
         return json(200, { ok: true, oferta: 'fora do prazo' });

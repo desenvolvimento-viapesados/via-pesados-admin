@@ -350,41 +350,54 @@ export const BUSCAS = [
 
 /**
  * Pelo número oficial a primeira mensagem só pode ser modelo aprovado pela Meta (texto livre
- * só depois que a pessoa responde). Dono, 06/11/2026: TRÊS mensagens seguidas, segundos uma
- * depois da outra — a abertura com o vídeo (com "Fala, <nome>!" quando o número é de um
- * vendedor com nome no portal), a oferta com o nome da loja e o convite para a qualificação
- * curta, com os botões. Os textos moram em modelos.ts.
+ * só depois que a pessoa responde). Dono, 10/11/2026: UMA mensagem só — o vídeo dele (que já
+ * mostra o envio, diz o que é o Via Pesados, fala da Black Friday e pede para responder), a
+ * frase "Já imaginou atender seus clientes com essa facilidade?…", o fecho e os botões. Com
+ * "Fala, <nome>!" quando o número é de um vendedor com nome no portal. Os textos moram em
+ * modelos.ts.
+ */
+export const MODELO_SIMPLES = 'prospeccao_simples';
+export const MODELO_SIMPLES_NOME = 'prospeccao_simples_nome';
+/** Todos precisam estar aprovados para a prospecção sair. */
+export const MODELOS_DA_PROSPECCAO = [MODELO_SIMPLES, MODELO_SIMPLES_NOME] as const;
+/**
+ * As três mensagens de antes (06/11/2026): seguem aprovadas na Meta e no catálogo, de reserva,
+ * e não saem mais. Conversa antiga pode ter começado por elas (o "Bora!" do convite).
  */
 export const MODELO_ABERTURA = 'prospeccao_abertura';
 export const MODELO_ABERTURA_NOME = 'prospeccao_abertura_nome';
 export const MODELO_OFERTA = 'prospeccao_oferta';
 export const MODELO_CTA = 'prospeccao_cta';
-/** Todos precisam estar aprovados para a prospecção sair. */
-export const MODELOS_DA_PROSPECCAO = [MODELO_ABERTURA, MODELO_ABERTURA_NOME, MODELO_OFERTA, MODELO_CTA] as const;
+export const MODELOS_DE_RESERVA = [MODELO_ABERTURA, MODELO_ABERTURA_NOME, MODELO_OFERTA, MODELO_CTA] as const;
 /** Como cada modelo aparece para o dono (no aviso de por que a prospecção não sai). */
 export const NOME_DA_MENSAGEM: Record<string, string> = {
-  [MODELO_ABERTURA]: 'a 1ª mensagem (vídeo)', [MODELO_ABERTURA_NOME]: 'a 1ª mensagem com o nome do vendedor',
-  [MODELO_OFERTA]: 'a 2ª (oferta)', [MODELO_CTA]: 'a 3ª (convite)',
+  [MODELO_SIMPLES]: 'a do vídeo', [MODELO_SIMPLES_NOME]: 'a do vídeo com o nome do vendedor',
 };
 export const STATUS_NA_META: Record<string, string> = {
   PENDING: 'em análise', REJECTED: 'reprovada', PAUSED: 'pausada pela Meta', DISABLED: 'desativada pela Meta', APPROVED: 'aprovada',
 };
 /** Segundos entre uma mensagem e a próxima: dá tempo de a anterior chegar primeiro. */
 export const PAUSA_ENTRE_MENSAGENS_MS = 4_000;
+/** O botão do convite das três mensagens de antes: conversa antiga pode ter. */
 export const BOTAO_BORA = 'Bora!';
 export const BOTAO_SAIR = 'Não tenho interesse';
-/** O botão do modelo anterior (nunca enviado). Se alguém escrever isso, é pedido de ver. */
+/** O botão da mensagem do vídeo (10/11/2026). Tocou (ou escreveu só isso), é pedido de ver. */
 export const BOTAO_VER = 'Quero ver funcionando';
-/* O vídeo do cabeçalho (envio de fotos lado a lado, depois a Recorrência; vai ser trocado pela
-   gravação do Xavier). Arquivo novo = nome novo (v2, v3…): a Meta e o WhatsApp guardam em cache
-   pelo endereço. O rótulo é o que a caixa do CRM e o Davi leem no lugar do vídeo: troque junto. */
-export const VIDEO_DO_MODELO = 'https://ktjvyysqhsyvjmhumjly.supabase.co/storage/v1/object/public/logos/wa/prospeccao-v1.mp4';
-export const ROTULO_DO_VIDEO = '[vídeo do sistema]';
+/* O vídeo do cabeçalho: o Xavier gravando o notebook com o WhatsApp do sistema (IMG_5649,
+   editado em 09/11/2026: capa só com texto, H.264 Main sem B-frames, que o Android toca).
+   Arquivo novo = nome novo (v3, v4…): a Meta e o WhatsApp guardam em cache pelo endereço.
+   O rótulo é o que a caixa do CRM e o Davi leem no lugar do vídeo, e o roteiro do Davi
+   (assistente-roteiro.ts, "Lead da lista que recebeu a mensagem") diz o que o vídeo fala:
+   troque os três juntos. O vídeo fala
+   da Black Friday de novembro: depois da oferta, o prospeccao-enviar para até o vídeo mudar. */
+export const VIDEO_DO_MODELO = 'https://ktjvyysqhsyvjmhumjly.supabase.co/storage/v1/object/public/logos/wa/prospeccao-v2.mp4';
+export const ROTULO_DO_VIDEO = '[vídeo do Xavier: o envio num clique e a Black Friday]';
 
 export type LojaDoModelo = { nome: string; dados?: Record<string, unknown> | null };
 
 /**
- * O nome da loja na oferta ("E a boa parte é que a {{1}} foi selecionada…").
+ * O nome da loja na oferta das três mensagens de antes ("E a boa parte é que a {{1}} foi
+ * selecionada…"), hoje de reserva.
  * `dados.nome_mensagem` é a correção à mão para uma loja: quando existe, vale ela.
  */
 export function nomeDaLojaNaMensagem(loja: LojaDoModelo): string {
@@ -427,15 +440,16 @@ export function primeiroNomeDoVendedor(dados: Record<string, unknown> | null | u
 
 export type MensagemDaSequencia = { modelo: string; params: string[]; video: boolean; botoes: boolean };
 
-/** As três mensagens de uma loja, na ordem em que saem. */
+/**
+ * O que sai para uma loja, na ordem (10/11/2026: uma mensagem só, o vídeo com a frase, o fecho
+ * e os botões; com o nome do vendedor quando o portal tem).
+ */
 export function sequenciaDaProspeccao(loja: LojaDoModelo): MensagemDaSequencia[] {
   const vendedor = primeiroNomeDoVendedor(loja.dados);
   return [
     vendedor
-      ? { modelo: MODELO_ABERTURA_NOME, params: [vendedor], video: true, botoes: false }
-      : { modelo: MODELO_ABERTURA, params: [], video: true, botoes: false },
-    { modelo: MODELO_OFERTA, params: [nomeDaLojaNaMensagem(loja)], video: false, botoes: false },
-    { modelo: MODELO_CTA, params: [], video: false, botoes: true },
+      ? { modelo: MODELO_SIMPLES_NOME, params: [vendedor], video: true, botoes: true }
+      : { modelo: MODELO_SIMPLES, params: [], video: true, botoes: true },
   ];
 }
 

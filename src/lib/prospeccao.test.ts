@@ -3,7 +3,7 @@ import {
   diaUtil, podeEnviarAgora, proximoContato, limiteDoDia, intervaloSorteado, telefoneBR, ehCelular, variantes,
   pediuParaSair, nomeFalado, paramDaMeta, textoDeReserva, pareceLojaDePesados,
   canalDa, REGRAS_DO_CANAL, nomeDaLojaNaMensagem, textoDoModelo, pediuParaVer, BOTAO_VER, BOTAO_SAIR, BOTAO_BORA,
-  MODELO_ABERTURA, MODELO_ABERTURA_NOME, MODELO_OFERTA, MODELO_CTA, MODELOS_DA_PROSPECCAO, ROTULO_DO_VIDEO,
+  MODELO_SIMPLES, MODELO_SIMPLES_NOME, MODELOS_DE_RESERVA, MODELOS_DA_PROSPECCAO, ROTULO_DO_VIDEO,
   primeiroNomeDoVendedor, sequenciaDaProspeccao,
   lojaDepoisDaFalha, FALHAS_QUE_DESLIGAM, motivoParaDesligar, VIDEO_DO_MODELO,
 } from '../../supabase/functions/_shared/prospeccao-regras';
@@ -263,7 +263,7 @@ describe('os modelos seguem as regras da Meta', () => {
   }
 });
 
-/* Pelo número oficial: o canal em 03/11/2026; as três mensagens em 06/11/2026. */
+/* Pelo número oficial: o canal em 03/11/2026; a mensagem única com o vídeo em 10/11/2026. */
 describe('prospecção pelo número oficial', () => {
   const modelo = (nome: string) => MODELOS.find((m) => m.name === nome)!;
   const corpo = (nome: string) => String(modelo(nome).components.find((c) => c.type === 'BODY')!.text);
@@ -285,52 +285,57 @@ describe('prospecção pelo número oficial', () => {
     expect(limiteDoDia(40, ini, ini)).toBe(15); // o QR code continua como era
   });
 
-  it('os quatro modelos existem, todos de marketing; o antigo com teste grátis não sai mais', () => {
+  it('a mensagem do vídeo existe (com e sem o nome), de marketing; as três de antes ficam de reserva; o antigo com teste grátis não sai mais', () => {
+    expect([...MODELOS_DA_PROSPECCAO]).toEqual([MODELO_SIMPLES, MODELO_SIMPLES_NOME]);
     for (const m of MODELOS_DA_PROSPECCAO) expect(modelo(m)?.category, m).toBe('MARKETING');
+    for (const m of MODELOS_DE_RESERVA) {
+      expect(modelo(m)?.category, m).toBe('MARKETING'); // a conta nova recria
+      expect((MODELOS_DA_PROSPECCAO as readonly string[]).includes(m), m).toBe(false); // e não sai
+    }
     expect(MODELOS.some((m) => m.name === 'prospeccao_lojista' || m.name === 'prospeccao_lojista_v2')).toBe(false);
   });
 
-  it('a abertura: o vídeo e a frase do dono; com o nome do vendedor, "Fala, {{1}}!"', () => {
-    for (const m of [MODELO_ABERTURA, MODELO_ABERTURA_NOME]) {
-      const topo = modelo(m).components.find((c) => c.type === 'HEADER') as unknown as { format: string; example: { header_url: string[] } };
-      expect(topo.format).toBe('VIDEO');
-      expect(topo.example.header_url).toEqual([VIDEO_DO_MODELO]);
-      expect(botoes(m)).toEqual([]);
-    }
-    expect(corpo(MODELO_ABERTURA)).toBe('Imagina você que é vendedor de pesados, meu amigo, usando uma ferramenta dessa.');
-    expect(corpo(MODELO_ABERTURA_NOME)).toBe('Fala, {{1}}! Imagina você que é vendedor de pesados, meu amigo, usando uma ferramenta dessa.');
+  const FRASE = 'Já imaginou atender seus clientes com essa facilidade? Foto, ficha e preço do veículo no WhatsApp dele, com um clique.';
+  const FECHO = 'O único sistema de gestão do Brasil, para lojas de veículos pesados';
+
+  it('o texto do dono (10/11): a frase, a promessa e o fecho dele, palavra por palavra; com o vendedor, "Fala, {{1}}!"', () => {
+    expect(corpo(MODELO_SIMPLES)).toBe(`${FRASE}\n\n${FECHO}`);
+    expect(corpo(MODELO_SIMPLES_NOME)).toBe(`Fala, {{1}}! ${FRASE}\n\n${FECHO}`);
   });
 
-  it('a oferta: a loja selecionada, no texto do dono (com "e WhatsApp", escolha dele)', () => {
-    expect(corpo(MODELO_OFERTA)).toBe('E a boa parte é que a {{1}} foi selecionada para a oferta especial de lançamento do Via Pesados, o único software do Brasil feito para veículos pesados, com conexão oficial do Mercado Livre, Facebook, Instagram e WhatsApp.');
-    expect(botoes(MODELO_OFERTA)).toEqual([]);
-  });
-
-  it('o convite para a qualificação curta leva o rodapé e os dois botões', () => {
-    expect(corpo(MODELO_CTA)).toBe('Bora ver como isso fica aí na sua loja? Me responde umas perguntinhas rápidas e eu já te mostro.');
-    expect(modelo(MODELO_CTA).components.find((c) => c.type === 'FOOTER')?.text).toBe('Xavier · Via Pesados');
-    expect(botoes(MODELO_CTA).map((b) => b.text)).toEqual([BOTAO_BORA, BOTAO_SAIR]);
-    expect(botoes(MODELO_CTA).every((b) => b.type === 'QUICK_REPLY')).toBe(true);
-  });
-
-  it('nenhuma das mensagens fala de teste grátis nem de prazo', () => {
+  it('o vídeo no topo, o rodapé e os dois botões de resposta', () => {
     for (const m of MODELOS_DA_PROSPECCAO) {
+      const topo = modelo(m).components.find((c) => c.type === 'HEADER') as unknown as { format: string; example: { header_url: string[] } };
+      expect(topo.format, m).toBe('VIDEO');
+      expect(topo.example.header_url, m).toEqual([VIDEO_DO_MODELO]);
+      expect(modelo(m).components.find((c) => c.type === 'FOOTER')?.text, m).toBe('Xavier · Via Pesados');
+      expect(botoes(m).map((b) => b.text), m).toEqual([BOTAO_VER, BOTAO_SAIR]);
+      expect(botoes(m).every((b) => b.type === 'QUICK_REPLY'), m).toBe(true);
+    }
+  });
+
+  it('o vídeo novo, num endereço novo (cache da Meta e do WhatsApp)', () => {
+    expect(VIDEO_DO_MODELO).toMatch(/\/logos\/wa\/prospeccao-v2\.mp4$/);
+  });
+
+  it('nenhuma mensagem fala de teste grátis, de prazo, nem de oferta (a Black Friday fica só no vídeo, que troca sem aprovação)', () => {
+    for (const m of [...MODELOS_DA_PROSPECCAO, ...MODELOS_DE_RESERVA]) {
       expect(corpo(m)).not.toMatch(/gr[áa]tis|gratuit|teste|testar|amostra/i);
       expect(corpo(m)).not.toMatch(/\d+ dias/);
     }
+    for (const m of MODELOS_DA_PROSPECCAO) expect(corpo(m)).not.toMatch(/oferta|black|novembro|R\$|desconto|promo/i);
   });
 
-  it('a sequência: abertura (com ou sem o vendedor), oferta com o nome da loja, convite', () => {
+  it('a sequência: uma mensagem só, o vídeo com o vendedor quando o portal tem o nome', () => {
     const comVendedor = sequenciaDaProspeccao({ nome: 'Hohl Máquinas Agrícolas - John Deere', dados: { contato: 'vendedor: Marcelo Cristo' } });
-    expect(comVendedor.map((m) => m.modelo)).toEqual([MODELO_ABERTURA_NOME, MODELO_OFERTA, MODELO_CTA]);
-    expect(comVendedor.map((m) => m.params)).toEqual([['Marcelo'], ['Hohl Máquinas Agrícolas'], []]);
-    expect(comVendedor.map((m) => m.video)).toEqual([true, false, false]);
+    expect(comVendedor).toEqual([{ modelo: MODELO_SIMPLES_NOME, params: ['Marcelo'], video: true, botoes: true }]);
     const daLoja = sequenciaDaProspeccao({ nome: 'TREDIESEL CAMINHÕES LTDA', dados: { contato: 'loja' } });
-    expect(daLoja.map((m) => m.modelo)).toEqual([MODELO_ABERTURA, MODELO_OFERTA, MODELO_CTA]);
-    expect(daLoja.map((m) => m.params)).toEqual([[], ['Trediesel Caminhões'], []]);
-    const texto = textoDoModelo(corpo(MODELO_OFERTA), daLoja[1].params);
-    expect(texto).toMatch(/^E a boa parte é que a Trediesel Caminhões foi selecionada/);
+    expect(daLoja).toEqual([{ modelo: MODELO_SIMPLES, params: [], video: true, botoes: true }]);
+    const semNome = sequenciaDaProspeccao({ nome: 'X', dados: { contato: 'vendedor: Cowboy', vendedor_mensagem: '' } });
+    expect(semNome.map((m) => m.modelo)).toEqual([MODELO_SIMPLES]);
+    expect(textoDoModelo(corpo(MODELO_SIMPLES_NOME), comVendedor[0].params)).toMatch(/^Fala, Marcelo! Já imaginou/);
     expect(ROTULO_DO_VIDEO.startsWith('[vídeo')).toBe(true); // é por aqui que o Davi reconhece a prospecção
+    expect(ROTULO_DO_VIDEO).toMatch(/Black Friday/); // o Davi sabe da oferta que o vídeo promete
   });
 
   it('o primeiro nome do vendedor, do jeito que o portal escreve', () => {
@@ -354,7 +359,7 @@ describe('prospecção pelo número oficial', () => {
     expect(primeiroNomeDoVendedor({ contato: 'vendedor: Cowboy', vendedor_mensagem: '' })).toBeNull();
   });
 
-  it('o botão "Bora!" não é pedido de ver nem de sair; "Não tenho interesse" é saída', () => {
+  it('"Quero ver funcionando" é pedido de ver; "Bora!" (conversa antiga) não é pedido de ver nem de sair; "Não tenho interesse" é saída', () => {
     expect(pediuParaSair(BOTAO_SAIR)).toBe(true);
     expect(pediuParaSair(BOTAO_BORA)).toBe(false);
     expect(pediuParaVer(BOTAO_BORA)).toBe(false);

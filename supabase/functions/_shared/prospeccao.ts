@@ -287,8 +287,8 @@ const corpoDo = (modelo: string) => String(
 export type MensagemPronta = MensagemDaSequencia & { texto: string };
 
 /**
- * As três mensagens do primeiro contato pelo oficial, como saem (06/11/2026): os modelos com o
- * vendedor e a loja no lugar das variáveis. Na caixa do CRM o vídeo vira o ROTULO_DO_VIDEO,
+ * O primeiro contato pelo oficial, como sai (10/11/2026: uma mensagem só, o vídeo com a frase e
+ * os botões): o modelo com o vendedor no lugar da variável. Na caixa do CRM o vídeo vira o ROTULO_DO_VIDEO,
  * e é por ele ("[vídeo") que o Davi reconhece que a conversa começou pela prospecção.
  */
 export function mensagensDaProspeccao(loja: LojaDoModelo): { mensagens: MensagemPronta[]; texto: string } {
@@ -300,7 +300,7 @@ export function mensagensDaProspeccao(loja: LojaDoModelo): { mensagens: Mensagem
 }
 
 /**
- * Manda as três mensagens pelo enviarTemplate — o mesmo caminho da cobrança, com a janela
+ * Manda a sequência (hoje, uma mensagem só) pelo enviarTemplate — o mesmo caminho da cobrança, com a janela
  * das 08h–20h e a trava de repetição —, uma depois da outra, com uma pausa para chegarem na
  * ordem. `chave` muda a cada tentativa da mesma loja: a trava queima a chave mesmo quando a
  * entrega falha, e "reativar" a loja tem de poder mandar de novo.
