@@ -73,8 +73,9 @@ export async function aoChegarParaOAssistente(db: Db, conversaId: string, loja: 
     ({ data: ac } = await db.from('assistente_conversas')
       .select('modo, etapa, loja_id, pendente_desde').eq('conversa_id', conversaId).maybeSingle());
   }
-  /* O número que recebe o aviso de reunião: responder ou reagir ao aviso não é conversa de teste. */
-  const doAviso = !!cfg?.aviso_whatsapp && String(telefone ?? '').replace(/\D/g, '') === String(cfg.aviso_whatsapp).replace(/\D/g, '');
+  /* O número que recebe o aviso de reunião: responder ou reagir ao aviso não é conversa de teste.
+     Compara nas duas grafias (com e sem o 9): o WhatsApp entrega o 33 98814-4005 sem o 9 (11/11/2026). */
+  const doAviso = !!cfg?.aviso_whatsapp && ehNumeroDeTeste(telefone, [cfg.aviso_whatsapp]);
   if (!ac && !loja && !doAviso && ehNumeroDeTeste(telefone, cfg?.telefones_teste)) {
     /* Número de teste: entra atendendo sozinho. Se o dono desligar na conversa, a linha
        existe e fica como ele deixou. */

@@ -19,10 +19,44 @@ import { dentroDaJanela } from './regua.ts';
 const BRT_MS = -3 * 60 * 60 * 1000;
 const emBRT = (d: Date) => new Date(d.getTime() + BRT_MS);
 
-/** Segunda a sexta, em Brasília. */
+/**
+ * Feriados nacionais (11/11/2026: o dono disse "só em dia útil", e 20/11 cai numa sexta).
+ * Os de data fixa por lei (o 20/11 é nacional desde a Lei 14.759/2023) e a Sexta-feira
+ * Santa, que muda com a Páscoa. Carnaval e Corpus Christi são ponto facultativo: ficam de fora.
+ */
+const FERIADOS_FIXOS = new Set(['01-01', '04-21', '05-01', '09-07', '10-12', '11-02', '11-15', '11-20', '12-25']);
+
+/** Domingo de Páscoa (algoritmo de Meeus/Jones/Butcher, calendário gregoriano), em UTC 00h. */
+export function pascoa(ano: number): Date {
+  const a = ano % 19, b = Math.floor(ano / 100), c = ano % 100, d = Math.floor(b / 4), e = b % 4;
+  const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const mes = Math.floor((h + l - 7 * m + 114) / 31), dia = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(Date.UTC(ano, mes - 1, dia));
+}
+
+/** A data (ano, mês 0–11, dia) é feriado nacional? */
+function feriadoNaData(ano: number, mes: number, dia: number): boolean {
+  if (FERIADOS_FIXOS.has(`${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`)) return true;
+  const sextaSanta = new Date(pascoa(ano).getTime() - 2 * 86_400_000);
+  return sextaSanta.getUTCMonth() === mes && sextaSanta.getUTCDate() === dia;
+}
+
+/** Hoje é feriado nacional, em Brasília? */
+export function feriadoNacional(agora = new Date()): boolean {
+  const b = emBRT(agora);
+  return feriadoNaData(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate());
+}
+
+/* `alvo` é uma data de Brasília guardada em UTC 00h (como em proximoContato). */
+const diaDeTrabalho = (alvo: Date) =>
+  alvo.getUTCDay() !== 0 && alvo.getUTCDay() !== 6 && !feriadoNaData(alvo.getUTCFullYear(), alvo.getUTCMonth(), alvo.getUTCDate());
+
+/** Segunda a sexta, em Brasília, fora dos feriados nacionais. */
 export function diaUtil(agora = new Date()): boolean {
   const d = emBRT(agora).getUTCDay();
-  return d >= 1 && d <= 5;
+  return d >= 1 && d <= 5 && !feriadoNacional(agora);
 }
 
 export function podeEnviarAgora(agora = new Date()): boolean {
@@ -35,14 +69,14 @@ export const MAX_CONTATOS = 3;
 
 /**
  * Quando cai o próximo contato: N dias depois, num horário útil sorteado
- * (09h–17h), empurrado para segunda se cair no fim de semana. Horário igual
- * todo dia é assinatura de robô.
+ * (09h–17h), empurrado para o próximo dia útil se cair no fim de semana ou
+ * num feriado nacional. Horário igual todo dia é assinatura de robô.
  */
 export function proximoContato(contatoFeito: number, agora = new Date(), sorteio = Math.random): Date {
   const dias = ESPERA_APOS_CONTATO[Math.min(contatoFeito, MAX_CONTATOS) - 1] ?? 3;
   const b = emBRT(agora);
   const alvo = new Date(Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate() + dias));
-  while (alvo.getUTCDay() === 0 || alvo.getUTCDay() === 6) alvo.setUTCDate(alvo.getUTCDate() + 1);
+  while (!diaDeTrabalho(alvo)) alvo.setUTCDate(alvo.getUTCDate() + 1);
   const minutos = 9 * 60 + Math.floor(sorteio() * 8 * 60); // 09h00–16h59 em Brasília
   return new Date(alvo.getTime() + minutos * 60_000 - BRT_MS);
 }
@@ -120,6 +154,22 @@ export function variantes(tel: string): string[] {
   if (tel.length === 13 && tel[4] === '9') return [tel, tel.slice(0, 4) + tel.slice(5)];
   if (tel.length === 12 && /[6-9]/.test(tel[4])) return [tel, tel.slice(0, 4) + '9' + tel.slice(4)];
   return [tel];
+}
+
+/**
+ * Com que grafia gravar a conversa deste número, dadas as conversas que a caixa já tem
+ * nas variantes dele. O WhatsApp devolve o celular como o conhece (de DDD 31 para cima,
+ * em geral sem o 9) e a prospecção grava com o 9: sem isto, a resposta da loja abria
+ * uma segunda conversa e o Davi atendia sem ver a mensagem que ela recebeu (11/11/2026).
+ * Conversa na grafia exata manda; senão, a que já existe na outra grafia; senão, a que chegou.
+ * Só número brasileiro: as variantes do 9 não existem fora daqui.
+ */
+export function grafiaDaConversa(tel: string, existentes: readonly string[]): string {
+  if (!tel.startsWith('55') || existentes.includes(tel)) return tel;
+  /* Celular com 9 seguido de 1 a 5 nunca existiu sem o 9: tirar o 9 daria o FIXO de outra
+     pessoa (variantes não confere isso no sentido 13→12; o contrário já exige 6 a 9). */
+  if (tel.length === 13 && !/[6-9]/.test(tel[5])) return tel;
+  return variantes(tel).find((v) => v !== tel && existentes.includes(v)) ?? tel;
 }
 
 /* ── a resposta da pessoa ─────────────────────────────────────── */

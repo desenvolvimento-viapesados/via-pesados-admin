@@ -11,7 +11,7 @@ import Anthropic from 'npm:@anthropic-ai/sdk@1.3.0';
 import { evolution, paraEnvio } from './evolution.ts';
 import { MODELOS } from './modelos.ts';
 import {
-  BUSCAS, motivoParaDesligar, nomeFalado, PAUSA_ENTRE_MENSAGENS_MS, pareceLojaDePesados, ROTULO_DO_VIDEO, sequenciaDaProspeccao,
+  BUSCAS, grafiaDaConversa, motivoParaDesligar, nomeFalado, PAUSA_ENTRE_MENSAGENS_MS, pareceLojaDePesados, ROTULO_DO_VIDEO, sequenciaDaProspeccao,
   telefoneBR, textoDeReserva, textoDoModelo, variantes, VIDEO_DO_MODELO, type LojaDoModelo, type MensagemDaSequencia,
 } from './prospeccao-regras.ts';
 import { enviarTemplate } from './wa.ts';
@@ -259,8 +259,11 @@ export async function enviarEGravar(db: Db, inst: Instancia, telefone: string, t
 /** A mensagem que saiu, na conversa do número no CRM. */
 async function gravarNaCaixa(db: Db, inst: Instancia, telefone: string, texto: string, nomeLoja: string, providerId: string | null): Promise<string> {
   const agora = new Date().toISOString();
+  /* A loja que já conversou com este número noutra grafia (sem o 9) recebe na mesma conversa. */
+  const { data: grafias } = await db.from('wa_conversas').select('telefone')
+    .eq('instancia_id', inst.id).in('telefone', variantes(telefone));
   const { data: conversa } = await db.from('wa_conversas').upsert({
-    instancia_id: inst.id, telefone, nome: nomeLoja,
+    instancia_id: inst.id, telefone: grafiaDaConversa(telefone, (grafias ?? []).map((c: { telefone: string }) => c.telefone)), nome: nomeLoja,
     ultima_mensagem: texto, ultima_mensagem_em: agora, ultima_direcao: 'saida', updated_at: agora,
   }, { onConflict: 'instancia_id,telefone' }).select('id').maybeSingle();
   if (conversa) {

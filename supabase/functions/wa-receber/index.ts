@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { semSufixo } from '../_shared/evolution.ts';
 import { aoChegarMensagem, aoFalharEntrega } from '../_shared/prospeccao-entrada.ts';
+import { grafiaDaConversa, variantes } from '../_shared/prospeccao-regras.ts';
 import { aoChegarParaOAssistente } from '../_shared/assistente-entrada.ts';
 import { deBase64, guardarMidia } from '../_shared/assistente-midia.ts';
 
@@ -317,13 +318,21 @@ Deno.serve(async (req) => {
     }
     if (!inst) return ok({ ok: true, ignorado: 'instância desconhecida' });
 
+    /* O mesmo celular tem duas grafias (com e sem o 9), e o WhatsApp entrega a que
+       conhece. Se a caixa já tem a conversa na outra grafia (a prospecção grava com o
+       9), a mensagem entra nela em vez de abrir uma segunda. Falhou a leitura: segue
+       com a grafia que chegou, como antes. */
+    const { data: grafias } = await db.from('wa_conversas').select('telefone')
+      .eq('instancia_id', inst.id).in('telefone', variantes(n.telefone));
+    const telefone = grafiaDaConversa(n.telefone, (grafias ?? []).map((c: { telefone: string }) => c.telefone));
+
     /* Conversa: acha ou cria. O upsert na unique (instancia, telefone) evita
        que duas mensagens chegando juntas criem duas conversas do mesmo
        contato — que é o bug clássico dessa tela. */
     const { data: conversa } = await db.from('wa_conversas')
       .upsert({
         instancia_id: inst.id,
-        telefone: n.telefone,
+        telefone,
         nome: n.nome ?? undefined,
         ultima_mensagem: n.conteudo,
         ultima_mensagem_em: n.quando ?? new Date().toISOString(),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  diaUtil, podeEnviarAgora, proximoContato, limiteDoDia, intervaloSorteado, telefoneBR, ehCelular, variantes,
+  diaUtil, feriadoNacional, pascoa, grafiaDaConversa, podeEnviarAgora, proximoContato, limiteDoDia, intervaloSorteado, telefoneBR, ehCelular, variantes,
   pediuParaSair, nomeFalado, paramDaMeta, textoDeReserva, pareceLojaDePesados,
   canalDa, REGRAS_DO_CANAL, nomeDaLojaNaMensagem, textoDoModelo, pediuParaVer, BOTAO_VER, BOTAO_SAIR, BOTAO_BORA,
   MODELO_SIMPLES, MODELO_SIMPLES_NOME, MODELOS_DE_RESERVA, MODELOS_DA_PROSPECCAO, ROTULO_DO_VIDEO,
@@ -30,9 +30,32 @@ describe('quando o agente pode mandar', () => {
 
   it('o próximo contato nunca cai no fim de semana', () => {
     const quinta = new Date('2026-10-29T13:00:00Z');
-    const d = proximoContato(1, quinta, () => 0); // quinta + 3 = domingo → segunda
-    expect(d.toISOString()).toBe('2026-11-02T12:00:00.000Z');
+    const d = proximoContato(1, quinta, () => 0); // quinta + 3 = domingo → segunda 02/11 é Finados → terça
+    expect(d.toISOString()).toBe('2026-11-03T12:00:00.000Z');
     expect(diaUtil(d)).toBe(true);
+  });
+
+  it('feriado nacional não é dia útil: nada sai em 20/11, na Sexta-feira Santa nem no Natal', () => {
+    expect(podeEnviarAgora(new Date('2026-11-20T14:00:00Z'))).toBe(false); // sexta 20/11 (Consciência Negra), 11h
+    expect(podeEnviarAgora(new Date('2026-11-19T14:00:00Z'))).toBe(true);  // quinta 19/11, 11h
+    expect(podeEnviarAgora(new Date('2026-11-23T14:00:00Z'))).toBe(true);  // segunda 23/11, 11h
+    expect(diaUtil(new Date('2026-12-25T14:00:00Z'))).toBe(false);         // Natal (sexta)
+    expect(diaUtil(new Date('2027-01-01T14:00:00Z'))).toBe(false);         // Confraternização (sexta)
+    expect(diaUtil(new Date('2026-11-21T02:30:00Z'))).toBe(false);         // ainda 20/11, 23h30 em Brasília
+    expect(diaUtil(new Date('2026-11-20T02:30:00Z'))).toBe(true);          // ainda 19/11, 23h30 em Brasília
+    expect(pascoa(2026).toISOString().slice(0, 10)).toBe('2026-04-05');
+    expect(pascoa(2027).toISOString().slice(0, 10)).toBe('2027-03-28');
+    expect(pascoa(2028).toISOString().slice(0, 10)).toBe('2028-04-16');
+    expect(feriadoNacional(new Date('2026-04-03T14:00:00Z'))).toBe(true);  // Sexta-feira Santa de 2026
+    expect(feriadoNacional(new Date('2027-03-26T14:00:00Z'))).toBe(true);  // Sexta-feira Santa de 2027
+    expect(feriadoNacional(new Date('2027-03-25T14:00:00Z'))).toBe(false);
+    expect(feriadoNacional(new Date('2026-11-11T14:00:00Z'))).toBe(false);
+  });
+
+  it('o próximo contato pula o feriado', () => {
+    const terca = new Date('2026-11-17T13:00:00Z');
+    const d = proximoContato(1, terca, () => 0); // terça + 3 = sexta 20/11 (feriado) → segunda 23/11
+    expect(d.toISOString()).toBe('2026-11-23T12:00:00.000Z');
   });
 
   it('o teto do dia começa em 15 e cresce 5 por semana, sem passar do definido', () => {
@@ -68,6 +91,23 @@ describe('telefone', () => {
     expect(variantes('5533988144005')).toEqual(['5533988144005', '553388144005']);
     expect(variantes('553388144005')).toEqual(['553388144005', '5533988144005']);
     expect(variantes('553332711234')).toEqual(['553332711234']);
+  });
+
+  it('a resposta entra na conversa que já existe na outra grafia (11/11/2026)', () => {
+    // A prospecção grava com o 9; o WhatsApp devolve sem: entra na conversa de 13 dígitos.
+    expect(grafiaDaConversa('553588144005', ['5535988144005'])).toBe('5535988144005');
+    // O contrário: conversa antiga sem o 9, envio com o 9.
+    expect(grafiaDaConversa('5535988144005', ['553588144005'])).toBe('553588144005');
+    // A grafia exata existe: ela manda, mesmo com a outra também na caixa.
+    expect(grafiaDaConversa('553588144005', ['553588144005', '5535988144005'])).toBe('553588144005');
+    // Conversa nova: a grafia que chegou.
+    expect(grafiaDaConversa('553588144005', [])).toBe('553588144005');
+    // Fixo não tem variante; número de fora do Brasil fica como está.
+    expect(grafiaDaConversa('553332711234', ['5533932711234'])).toBe('553332711234');
+    expect(grafiaDaConversa('447911123456', ['4479911123456'])).toBe('447911123456');
+    // Celular 9 + 1 a 5 não vira o fixo de mesmo final (outra pessoa).
+    expect(grafiaDaConversa('5511943211234', ['551143211234'])).toBe('5511943211234');
+    expect(grafiaDaConversa('5511913211234', ['551113211234'])).toBe('5511913211234');
   });
 });
 
