@@ -4,7 +4,7 @@ import {
   situacaoDoOficial, type Loja,
 } from '../_shared/prospeccao.ts';
 import {
-  canalDa, ehCelular, intervaloSorteado, limiteDoDia, MODELOS_DA_PROSPECCAO, NOME_DA_MENSAGEM, podeEnviarAgora, proximoContato,
+  canalDa, ehCelular, falhaDaConta, intervaloSorteado, limiteDoDia, MODELOS_DA_PROSPECCAO, NOME_DA_MENSAGEM, podeEnviarAgora, proximoContato,
   STATUS_NA_META,
   REGRAS_DO_CANAL, variantes,
 } from '../_shared/prospeccao-regras.ts';
@@ -208,17 +208,20 @@ Deno.serve(async () => {
     } catch (e) {
       const erro = e instanceof Error ? e.message : String(e);
       await db.from('prospeccao_envios').insert({ loja_id: loja.id, tipo: 'contato', numero, texto, erro: erro.slice(0, 400) });
-      /* No oficial a loja que falhou sai da fila (reativar devolve): sem
-         isso, um número inválido seria tentado de novo a cada rodada até
-         somar três erros e desligar tudo. */
+      /* Falha da conta (saldo, chave) não é culpa da loja: ela fica na fila
+         e tudo para na hora. Fora isso, no oficial a loja que falhou sai da
+         fila (reativar devolve): sem isso, um número inválido seria tentado
+         de novo a cada rodada até somar três erros e desligar tudo. */
+      const daConta = falhaDaConta(erro);
       await db.from('prospeccao_lojas').update({
         travada_ate: null,
-        ...(canal === 'oficial' ? { status: 'sem_whatsapp', motivo: `O envio falhou: ${erro.slice(0, 200)}`, atualizada_em: agora.toISOString() } : {}),
+        ...(canal === 'oficial' && !daConta ? { status: 'sem_whatsapp', motivo: `O envio falhou: ${erro.slice(0, 200)}`, atualizada_em: agora.toISOString() } : {}),
       }).eq('id', loja.id);
       const erros = (cfg.erros_seguidos ?? 0) + 1;
       await db.from('prospeccao_config').update({
         erros_seguidos: erros,
-        ...(erros >= 3 ? { ligado: false, pausado_motivo: `Desliguei sozinho depois de 3 erros seguidos ao enviar. Último: ${erro.slice(0, 200)}` } : {}),
+        ...(daConta ? { ligado: false, pausado_motivo: daConta }
+          : erros >= 3 ? { ligado: false, pausado_motivo: `Desliguei sozinho depois de 3 erros seguidos ao enviar. Último: ${erro.slice(0, 200)}` } : {}),
         proximo_envio_em: new Date(agora.getTime() + 15 * 60_000).toISOString(),
         atualizado_em: agora.toISOString(),
       }).eq('id', 1);

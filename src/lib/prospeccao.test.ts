@@ -5,7 +5,7 @@ import {
   canalDa, REGRAS_DO_CANAL, nomeDaLojaNaMensagem, textoDoModelo, pediuParaVer, BOTAO_VER, BOTAO_SAIR, BOTAO_BORA,
   MODELO_SIMPLES, MODELO_SIMPLES_NOME, MODELOS_DE_RESERVA, MODELOS_DA_PROSPECCAO, ROTULO_DO_VIDEO,
   primeiroNomeDoVendedor, sequenciaDaProspeccao,
-  lojaDepoisDaFalha, FALHAS_QUE_DESLIGAM, motivoParaDesligar, VIDEO_DO_MODELO,
+  lojaDepoisDaFalha, falhaDaConta, FALHAS_QUE_DESLIGAM, motivoParaDesligar, VIDEO_DO_MODELO,
 } from '../../supabase/functions/_shared/prospeccao-regras';
 import { MODELOS } from '../../supabase/functions/_shared/modelos';
 
@@ -416,6 +416,14 @@ describe('prospecção pelo número oficial', () => {
     expect(lojaDepoisDaFalha('').status).toBe('sem_resposta');
     expect(FALHAS_QUE_DESLIGAM.has('131048')).toBe(true);
     expect(FALHAS_QUE_DESLIGAM.has('131026')).toBe(false);
+  });
+
+  it('saldo ou chave recusada é da conta: a loja fica na fila e tudo para', () => {
+    expect(falhaDaConta('The account balance is insufficient.')).toContain('saldo');
+    expect(falhaDaConta('Unauthorized')).toContain('chave');
+    expect(falhaDaConta('Recipient phone number not in allowed list')).toBeNull();
+    expect(falhaDaConta('(#131026) Message undeliverable')).toBeNull();
+    expect(falhaDaConta('')).toBeNull();
   });
 
   it('qualidade amarela ou vermelha desliga; verde ou sem leitura segue', () => {

@@ -530,6 +530,21 @@ export const FALHAS_QUE_DESLIGAM = new Set(['131048', '131031', '368']);
 /* O número não tem WhatsApp ou não recebe de empresa: a loja sai da fila. */
 export const FALHAS_SEM_WHATSAPP = new Set(['131026']);
 
+/**
+ * O envio falhou por causa da conta, não do número da loja (o saldo acabou,
+ * a chave foi recusada): a loja continua na fila e a prospecção para na hora,
+ * sem queimar outras lojas tentando. Devolve o motivo na língua do dono.
+ */
+export function falhaDaConta(erro: string): string | null {
+  if (/balance is insufficient|insufficient balance|saldo insuficiente/i.test(erro)) {
+    return 'Acabou o saldo da conta do número oficial. Recarregue e ligue de novo: as lojas continuam na fila.';
+  }
+  if (/\bunauthori[sz]ed\b|invalid api key|api key is invalid/i.test(erro)) {
+    return 'A conta do número oficial recusou a chave de acesso. Nada saiu; as lojas continuam na fila.';
+  }
+  return null;
+}
+
 /** A loja depois de uma entrega que falhou. */
 export function lojaDepoisDaFalha(codigo: string): { status: 'sem_whatsapp' | 'sem_resposta'; motivo: string } {
   if (FALHAS_SEM_WHATSAPP.has(codigo)) return { status: 'sem_whatsapp', motivo: 'O número não tem WhatsApp ou não recebe mensagem de empresa.' };
