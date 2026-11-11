@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, DollarSign, HeartPulse, Landmark, Target, UserCheck } from 'lucide-react';
+import { ChevronRight, DollarSign, HeartPulse, Target, UserCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useClients, useFinTransactions, usePayments, brl } from '@/hooks/useAdmin';
 import { caixaPorFrente, resumoDaFrente, type CaixaDoMes, type ResumoDaFrente } from '@/lib/empresa';
@@ -106,10 +106,10 @@ export function HomeEmpresa() {
 
         <div>
           <TituloDeSecao>Da empresa</TituloDeSecao>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+          {/* Conselho saiu da Home (dono, 11/11/2026); /conselho segue no ar pelo endereço. */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
             <ModuleTile label="Financeiro" description="As duas frentes e os custos gerais" icon={<DollarSign />} onClick={() => navigate('/financeiro')} />
             <ModuleTile label="Metas"      description="As metas da Via Pesados"            icon={<Target />}     onClick={() => navigate('/metas')} />
-            <ModuleTile label="Conselho"   description="A diretoria e as decisões"          icon={<Landmark />}   onClick={() => navigate('/conselho')} />
             <ModuleTile label="Equipe"     description="Membros e acessos"                  icon={<UserCheck />}  onClick={() => navigate('/equipe')} />
             <ModuleTile label="Saúde"      description="Se a plataforma está no ar"         icon={<HeartPulse />} onClick={() => navigate('/saude')} />
           </div>

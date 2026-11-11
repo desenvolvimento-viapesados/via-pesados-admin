@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import {
-  Users, DollarSign, CreditCard, MessageSquare, BarChart3, ChevronRight,
+  Users, DollarSign, CreditCard, BarChart3, ChevronRight,
   UserCheck, Target,
-  Layers, HeartPulse, Landmark,
+  Layers, HeartPulse,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useCrmCounts, useTickets, useClients, usePayments, brl } from '@/hooks/useAdmin';
+import { useCrmCounts, useClients, usePayments, brl } from '@/hooks/useAdmin';
 import { mrrDaCarteira } from '@/lib/mrr';
 import { inadimplentes } from '@/lib/inadimplencia';
 import { useMemo } from 'react';
@@ -31,8 +31,6 @@ function HomeDaFrente() {
   const { frente, trocar } = useFrente();
   const transportadora = frente === 'transportadora';
 
-  const { data: tickets = [] } = useTickets();
-  const openTickets = tickets.filter((t) => t.status !== 'resolvido').length;
   const counts = useCrmCounts();
 
   /* Só o MRR fica na abertura. O panorama da base instalada mora em
@@ -44,14 +42,15 @@ function HomeDaFrente() {
   const { data: clientes = [] } = useClients();
   const { data: pagamentos = [] } = usePayments();
   const dinheiro = useMemo(() => mrrDaCarteira(clientes, pagamentos), [clientes, pagamentos]);
-  /* Quantos clientes estão com fatura vencida — o número no botão de
-     Pagamentos, como o de chamados abertos no Suporte. */
+  /* Quantos clientes estão com fatura vencida — o número no botão de Pagamentos. */
   const devendo = useMemo(
     () => inadimplentes(pagamentos, clientes, [], new Date().toISOString().slice(0, 10)).length,
     [clientes, pagamentos],
   );
 
-  /* Implantação e Teste grátis saíram da Home (dono, 09/11): moram no CRM, em abas. */
+  /* Implantação e Teste grátis saíram da Home (dono, 09/11): moram no CRM, em abas.
+     Suporte e Conselho também saíram (dono, 11/11/2026: "por enquanto"): as telas
+     /tickets e /conselho continuam no ar pelo endereço, só sem cartão aqui. */
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -125,10 +124,8 @@ function HomeDaFrente() {
             <ModuleTile label="Pagamentos"    description="Cobranças e inadimplência"      icon={<CreditCard />}    onClick={() => navigate('/pagamentos')} badge={devendo} />
             <ModuleTile label="Financeiro"    description="Entradas, saídas e vencimentos" icon={<DollarSign />}    onClick={() => navigate('/financeiro')} />
             <ModuleTile label="Planos"        description="Planos e preços"                icon={<Layers />}        onClick={() => navigate('/planos')} />
-            <ModuleTile label="Suporte"       description="Chamados dos clientes"          icon={<MessageSquare />} onClick={() => navigate('/tickets')} badge={openTickets} />
             <ModuleTile label="Relatórios"    description="Recorrência, funil e caixa"     icon={<BarChart3 />}     onClick={() => navigate('/relatorios')} />
             <ModuleTile label="Metas"         description="Norte, OKR e horizonte"         icon={<Target />}        onClick={() => navigate('/metas')} />
-            <ModuleTile label="Conselho"      description="A diretoria e as decisões"      icon={<Landmark />}      onClick={() => navigate('/conselho')} />
             <ModuleTile label="Equipe"        description="Membros e acessos"              icon={<UserCheck />}     onClick={() => navigate('/equipe')} />
             {/* A saúde mede a plataforma do lojista (site, canais, cobrança);
                 a das transportadoras ainda não tem o que medir. */}
