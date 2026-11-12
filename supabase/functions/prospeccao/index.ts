@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
       if (corpo.instancia_id !== undefined) mudar.instancia_id = corpo.instancia_id || null;
       if (corpo.limite_dia !== undefined) {
         const n = Math.round(Number(corpo.limite_dia));
-        if (!(n >= 1 && n <= 60)) return json(400, { error: 'O teto do dia vai de 1 a 60.' });
+        if (!(n >= 1 && n <= 200)) return json(400, { error: 'O teto do dia vai de 1 a 200.' });
         mudar.limite_dia = n;
       }
       if (corpo.agente_responde !== undefined) mudar.agente_responde = !!corpo.agente_responde;

@@ -141,7 +141,7 @@ function Painel() {
             <div className="ml-auto flex items-center gap-1.5 text-[11.5px] text-foreground/45">
               teto
               <input
-                type="number" min={1} max={60}
+                type="number" min={1} max={200}
                 className={cn(inputCls, 'w-16 text-center tabular-nums')}
                 value={teto ?? String(cfg?.limite_dia ?? 15)}
                 onChange={(ev) => setTeto(ev.target.value)}

@@ -714,6 +714,12 @@ describe('bancada de 05/11: o que irritou o lojista', () => {
     }
     expect(regras(['Já chamei o Xavier, dono do Via Pesados. Ele te responde aqui mesmo, nesta conversa.'])).toEqual([]);
   });
+  it('"certinho" só barra quando promete resposta ou valor (dono, 12/11: Contagem Caminhões)', () => {
+    for (const t of ['Te passo o valor certinho depois.', 'O Xavier te manda o preço certinho.', 'Ele vai te responder bem certinho.']) {
+      expect(regras([t]), t).toContain('palco');
+    }
+    expect(regras(['Tranquilo, Priscila, é decisão da loja mesmo. Pra já deixar certinho pra gerência: quantos veículos vocês têm hoje no estoque?'])).not.toContain('palco');
+  });
 });
 
 describe('a ficha da loja (dono, 05/11/2026)', () => {

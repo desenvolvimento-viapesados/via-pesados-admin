@@ -316,12 +316,13 @@ describe('prospecção pelo número oficial', () => {
     expect(canalDa(null)).toBe('evolution');
   });
 
-  it('um contato só por loja, começando em 30 por dia e subindo 10 por semana', () => {
+  it('um contato só por loja, começando em 120 por dia e subindo 10 por semana (dono, 12/11)', () => {
     expect(REGRAS_DO_CANAL.oficial.maxContatos).toBe(1);
     const ini = new Date('2026-11-03T13:00:00Z');
-    expect(limiteDoDia(50, ini, ini, 'oficial')).toBe(30);
-    expect(limiteDoDia(50, ini, new Date('2026-11-11T13:00:00Z'), 'oficial')).toBe(40);
-    expect(limiteDoDia(50, ini, new Date('2026-12-30T13:00:00Z'), 'oficial')).toBe(50);
+    expect(limiteDoDia(200, ini, ini, 'oficial')).toBe(120);
+    expect(limiteDoDia(200, ini, new Date('2026-11-11T13:00:00Z'), 'oficial')).toBe(130);
+    expect(limiteDoDia(120, ini, new Date('2026-12-30T13:00:00Z'), 'oficial')).toBe(120);
+    expect(limiteDoDia(50, ini, ini, 'oficial')).toBe(50);
     expect(limiteDoDia(40, ini, ini)).toBe(15); // o QR code continua como era
   });
 

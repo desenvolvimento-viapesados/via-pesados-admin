@@ -91,13 +91,16 @@ export function proximoContato(contatoFeito: number, agora = new Date(), sorteio
  *  - UM contato por loja, pelo modelo aprovado. Insistir em quem não
  *    respondeu é o que mais gera bloqueio, e bloqueio no oficial cala junto
  *    a cobrança, o acesso e o "esqueci minha senha".
- *  - Começa em 30 por dia e sobe 10 por semana até o teto da tela.
+ *  - Começa em 120 por dia (dono, 12/11/2026: "está muito lento, a gente precisa abordar muitos
+ *    clientes"; a fila inteira até o fim da oferta, 30/11) e sobe 10 por semana até o teto da tela.
+ *    O número está no limite de 250 conversas iniciadas por dia na Meta: a tela vai até 200 para
+ *    sobrar vaga para cobrança, senha e avisos.
  */
 export type Canal = 'evolution' | 'oficial';
 
 export const REGRAS_DO_CANAL: Record<Canal, { maxContatos: number; tetoInicial: number; passoSemanal: number }> = {
   evolution: { maxContatos: MAX_CONTATOS, tetoInicial: 15, passoSemanal: 5 },
-  oficial: { maxContatos: 1, tetoInicial: 30, passoSemanal: 10 },
+  oficial: { maxContatos: 1, tetoInicial: 120, passoSemanal: 10 },
 };
 
 /** O número da YCloud é o oficial; o resto foi conectado pelo QR code. */

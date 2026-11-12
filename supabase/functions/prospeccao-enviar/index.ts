@@ -12,14 +12,14 @@ import { modeloAprovado, statusDoModelo } from '../_shared/wa.ts';
 import { precoDeHoje } from '../_shared/assistente-regras.ts';
 
 /**
- * A rotina do agente de prospecção. O pg_cron chama de 5 em 5 minutos; cada
+ * A rotina do agente de prospecção. O pg_cron chama de minuto em minuto (desde 12/11/2026); cada
  * chamada aborda NO MÁXIMO UMA loja (pelo oficial, a mensagem do vídeo), e só se tudo isto for verdade:
  *
  *   - o dono ligou o agente na tela (desligado por padrão);
  *   - é dia útil, entre 08h e 20h de Brasília;
  *   - o número escolhido está conectado;
  *   - o teto do dia não foi atingido;
- *   - já passou o intervalo sorteado desde o último envio (7 a 18 min).
+ *   - já passou o intervalo sorteado desde o último envio (prospeccao_config: 3 a 7 min desde 12/11).
  *
  * Lembretes vencidos saem antes de lojas novas: quem já recebeu o primeiro
  * contato não pode ficar esperando a fila de novas andar.

@@ -657,7 +657,10 @@ const PALCO: [RegExp, string][] = [
   /* Bancada de 05/11: o que irritou o lojista simulado. */
   [/\bsao\s+so\b|\bsem\s+rodeio\b|\bso\s+pra\s+(?:voce\s+saber|constar)\b|\bcontinua\s+com\s+voce\b/, 'pressão disfarçada ou promessa vaga'],
   [/\bem\s+tudo\b|\bem\s+todo\s+lugar\b/, '"em tudo" (diga os lugares: Mercado Livre, Insta, Face e site)'],
-  [/\bcertinho\b|\bcompensa\b|\bse\s+achar\s+caro\b|\bsair\s+sabendo\s+o\s+valor\b/, 'o valor como isca ou promessa de resposta que não vem'],
+  /* "certinho" só é isca quando promete resposta ou valor ("te responder certinho", "te passo o
+     valor certinho"). "Pra deixar certinho pra gerência" é conversa normal: o dono, 12/11, mandou
+     o Davi seguir a conversa que o conferente barrou por isso. */
+  [/\b(?:responder|responde|respondo|passar|passo|passa|mandar|mando|enviar|envio|valor|preco|proposta|orcamento|calcular|calculo)\b(?:\s+\S+){0,3}?\s+certinho\b|\bcompensa\b|\bse\s+achar\s+caro\b|\bsair\s+sabendo\s+o\s+valor\b/, 'o valor como isca ou promessa de resposta que não vem'],
   /* Dono, 06/11: "esse 'cês' não precisa, deixa menos forçado". */
   [/\bces\b|\bce\b|\bceis\b/, '"cê"/"cês" (escreva "você"/"vocês": o jeito do Xavier sem forçar)'],
 ];
