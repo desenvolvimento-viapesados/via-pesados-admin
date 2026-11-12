@@ -6,6 +6,14 @@
  * mesma pessoa operando os dois sistemas, então divergir de convenção aqui
  * significaria que o mesmo gesto produz números diferentes em telas diferentes.
  */
+import { telefoneLocal } from '../../supabase/functions/_shared/telefone';
+
+/**
+ * Telefone que veio do banco, já na máscara. O card do assistente guarda o número da conversa
+ * com o 55 (`5533988887777`); a máscara de digitação fica com os 11 primeiros dígitos e
+ * cortava o último (`(55) 33988-8877`). Use esta ao preencher campo com valor do banco.
+ */
+export const mascaraTelefoneDoBanco = (valor: string | null | undefined) => mascaraTelefone(telefoneLocal(valor));
 
 /** `27997246060` → `(27) 99724-6060`. Formata enquanto digita, sem esperar o campo completo. */
 export const mascaraTelefone = (valor: string | null | undefined) => {

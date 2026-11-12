@@ -21,7 +21,8 @@ import { FUNIS } from '@/lib/funis';
 import { DemoDialog, provisionarAmostra } from '@/components/crm/AmostrasTab';
 import { CidadeUF } from '@/components/crm/CidadeUF';
 import { CampoMascarado } from '@/components/crm/CampoMascarado';
-import { mascaraTelefone, mascaraMoeda, moedaDeNumero, valorDaMoeda } from '@/lib/mascaras';
+import { mascaraTelefone, mascaraTelefoneDoBanco, mascaraMoeda, moedaDeNumero, valorDaMoeda } from '@/lib/mascaras';
+import { telefoneLocal } from '../../supabase/functions/_shared/telefone';
 
 const inputCls =
   'w-full h-10 px-3 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50 transition-colors';
@@ -559,14 +560,14 @@ export default function ProspectDetalhe() {
               <div className="flex items-center gap-2">
                 <CampoMascarado
                   className={inputCls}
-                  valorInicial={mascaraTelefone(prospect.whatsapp)}
+                  valorInicial={mascaraTelefoneDoBanco(prospect.whatsapp)}
                   mascara={mascaraTelefone}
                   placeholder="WhatsApp"
                   aoSair={(v) => salvarCampo('whatsapp', v || null)}
                 />
                 {prospect.whatsapp && (
                   <a
-                    href={`https://wa.me/55${prospect.whatsapp.replace(/\D/g, '')}`}
+                    href={`https://wa.me/55${telefoneLocal(prospect.whatsapp)}`}
                     target="_blank" rel="noopener noreferrer"
                     className="h-10 w-10 shrink-0 rounded-xl border border-emerald-400/25 text-emerald-400 flex items-center justify-center hover:bg-emerald-400/10"
                   >

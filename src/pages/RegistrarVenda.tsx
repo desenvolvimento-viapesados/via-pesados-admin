@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFrente } from '@/contexts/FrenteContext';
 import { criarTesteGratis } from '@/hooks/useTesteGratis';
 import { CidadeUF } from '@/components/crm/CidadeUF';
-import { mascaraTelefone, soDigitos, mascaraMoeda, valorDaMoeda, moedaDeNumero } from '@/lib/mascaras';
+import { mascaraTelefone, mascaraTelefoneDoBanco, soDigitos, mascaraMoeda, valorDaMoeda, moedaDeNumero } from '@/lib/mascaras';
 import { DIAS_DE_TESTE } from '@/lib/testeGratis';
 
 const campo =
@@ -166,7 +166,7 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
       ...f,
       company_name: prospect?.company_name ?? '',
       contact_name: prospect?.contact_name ?? '',
-      whatsapp: mascaraTelefone(prospect?.whatsapp),
+      whatsapp: mascaraTelefoneDoBanco(prospect?.whatsapp),
       city: prospect?.city ?? '',
       state: prospect?.state ?? '',
       mrr: moedaDeNumero(prospect?.proposal_value),
