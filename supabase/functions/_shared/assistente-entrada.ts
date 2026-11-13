@@ -18,7 +18,7 @@
  * Fora das 08h–20h, ou com o botão geral desligado, fica pendente: a rotina
  * assistente-pendentes responde quando puder (mais antiga primeiro, janela de 24h aberta).
  */
-import { ETAPAS_SEM_RESPOSTA, dentroDoHorario, ehNumeroDeTeste, type Etapa, type Modo } from './assistente-regras.ts';
+import { ETAPAS_SEM_RESPOSTA, dentroDoHorario, ehNumeroDeTeste, numerosDoAviso, type Etapa, type Modo } from './assistente-regras.ts';
 import type { LojaQueRespondeu } from './prospeccao-entrada.ts';
 
 // deno-lint-ignore no-explicit-any
@@ -75,7 +75,7 @@ export async function aoChegarParaOAssistente(db: Db, conversaId: string, loja: 
   }
   /* O número que recebe o aviso de reunião: responder ou reagir ao aviso não é conversa de teste.
      Compara nas duas grafias (com e sem o 9): o WhatsApp entrega o 33 98814-4005 sem o 9 (11/11/2026). */
-  const doAviso = !!cfg?.aviso_whatsapp && ehNumeroDeTeste(telefone, [cfg.aviso_whatsapp]);
+  const doAviso = ehNumeroDeTeste(telefone, numerosDoAviso(cfg?.aviso_whatsapp));
   if (!ac && !loja && !doAviso && ehNumeroDeTeste(telefone, cfg?.telefones_teste)) {
     /* Número de teste: entra atendendo sozinho. Se o dono desligar na conversa, a linha
        existe e fica como ele deixou. */

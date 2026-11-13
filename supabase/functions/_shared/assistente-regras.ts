@@ -1344,6 +1344,19 @@ function grafias(tel: string): string[] {
  * A conversa é de um número de teste do dono? (com ou sem o 9). O telefone da conversa já
  * vem gravado com o código do país: 11 dígitos ali é número de fora, nunca ganha o 55.
  */
+/**
+ * Os WhatsApps que recebem o aviso de reunião (dono, 13/11/2026: o comercial e o pessoal).
+ * A coluna guarda os números separados por vírgula; aqui volta a lista sem repetição.
+ */
+export function numerosDoAviso(texto: string | null | undefined): string[] {
+  const lista: string[] = [];
+  for (const pedaco of String(texto ?? '').split(/[,;\n]+/)) {
+    const n = telefoneDeTeste(pedaco.trim());
+    if (n && !lista.includes(n)) lista.push(n);
+  }
+  return lista;
+}
+
 export function ehNumeroDeTeste(telefone: string | null | undefined, lista: readonly string[] | null | undefined): boolean {
   const t = String(telefone ?? '').replace(/\D/g, '');
   if (!/^55\d{10,11}$/.test(t) || !lista?.length) return false;

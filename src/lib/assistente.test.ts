@@ -8,7 +8,7 @@ import {
   custo, somarUso, PRECOS,
   dentroDoHorario, janelaAberta, podeResponderAgora, inicioDoDiaSP, esperaDoAgrupamento, filaDasPendentes,
   humanoAssumiu, passouDoTeto, respostaAoPreco, tetoDoDiaAtingido, LIMITES,
-  pedidoExplicitoDeParar, neutro, temFallbackNoServidor, ehNumeroDeTeste, telefoneDeTeste,
+  pedidoExplicitoDeParar, neutro, temFallbackNoServidor, ehNumeroDeTeste, numerosDoAviso, telefoneDeTeste,
   podeOferecerHorario, pedidoMaisQuente, pedidoComOBotao, PERSONA,
   type Agenda, type Etapa,
   falaDoPreco, precoDeHoje, valoresLiberados,
@@ -990,5 +990,22 @@ describe('as perguntas fora de hora que a revisão achou (06/11/2026)', () => {
   it('antes de marcar: a cidade sozinha só não se pergunta quando a loja já é conhecida', () => {
     expect(r(['Boa! E a loja de vocês fica em que cidade?'], { lojaConhecida: true })).toContain('pergunta_de_ficha');
     expect(r(['Pra eu te mostrar como fica na sua loja: como ela chama e de que cidade vocês são?'], {})).toEqual([]);
+  });
+});
+
+describe('WhatsApps do aviso de reunião', () => {
+  it('lê um ou vários números, com máscara ou sem, sem repetir', () => {
+    expect(numerosDoAviso('5533988144005')).toEqual(['5533988144005']);
+    expect(numerosDoAviso('5533988144005,(27) 99724-6060')).toEqual(['5533988144005', '5527997246060']);
+    expect(numerosDoAviso('(33) 98814-4005, 33 98814-4005')).toEqual(['5533988144005']);
+    expect(numerosDoAviso(null)).toEqual([]);
+    expect(numerosDoAviso('')).toEqual([]);
+  });
+
+  it('responder ao aviso, de qualquer um dos números, não vira conversa de teste', () => {
+    const lista = numerosDoAviso('5533988144005,5527997246060');
+    expect(ehNumeroDeTeste('552797246060', lista)).toBe(true);
+    expect(ehNumeroDeTeste('553388144005', lista)).toBe(true);
+    expect(ehNumeroDeTeste('5531999990000', lista)).toBe(false);
   });
 });

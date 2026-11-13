@@ -17,7 +17,7 @@ import {
   conferirCitacoes, cortarMemoria, custo, dentroDoHorario, estagioDoCard, horarioFalado, horarioLivre,
   horariosCitados, horariosLivres, janelaAberta, LIMITES, normalizarTexto, porQueNaoPode, proximaEtapa,
   neutro, respostaAoPreco, ROTULO_DA_ETAPA, temFallbackNoServidor, textoDaMensagem, citacaoConfere,
-  PEDIDOS, pedidoMaisQuente, type Pedido, falaDoPreco, precoDeHoje,
+  PEDIDOS, pedidoMaisQuente, type Pedido, falaDoPreco, precoDeHoje, numerosDoAviso,
 } from './assistente-regras.ts';
 import { INSTRUCOES_DOSSIE, SCHEMA_DOSSIE } from './assistente-roteiro.ts';
 import { enviarTemplate, statusDoModelo } from './wa.ts';
@@ -1028,8 +1028,8 @@ export async function avisarReuniao(db: Db, cfg: AssistenteConfig | null, conver
   evento: 'marcou' | 'remarcou' | 'cancelou'; reuniao_id: string; inicio: Date; chave: string;
 }) {
   try {
-    const para = String(cfg?.aviso_whatsapp ?? '').replace(/\D/g, '');
-    if (!para) return;
+    const destinos = numerosDoAviso(cfg?.aviso_whatsapp);
+    if (!destinos.length) return;
     if ((await statusDoModelo('aviso_reuniao_marcada')) !== 'APPROVED') {
       console.warn('assistente: aviso de reunião não saiu: o modelo aviso_reuniao_marcada ainda não foi aprovado');
       return;
@@ -1041,19 +1041,22 @@ export async function avisarReuniao(db: Db, cfg: AssistenteConfig | null, conver
       : { data: null };
     const nome = card?.company_name || e?.situacao?.loja || loja?.nome || conversa.nome || conversa.telefone || 'sem nome';
     const cidade = e?.situacao?.cidade || card?.city || (loja?.cidade ? `${loja.cidade}${loja.uf ? `/${loja.uf}` : ''}` : '');
-    const res = await enviarTemplate(db, {
-      para,
-      template: 'aviso_reuniao_marcada',
-      params: {
-        body: [r.evento, umaLinha(cidade ? `${nome}, ${cidade}` : String(nome)), horarioFalado(r.inicio)],
-        urlSuffix: conversa.id,
-      },
-      chave: `aviso_reuniao:${r.chave}`,
-      validoAte: r.inicio.toISOString(),
-      /* Se esperar a janela das 08h e a reunião cair nesse meio-tempo, o aviso não sai. */
-      condicao: r.evento === 'cancelou' ? null : { tipo: 'reuniao_agendada', meeting_id: r.reuniao_id },
-    });
-    if (!res.ok) console.warn('assistente: aviso de reunião não saiu', res.motivo);
+    /* Um envio por número, cada um com a sua trava: o primeiro que falha não segura o outro. */
+    for (const para of destinos) {
+      const res = await enviarTemplate(db, {
+        para,
+        template: 'aviso_reuniao_marcada',
+        params: {
+          body: [r.evento, umaLinha(cidade ? `${nome}, ${cidade}` : String(nome)), horarioFalado(r.inicio)],
+          urlSuffix: conversa.id,
+        },
+        chave: destinos.length > 1 ? `aviso_reuniao:${r.chave}:${para}` : `aviso_reuniao:${r.chave}`,
+        validoAte: r.inicio.toISOString(),
+        /* Se esperar a janela das 08h e a reunião cair nesse meio-tempo, o aviso não sai. */
+        condicao: r.evento === 'cancelou' ? null : { tipo: 'reuniao_agendada', meeting_id: r.reuniao_id },
+      });
+      if (!res.ok) console.warn('assistente: aviso de reunião não saiu', para.slice(-4), res.motivo);
+    }
   } catch (err) {
     console.warn('assistente: aviso de reunião falhou', err instanceof Error ? err.message : err);
   }

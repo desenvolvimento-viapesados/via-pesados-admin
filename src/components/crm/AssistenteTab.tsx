@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Panel, SectionHeader, EmptyState } from '@/components/admin/ui';
 import { useTeam } from '@/hooks/useAdmin';
 import {
-  MODOS, ROTULO_DO_MODO, dentroDoHorario, telefoneDeTeste,
+  MODOS, ROTULO_DO_MODO, dentroDoHorario, numerosDoAviso, telefoneDeTeste,
   useAssistenteConfig, useSalvarConfig, useStatusDoAssistente, useGastoHoje,
   useFatos, useSalvarFato, useApagarFato, useConversasAtendidas, useRascunhosEsperando,
   useTempoRealDoAssistente,
@@ -91,7 +91,7 @@ const doBanco = (c: AssistenteConfig): Formulario => ({
   preco_mensal: c.preco_mensal == null ? '' : String(c.preco_mensal),
   preco_cheio: c.preco_cheio == null ? '' : String(c.preco_cheio),
   oferta_ate: c.oferta_ate ?? '',
-  aviso_whatsapp: c.aviso_whatsapp ? fone(c.aviso_whatsapp) : '',
+  aviso_whatsapp: numerosDoAviso(c.aviso_whatsapp).map(fone).join(', '),
 });
 
 /** "(27) 99724-6060, 33 98814-4005" → ['5527997246060', '5533988144005'], ou o pedaço que não é telefone. */
@@ -122,9 +122,10 @@ function mudancas(f: Formulario, c: AssistenteConfig): { mudanca: MudancaNaConfi
   if (teste.invalido) return { mudanca: m, erro: `"${teste.invalido}" não é um telefone com DDD.` };
   if (teste.numeros.length > 10) return { mudanca: m, erro: 'No máximo 10 números de teste.' };
 
-  const avisoTexto = f.aviso_whatsapp.trim();
-  const aviso = avisoTexto ? telefoneDeTeste(avisoTexto) : null;
-  if (avisoTexto && !aviso) return { mudanca: m, erro: `"${avisoTexto}" não é um WhatsApp com DDD.` };
+  const avisoLido = lerNumerosDeTeste(f.aviso_whatsapp);
+  if (avisoLido.invalido) return { mudanca: m, erro: `"${avisoLido.invalido}" não é um WhatsApp com DDD.` };
+  if (avisoLido.numeros.length > 3) return { mudanca: m, erro: 'No máximo 3 WhatsApps no aviso.' };
+  const aviso = avisoLido.numeros.join(',');
 
   if ((link || null) !== (c.link_reuniao ?? null)) m.link_reuniao = link || null;
   if ((aviso || null) !== (c.aviso_whatsapp ?? null)) m.aviso_whatsapp = aviso || null;
@@ -297,14 +298,14 @@ function Configuracao({ config }: { config: AssistenteConfig }) {
           </div>
         </div>
         <div className="space-y-1.5 sm:max-w-[320px]">
-          <p className={rotuloCls}>WhatsApp do aviso</p>
+          <p className={rotuloCls}>WhatsApps do aviso</p>
           <input
             className={cn(inputCls, 'w-full tabular-nums')}
-            placeholder="(33) 98814-4005"
+            placeholder="(33) 98814-4005, (33) 99999-0000"
             value={f.aviso_whatsapp}
             onChange={(e) => muda('aviso_whatsapp', e.target.value)}
           />
-          <p className="text-[10.5px] text-foreground/35">Quando o Davi marca ou remarca, este número recebe o aviso com o botão para abrir a conversa.</p>
+          <p className="text-[10.5px] text-foreground/35">Quando o Davi marca, remarca ou cancela, cada número recebe o aviso. Separe por vírgula.</p>
         </div>
       </div>
 
