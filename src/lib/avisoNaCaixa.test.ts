@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { textoDoModeloEnviado } from '../../supabase/functions/_shared/wa.ts';
+import { textoDoModeloEnviado } from '../../supabase/functions/_shared/modelo-texto.ts';
 
 /**
  * O aviso automático aparece na tela de WhatsApp com o texto que a pessoa recebeu

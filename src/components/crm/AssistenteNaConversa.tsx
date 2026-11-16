@@ -672,15 +672,14 @@ export function CorpoDaMensagem({ m, saida }: { m: Mensagem; saida: boolean }) {
           <img src={url} alt="Foto" className="max-h-60 rounded-xl mb-1" loading="lazy" />
         </a>
       )}
-      {mostrarTexto && <p className="text-[13px] whitespace-pre-wrap break-words">{m.conteudo}</p>}
+      {mostrarTexto && <p className="break-words leading-snug whitespace-pre-wrap">{m.conteudo}</p>}
       {audio && m.transcricao && (
-        <p className={cn('text-[12px] italic whitespace-pre-wrap break-words mt-1',
-          saida ? 'text-primary-foreground/80' : 'text-foreground/65')}>
+        <p className="text-[12.5px] italic whitespace-pre-wrap break-words mt-1 text-[var(--wa-texto3)]">
           “{m.transcricao}”
         </p>
       )}
       {audio && !m.transcricao && !saida && (
-        <p className="text-[10.5px] text-foreground/35 mt-0.5">Sem transcrição</p>
+        <p className="text-[10.5px] text-[var(--wa-texto2)] mt-0.5">Sem transcrição</p>
       )}
     </>
   );

@@ -22,7 +22,7 @@ export type {
 } from '../../supabase/functions/_shared/assistente-regras';
 export {
   MODOS, ROTULO_DO_MODO, ROTULO_DA_ETAPA, ETAPAS_SEM_RESPOSTA, LIMITES,
-  horarioFalado, fiscal, dentroDoHorario, janelaAberta, textoDaMensagem, ehNumeroDeTeste, telefoneDeTeste,
+  horarioFalado, fiscal, dentroDoHorario, janelaAberta, textoDaMensagem, ehNumeroDeTeste, telefoneDeTeste, numerosDoAviso,
   precoDeHoje, valoresLiberados,
 } from '../../supabase/functions/_shared/assistente-regras';
 

@@ -5,6 +5,28 @@
 @layer base {
   :root,
   .light {
+    /* A paleta do WhatsApp, a mesma do sistema do lojista (16/11/2026): a tela de
+       WhatsApp do administrativo é cópia da de lá. Claro aqui, escuro no .dark. */
+    --wa-fundo: #ffffff;
+    --wa-painel: #f0f2f5;
+    --wa-chat: #efeae2;
+    --wa-barra: #f0f2f5;
+    --wa-input: #ffffff;
+    --wa-texto: #111b21;
+    --wa-texto2: #5d6b74;
+    --wa-texto3: #3b4a54;
+    --wa-icone: #54656f;
+    --wa-balao-meu: #d9fdd3;
+    --wa-balao-dele: #ffffff;
+    --wa-linha: #0000001f;
+    --wa-linha-fraca: #0000000f;
+    --wa-realce: #0000000a;
+    --wa-realce-forte: #00000014;
+    --wa-hora-minha: #00000073;
+    --wa-verde-fraco: #25d36626;
+    --wa-tique: #53bdeb;
+    --wa-verde: #25d366;
+    --primary-hex: #FF6E00;
     --background: 210 20% 98%;
     --foreground: 220 25% 10%;
     --card: 0 0% 100%;
@@ -32,6 +54,26 @@
   }
 
   .dark {
+    --wa-fundo: #0a0a0a;
+    --wa-painel: #0d0d0d;
+    --wa-chat: #050505;
+    --wa-barra: #171717;
+    --wa-input: #212121;
+    --wa-texto: #ededed;
+    --wa-texto2: #9b9b9b;
+    --wa-texto3: #cfcfcf;
+    --wa-icone: #b2b2b2;
+    --wa-balao-meu: #0b4f40;
+    --wa-balao-dele: #1b1b1b;
+    --wa-linha: #ffffff1a;
+    --wa-linha-fraca: #ffffff0d;
+    --wa-realce: #ffffff08;
+    --wa-realce-forte: #ffffff14;
+    --wa-hora-minha: #ffffff99;
+    --wa-verde-fraco: #25d36620;
+    --wa-tique: #53bdeb;
+    --wa-verde: #25d366;
+    --primary-hex: #FF6E00;
     --background: 0 0% 3%;
     --foreground: 0 0% 92%;
     --card: 0 0% 6%;

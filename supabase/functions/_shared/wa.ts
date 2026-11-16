@@ -29,8 +29,8 @@
 import { configYCloud, enviarPorYCloud, ycloudPelaMetade, listarTemplates } from './ycloud.ts';
 import { conferirParams } from './conferirParams.ts';
 import { dentroDaJanela, proximaAbertura } from './regua.ts';
-import { MODELOS } from './modelos.ts';
-import { grafiaDaConversa, textoDoModelo, variantes } from './prospeccao-regras.ts';
+import { grafiaDaConversa, variantes } from './prospeccao-regras.ts';
+import { textoDoModeloEnviado } from './modelo-texto.ts';
 
 const GRAPH = 'https://graph.facebook.com/v21.0';
 
@@ -307,22 +307,6 @@ export async function enviarTemplate(
 /** Quem aparece como remetente dos avisos automáticos na tela. Sem `enviada_por` e sem
  *  `turno_id`: assim o Davi não lê o aviso como "a equipe já está na conversa". */
 export const REMETENTE_AVISO = 'Aviso automático';
-
-/** O texto do modelo como a pessoa recebeu: cabeçalho, corpo e botões. */
-export function textoDoModeloEnviado(template: string, params: Params | undefined): string {
-  const comps = MODELOS.find((m) => m.name === template)?.components ?? [];
-  const partes: string[] = [];
-  const header = comps.find((c) => c.type === 'HEADER');
-  if (params?.video) partes.push('[vídeo]');
-  else if (params?.documento) partes.push(`[documento: ${params.documento.filename}]`);
-  else if (header?.text) partes.push(textoDoModelo(String(header.text), params?.header ?? []));
-  const corpo = comps.find((c) => c.type === 'BODY');
-  partes.push(corpo?.text ? textoDoModelo(String(corpo.text), params?.body ?? []) : `[modelo ${template}]`);
-  const botoes = (comps.find((c) => c.type === 'BUTTONS')?.buttons ?? []) as Array<{ text?: string }>;
-  const rotulos = botoes.map((b) => b.text).filter(Boolean);
-  if (rotulos.length) partes.push(rotulos.map((t) => `[${t}]`).join(' '));
-  return partes.filter(Boolean).join('\n\n');
-}
 
 /**
  * O aviso que saiu pelo número oficial, na conversa dele na tela de WhatsApp. Antes só a
