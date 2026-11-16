@@ -29,6 +29,8 @@
 import { configYCloud, enviarPorYCloud, ycloudPelaMetade, listarTemplates } from './ycloud.ts';
 import { conferirParams } from './conferirParams.ts';
 import { dentroDaJanela, proximaAbertura } from './regua.ts';
+import { MODELOS } from './modelos.ts';
+import { grafiaDaConversa, textoDoModelo, variantes } from './prospeccao-regras.ts';
 
 const GRAPH = 'https://graph.facebook.com/v21.0';
 
@@ -256,6 +258,8 @@ export async function enviarTemplate(
       });
       await db.from('wa_envios').update({ message_id: id, enviado_em: new Date().toISOString() })
         .eq('template', args.template).eq('chave', args.chave);
+      await gravarModeloNaCaixa(db, { para, template: args.template, params: args.params, providerId: id, clientId: args.client_id })
+        .catch((e) => console.error('[wa] não gravou na caixa:', e));
       return { ok: true, message_id: id };
     } catch (e) {
       const motivo = e instanceof Error ? e.message : 'falha na YCloud';
@@ -297,5 +301,68 @@ export async function enviarTemplate(
     await db.from('wa_envios').update({ erro: motivo.slice(0, 400) })
       .eq('template', args.template).eq('chave', args.chave);
     return { ok: false, motivo };
+  }
+}
+
+/** Quem aparece como remetente dos avisos automáticos na tela. Sem `enviada_por` e sem
+ *  `turno_id`: assim o Davi não lê o aviso como "a equipe já está na conversa". */
+export const REMETENTE_AVISO = 'Aviso automático';
+
+/** O texto do modelo como a pessoa recebeu: cabeçalho, corpo e botões. */
+export function textoDoModeloEnviado(template: string, params: Params | undefined): string {
+  const comps = MODELOS.find((m) => m.name === template)?.components ?? [];
+  const partes: string[] = [];
+  const header = comps.find((c) => c.type === 'HEADER');
+  if (params?.video) partes.push('[vídeo]');
+  else if (params?.documento) partes.push(`[documento: ${params.documento.filename}]`);
+  else if (header?.text) partes.push(textoDoModelo(String(header.text), params?.header ?? []));
+  const corpo = comps.find((c) => c.type === 'BODY');
+  partes.push(corpo?.text ? textoDoModelo(String(corpo.text), params?.body ?? []) : `[modelo ${template}]`);
+  const botoes = (comps.find((c) => c.type === 'BUTTONS')?.buttons ?? []) as Array<{ text?: string }>;
+  const rotulos = botoes.map((b) => b.text).filter(Boolean);
+  if (rotulos.length) partes.push(rotulos.map((t) => `[${t}]`).join(' '));
+  return partes.filter(Boolean).join('\n\n');
+}
+
+/**
+ * O aviso que saiu pelo número oficial, na conversa dele na tela de WhatsApp. Antes só a
+ * prospecção aparecia: aviso de reunião, lembrete, cobrança e acesso saíam e não ficavam em
+ * lugar nenhum (16/11/2026). A prospecção continua gravando por conta própria (inclusive a
+ * que fica para as 08h), por isso fica de fora aqui.
+ */
+export async function gravarModeloNaCaixa(
+  db: { from: (t: string) => any },
+  a: { para: string; template: string; params?: Params; providerId: string | null; clientId?: string | null },
+) {
+  if (a.template.startsWith('prospeccao')) return;
+  const { data: inst } = await db.from('wa_instancias').select('id')
+    .eq('origem', 'ycloud').eq('is_active', true).limit(1).maybeSingle();
+  if (!inst) return;
+  const texto = textoDoModeloEnviado(a.template, a.params);
+  const agora = new Date().toISOString();
+  const { data: existentes } = await db.from('wa_conversas').select('id, telefone, client_id')
+    .eq('instancia_id', inst.id).in('telefone', variantes(a.para));
+  const telefone = grafiaDaConversa(a.para, (existentes ?? []).map((c: { telefone: string }) => c.telefone));
+  let conversa = (existentes ?? []).find((c: { telefone: string }) => c.telefone === telefone) as
+    { id: string; client_id: string | null } | undefined;
+  const resumo = { ultima_mensagem: texto, ultima_mensagem_em: agora, ultima_direcao: 'saida', updated_at: agora };
+  if (conversa) {
+    await db.from('wa_conversas').update({
+      ...resumo, ...(a.clientId && !conversa.client_id ? { client_id: a.clientId } : {}),
+    }).eq('id', conversa.id);
+  } else {
+    const { data } = await db.from('wa_conversas').insert({
+      instancia_id: inst.id, telefone, client_id: a.clientId ?? null, ...resumo,
+    }).select('id, client_id').maybeSingle();
+    conversa = data ?? undefined;
+  }
+  if (!conversa) return;
+  const { error } = await db.from('wa_mensagens').insert({
+    conversa_id: conversa.id, instancia_id: inst.id, direcao: 'saida', tipo: 'texto', conteudo: texto,
+    provider_message_id: a.providerId, status: 'enviada', enviada_por_nome: REMETENTE_AVISO, created_at: agora,
+    metadata: { template: a.template },
+  });
+  if (error?.code === '23505' && a.providerId) {
+    await db.from('wa_mensagens').update({ enviada_por_nome: REMETENTE_AVISO }).eq('provider_message_id', a.providerId);
   }
 }
