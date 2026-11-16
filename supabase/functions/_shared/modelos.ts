@@ -716,6 +716,43 @@ export const MODELOS: Modelo[] = [
    }
   ]
  } ,
+ /* Prospecção com o filme de produto (16/11/2026, texto do dono): o mesmo modelo serve para
+    primeiro contato e para remarketing de quem não respondeu. Sem rodapé, só os dois botões
+    ("Quero conhecer" e "Não tenho interesse"). Vídeo: logos/wa/prospeccao-v3.mp4 (filme de
+    produto, H.264 Main sem B-frames, 4,9 MB). */
+ {
+  "name": "prospeccao_unico",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "HEADER",
+    "format": "VIDEO",
+    "example": {
+     "header_url": [
+      "https://ktjvyysqhsyvjmhumjly.supabase.co/storage/v1/object/public/logos/wa/prospeccao-v3.mp4"
+     ]
+    }
+   },
+   {
+    "type": "BODY",
+    "text": "O único sistema do Brasil feito para lojas de veículos pesados.\n\nAutomatize suas publicações com a Via Pesados: cadastre uma vez e publique em todos os canais."
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "QUICK_REPLY",
+      "text": "Quero conhecer"
+     },
+     {
+      "type": "QUICK_REPLY",
+      "text": "Não tenho interesse"
+     }
+    ]
+   }
+  ]
+ } ,
  /* Prospecção pelo número oficial (10/11/2026, decisão do dono): UMA mensagem só por loja.
     O vídeo dele já faz o trabalho das três de antes (mostra o envio, diz que é o Via Pesados, fala
     da Black Friday e pede para responder); o texto precisa vender mesmo sem o play, porque no 4G
