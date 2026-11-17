@@ -73,8 +73,8 @@ export const MARCA_DO_LEMBRETE = 'Passando aqui de novo';
 
 /** Dono, 17/11/2026: simples. Quem é, o que é, e a resposta fácil (o mesmo do botão). */
 export const RECADO_PARA_A_EQUIPE =
-  `Oi! Aqui é o Davi, atendente da Via Pesados. ${MARCA_DO_RECADO}.\n\n`
-  + 'Cadastra o caminhão uma vez e ele sai no *Mercado Livre, Instagram e Facebook*. Pra ver funcionando na sua loja, é só responder *quero conhecer*.';
+  `Oi! Aqui é o Davi, atendente da Via Pesados. ${MARCA_DO_RECADO}. `
+  + 'O único com conexões oficiais para *Mercado Livre, Instagram e Facebook*. Pra ver funcionando na sua loja, é só responder *quero conhecer*.';
 
 /** Horas depois do recado, sem ninguém responder, para o lembrete sair (dentro das 24h). */
 export const HORAS_ATE_O_LEMBRETE = 4;
