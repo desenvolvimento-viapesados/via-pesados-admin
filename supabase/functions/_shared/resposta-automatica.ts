@@ -74,7 +74,7 @@ export const MARCA_DO_LEMBRETE = 'Passando aqui de novo';
 /** Dono, 17/11/2026: simples. Quem é, o que é, e a resposta fácil (o mesmo do botão). */
 export const RECADO_PARA_A_EQUIPE =
   `Oi! Aqui é o Davi, atendente da Via Pesados. ${MARCA_DO_RECADO}. `
-  + 'O único com conexões oficiais para *Mercado Livre, Instagram e Facebook*. Pra ver funcionando na sua loja, é só responder *quero conhecer*.';
+  + 'O único com conexões oficiais para *Mercado Livre, Instagram e Facebook*. Pra ver funcionando na sua loja, é só me falar.';
 
 /** Horas depois do recado, sem ninguém responder, para o lembrete sair (dentro das 24h). */
 export const HORAS_ATE_O_LEMBRETE = 4;
@@ -109,7 +109,7 @@ export function lerRespostasAutomaticas(msgs: Msg[]): LeituraDoRobo {
     if (m.direcao === 'saida') {
       ultimaSaida = em; novas = 0; novasRobo = 0;
       const t = m.conteudo ?? '';
-      if (t.includes(MARCA_DO_RECADO) && t.includes('quero conhecer') && !recadoEm) recadoEm = m.created_at;
+      if (t.includes(MARCA_DO_RECADO) && t.startsWith('Oi! Aqui é o Davi') && !recadoEm) recadoEm = m.created_at;
       if (t.startsWith(MARCA_DO_LEMBRETE)) lembreteJaFoi = true;
       continue;
     }

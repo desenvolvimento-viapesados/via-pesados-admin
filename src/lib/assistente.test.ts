@@ -686,6 +686,9 @@ describe('o botão "Quero ver funcionando" do modelo da prospecção (06/11/2026
     expect(INSTRUCOES).toContain('Automatize suas publicações com a Via Pesados: cadastre uma vez e publique em todos os canais.');
     expect(INSTRUCOES).toMatch(/Tocou "Quero conhecer" \(ou escreveu só isso\): é pedido de ver/);
     expect(INSTRUCOES).toMatch(/"Quero ver funcionando" vale igual a "Quero conhecer"/);
+    /* Dono, 17/11: não se prender ao botão: "gostei" também conduz ao convite. */
+    expect(INSTRUCOES).toMatch(/Não se prenda ao botão nem ao texto da mensagem/);
+    expect(INSTRUCOES).toMatch(/não espere palavra certa/);
   });
 
   it('a 1ª resposta a uma loja da lista não é "só perguntar": quem pede explicação recebe; o "Bora!" curto, sim', () => {

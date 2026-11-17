@@ -110,7 +110,7 @@ describe('resposta automática da loja (dono, 17/11/2026)', () => {
   it('o recado (dono, 17/11): simples, "atendente da Via Pesados", "o único sistema do país", resposta fácil', () => {
     expect(RECADO_PARA_A_EQUIPE).toMatch(/^Oi! Aqui é o Davi, atendente da Via Pesados\. Somos o único sistema do país feito para lojas de veículos pesados\./);
     expect(RECADO_PARA_A_EQUIPE).toContain(MARCA_DO_RECADO);
-    expect(RECADO_PARA_A_EQUIPE).toMatch(/\*quero conhecer\*/);
+    expect(RECADO_PARA_A_EQUIPE).toMatch(/é só me falar\.$/);
     expect(RECADO_PARA_A_EQUIPE).toContain('O único com conexões oficiais para *Mercado Livre, Instagram e Facebook*.');
     expect(RECADO_PARA_A_EQUIPE.length).toBeLessThan(280);
     expect(RECADO_PARA_A_EQUIPE).not.toMatch(/R\$|grátis|Black|automátic/i);
