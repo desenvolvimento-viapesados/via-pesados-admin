@@ -13,6 +13,7 @@ import {
   linhaDaConversa, REMETENTE_PROSPECCAO, salvarEstado, segredoConfere, transcreverAudios, ultimaEntradaEm, validarMarcacao,
 } from '../_shared/assistente.ts';
 import { FERRAMENTAS, INSTRUCOES, textoDosFatos } from '../_shared/assistente-roteiro.ts';
+import { lerRespostasAutomaticas, RECADO_PARA_A_EQUIPE } from '../_shared/resposta-automatica.ts';
 
 /**
  * O motor do assistente de vendas: lê a conversa, pensa e responde (ou deixa o rascunho).
@@ -276,6 +277,38 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
     }
     await soltar({ ultimo_turno_em: inicioTurno });
     return 'pediu para sair';
+  }
+
+  /* ── resposta automática da loja (dono, 17/11/2026): robô não é lead ──
+     Saudação do WhatsApp Business, menu ou robô de pré-atendimento: a loja não "respondeu"
+     (sai de Em conversa e não anda no funil) e o Davi não qualifica um robô. Deixa UM recado
+     para quem da equipe ler depois; robô de novo, ou mensagem de ausência depois que uma
+     pessoa já falou: silêncio (nunca robô conversando com robô). */
+  const robo = lerRespostasAutomaticas(msgs);
+  if (robo.novasSaoRobo) {
+    if (!robo.humanoJaFalou && e.loja_id) {
+      await db.from('prospeccao_lojas').update({
+        status: 'automatica', respondeu_em: null, atualizada_em: new Date().toISOString(),
+        motivo: 'Só a resposta automática da loja respondeu (saudação, menu ou robô).',
+      }).eq('id', e.loja_id).in('status', ['conversando', 'em_contato', 'sem_resposta', 'automatica']);
+    }
+    if (robo.humanoJaFalou || robo.recadoJaFoi) {
+      await soltar();
+      return 'resposta automática da loja: o Davi não responde robô';
+    }
+    const acoes: AcaoDoTurno[] = [];
+    const { data: turno } = await db.from('assistente_turnos').insert({
+      conversa_id: conversaId, entrada_ids: entradaIds, mensagens: [RECADO_PARA_A_EQUIPE], acoes, ferramentas: [],
+      modelo: null, usage: null, custo_usd: 0, fiscal: { ok: true, violacoes: [], tentativas: 0 },
+      status: e.modo === 'sozinho' ? 'enviado' : 'rascunho',
+    }).select('id').single();
+    if (e.modo === 'sozinho' && turno) {
+      const r = await concluirTurno(db, { turnoId: turno.id, conversaId, mensagens: [RECADO_PARA_A_EQUIPE], acoes, cfg, status: 'enviado', equipeDesde: inicioTurno });
+      if (!r.ok) { await soltar({ ultimo_turno_em: inicioTurno }); return 'resposta automática: o recado não saiu'; }
+    }
+    /* O recado já apresenta o Davi: quando uma pessoa responder, ele não se apresenta de novo. */
+    await soltar({ ultimo_turno_em: inicioTurno, ...(e.modo === 'sozinho' ? { apresentou: true } : {}) });
+    return e.modo === 'sozinho' ? 'resposta automática: recado para a equipe da loja' : 'resposta automática: recado sugerido';
   }
 
   /* ── o botão "Quero ver funcionando" do modelo: pedido 'ver' ── */

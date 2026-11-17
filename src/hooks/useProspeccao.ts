@@ -9,7 +9,7 @@ import { supabase, FUNCTIONS_URL } from '@/integrations/supabase/client';
 
 export type StatusLoja =
   | 'nova' | 'pronta' | 'sem_whatsapp' | 'ja_conhecida' | 'em_contato' | 'sem_resposta'
-  | 'conversando' | 'com_voce' | 'sem_interesse' | 'descartada';
+  | 'conversando' | 'automatica' | 'com_voce' | 'sem_interesse' | 'descartada';
 
 export type LojaProspeccao = {
   id: string; nome: string; cidade: string | null; uf: string | null; telefone: string;

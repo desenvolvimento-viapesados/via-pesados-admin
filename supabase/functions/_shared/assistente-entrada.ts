@@ -29,7 +29,7 @@ async function fixar(db: Db, conversaId: string, lojaId: string | null, motivo: 
   await db.from('wa_conversas').update({ fixada: true, updated_at: agora }).eq('id', conversaId);
   if (lojaId) {
     await db.from('prospeccao_lojas').update({ status: 'com_voce', motivo, atualizada_em: agora })
-      .eq('id', lojaId).in('status', ['em_contato', 'sem_resposta', 'conversando']);
+      .eq('id', lojaId).in('status', ['em_contato', 'sem_resposta', 'conversando', 'automatica']);
   }
 }
 

@@ -1,7 +1,7 @@
 /**
  * A parte da prospecção no wa-receber: a loja da fila escreveu no número da prospecção.
  *
- *   - em contato / sem resposta / conversando → vira "conversando" e para de receber
+ *   - em contato / sem resposta / conversando / só robô → vira "conversando" (se foi robô de novo, o assistente-responder devolve para "automatica") e para de receber
  *     lembrete (não é mais varrida para "sem resposta"); devolve a loja para o gancho do
  *     assistente de vendas, que decide quem atende (assistente-entrada.ts);
  *   - recusou antes e voltou a escrever → é com o Xavier (fixada no topo);
@@ -36,7 +36,7 @@ export async function aoChegarMensagem(db: Db, instanciaId: string, telefone: st
     }).eq('id', loja.id);
     return null;
   }
-  if (!['em_contato', 'sem_resposta', 'conversando'].includes(loja.status)) return null;
+  if (!['em_contato', 'sem_resposta', 'conversando', 'automatica'].includes(loja.status)) return null;
 
   await db.from('prospeccao_lojas').update({
     status: 'conversando', respondeu_em: loja.respondeu_em ?? agora, proximo_contato_em: null,

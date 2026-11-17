@@ -24,6 +24,7 @@ export type Fase = (typeof FASES)[number]['chave'];
 /** Fora do caminho: o que espera alguém, quem não respondeu e quem não quer. */
 export const LADOS = [
   { chave: 'com_voce', rotulo: 'Esperando você', explica: 'O Davi chamou você, ou alguém da equipe já está na conversa.' },
+  { chave: 'automatica', rotulo: 'Só robô respondeu', explica: 'Veio só a resposta automática da loja. O Davi deixou um recado para a equipe e espera uma pessoa responder.' },
   { chave: 'sem_resposta', rotulo: 'Não responderam', explica: 'Receberam as mensagens e não responderam.' },
   { chave: 'perdida', rotulo: 'Perdidas', explica: 'Disseram que não querem, pediram para sair ou o card foi para perdido.' },
 ] as const;
@@ -34,7 +35,7 @@ const ORDEM: Record<Fase, number> = Object.fromEntries(FASES.map((f, i) => [f.ch
 
 export type StatusDaLoja =
   | 'nova' | 'pronta' | 'sem_whatsapp' | 'ja_conhecida' | 'em_contato' | 'sem_resposta'
-  | 'conversando' | 'com_voce' | 'sem_interesse' | 'descartada';
+  | 'conversando' | 'automatica' | 'com_voce' | 'sem_interesse' | 'descartada';
 
 /** O que entra no cálculo: a loja, a conversa com o Davi, a reunião e o card do funil principal. */
 export type FatosDaLoja = {
@@ -112,7 +113,9 @@ export function posicaoNoFunil(f: FatosDaLoja, agora = new Date()): PosicaoNoFun
   const abordada = !!f.loja.primeiro_contato_em || (f.loja.contatos ?? 0) > 0 || !!c;
   if (!abordada) return { fase: null, lado: null, reuniaoPassou, reuniaoCancelada };
   chegou('abordada');
-  if (f.loja.respondeu_em || ['conversando', 'com_voce'].includes(f.loja.status) || c) chegou('conversando');
+  /* Só o robô da loja respondeu: não é resposta (dono, 17/11/2026). */
+  const soRobo = f.loja.status === 'automatica';
+  if (!soRobo && (f.loja.respondeu_em || ['conversando', 'com_voce'].includes(f.loja.status) || c)) chegou('conversando');
   if (c && qualificacaoCompleta(f)) chegou('qualificada');
   if (c && ((c.horarios_oferecidos?.length ?? 0) > 0 || c.etapa === 'compromisso')) chegou('convite');
   /* A reunião vale pela Agenda: cancelada não conta. Sem linha na Agenda, vale o que o Davi
@@ -132,6 +135,7 @@ export function posicaoNoFunil(f: FatosDaLoja, agora = new Date()): PosicaoNoFun
   /* Só uma reunião que ainda vai acontecer segura a loja fora de Perdidas. */
   const reuniaoPelaFrente = reuniaoDePe && !reuniaoPassou;
   if (perdeu && !reuniaoPelaFrente) return { ...base, lado: 'perdida' };
+  if (soRobo && fase === 'abordada') return { ...base, lado: 'automatica' };
   if (f.loja.status === 'sem_resposta' && fase === 'abordada') return { ...base, lado: 'sem_resposta' };
   return { ...base, lado: null };
 }
