@@ -39,7 +39,6 @@ const ABAS: { chave: string; rotulo: string; status: StatusLoja[] }[] = [
   { chave: 'conversando', rotulo: 'Conversando', status: ['conversando'] },
   { chave: 'contato', rotulo: 'Em contato', status: ['em_contato'] },
   { chave: 'fila', rotulo: 'Na fila', status: ['nova', 'pronta'] },
-  { chave: 'automatica', rotulo: 'Só robô respondeu', status: ['automatica'] },
   { chave: 'sem_resposta', rotulo: 'Sem resposta', status: ['sem_resposta'] },
   { chave: 'sem_interesse', rotulo: 'Sem interesse', status: ['sem_interesse'] },
   { chave: 'fora', rotulo: 'Fora da fila', status: ['sem_whatsapp', 'ja_conhecida', 'descartada'] },
@@ -53,7 +52,6 @@ const SITUACAO: Record<StatusLoja, { rotulo: string; cor: string }> = {
   em_contato: { rotulo: 'Em contato', cor: 'bg-blue-500/15 text-blue-400' },
   sem_resposta: { rotulo: 'Sem resposta', cor: 'bg-black/[0.05] dark:bg-white/[0.07] text-foreground/45' },
   conversando: { rotulo: 'Conversando', cor: 'bg-violet-500/15 text-violet-400' },
-  automatica: { rotulo: 'Só robô respondeu', cor: 'bg-black/[0.05] dark:bg-white/[0.07] text-foreground/55' },
   com_voce: { rotulo: 'Com você', cor: 'bg-primary/15 text-primary' },
   sem_interesse: { rotulo: 'Sem interesse', cor: 'bg-red-500/10 text-red-400' },
   descartada: { rotulo: 'Descartada', cor: 'bg-black/[0.05] dark:bg-white/[0.07] text-foreground/40' },
@@ -383,7 +381,7 @@ function EnvioEFila() {
                       <Eye className="h-3.5 w-3.5" />
                     </button>
                   )}
-                  {['nova', 'pronta', 'em_contato', 'sem_resposta', 'automatica'].includes(l.status) && (
+                  {['nova', 'pronta', 'em_contato', 'sem_resposta'].includes(l.status) && (
                     <button title="Tirar da fila" onClick={() => mexer('descartar', l)}
                       className="h-8 w-8 rounded-lg text-foreground/45 hover:bg-black/[0.05] dark:hover:bg-white/[0.06] flex items-center justify-center">
                       <Ban className="h-3.5 w-3.5" />

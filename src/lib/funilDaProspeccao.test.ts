@@ -22,9 +22,10 @@ describe('o funil da prospecção anda sozinho (dono, 09/11/2026)', () => {
     expect(posicaoNoFunil({ loja: loja('sem_resposta') }, agora)).toMatchObject({ fase: 'abordada', lado: 'sem_resposta' });
   });
 
-  it('só o robô da loja respondeu: não conta como resposta, mesmo com a conversa do Davi aberta (17/11/2026)', () => {
-    const p = posicaoNoFunil({ loja: loja('automatica'), conversa: { etapa: 'conversa', situacao: {} } }, agora);
-    expect(p).toMatchObject({ fase: 'abordada', lado: 'automatica' });
+  it('só o robô da loja respondeu: é sem resposta, mesmo com a conversa do Davi aberta (17/11/2026)', () => {
+    const p = posicaoNoFunil({ loja: loja('sem_resposta'), conversa: { etapa: 'conversa', situacao: {} } }, agora);
+    expect(p).toMatchObject({ fase: 'abordada', lado: 'sem_resposta' });
+    expect(posicaoNoFunil({ loja: loja('em_contato'), conversa: { etapa: 'conversa', situacao: {} } }, agora).fase).toBe('abordada');
     expect(chegaramAte([p]).conversando).toBe(0);
   });
 

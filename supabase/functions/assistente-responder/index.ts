@@ -280,17 +280,18 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
   }
 
   /* ── resposta automática da loja (dono, 17/11/2026): robô não é lead ──
-     Saudação do WhatsApp Business, menu ou robô de pré-atendimento: a loja não "respondeu"
-     (sai de Em conversa e não anda no funil) e o Davi não qualifica um robô. Deixa UM recado
-     para quem da equipe ler depois; robô de novo, ou mensagem de ausência depois que uma
-     pessoa já falou: silêncio (nunca robô conversando com robô). */
+     Saudação do WhatsApp Business, menu ou robô de pré-atendimento: a loja não respondeu
+     (fica "sem resposta" e não anda no funil) e o Davi não qualifica um robô. Deixa UM recado
+     para quem da equipe ler depois (o lembrete, horas depois, sai pela assistente-pendentes);
+     robô de novo, ou mensagem de ausência depois que uma pessoa já falou: silêncio (nunca robô
+     conversando com robô). */
   const robo = lerRespostasAutomaticas(msgs);
   if (robo.novasSaoRobo) {
     if (!robo.humanoJaFalou && e.loja_id) {
       await db.from('prospeccao_lojas').update({
-        status: 'automatica', respondeu_em: null, atualizada_em: new Date().toISOString(),
+        status: 'sem_resposta', respondeu_em: null, proximo_contato_em: null, atualizada_em: new Date().toISOString(),
         motivo: 'Só a resposta automática da loja respondeu (saudação, menu ou robô).',
-      }).eq('id', e.loja_id).in('status', ['conversando', 'em_contato', 'sem_resposta', 'automatica']);
+      }).eq('id', e.loja_id).in('status', ['conversando', 'em_contato', 'sem_resposta']);
     }
     if (robo.humanoJaFalou || robo.recadoJaFoi) {
       await soltar();

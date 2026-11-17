@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  lerRespostasAutomaticas, MARCA_DO_RECADO, pareceRespostaAutomatica, RECADO_PARA_A_EQUIPE,
+  horaDoLembrete, LEMBRETE_PARA_A_EQUIPE, lerRespostasAutomaticas, MARCA_DO_RECADO, pareceRespostaAutomatica, RECADO_PARA_A_EQUIPE,
 } from '../../supabase/functions/_shared/resposta-automatica';
 
 /* Respostas reais que chegaram no número da prospecção (10–13/11/2026), com os segundos desde a nossa mensagem. */
@@ -97,21 +97,43 @@ describe('resposta automática da loja (dono, 17/11/2026)', () => {
       { direcao: 'saida', conteudo: '[vídeo] O único sistema…', created_at: em(0) },
       { direcao: 'entrada', conteudo: '\u200eE R Seminovos agradece seu contato. Como podemos ajudar?', created_at: em(18) },
     ];
-    expect(lerRespostasAutomaticas(msgs)).toEqual({ novasSaoRobo: true, humanoJaFalou: false, recadoJaFoi: false });
+    expect(lerRespostasAutomaticas(msgs)).toMatchObject({ novasSaoRobo: true, humanoJaFalou: false, recadoJaFoi: false });
     const depois = [...msgs,
       { direcao: 'saida', conteudo: RECADO_PARA_A_EQUIPE, created_at: em(60) },
       { direcao: 'entrada', conteudo: '\u200eE R Seminovos agradece seu contato. Como podemos ajudar?', created_at: em(70) },
     ];
-    expect(lerRespostasAutomaticas(depois)).toEqual({ novasSaoRobo: true, humanoJaFalou: false, recadoJaFoi: true });
+    expect(lerRespostasAutomaticas(depois)).toMatchObject({ novasSaoRobo: true, humanoJaFalou: false, recadoJaFoi: true });
     const gente = [...depois, { direcao: 'entrada', conteudo: 'Opa, sou o dono. Como funciona?', created_at: em(500) }];
-    expect(lerRespostasAutomaticas(gente)).toEqual({ novasSaoRobo: false, humanoJaFalou: true, recadoJaFoi: true });
+    expect(lerRespostasAutomaticas(gente)).toMatchObject({ novasSaoRobo: false, humanoJaFalou: true, recadoJaFoi: true });
   });
 
-  it('o recado: um balão, diz o que é, pede para passar a quem cuida dos anúncios e deixa a resposta fácil', () => {
+  it('o recado (dono, 17/11): simples, "atendente da Via Pesados", "o único sistema do país", resposta fácil', () => {
+    expect(RECADO_PARA_A_EQUIPE).toMatch(/^Oi! Aqui é o Davi, atendente da Via Pesados\. Somos o único sistema do país feito para lojas de veículos pesados\./);
     expect(RECADO_PARA_A_EQUIPE).toContain(MARCA_DO_RECADO);
-    expect(RECADO_PARA_A_EQUIPE).toMatch(/atendente virtual/);
-    expect(RECADO_PARA_A_EQUIPE).toMatch(/quem cuida dos anúncios/);
     expect(RECADO_PARA_A_EQUIPE).toMatch(/\*quero conhecer\*/);
-    expect(RECADO_PARA_A_EQUIPE).not.toMatch(/R\$|grátis|Black/i);
+    expect(RECADO_PARA_A_EQUIPE.length).toBeLessThan(260);
+    expect(RECADO_PARA_A_EQUIPE).not.toMatch(/R\$|grátis|Black|automátic/i);
+    expect(LEMBRETE_PARA_A_EQUIPE).toMatch(/\*quero conhecer\*/);
+  });
+
+  const h = (horas: number) => new Date(Date.UTC(2026, 10, 17, 11, 0) + horas * 3_600_000).toISOString();
+  const robo = '\u200eE R Seminovos agradece seu contato. Como podemos ajudar?';
+  const conversa = [
+    { direcao: 'saida', conteudo: '[vídeo] O único sistema…', created_at: h(0) },
+    { direcao: 'entrada', conteudo: robo, created_at: h(0.005) },
+    { direcao: 'saida', conteudo: RECADO_PARA_A_EQUIPE, created_at: h(0.02) },
+  ];
+  it('o lembrete: 4h depois do recado, sem ninguém, dentro das 24h; uma vez só', () => {
+    const l = lerRespostasAutomaticas(conversa);
+    expect(horaDoLembrete(l, new Date(h(3)))).toBe(false);
+    expect(horaDoLembrete(l, new Date(h(4.1)))).toBe(true);
+    expect(horaDoLembrete(l, new Date(h(22.9)))).toBe(true);
+    expect(horaDoLembrete(l, new Date(h(23.5)))).toBe(false); // a janela do WhatsApp está fechando
+    const jaFoi = lerRespostasAutomaticas([...conversa, { direcao: 'saida', conteudo: LEMBRETE_PARA_A_EQUIPE, created_at: h(5) },
+      { direcao: 'entrada', conteudo: robo, created_at: h(5.001) }]);
+    expect(jaFoi.lembreteJaFoi).toBe(true);
+    expect(horaDoLembrete(jaFoi, new Date(h(10)))).toBe(false);
+    const gente = lerRespostasAutomaticas([...conversa, { direcao: 'entrada', conteudo: 'Opa, sou o dono. Como funciona?', created_at: h(2) }]);
+    expect(horaDoLembrete(gente, new Date(h(5)))).toBe(false);
   });
 });

@@ -38,7 +38,7 @@ export type LinhaDoFunil = {
   teste: boolean;
 };
 
-const ABORDADAS: StatusDaLoja[] = ['em_contato', 'sem_resposta', 'conversando', 'automatica', 'com_voce', 'sem_interesse'];
+const ABORDADAS: StatusDaLoja[] = ['em_contato', 'sem_resposta', 'conversando', 'com_voce', 'sem_interesse'];
 const PAGINA = 1000;
 const MAX_PAGINAS = 10;
 

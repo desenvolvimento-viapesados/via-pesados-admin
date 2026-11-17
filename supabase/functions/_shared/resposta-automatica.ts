@@ -4,9 +4,10 @@
  * ajudar?"), com um menu ou com o robô de pré-atendimento dela ("Aqui é o Luís, assistente de
  * pré-atendimento…"). Isso NÃO é a loja respondendo:
  *
- *   - a loja não conta como "respondeu" nem anda no funil (status 'automatica');
- *   - o Davi não qualifica um robô: deixa UM recado curto para quem da equipe ler depois,
- *     dizendo o que é a Via Pesados e pedindo para passar a quem cuida dos anúncios;
+ *   - a loja não respondeu: fica "sem resposta" e não anda no funil (nada de coluna nova);
+ *   - o Davi não qualifica um robô: deixa UM recado curto para quem da equipe ler depois;
+ *   - passadas HORAS_ATE_O_LEMBRETE sem ninguém, e ainda dentro das 24h que o WhatsApp dá
+ *     depois da última mensagem da loja, UM lembrete curto, para a conversa subir de novo;
  *   - robô respondendo de novo (ou depois que uma pessoa já falou, a mensagem de ausência):
  *     silêncio. Nunca robô conversando com robô.
  *
@@ -63,20 +64,25 @@ export function pareceRespostaAutomatica(texto: string | null | undefined, segun
   return fracos >= 2 || (naHora && (fracos >= 1 || vitrine));
 }
 
-/* ── o recado para a equipe da loja ─────────────────────────────── */
+/* ── o recado e o lembrete ───────────────────────────────────────── */
 
 /** Por este pedaço o código sabe que o recado já foi (não repete). */
-export const MARCA_DO_RECADO = 'Quando alguém da equipe puder ler';
+export const MARCA_DO_RECADO = 'Somos o único sistema do país feito para lojas de veículos pesados';
+/** Por este pedaço o código sabe que o lembrete já foi. */
+export const MARCA_DO_LEMBRETE = 'Passando aqui de novo';
 
-/**
- * Um balão só, para a pessoa que abrir a conversa depois do robô (quase sempre um vendedor):
- * diz o que é, promete tempo e venda, pede para passar a quem cuida dos anúncios e deixa a
- * resposta fácil ("quero conhecer", o mesmo do botão).
- */
+/** Dono, 17/11/2026: simples. Quem é, o que é, e a resposta fácil (o mesmo do botão). */
 export const RECADO_PARA_A_EQUIPE =
-  `Oi! Caiu na resposta automática de vocês 🙂 ${MARCA_DO_RECADO}: aqui é o Davi, atendente virtual da Via Pesados.\n\n`
-  + 'A gente faz o sistema que publica o caminhão da loja no *Mercado Livre, Instagram e Facebook* com um cadastro só, e tira de todos quando vende.\n\n'
-  + 'Se não for com você, pode passar pra quem cuida dos anúncios? Pra ver funcionando na sua loja, é só responder *quero conhecer*.';
+  `Oi! Aqui é o Davi, atendente da Via Pesados. ${MARCA_DO_RECADO}.\n\n`
+  + 'Cadastra o caminhão uma vez e ele sai no *Mercado Livre, Instagram e Facebook*. Pra ver funcionando na sua loja, é só responder *quero conhecer*.';
+
+/** Horas depois do recado, sem ninguém responder, para o lembrete sair (dentro das 24h). */
+export const HORAS_ATE_O_LEMBRETE = 4;
+/** Margem antes de a janela de 24h do WhatsApp fechar. */
+const HORAS_DA_JANELA = 23;
+
+export const LEMBRETE_PARA_A_EQUIPE =
+  `${MARCA_DO_LEMBRETE} 🙂 Conseguiu ver a mensagem acima? É só responder *quero conhecer* que o Xavier te mostra em 15 minutos.`;
 
 type Msg = { direcao: string; conteudo: string | null; created_at: string };
 
@@ -85,26 +91,44 @@ export type LeituraDoRobo = {
   novasSaoRobo: boolean;
   /** Alguma vez uma pessoa escreveu nesta conversa. */
   humanoJaFalou: boolean;
-  /** O recado para a equipe já foi mandado. */
+  /** O recado para a equipe já foi mandado (e quando). */
   recadoJaFoi: boolean;
+  recadoEm: string | null;
+  lembreteJaFoi: boolean;
+  /** A última mensagem da loja (robô ou não): é dela que contam as 24h do WhatsApp. */
+  ultimaEntradaEm: string | null;
 };
 
 /** Lê a conversa inteira: cada entrada é julgada com o tempo desde a nossa mensagem anterior a ela. */
 export function lerRespostasAutomaticas(msgs: Msg[]): LeituraDoRobo {
   let ultimaSaida: number | null = null;
-  let humanoJaFalou = false, recadoJaFoi = false;
+  let humanoJaFalou = false, recadoEm: string | null = null, lembreteJaFoi = false, ultimaEntradaEm: string | null = null;
   let novas = 0, novasRobo = 0;
   for (const m of msgs) {
     const em = new Date(m.created_at).getTime();
     if (m.direcao === 'saida') {
       ultimaSaida = em; novas = 0; novasRobo = 0;
-      if ((m.conteudo ?? '').includes(MARCA_DO_RECADO)) recadoJaFoi = true;
+      const t = m.conteudo ?? '';
+      if (t.includes(MARCA_DO_RECADO) && t.includes('quero conhecer') && !recadoEm) recadoEm = m.created_at;
+      if (t.startsWith(MARCA_DO_LEMBRETE)) lembreteJaFoi = true;
       continue;
     }
     if (m.direcao !== 'entrada') continue;
+    ultimaEntradaEm = m.created_at;
     const robo = pareceRespostaAutomatica(m.conteudo, ultimaSaida == null ? null : (em - ultimaSaida) / 1000);
     novas++;
     if (robo) novasRobo++; else humanoJaFalou = true;
   }
-  return { novasSaoRobo: novas > 0 && novasRobo === novas, humanoJaFalou, recadoJaFoi };
+  return { novasSaoRobo: novas > 0 && novasRobo === novas, humanoJaFalou, recadoJaFoi: !!recadoEm, recadoEm, lembreteJaFoi, ultimaEntradaEm };
+}
+
+/**
+ * Hora do lembrete? Recado mandado há HORAS_ATE_O_LEMBRETE ou mais, ninguém (gente) respondeu,
+ * lembrete ainda não foi, e a janela de 24h desde a última mensagem da loja segue aberta.
+ * O horário das 08h–20h é conferido por quem manda.
+ */
+export function horaDoLembrete(l: LeituraDoRobo, agora = new Date()): boolean {
+  if (!l.recadoEm || l.lembreteJaFoi || l.humanoJaFalou || !l.ultimaEntradaEm) return false;
+  const h = (iso: string) => (agora.getTime() - new Date(iso).getTime()) / 3_600_000;
+  return h(l.recadoEm) >= HORAS_ATE_O_LEMBRETE && h(l.ultimaEntradaEm) < HORAS_DA_JANELA;
 }
