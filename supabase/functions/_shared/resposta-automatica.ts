@@ -82,7 +82,7 @@ export const HORAS_ATE_O_LEMBRETE = 4;
 const HORAS_DA_JANELA = 23;
 
 export const LEMBRETE_PARA_A_EQUIPE =
-  `${MARCA_DO_LEMBRETE} 🙂 Conseguiu ver a mensagem acima? É só responder *quero conhecer* que o Xavier te mostra em 15 minutos.`;
+  `${MARCA_DO_LEMBRETE} 🙂 Conseguiu ver a mensagem acima? É só responder essa mensagem que o Xavier te mostra em 15 minutos.`;
 
 type Msg = { direcao: string; conteudo: string | null; created_at: string };
 

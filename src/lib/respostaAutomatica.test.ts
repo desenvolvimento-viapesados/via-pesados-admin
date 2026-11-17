@@ -114,7 +114,7 @@ describe('resposta automática da loja (dono, 17/11/2026)', () => {
     expect(RECADO_PARA_A_EQUIPE).toContain('O único com conexões oficiais para *Mercado Livre, Instagram e Facebook*.');
     expect(RECADO_PARA_A_EQUIPE.length).toBeLessThan(280);
     expect(RECADO_PARA_A_EQUIPE).not.toMatch(/R\$|grátis|Black|automátic/i);
-    expect(LEMBRETE_PARA_A_EQUIPE).toMatch(/\*quero conhecer\*/);
+    expect(LEMBRETE_PARA_A_EQUIPE).toBe('Passando aqui de novo 🙂 Conseguiu ver a mensagem acima? É só responder essa mensagem que o Xavier te mostra em 15 minutos.');
   });
 
   const h = (horas: number) => new Date(Date.UTC(2026, 10, 17, 11, 0) + horas * 3_600_000).toISOString();
