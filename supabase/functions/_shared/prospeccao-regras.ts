@@ -403,7 +403,7 @@ export const BUSCAS = [
 
 /**
  * Pelo número oficial a primeira mensagem só pode ser modelo aprovado pela Meta (texto livre
- * só depois que a pessoa responde). Dono, 10/11/2026: UMA mensagem só — o vídeo dele (que já
+ * só depois que a pessoa responde). Dono, 10/11/2026 (até 17/11, quando o filme entrou: MODELO_UNICO): UMA mensagem só — o vídeo dele (que já
  * mostra o envio, diz o que é o Via Pesados, fala da Black Friday e pede para responder), a
  * frase "Já imaginou atender seus clientes com essa facilidade?…", o fecho e os botões. Com
  * "Fala, <nome>!" quando o número é de um vendedor com nome no portal. Os textos moram em
@@ -411,8 +411,15 @@ export const BUSCAS = [
  */
 export const MODELO_SIMPLES = 'prospeccao_simples';
 export const MODELO_SIMPLES_NOME = 'prospeccao_simples_nome';
+/**
+ * Dono, 17/11/2026: o filme de produto da Via Pesados no topo, "O único sistema do Brasil feito
+ * para lojas de veículos pesados…" e os botões "Quero conhecer" / "Não tenho interesse". O mesmo
+ * modelo para loja nova e para quem não respondeu (remarketing). Sem variável: sem "Fala, <nome>!".
+ * As duas do vídeo do Xavier (prospeccao_simples*) ficam de reserva.
+ */
+export const MODELO_UNICO = 'prospeccao_unico';
 /** Todos precisam estar aprovados para a prospecção sair. */
-export const MODELOS_DA_PROSPECCAO = [MODELO_SIMPLES, MODELO_SIMPLES_NOME] as const;
+export const MODELOS_DA_PROSPECCAO = [MODELO_UNICO] as const;
 /**
  * As três mensagens de antes (06/11/2026): seguem aprovadas na Meta e no catálogo, de reserva,
  * e não saem mais. Conversa antiga pode ter começado por elas (o "Bora!" do convite).
@@ -424,6 +431,7 @@ export const MODELO_CTA = 'prospeccao_cta';
 export const MODELOS_DE_RESERVA = [MODELO_ABERTURA, MODELO_ABERTURA_NOME, MODELO_OFERTA, MODELO_CTA] as const;
 /** Como cada modelo aparece para o dono (no aviso de por que a prospecção não sai). */
 export const NOME_DA_MENSAGEM: Record<string, string> = {
+  [MODELO_UNICO]: 'a do filme da Via Pesados',
   [MODELO_SIMPLES]: 'a do vídeo', [MODELO_SIMPLES_NOME]: 'a do vídeo com o nome do vendedor',
 };
 export const STATUS_NA_META: Record<string, string> = {
@@ -434,17 +442,17 @@ export const PAUSA_ENTRE_MENSAGENS_MS = 4_000;
 /** O botão do convite das três mensagens de antes: conversa antiga pode ter. */
 export const BOTAO_BORA = 'Bora!';
 export const BOTAO_SAIR = 'Não tenho interesse';
-/** O botão da mensagem do vídeo (10/11/2026). Tocou (ou escreveu só isso), é pedido de ver. */
+/** O botão da mensagem do vídeo do Xavier (10/11/2026). Tocou (ou escreveu só isso), é pedido de ver. */
 export const BOTAO_VER = 'Quero ver funcionando';
-/* O vídeo do cabeçalho: o Xavier gravando o notebook com o WhatsApp do sistema (IMG_5649,
-   editado em 09/11/2026: capa só com texto, H.264 Main sem B-frames, que o Android toca).
-   Arquivo novo = nome novo (v3, v4…): a Meta e o WhatsApp guardam em cache pelo endereço.
-   O rótulo é o que a caixa do CRM e o Davi leem no lugar do vídeo, e o roteiro do Davi
-   (assistente-roteiro.ts, "Lead da lista que recebeu a mensagem") diz o que o vídeo fala:
-   troque os três juntos. O vídeo fala
-   da Black Friday de novembro: depois da oferta, o prospeccao-enviar para até o vídeo mudar. */
-export const VIDEO_DO_MODELO = 'https://ktjvyysqhsyvjmhumjly.supabase.co/storage/v1/object/public/logos/wa/prospeccao-v2.mp4';
-export const ROTULO_DO_VIDEO = '[vídeo do Xavier: o envio num clique e a Black Friday]';
+/** O botão da mensagem do filme (17/11/2026): também é pedido de ver. */
+export const BOTAO_CONHECER = 'Quero conhecer';
+/* O vídeo do cabeçalho: o filme de produto da Via Pesados (v5 de 16/11/2026, 38,8 s, H.264 Main
+   sem B-frames, que o Android toca). Arquivo novo = nome novo (v4, v5…): a Meta e o WhatsApp
+   guardam em cache pelo endereço. O rótulo é o que a caixa do CRM e o Davi leem no lugar do
+   vídeo, e o roteiro do Davi (assistente-roteiro.ts, "Lead da lista que recebeu a mensagem")
+   diz o que o vídeo fala: troque os três juntos. O filme não fala de oferta nem de data. */
+export const VIDEO_DO_MODELO = 'https://ktjvyysqhsyvjmhumjly.supabase.co/storage/v1/object/public/logos/wa/prospeccao-v3.mp4';
+export const ROTULO_DO_VIDEO = '[vídeo da Via Pesados: cadastra uma vez e publica em todos os canais]';
 
 export type LojaDoModelo = { nome: string; dados?: Record<string, unknown> | null };
 
@@ -497,13 +505,9 @@ export type MensagemDaSequencia = { modelo: string; params: string[]; video: boo
  * O que sai para uma loja, na ordem (10/11/2026: uma mensagem só, o vídeo com a frase, o fecho
  * e os botões; com o nome do vendedor quando o portal tem).
  */
-export function sequenciaDaProspeccao(loja: LojaDoModelo): MensagemDaSequencia[] {
-  const vendedor = primeiroNomeDoVendedor(loja.dados);
-  return [
-    vendedor
-      ? { modelo: MODELO_SIMPLES_NOME, params: [vendedor], video: true, botoes: true }
-      : { modelo: MODELO_SIMPLES, params: [], video: true, botoes: true },
-  ];
+export function sequenciaDaProspeccao(_loja: LojaDoModelo): MensagemDaSequencia[] {
+  /* 17/11/2026: o filme, a mesma mensagem para toda loja (sem o nome do vendedor). */
+  return [{ modelo: MODELO_UNICO, params: [], video: true, botoes: true }];
 }
 
 /** O texto do modelo com as variáveis no lugar: é o que aparece na caixa do CRM. */
@@ -515,11 +519,13 @@ const comoBotao = (t: string | null | undefined) =>
   semAcento(String(t ?? '')).toLowerCase().replace(/\s+/g, ' ').trim().replace(/[.!]+$/, '').trim();
 
 /**
- * A pessoa escreveu só "Quero ver funcionando" (com ou sem ponto ou exclamação, sem ligar
- * para maiúsculas e acentos): é pedido de ver. Frase maior não conta: aí quem lê é a IA.
+ * A pessoa escreveu só "Quero conhecer" ou "Quero ver funcionando" (com ou sem ponto ou
+ * exclamação, sem ligar para maiúsculas e acentos): é pedido de ver. Frase maior não conta:
+ * aí quem lê é a IA.
  */
 export function pediuParaVer(texto: string | null | undefined): boolean {
-  return comoBotao(texto) === comoBotao(BOTAO_VER);
+  const t = comoBotao(texto);
+  return t === comoBotao(BOTAO_VER) || t === comoBotao(BOTAO_CONHECER);
 }
 
 /* ── o que a Meta diz sobre o número ──────────────────────────── */

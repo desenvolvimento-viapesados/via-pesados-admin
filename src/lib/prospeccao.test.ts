@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   diaUtil, feriadoNacional, pascoa, grafiaDaConversa, podeEnviarAgora, proximoContato, limiteDoDia, intervaloSorteado, telefoneBR, ehCelular, variantes,
   pediuParaSair, nomeFalado, paramDaMeta, textoDeReserva, pareceLojaDePesados,
-  canalDa, REGRAS_DO_CANAL, nomeDaLojaNaMensagem, textoDoModelo, pediuParaVer, BOTAO_VER, BOTAO_SAIR, BOTAO_BORA,
+  canalDa, REGRAS_DO_CANAL, nomeDaLojaNaMensagem, textoDoModelo, pediuParaVer, BOTAO_VER, BOTAO_CONHECER, BOTAO_SAIR, BOTAO_BORA, MODELO_UNICO,
   MODELO_SIMPLES, MODELO_SIMPLES_NOME, MODELOS_DE_RESERVA, MODELOS_DA_PROSPECCAO, ROTULO_DO_VIDEO,
   primeiroNomeDoVendedor, sequenciaDaProspeccao,
   lojaDepoisDaFalha, falhaDaConta, FALHAS_QUE_DESLIGAM, motivoParaDesligar, VIDEO_DO_MODELO,
@@ -327,7 +327,7 @@ describe('prospecção pelo número oficial', () => {
   });
 
   it('a mensagem do vídeo existe (com e sem o nome), de marketing; as três de antes ficam de reserva; o antigo com teste grátis não sai mais', () => {
-    expect([...MODELOS_DA_PROSPECCAO]).toEqual([MODELO_SIMPLES, MODELO_SIMPLES_NOME]);
+    expect([...MODELOS_DA_PROSPECCAO]).toEqual([MODELO_UNICO]);
     for (const m of MODELOS_DA_PROSPECCAO) expect(modelo(m)?.category, m).toBe('MARKETING');
     for (const m of MODELOS_DE_RESERVA) {
       expect(modelo(m)?.category, m).toBe('MARKETING'); // a conta nova recria
@@ -344,11 +344,21 @@ describe('prospecção pelo número oficial', () => {
     expect(corpo(MODELO_SIMPLES_NOME)).toBe(`Fala, {{1}}! ${FRASE}\n\n${FECHO}`);
   });
 
-  it('o vídeo no topo, o rodapé e os dois botões de resposta', () => {
-    for (const m of MODELOS_DA_PROSPECCAO) {
+  it('o filme (17/11): o texto do dono, palavra por palavra, sem rodapé, com "Quero conhecer" e "Não tenho interesse"', () => {
+    expect(MODELOS_DA_PROSPECCAO).toEqual([MODELO_UNICO]);
+    expect(corpo(MODELO_UNICO)).toBe('O único sistema do Brasil feito para lojas de veículos pesados.\n\nAutomatize suas publicações com a Via Pesados: cadastre uma vez e publique em todos os canais.');
+    const topo = modelo(MODELO_UNICO).components.find((c) => c.type === 'HEADER') as unknown as { format: string; example: { header_url: string[] } };
+    expect(topo.format).toBe('VIDEO');
+    expect(topo.example.header_url).toEqual([VIDEO_DO_MODELO]);
+    expect(modelo(MODELO_UNICO).components.find((c) => c.type === 'FOOTER')).toBeUndefined();
+    expect(botoes(MODELO_UNICO).map((b) => b.text)).toEqual([BOTAO_CONHECER, BOTAO_SAIR]);
+    expect(botoes(MODELO_UNICO).every((b) => b.type === 'QUICK_REPLY')).toBe(true);
+  });
+
+  it('o vídeo do Xavier (reserva): no topo, o rodapé e os dois botões de resposta', () => {
+    for (const m of [MODELO_SIMPLES, MODELO_SIMPLES_NOME]) {
       const topo = modelo(m).components.find((c) => c.type === 'HEADER') as unknown as { format: string; example: { header_url: string[] } };
       expect(topo.format, m).toBe('VIDEO');
-      expect(topo.example.header_url, m).toEqual([VIDEO_DO_MODELO]);
       expect(modelo(m).components.find((c) => c.type === 'FOOTER')?.text, m).toBe('Xavier · Via Pesados');
       expect(botoes(m).map((b) => b.text), m).toEqual([BOTAO_VER, BOTAO_SAIR]);
       expect(botoes(m).every((b) => b.type === 'QUICK_REPLY'), m).toBe(true);
@@ -356,7 +366,7 @@ describe('prospecção pelo número oficial', () => {
   });
 
   it('o vídeo novo, num endereço novo (cache da Meta e do WhatsApp)', () => {
-    expect(VIDEO_DO_MODELO).toMatch(/\/logos\/wa\/prospeccao-v2\.mp4$/);
+    expect(VIDEO_DO_MODELO).toMatch(/\/logos\/wa\/prospeccao-v3\.mp4$/);
   });
 
   it('nenhuma mensagem fala de teste grátis, de prazo, nem de oferta (a Black Friday fica só no vídeo, que troca sem aprovação)', () => {
@@ -367,16 +377,13 @@ describe('prospecção pelo número oficial', () => {
     for (const m of MODELOS_DA_PROSPECCAO) expect(corpo(m)).not.toMatch(/oferta|black|novembro|R\$|desconto|promo/i);
   });
 
-  it('a sequência: uma mensagem só, o vídeo com o vendedor quando o portal tem o nome', () => {
+  it('a sequência: uma mensagem só, o filme, a mesma para toda loja', () => {
     const comVendedor = sequenciaDaProspeccao({ nome: 'Hohl Máquinas Agrícolas - John Deere', dados: { contato: 'vendedor: Marcelo Cristo' } });
-    expect(comVendedor).toEqual([{ modelo: MODELO_SIMPLES_NOME, params: ['Marcelo'], video: true, botoes: true }]);
     const daLoja = sequenciaDaProspeccao({ nome: 'TREDIESEL CAMINHÕES LTDA', dados: { contato: 'loja' } });
-    expect(daLoja).toEqual([{ modelo: MODELO_SIMPLES, params: [], video: true, botoes: true }]);
-    const semNome = sequenciaDaProspeccao({ nome: 'X', dados: { contato: 'vendedor: Cowboy', vendedor_mensagem: '' } });
-    expect(semNome.map((m) => m.modelo)).toEqual([MODELO_SIMPLES]);
-    expect(textoDoModelo(corpo(MODELO_SIMPLES_NOME), comVendedor[0].params)).toMatch(/^Fala, Marcelo! Já imaginou/);
+    for (const s of [comVendedor, daLoja]) expect(s).toEqual([{ modelo: MODELO_UNICO, params: [], video: true, botoes: true }]);
+    expect(textoDoModelo(corpo(MODELO_SIMPLES_NOME), ['Marcelo'])).toMatch(/^Fala, Marcelo! Já imaginou/);
     expect(ROTULO_DO_VIDEO.startsWith('[vídeo')).toBe(true); // é por aqui que o Davi reconhece a prospecção
-    expect(ROTULO_DO_VIDEO).toMatch(/Black Friday/); // o Davi sabe da oferta que o vídeo promete
+    expect(ROTULO_DO_VIDEO).not.toMatch(/Black Friday/); // o filme não promete oferta
   });
 
   it('o primeiro nome do vendedor, do jeito que o portal escreve', () => {
@@ -405,6 +412,9 @@ describe('prospecção pelo número oficial', () => {
     expect(pediuParaSair(BOTAO_BORA)).toBe(false);
     expect(pediuParaVer(BOTAO_BORA)).toBe(false);
     expect(pediuParaVer(BOTAO_VER)).toBe(true);
+    expect(pediuParaVer(BOTAO_CONHECER)).toBe(true);
+    expect(pediuParaVer('quero conhecer!')).toBe(true);
+    expect(pediuParaVer('quero conhecer, quanto custa?')).toBe(false);
     expect(pediuParaVer('quero ver funcionando!')).toBe(true);
     expect(pediuParaVer('quero ver funcionando, quanto custa?')).toBe(false);
     expect(pediuParaVer(null)).toBe(false);

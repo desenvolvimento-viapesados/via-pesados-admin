@@ -9,7 +9,6 @@ import {
   REGRAS_DO_CANAL, variantes,
 } from '../_shared/prospeccao-regras.ts';
 import { modeloAprovado, statusDoModelo } from '../_shared/wa.ts';
-import { precoDeHoje } from '../_shared/assistente-regras.ts';
 
 /**
  * A rotina do agente de prospecção. O pg_cron chama de minuto em minuto (desde 12/11/2026); cada
@@ -119,15 +118,6 @@ Deno.serve(async () => {
           pausado_motivo: `Nada sai até a Meta aprovar a mensagem da prospecção (${travando.join('; ')}).`, atualizado_em: agora.toISOString(),
         }).eq('id', 1);
         return json(200, { ok: true, modelo_em_analise: travando });
-      }
-      /* O vídeo fala da Black Friday de novembro: sem a oferta valendo, não sai. */
-      const { data: cfgPreco } = await db.from('assistente_config').select('preco_mensal, preco_cheio, oferta_ate').eq('id', 1).maybeSingle();
-      if (!precoDeHoje(cfgPreco, agora)?.cheio) {
-        await db.from('prospeccao_config').update({
-          pausado_motivo: 'O vídeo da prospecção fala da Black Friday de novembro, e a oferta não está valendo (passou da data ou foi tirada na aba Assistente). Troque o vídeo antes de ligar de novo.',
-          atualizado_em: agora.toISOString(),
-        }).eq('id', 1);
-        return json(200, { ok: true, oferta: 'fora do prazo' });
       }
     }
 

@@ -670,7 +670,7 @@ describe('o botão "Quero ver funcionando" do modelo da prospecção (06/11/2026
 
   it('o roteiro sabe que a conversa começou pela mensagem do vídeo: o botão vira convite direto; sem repetir o que o vídeo disse', () => {
     expect(INSTRUCOES).toContain('MENSAGEM AUTOMÁTICA DA PROSPECÇÃO');
-    expect(INSTRUCOES).toContain('Tocou "Quero ver funcionando"');
+    expect(INSTRUCOES).toContain('Tocou "Quero conhecer"');
     expect(INSTRUCOES).toMatch(/faça o convite direto/);
     expect(INSTRUCOES).toContain('O único sistema de gestão do Brasil, para lojas de veículos pesados');
     expect(INSTRUCOES).toMatch(/Não repita isso/);
@@ -681,7 +681,11 @@ describe('o botão "Quero ver funcionando" do modelo da prospecção (06/11/2026
     /* O rótulo do vídeo na caixa do CRM é o que o roteiro manda reconhecer. */
     expect(ROTULO_DO_VIDEO.startsWith('[vídeo')).toBe(true);
     expect(INSTRUCOES).toContain('começa com "[vídeo"');
-    expect(INSTRUCOES).toMatch(/fala da Black Friday de novembro/); // o que o vídeo diz, já que o rótulo é curto
+    expect(INSTRUCOES).toMatch(/fala da Black Friday de novembro/); // o vídeo antigo, nas conversas de antes de 17/11
+    /* O filme (17/11): o Davi sabe o que ele diz e que "Quero conhecer" é pedido de ver. */
+    expect(INSTRUCOES).toContain('Automatize suas publicações com a Via Pesados: cadastre uma vez e publique em todos os canais.');
+    expect(INSTRUCOES).toMatch(/Tocou "Quero conhecer" \(ou escreveu só isso\): é pedido de ver/);
+    expect(INSTRUCOES).toMatch(/"Quero ver funcionando" vale igual a "Quero conhecer"/);
   });
 
   it('a 1ª resposta a uma loja da lista não é "só perguntar": quem pede explicação recebe; o "Bora!" curto, sim', () => {
