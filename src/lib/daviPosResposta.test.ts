@@ -17,7 +17,7 @@ import { MODELOS } from '../../supabase/functions/_shared/modelos';
 function comoGravado(nome: string): string {
   const m = MODELOS.find((x) => x.name === nome);
   if (!m) throw new Error(`modelo ${nome} não está no catálogo`);
-  const corpo = m.components.find((c) => c.type === 'BODY') as { text: string; example?: { body_text: string[][] } };
+  const corpo = m.components.find((c) => c.type === 'BODY') as unknown as { text: string; example?: { body_text: string[][] } };
   const params = corpo.example?.body_text?.[0] ?? [];
   const video = m.components.some((c) => c.type === 'HEADER' && c.format === 'VIDEO');
   const texto = textoDoModelo(corpo.text, params.map((p) => (p === 'RB Caminhões' ? 'Rodovia Pesados' : p === 'caminhão' ? 'cavalo mecânico' : p)));
