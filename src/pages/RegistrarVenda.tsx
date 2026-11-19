@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFrente } from '@/contexts/FrenteContext';
 import { criarTesteGratis } from '@/hooks/useTesteGratis';
 import { CidadeUF } from '@/components/crm/CidadeUF';
-import { APOIO, CAMPO, Casca } from '@/components/crm/esteira/Casca';
+import { APOIO, CAMPO, Casca, Opcao } from '@/components/crm/esteira/Casca';
 import { mascaraTelefone, mascaraTelefoneDoBanco, soDigitos, mascaraMoeda, valorDaMoeda, moedaDeNumero } from '@/lib/mascaras';
 import { DIAS_DE_TESTE } from '@/lib/testeGratis';
 
@@ -27,7 +27,6 @@ const CANAIS_VENDA = [
 
 const ROTULO = 'block text-[13px] font-semibold text-foreground mb-1.5';
 const NOTA = 'text-[14px] text-foreground/55 leading-relaxed';
-const ALERTA = 'text-[14px] text-amber-600 dark:text-amber-400 leading-relaxed';
 
 function Rotulado({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return (
@@ -363,8 +362,8 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
     },
     sistema: {
       rotulo: 'Sistema',
-      pergunta: 'Qual amostra vira o sistema dele?',
-      dica: 'Digite o e-mail de acesso da amostra que você apresentou.',
+      pergunta: 'Você mostrou uma amostra para ele?',
+      dica: 'Amostra é o sistema de demonstração montado com a marca da loja. Se mostrou, ela vira o sistema dele. Se não, o sistema começa do zero.',
     },
     empresa: {
       rotulo: 'Empresa',
@@ -394,9 +393,6 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
   };
   const texto = textos[passo];
 
-  /* Há amostra pronta e nenhuma foi ligada: é quase sempre esquecimento, e o custo é um
-     cliente sem sistema, que trava a implantação inteira depois. */
-  const semAmostra = !transp && !amostra && amostras.length > 0;
 
   return (
     <Casca
@@ -451,36 +447,43 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
             value={form.acesso_email} onChange={(e) => set('acesso_email', e.target.value)} onKeyDown={aoEnter} />
         )}
 
-        {passo === 'sistema' && (
-          <>
-            {/* Campo aberto, não lista. Quem fecha a venda sabe qual amostra apresentou;
-                obrigar a achá-la numa lista é pedir para reconhecer o que já se sabe. O que
-                a tela deve fazer é confirmar o que ele escreveu, e é o que a linha abaixo faz. */}
-            <input className={CAMPO} type="email" inputMode="email" autoFocus autoComplete="off" autoCapitalize="none" spellCheck={false}
-              aria-label="E-mail de acesso da amostra" placeholder="E-mail de acesso da amostra"
-              value={form.sistema_email} onChange={(e) => set('sistema_email', e.target.value)} onKeyDown={aoEnter} />
-            {!form.sistema_email.trim() ? (
-              <p className={NOTA}>Em branco, o sistema é criado vazio depois, pela ficha do cliente.</p>
-            ) : amostra ? (
-              <>
-                <p className="flex items-start gap-2 text-[15px] font-semibold text-emerald-600 dark:text-emerald-400">
-                  <Check className="h-4 w-4 mt-[3px] shrink-0" strokeWidth={3} />
-                  <span className="min-w-0">{amostra.company_name}: a amostra passa a ser o sistema dele.</span>
-                </p>
+        {passo === 'sistema' && (() => {
+          /* Pergunta de sim ou não, com as amostras para tocar (dono, 19/11/2026: "não entendi
+             essa pergunta, essa venda nem tinha amostra"). A da própria loja vem primeiro. */
+          const escolher = (email: string) => { set('sistema_email', email); avancar(); };
+          const dela = amostras.filter((d) => prospectId && d.prospect_id === prospectId);
+          const outras = amostras.filter((d) => !dela.includes(d));
+          const escolhida = (d: typeof amostras[number]) => amostra?.id === d.id;
+          return (
+            <div className="space-y-3">
+              <Opcao rotulo="Não mostrei" sub="O sistema dele começa do zero, criado depois pela ficha."
+                destaque={!amostra && revendo} onClick={() => escolher('')} />
+              {dela.map((d) => (
+                <Opcao key={d.id} rotulo={`Sim, a amostra da ${d.company_name}`} sub="Vira o sistema dele."
+                  destaque={escolhida(d)} onClick={() => escolher(d.admin_email ?? '')} />
+              ))}
+              {outras.length > 0 && (
+                <details className="pt-1" open={!!amostra && !dela.some(escolhida)}>
+                  <summary className="cursor-pointer text-[14px] font-medium text-foreground/60 hover:text-foreground">
+                    {dela.length ? 'Mostrei outra amostra' : 'Sim, mostrei uma amostra'}
+                  </summary>
+                  <div className="mt-3 space-y-2">
+                    {outras.map((d) => (
+                      <Opcao key={d.id} rotulo={d.company_name} sub={d.admin_email ?? undefined}
+                        destaque={escolhida(d)} onClick={() => escolher(d.admin_email ?? '')} />
+                    ))}
+                  </div>
+                </details>
+              )}
+              {amostra && (
                 <p className={NOTA}>
-                  Ao registrar, o conteúdo de demonstração é apagado: veículos, clientes, vendas e
-                  funcionários fictícios. Ficam a identidade visual, o site, o domínio, os cargos, o
-                  plano de contas e as etiquetas. O login da amostra deixa de funcionar.
+                  Ao registrar, o conteúdo de demonstração da amostra é apagado (veículos, clientes, vendas e
+                  funcionários fictícios). Ficam a identidade visual, o site e o domínio. O login da amostra deixa de funcionar.
                 </p>
-              </>
-            ) : (
-              <p className={ALERTA}>
-                Não achei nenhuma amostra com esse e-mail. Confira antes de continuar. Do jeito que
-                está, a venda é registrada e o sistema fica para criar depois.
-              </p>
-            )}
-          </>
-        )}
+              )}
+            </div>
+          );
+        })()}
 
         {passo === 'empresa' && (
           <>
@@ -559,8 +562,8 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
                 {modoTeste && <span className="block font-normal text-foreground/55">depois de {DIAS_DE_TESTE} dias grátis</span>}
               </Linha>
               {!transp && (
-                <Linha rotulo="Sistema" alerta={semAmostra} disabled={salvando} onClick={() => corrigir('sistema')}>
-                  {amostra ? `Amostra de ${amostra.company_name}` : 'Criado depois, pela ficha'}
+                <Linha rotulo="Sistema" disabled={salvando} onClick={() => corrigir('sistema')}>
+                  {amostra ? `Amostra de ${amostra.company_name}` : 'Sem amostra: começa do zero'}
                 </Linha>
               )}
               {!transp && (
@@ -589,13 +592,6 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
               </select>
             </Rotulado>
 
-            {semAmostra && (
-              <p className={ALERTA}>
-                Há {amostras.length === 1 ? 'uma amostra pronta' : `${amostras.length} amostras prontas`} e
-                nenhuma foi ligada a esta venda. O cliente nasce sem sistema, e a implantação fica
-                parada até você criar um.
-              </p>
-            )}
             <p className="text-[13px] text-foreground/45 leading-relaxed">
               Ao confirmar, o cliente é criado, o contrato sai em rascunho
               e {amostra ? 'a amostra vira o sistema dele' : 'o sistema fica para criar depois'}.
