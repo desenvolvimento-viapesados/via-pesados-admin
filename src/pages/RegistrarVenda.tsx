@@ -452,6 +452,8 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
                     <Check className="h-5 w-5 mt-[2px] shrink-0 text-emerald-600 dark:text-emerald-400" strokeWidth={3} />
                     <span className="min-w-0">Amostra da {amostraDoCard.company_name}</span>
                   </p>
+                  <Opcao rotulo="Mexer na amostra" sub="Logo, cor, textos e site. O que mudar já vale para o sistema dele."
+                    onClick={() => setMontando(true)} />
                   <p className={NOTA}>
                     Ao registrar, o conteúdo de demonstração é apagado (veículos, clientes, vendas e funcionários
                     fictícios). Ficam a identidade visual, o site e o domínio. O login da amostra deixa de funcionar.
