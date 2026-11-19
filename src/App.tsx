@@ -26,6 +26,7 @@ const Equipe         = lazy(() => import('@/pages/Equipe'));
 const Relatorios     = lazy(() => import('@/pages/Relatorios'));
 const ProspectDetalhe= lazy(() => import('@/pages/ProspectDetalhe'));
 const RegistrarVenda = lazy(() => import('@/pages/RegistrarVenda'));
+const EsteiraDaLoja  = lazy(() => import('@/pages/EsteiraDaLoja'));
 const Cobranca       = lazy(() => import('@/pages/Cobranca'));
 const Onboarding     = lazy(() => import('@/pages/Onboarding'));
 const Whatsapp       = lazy(() => import('@/pages/Whatsapp'));
@@ -124,6 +125,7 @@ const Gate = () => {
           {/* As telas de seção saíram (2026-10-09): endereço salvo cai no Início. */}
           <Route path="/secao/:chave"  element={<Navigate to="/" replace />} />
           <Route path="/crm"           element={<Crm />} />
+          <Route path="/crm/esteira/:id" element={<EsteiraDaLoja />} />
           <Route path="/crm/prospect/:id" element={<ProspectDetalhe />} />
           <Route path="/crm/venda/:id" element={<RegistrarVenda />} />
           <Route path="/crm/venda"     element={<RegistrarVenda />} />
@@ -149,9 +151,9 @@ const Gate = () => {
           <Route path="/conselho"      element={<Conselho />} />
 
           {/* rotas antigas — agora vivem dentro do CRM */}
-          <Route path="/funil"     element={<Navigate to="/crm?tab=funil" replace />} />
+          <Route path="/funil"     element={<Navigate to="/crm?tab=esteira" replace />} />
           <Route path="/reunioes"  element={<Navigate to="/crm?tab=reunioes" replace />} />
-          <Route path="/amostras"  element={<Navigate to="/crm?tab=funil" replace />} />
+          <Route path="/amostras"  element={<Navigate to="/crm?tab=esteira" replace />} />
         </Routes>
       </Suspense>
     </Layout>

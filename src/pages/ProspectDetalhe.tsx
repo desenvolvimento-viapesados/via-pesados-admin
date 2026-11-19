@@ -318,7 +318,7 @@ export default function ProspectDetalhe() {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3">
         <p className="text-[13px] text-foreground/50">Prospect não encontrado.</p>
-        <button onClick={() => navigate('/crm?tab=funil')} className="text-[13px] text-primary hover:underline">Voltar ao funil</button>
+        <button onClick={() => navigate('/crm?tab=esteira')} className="text-[13px] text-primary hover:underline">Voltar para a esteira</button>
       </div>
     );
   }
@@ -360,7 +360,7 @@ export default function ProspectDetalhe() {
       {/* ── Topo ─────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 border-b border-border/40 bg-background/95 backdrop-blur-xl px-4 sm:px-6 py-4">
         <button
-          onClick={() => navigate('/crm?tab=funil')}
+          onClick={() => navigate('/crm?tab=esteira')}
           className="flex items-center gap-1.5 text-[13px] text-foreground/40 hover:text-foreground transition-colors group mb-2"
         >
           <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />

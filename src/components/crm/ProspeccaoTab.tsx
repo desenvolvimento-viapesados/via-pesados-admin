@@ -250,12 +250,12 @@ export function ProspeccaoTab() {
         <div>
           <h1 className="text-[22px] font-bold tracking-tight text-foreground leading-tight">Prospecção automática</h1>
           <p className="text-[13px] text-foreground/45 mt-0.5">
-            O sistema manda a primeira mensagem para as lojas da lista e o Davi atende quem responde. Quem respondeu aparece no Funil.
+            O sistema manda a primeira mensagem para as lojas da lista e o Davi atende quem responde. Quem respondeu aparece na Esteira, na etapa Conversa.
           </p>
         </div>
-        <button onClick={() => navigate('/crm?tab=funil')}
+        <button onClick={() => navigate('/crm?tab=esteira')}
           className="ml-auto h-9 px-3.5 rounded-xl text-[12.5px] font-medium border border-black/[0.1] dark:border-white/[0.1] text-foreground/75 hover:text-foreground flex items-center gap-1.5">
-          <Kanban className="h-4 w-4" /> Ver quem respondeu no Funil
+          <Kanban className="h-4 w-4" /> Ver a esteira
         </button>
       </div>
       <NumerosDaProspeccao />

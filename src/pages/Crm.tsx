@@ -1,14 +1,13 @@
 import { useState, useEffect, useMemo, lazy, Suspense, Fragment } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Kanban, CalendarDays, Radar, Rocket, Hourglass, Sun } from 'lucide-react';
+import { ArrowLeft, Plus, Kanban, CalendarDays, Radar, Rocket, Hourglass } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useFrente } from '@/contexts/FrenteContext';
 import { rotuloDaFrente } from '@/lib/frente';
-import { HojeTab } from '@/components/crm/HojeTab';
-import { FunilTab } from '@/components/crm/FunilTab';
-import { useOportunidades } from '@/hooks/useOportunidades';
-import { paraResponder, reunioesDoDia } from '@/lib/oportunidades';
+import { EsteiraTab } from '@/components/crm/EsteiraTab';
+import { useEsteira } from '@/hooks/useEsteira';
+import { reunioesDoDia } from '@/lib/oportunidades';
 import { AgendaTab } from '@/components/crm/AgendaTab';
 import { WhatsAppTab } from '@/components/crm/WhatsAppTab';
 import { ProspeccaoTab } from '@/components/crm/ProspeccaoTab';
@@ -19,33 +18,25 @@ const TestesGratis = lazy(() => import('@/pages/TestesGratis'));
 import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
 import { IconeWhatsApp } from '@/components/crm/wa/IconeWhatsApp';
 
-type TabKey = 'hoje' | 'funil' | 'whatsapp' | 'reunioes' | 'prospeccao' | 'implantacao' | 'testes';
+type TabKey = 'whatsapp' | 'esteira' | 'reunioes' | 'prospeccao' | 'implantacao' | 'testes';
 
 type IconeDaAba = React.ComponentType<{ className?: string }>;
 
 /**
- * As abas do CRM, na ordem de quem vende (dono, 18/11/2026: "bato o olho e não consigo
- * compreender").
+ * As abas do CRM (dono, 18/11/2026): WhatsApp em primeiro ("gosto dele como a primeira"), a
+ * Esteira e a Agenda. É só isso que aparece na barra.
  *
- * - Hoje: o que fazer agora. É onde o dia começa.
- * - Funil: onde está cada oportunidade, num quadro só.
- * - WhatsApp e Agenda: as conversas e as reuniões.
- * - Prospecção: o envio automático que alimenta o funil.
- * - Implantação e Teste grátis: depois da venda (separadas das outras por um traço).
- *
- * `depoisDaVenda` marca onde entra o traço.
+ * A esteira junta o que eram Hoje, Funil e Prospecção. O envio automático, a implantação e o
+ * teste grátis continuam existindo como telas (`fora: true`): abrem a partir da esteira, pela
+ * etapa a que pertencem, e não têm botão na barra.
  */
-const TABS: { key: TabKey; label: string; newLabel: string | null; icon: IconeDaAba; depoisDaVenda?: boolean }[] = [
-  /* WhatsApp em primeiro, a pedido do dono (18/11/2026): "gosto do WhatsApp como a primeira". */
+const TABS: { key: TabKey; label: string; newLabel: string | null; icon: IconeDaAba; fora?: boolean }[] = [
   { key: 'whatsapp', label: 'WhatsApp', newLabel: 'Número',       icon: IconeWhatsApp },
-  { key: 'hoje',     label: 'Hoje',     newLabel: null,           icon: Sun },
-  { key: 'funil',    label: 'Funil',    newLabel: 'Oportunidade', icon: Kanban },
+  { key: 'esteira',  label: 'Esteira',  newLabel: 'Oportunidade', icon: Kanban },
   { key: 'reunioes', label: 'Agenda',   newLabel: 'Reunião',      icon: CalendarDays },
-  { key: 'prospeccao', label: 'Prospecção', newLabel: null, icon: Radar },
-  /* Da venda (ou do teste) ao primeiro anúncio no ar, e os 60 dias do teste grátis.
-     Saíram da Home em 09/11 a pedido do dono: "vamos jogar isso no CRM mesmo". */
-  { key: 'implantacao', label: 'Implantação', newLabel: null, icon: Rocket, depoisDaVenda: true },
-  { key: 'testes', label: 'Teste grátis', newLabel: null, icon: Hourglass },
+  { key: 'prospeccao',  label: 'Envio automático', newLabel: null, icon: Radar,     fora: true },
+  { key: 'implantacao', label: 'Implantação',      newLabel: null, icon: Rocket,    fora: true },
+  { key: 'testes',      label: 'Teste grátis',     newLabel: null, icon: Hourglass, fora: true },
 ];
 
 const isTab = (v: string | null): v is TabKey => TABS.some((t) => t.key === v);
@@ -67,10 +58,8 @@ export default function Crm() {
     // A implantação saiu do CRM e virou seção própria.
     if (t === 'conexao') { navigate('/crm?tab=implantacao', { replace: true }); return; }
     if (t === 'assistente') { navigate('/crm?tab=prospeccao', { replace: true }); return; }
-    /* As ligações do dia saíram da Prospecção e moram em Hoje; o funil da prospecção automática
-       virou o Funil. Os endereços antigos levam ao lugar novo. */
-    if (t === 'prospeccao' && params.get('vista') === 'ligacoes') { navigate('/crm?tab=hoje', { replace: true }); return; }
-    if (t === 'funil' && params.get('funil')) { navigate('/crm?tab=funil', { replace: true }); return; }
+    /* Hoje, Funil e as ligações viraram a Esteira: os endereços antigos levam para ela. */
+    if (t === 'hoje' || t === 'funil' || (t === 'prospeccao' && params.get('vista') === 'ligacoes')) { navigate('/crm?tab=esteira', { replace: true }); return; }
     if (isTab(t)) setTab(t);
     if (params.get('new') === '1') {
       setNewOpen(true);
@@ -90,15 +79,11 @@ export default function Crm() {
   const closeNew = () => { setNewOpen(false); setDefaultProspect(null); };
 
   /* Os números das abas saem da mesma conta das telas: o que a aba promete é o que ela mostra. */
-  const { oportunidades, soltas, reunioes } = useOportunidades();
-  const counts = useMemo(() => {
-    const doDia = reunioesDoDia(reunioes, oportunidades);
-    return {
-      hoje: paraResponder(oportunidades).length + soltas.length + doDia.filter((r) => r.quando === 'passou').length,
-      funil: oportunidades.filter((o) => !o.perdida && o.etapa !== 'cliente').length,
-      reunioes: doDia.filter((r) => r.quando === 'hoje').length,
-    } as Record<string, number>;
-  }, [oportunidades, soltas, reunioes]);
+  const { itens, soltas, oportunidades, reunioes } = useEsteira();
+  const counts = useMemo(() => ({
+    esteira: itens.filter((i) => i.suaVez).length + soltas.length,
+    reunioes: reunioesDoDia(reunioes, oportunidades).filter((r) => r.quando === 'hoje').length,
+  } as Record<string, number>), [itens, soltas, oportunidades, reunioes]);
 
   const current = TABS.find((t) => t.key === tab)!;
 
@@ -132,12 +117,11 @@ export default function Crm() {
             marcada pelo mesmo filete de 3px que assina o resto do sistema. */}
         <div className="px-4 sm:px-6 flex items-end gap-3">
           <div className={cn('items-end gap-0.5 overflow-x-auto -mb-px', TABS.length > 1 ? 'flex' : 'hidden')} style={{ scrollbarWidth: 'none' }}>
-            {TABS.map(({ key, label, icon: Icon, depoisDaVenda }) => {
+            {TABS.filter((t) => !t.fora || t.key === tab).map(({ key, label, icon: Icon }) => {
               const active = tab === key;
               const count = counts[key] ?? 0;
               return (
                 <Fragment key={key}>
-                {depoisDaVenda && <span className="self-center mx-2 h-4 w-px bg-black/[0.1] dark:bg-white/[0.12] shrink-0" />}
                 <button
                   onClick={() => goTab(key)}
                   className={cn(
@@ -150,7 +134,7 @@ export default function Crm() {
                   {count > 0 && (
                     <span className={cn(
                       'text-[10px] font-semibold rounded-full px-1.5 py-px tabular-nums transition-colors',
-                      active || key === 'hoje' ? 'bg-primary/15 text-primary' : 'bg-black/[0.05] dark:bg-white/[0.07] text-foreground/45',
+                      active || key === 'esteira' ? 'bg-primary/15 text-primary' : 'bg-black/[0.05] dark:bg-white/[0.07] text-foreground/45',
                     )}>
                       {count}
                     </span>
@@ -178,10 +162,9 @@ export default function Crm() {
 
       {/* ── Conteúdo ───────────────────────────────────────── */}
       <main className={cn('flex-1 w-full py-5',
-        tab === 'funil' || tab === 'whatsapp' || tab === 'reunioes' ? 'px-4 sm:px-6' : 'px-4 sm:px-6 max-w-6xl mx-auto')}>
-        {tab === 'hoje'     && <HojeTab />}
+        tab === 'whatsapp' || tab === 'reunioes' ? 'px-4 sm:px-6' : 'px-4 sm:px-6 max-w-6xl mx-auto')}>
+        {tab === 'esteira'  && <EsteiraTab  newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'whatsapp' && <WhatsAppTab newOpen={newOpen} onCloseNew={closeNew} />}
-        {tab === 'funil'    && <FunilTab    newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'reunioes' && <AgendaTab   newOpen={newOpen} onCloseNew={closeNew} defaultProspectId={defaultProspect} />}
         {tab === 'prospeccao' && <ProspeccaoTab />}
         {(tab === 'implantacao' || tab === 'testes') && (

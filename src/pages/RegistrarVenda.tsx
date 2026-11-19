@@ -293,7 +293,10 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
       /* A cobrança é o próximo passo real: manda o link e espera. Cair na
          ficha obrigava a procurar o link no meio de um checklist. No teste,
          o próximo passo é implantar — o link de assinar vai nos avisos. */
-      navigate(modoTeste ? '/crm?tab=implantacao&aba=teste' : `/clientes/${client.id}/cobranca`);
+      /* Veio da esteira: volta para ela, na tela seguinte da loja (o link de pagamento, ou a implantação). */
+      const daEsteira = new URLSearchParams(window.location.search).get('de') === 'esteira';
+      navigate(daEsteira ? `/crm/esteira/${encodeURIComponent(`cliente:${client.id}`)}`
+        : modoTeste ? '/crm?tab=implantacao&aba=teste' : `/clientes/${client.id}/cobranca`);
     } catch {
       toast.error('Erro ao registrar venda');
       setSalvando(false);

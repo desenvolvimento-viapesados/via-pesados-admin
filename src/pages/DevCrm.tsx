@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { HojeView } from '@/components/crm/HojeTab';
-import { Caminho, FunilView } from '@/components/crm/FunilTab';
-import type { AcoesDaVenda } from '@/components/crm/AcoesDaVenda';
+import { EsteiraView } from '@/components/crm/EsteiraTab';
+import { TelaDaLoja, type AcoesDaLoja } from '@/components/crm/esteira/TelaDaLoja';
 import { posicaoNoFunil } from '@/lib/funilDaProspeccao';
+import { montarEsteira, telaDo, type ClienteDaEsteira, type Tela } from '@/lib/esteira';
 import { conversasSoltas, montarOportunidades, type FonteLoja, type ReuniaoDaOportunidade } from '@/lib/oportunidades';
 
 /**
- * Bancada do CRM (só em desenvolvimento): Hoje e Funil com lojas inventadas, para ver as telas
+ * Bancada do CRM (só em desenvolvimento): a esteira e as telas de uma loja, com lojas inventadas, para ver as telas
  * sem entrar na conta de ninguém. Não lê o banco.
  */
 
@@ -68,31 +68,45 @@ const FONTES = {
   respostasDaEquipe: {},
 };
 
+const CLIENTES: ClienteDaEsteira[] = [
+  { id: 'k1', prospectId: null, nome: 'Rodovia Implementos', lugar: 'Itaúna/MG', telefone: '5531997000000', status: 'onboarding', pagou: false, emTeste: false, implantado: false, checkoutToken: 'a1b2c3d4e5', contratoAssinado: false, mensalidade: 437, criadoEm: atras(3) },
+  { id: 'k2', prospectId: null, nome: 'Revenda Exemplo', lugar: 'Governador Valadares/MG', telefone: '5533998000000', status: 'ativo', pagou: true, emTeste: false, implantado: true, checkoutToken: null, contratoAssinado: true, mensalidade: 437, criadoEm: atras(900) },
+];
+
+const TELAS: Tela[] = ['marcar', 'preparar', 'reuniao', 'resultado', 'pagamento'];
+
 export default function DevCrm() {
-  const [tela, setTela] = useState<'hoje' | 'funil'>(new URLSearchParams(window.location.search).get('tela') === 'funil' ? 'funil' : 'hoje');
+  const q = new URLSearchParams(window.location.search);
+  const [tela, setTela] = useState<Tela | 'esteira'>((q.get('tela') as Tela) ?? 'esteira');
   const ops = montarOportunidades(FONTES, AGORA);
-  const diz = (o: string) => () => toast.message(o);
-  const acoes: AcoesDaVenda = {
-    conversa: diz('Abre a conversa ao lado'), conversaDa: diz('Abre a conversa ao lado'), ficha: diz('Abre a ficha'),
-    marcarReuniao: diz('Pede o dia e a hora'), comoFoi: diz('Pergunta como foi a reunião'), primeiroContato: diz('Pergunta como foi o contato'), jaRespondi: diz('Anota que você já respondeu'),
-    venda: diz('Registra a venda'), teste: diz('Começa o teste'),
+  const itens = montarEsteira(ops, CLIENTES, new Set(q.get('amostra') === 'sim' ? ops.map((o) => o.cardId ?? '') : []), AGORA);
+  const diz = (o: string) => async () => { toast.message(o); };
+  const acoes: AcoesDaLoja = {
+    voltar: () => setTela('esteira'), conversa: diz('Abre a conversa ao lado'), marcar: diz('Marca a reunião'), montarAmostra: diz('Abre a amostra'),
+    apareceu: diz('Marca que aconteceu'), naoApareceu: diz('Volta para Conversa'), remarcar: diz('Remarca'), fechou: diz('Abre o registro da venda'),
+    vaiTestar: diz('Abre o teste grátis'), ficouDePensar: diz('Fica em Decisão'), naoQuer: diz('Sai da esteira'), abrirCobranca: diz('Abre a cobrança'),
+    abrirImplantacao: diz('Abre a implantação'), abrirFicha: diz('Abre a ficha'), jaRespondi: diz('Anota que você já respondeu'),
   };
+  /* Para cada tela, a primeira loja que está nela (a de pagamento é o cliente que ainda não pagou). */
+  const exemplo = tela === 'esteira' ? null
+    : itens.find((i) => telaDo(i, AGORA) === tela) ?? itens.find((i) => i.estacao === 'reuniao') ?? itens[0];
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="flex gap-2 px-6 pt-4">
-        {(['hoje', 'funil'] as const).map((t) => (
-          <button key={t} onClick={() => setTela(t)} className={`h-8 px-3 rounded-lg text-[12.5px] font-medium ${tela === t ? 'bg-primary/10 text-primary' : 'text-foreground/50'}`}>{t === 'hoje' ? 'Hoje' : 'Funil'}</button>
+      <div className="flex flex-wrap gap-2 px-6 pt-4">
+        {(['esteira', ...TELAS] as const).map((t) => (
+          <button key={t} onClick={() => setTela(t)} className={`h-8 px-3 rounded-lg text-[12.5px] font-medium ${tela === t ? 'bg-primary/10 text-primary' : 'text-foreground/50'}`}>{t}</button>
         ))}
       </div>
-      <main className="px-4 sm:px-6 py-5">
-        {tela === 'hoje' ? (
-          <HojeView agora={AGORA} oportunidades={ops} soltas={conversasSoltas(FONTES.conversas, ops)} reunioes={FONTES.reunioes} acoes={acoes} ligacoesFaltam={20}
-            ligacoes={<p className="max-w-4xl text-[13px] text-foreground/40">(aqui entra a lista de ligações do dia)</p>} />
-        ) : (
-          <FunilView agora={AGORA} oportunidades={ops} acoes={acoes}
-            caminho={<Caminho passos={[{ rotulo: 'lojas na fila', valor: 1118 }, { rotulo: 'já receberam', valor: 125 }, { rotulo: 'responderam', valor: 9, de: '7,2%' }, { rotulo: 'reuniões', valor: 2 }, { rotulo: 'clientes', valor: 0 }]} />} />
-        )}
-      </main>
+      {tela === 'esteira' || !exemplo ? (
+        <main className="px-4 sm:px-6 py-5">
+          <EsteiraView agora={AGORA} itens={itens} soltas={conversasSoltas(FONTES.conversas, ops)} naFila={1118} ligacoes={{ feitas: 0, meta: 20 }}
+            aoAbrir={(i) => setTela(telaDo(i, AGORA))} aoAbrirConversa={() => toast.message('Abre a conversa ao lado')}
+            prospeccao={<p className="text-[13px] text-foreground/40">(aqui entra a lista de ligações do dia)</p>} />
+        </main>
+      ) : (
+        <TelaDaLoja key={tela} item={exemplo} tela={tela} acoes={acoes} agora={AGORA}
+          dados={{ amostraUrl: exemplo.temAmostra ? 'https://amostra.viapesados.com.br/demo-serra-azul/sistema' : null, linkDePagamento: exemplo.cliente?.checkoutToken ? `https://viapesados.com.br/lojista/bemvindo/${exemplo.cliente.checkoutToken}` : null }} />
+      )}
     </div>
   );
 }
