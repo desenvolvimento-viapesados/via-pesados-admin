@@ -107,14 +107,16 @@ describe('resposta automática da loja (dono, 17/11/2026)', () => {
     expect(lerRespostasAutomaticas(gente)).toMatchObject({ novasSaoRobo: false, humanoJaFalou: true, recadoJaFoi: true });
   });
 
-  it('o recado (dono, 17/11): simples, "atendente da Via Pesados", "o único sistema do país", resposta fácil', () => {
-    expect(RECADO_PARA_A_EQUIPE).toMatch(/^Oi! Aqui é o Davi, atendente da Via Pesados\. Somos o único sistema do país feito para lojas de veículos pesados\./);
+  it('o recado (dono, 17/11 e 18/11): simples, "atendente do Via Pesados", "o único sistema do país", resposta fácil', () => {
+    expect(RECADO_PARA_A_EQUIPE).toBe('Oi! Aqui é o Davi, atendente do Via Pesados. Somos o único sistema do país feito para lojas de veículos pesados. O único com conexões oficiais para *Mercado Livre, Instagram e Facebook*. Pra ver funcionando na sua loja, é só me falar.');
+    expect(RECADO_PARA_A_EQUIPE).toMatch(/^Oi! Aqui é o Davi, atendente do Via Pesados\. Somos o único sistema do país feito para lojas de veículos pesados\./);
     expect(RECADO_PARA_A_EQUIPE).toContain(MARCA_DO_RECADO);
     expect(RECADO_PARA_A_EQUIPE).toMatch(/é só me falar\.$/);
     expect(RECADO_PARA_A_EQUIPE).toContain('O único com conexões oficiais para *Mercado Livre, Instagram e Facebook*.');
     expect(RECADO_PARA_A_EQUIPE.length).toBeLessThan(280);
     expect(RECADO_PARA_A_EQUIPE).not.toMatch(/R\$|grátis|Black|automátic/i);
-    expect(LEMBRETE_PARA_A_EQUIPE).toBe('Passando aqui de novo 🙂 Conseguiu ver a mensagem acima? É só responder essa mensagem que o Xavier te mostra em 15 minutos.');
+    expect(LEMBRETE_PARA_A_EQUIPE).toBe('Passando aqui de novo 🙂 Conseguiu ver a mensagem acima? É só responder essa mensagem que um especialista da nossa equipe te mostra em 15 minutos.');
+    expect(LEMBRETE_PARA_A_EQUIPE).not.toMatch(/xavier/i);
   });
 
   const h = (horas: number) => new Date(Date.UTC(2026, 10, 17, 11, 0) + horas * 3_600_000).toISOString();
@@ -136,5 +138,13 @@ describe('resposta automática da loja (dono, 17/11/2026)', () => {
     expect(horaDoLembrete(jaFoi, new Date(h(10)))).toBe(false);
     const gente = lerRespostasAutomaticas([...conversa, { direcao: 'entrada', conteudo: 'Opa, sou o dono. Como funciona?', created_at: h(2) }]);
     expect(horaDoLembrete(gente, new Date(h(5)))).toBe(false);
+  });
+  it('recado e lembrete antigos (antes de 18/11: "atendente da Via Pesados", "o Xavier te mostra") continuam reconhecidos', () => {
+    const antigo = 'Oi! Aqui é o Davi, atendente da Via Pesados. Somos o único sistema do país feito para lojas de veículos pesados. O único com conexões oficiais para *Mercado Livre, Instagram e Facebook*. Pra ver funcionando na sua loja, é só me falar.';
+    const l = lerRespostasAutomaticas([conversa[0], conversa[1], { direcao: 'saida', conteudo: antigo, created_at: h(0.02) }]);
+    expect(l.recadoJaFoi).toBe(true);
+    expect(horaDoLembrete(l, new Date(h(4.1)))).toBe(true);
+    const lembreteAntigo = 'Passando aqui de novo 🙂 Conseguiu ver a mensagem acima? É só responder essa mensagem que o Xavier te mostra em 15 minutos.';
+    expect(lerRespostasAutomaticas([...conversa, { direcao: 'saida', conteudo: lembreteAntigo, created_at: h(5) }]).lembreteJaFoi).toBe(true);
   });
 });

@@ -109,20 +109,20 @@ function textoDoEstado(args: {
     L.push(`- 4. O que mais toma tempo na loja (a dor): ${e.dores.length ? n(e.dores.map((d) => `${d.texto} ("${d.citacao}")`).join('; '), 240) + (dorConcreta ? '' : ' (resposta vaga)') : 'FALTA'}`);
     L.push(args.reuniaoFalada
       ? (dorConcreta
-        ? 'A reunião já está marcada e a dor está registrada: não pergunte mais nada; o que faltar o Xavier vê na reunião.'
+        ? 'A reunião já está marcada e a dor está registrada: não pergunte mais nada; o que faltar o especialista vê na reunião.'
         : args.perguntasDeDorDepoisDeMarcar >= 2
           ? 'A reunião já está marcada e já foram duas perguntas da dor: não pergunte mais nada. Se ele contou a dor agora, registre com a frase dele, agradeça e se despeça.'
           : e.dores.length || args.leadRespondeuVago
             ? `A reunião já está marcada. A resposta dele sobre a dor foi vaga: cabe UMA pergunta, o pedido de exemplo ("${PERGUNTA_DO_EXEMPLO_DA_DOR}"), uma vez só. Quando ele contar, registre a dor com a frase dele, agradeça e se despeça. Nada mais da loja.`
             : `A reunião já está marcada e a dor ainda não apareceu: só cabe a pergunta da dor ("${PERGUNTA_DA_DOR_DEPOIS_DE_MARCAR.split('\n')[0]}" com as quatro opções), se ainda não foi feita. Se ele respondeu, registre a dor com a frase dele, agradeça e se despeça. Nada mais da loja.`)
       : !falta.length ? 'Qualificação completa.'
-        : args.porta.pode ? `A porta está aberta: convide; o que faltar o Xavier vê na reunião${falta.includes('dor') ? ' (a dor você pergunta logo depois do Marcado)' : ''}.`
+        : args.porta.pode ? `A porta está aberta: convide; o que faltar o especialista vê na reunião${falta.includes('dor') ? ' (a dor você pergunta logo depois do Marcado)' : ''}.`
           : falta[0] === 'dor'
             ? `Próxima pergunta: a da dor, exatamente assim (pode trocar o "E hoje" por um reconhecimento curto do que ele respondeu):\n${PERGUNTA_DA_DOR}\nQuando ele responder, registre a dor (dores) com a frase dele ao pé da letra, mesmo que vaga, e faça o convite.`
             : `Próxima pergunta: ${PERGUNTA_DA_QUALIFICACAO[falta[0]]}.`);
     /* Só para registrar se ele contar; ninguém pergunta isto (dono, 06/11). */
     const sabe = (v: unknown) => (v ? n(v, 160) : '—');
-    L.push('# O resto da loja (NÃO pergunte: registre só se ele contar; o Xavier vê na reunião)');
+    L.push('# O resto da loja (NÃO pergunte: registre só se ele contar; o especialista vê na reunião)');
     L.push(`- Cidade: ${sabe(s0.cidade ?? (loja?.cidade ? `${loja.cidade}${loja.uf ? `/${loja.uf}` : ''}` : null))}`);
     L.push(`- Estrutura física (pátio ou sem pátio): ${sabe(s0.estrutura)}`);
     L.push(`- Segmento: ${sabe(s0.segmento ?? (typeof d0.tipo === 'string' ? d0.tipo : null))}`);
@@ -141,9 +141,9 @@ function textoDoEstado(args: {
   L.push(`Pedidos de preço até agora: ${e.pedidos_preco} (se ele pediu de novo agora, esta é a vez ${e.pedidos_preco + 1}).`);
   const preco = precoDeHoje(args.cfg);
   L.push(!preco
-    ? 'Valor: você não diz; quem passa é o Xavier.'
+    ? 'Valor: você não diz; quem passa é um especialista da nossa equipe, na demonstração.'
     : preco.cheio
-      ? `Valor e OFERTA DE LANÇAMENTO (a Black Friday de novembro, vale até ${preco.ofertaAte!.slice(8, 10)}/${preco.ofertaAte!.slice(5, 7)}): "${falaDoPreco(preco)}" Só esses dois números; a taxa de implantação não tem valor pra dizer (em novembro ela não é cobrada). É a Black Friday de que o Xavier fala no vídeo da prospecção (nas conversas antigas, a "oferta especial de lançamento" da 2ª mensagem). Nunca outro desconto, valor ou porcentagem.`
+      ? `Valor e OFERTA DE LANÇAMENTO (a Black Friday de novembro, vale até ${preco.ofertaAte!.slice(8, 10)}/${preco.ofertaAte!.slice(5, 7)}): "${falaDoPreco(preco)}" Só esses dois números; a taxa de implantação não tem valor pra dizer (em novembro ela não é cobrada). É a Black Friday de que o vídeo da prospecção fala (nas conversas antigas, a "oferta especial de lançamento" da 2ª mensagem). Nunca outro desconto, valor ou porcentagem.`
       : `Valor do Via Pesados que você PODE dizer: "${falaDoPreco(preco)}" Só esse; nunca desconto, outro valor ou porcentagem.`
         + (preco.ofertaAcabouEm ? ` A oferta de lançamento (a Black Friday de novembro, a do vídeo da prospecção) acabou em ${preco.ofertaAcabouEm.slice(8, 10)}/${preco.ofertaAcabouEm.slice(5, 7)}: se ele falar dela ou de ter sido selecionado, diga que ela valeu até essa data, sem número, e que hoje é este valor. Não chame este valor de oferta.` : ''));
   L.push(`Mostrou o sistema ligado à dor: ${e.prova_enviada ? 'sim' : 'não'}.`);
@@ -157,14 +157,14 @@ function textoDoEstado(args: {
   L.push(`Mensagens suas já enviadas nesta conversa: ${e.mensagens_enviadas}.`);
 
   L.push(`# Pode oferecer horário agora? ${args.porta.pode ? 'SIM' : 'NÃO'}`);
-  L.push(`Por quê: ${args.porta.motivo}.${args.porta.precisaInteresse ? ' Próximo passo: devolva a dor numa frase, mostre UMA coisa do sistema ligada a ela e pergunte se ele quer ver funcionando com o Xavier, em 15 minutos, por vídeo (sem horário ainda). Se ele disser que sim, registre interesse e aí ofereça os horários.' : ''}`);
+  L.push(`Por quê: ${args.porta.motivo}.${args.porta.precisaInteresse ? ' Próximo passo: devolva a dor numa frase, mostre UMA coisa do sistema ligada a ela e pergunte se ele quer ver funcionando com um especialista da nossa equipe, em 15 minutos, por vídeo (sem horário ainda). Se ele disser que sim, registre interesse e aí ofereça os horários.' : ''}`);
   L.push('Se nesta mensagem ele pediu para comprar, fechar, ver funcionando ou disse "sim" a ver, registre (pedido / interesse) antes de responder: a porta muda na hora. "Bora!" ao convite das perguntinhas é sim às perguntas, não à demonstração: não registre interesse por isso.');
 
-  L.push(`# Horários livres para oferecer (${args.cfg.duracao_min} minutos com o Xavier)`);
+  L.push(`# Horários livres para oferecer (${args.cfg.duracao_min} minutos com um especialista da nossa equipe)`);
   if (!args.cfg.link_reuniao || !args.cfg.responsavel_id) {
-    L.push('A agenda ainda não está pronta no painel: NÃO ofereça horário. Quando ele quiser marcar, chame o Xavier (chamar_xavier).');
+    L.push('A agenda ainda não está pronta no painel: NÃO ofereça horário. Quando ele quiser marcar, chame a equipe (chamar_xavier) e diga que um especialista da nossa equipe combina o horário por aqui.');
   } else if (!args.livres.length) {
-    L.push('Nenhum horário livre nos próximos dias: não ofereça horário; quando ele quiser marcar, chame o Xavier.');
+    L.push('Nenhum horário livre nos próximos dias: não ofereça horário; quando ele quiser marcar, chame a equipe (chamar_xavier).');
   } else {
     for (const h of args.livres) L.push(`- ${horarioFalado(h)} → inicio: ${h.toISOString()}`);
     L.push('Ofereça dois desta lista (escreva só o dia e a hora, nunca o código). Para marcar, use o "inicio" exatamente como está.');
@@ -173,7 +173,7 @@ function textoDoEstado(args: {
   if (args.semTranscricao.length) {
     L.push('# Áudios que você não conseguiu ouvir');
     L.push(args.semTranscricao.map((m) => `- áudio de ${horarioFalado(new Date(m.created_at)).split(', ').slice(1).join(' ')}`).join('\n'));
-    L.push('Diga com honestidade que não conseguiu ouvir o áudio e peça para escrever. Se ele insistir em áudio, chame o Xavier.');
+    L.push('Diga com honestidade que não conseguiu ouvir o áudio e peça para escrever. Se ele insistir em áudio, chame a equipe (chamar_xavier).');
   }
 
   L.push('# Agora é com você\nResponda às mensagens marcadas com ► NOVA no fim da conversa, continuando de onde a conversa está. Registre o que aprender e termine com responder.');
@@ -478,7 +478,7 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
             ? `${r2.resposta} A reunião já está marcada: nada da loja se pergunta${temDorConcreta(estadoAtual.dores) ? ' (a dor já está registrada: agradeça e se despeça)' : ' (só a dor, se ainda cabe: veja o estado)'}; responda curto e se despeça. Se ele pediu para remarcar, dois horários da lista e "Qual fica melhor?", e marcar_reuniao quando ele escolher.`
             : `${r2.resposta} Agora, pode oferecer horário? ${agoraPorta.pode ? 'SIM' : 'NÃO'} (${agoraPorta.motivo}).`
               + (!faltaAgora.length ? ' A qualificação está completa.'
-                : agoraPorta.pode ? ' O que faltar da qualificação o Xavier vê na reunião.'
+                : agoraPorta.pode ? ' O que faltar da qualificação o especialista vê na reunião.'
                   : faltaAgora[0] === 'dor'
                     ? ` Próxima pergunta da qualificação, a da dor, exatamente assim:\n${PERGUNTA_DA_DOR}`
                     : ` Próxima pergunta da qualificação: ${PERGUNTA_DA_QUALIFICACAO[faltaAgora[0]]}.`);
@@ -495,14 +495,14 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
               : estadoAtual.dores.length
                 ? ` E num terceiro balão, sozinho, o pedido de exemplo da dor (a resposta dele foi vaga): "${PERGUNTA_DO_EXEMPLO_DA_DOR}"`
                 : ` E num terceiro balão, sozinho, a pergunta da dor como preparação, exatamente assim: "${PERGUNTA_DA_DOR_DEPOIS_DE_MARCAR}"`;
-            saida = `Pode confirmar ${horarioFalado(v.inicio)}. Link da chamada: ${cfg.link_reuniao}. A reunião é gravada quando a sua mensagem sair. Agora chame responder com o "Marcado!" e o link, sem pergunta nenhuma neles (dono, 06/11): "Marcado! ✅\n\n*[dia] às [hora]*, 15 minutos com o Xavier no Google Meet.\nSe servir, você já deixa a implantação marcada; se não servir, tudo bem." (formato do dia: "amanhã, sexta, às 9h30" ou "segunda às 10h") / o link sozinho no balão, copiado exatamente.${dorNoMarcado} O que faltar da loja o Xavier vê na reunião.`;
+            saida = `Pode confirmar ${horarioFalado(v.inicio)}. Link da chamada: ${cfg.link_reuniao}. A reunião é gravada quando a sua mensagem sair. Agora chame responder com o "Marcado!" e o link, sem pergunta nenhuma neles (dono, 06/11): "Marcado! ✅\n\n*[dia] às [hora]*, 15 minutos com um especialista da nossa equipe no Google Meet.\nSe servir, você já deixa a implantação marcada; se não servir, tudo bem." (formato do dia: "amanhã, sexta, às 9h30" ou "segunda às 10h") / o link sozinho no balão, copiado exatamente.${dorNoMarcado} O que faltar da loja o especialista vê na reunião.`;
           } else {
             ehErro = true;
-            saida = v.motivo + (v.chamarXavier ? ' Não marque: chame o Xavier (chamar_xavier) e diga que ele combina o horário por aqui.' : '');
+            saida = v.motivo + (v.chamarXavier ? ' Não marque: chame a equipe (chamar_xavier) e diga que um especialista da nossa equipe combina o horário por aqui.' : '');
           }
         } else if (ch.name === 'chamar_xavier') {
           acoes.push({ tipo: 'chamar_xavier', args: { motivo: String(entrada.motivo ?? '').slice(0, 500) }, estado: 'pendente' });
-          saida = 'Certo: o Xavier assume esta conversa. Se for responder, diga curto que o Xavier continua com ele por aqui (sem prometer hora).';
+          saida = 'Certo: a equipe assume esta conversa. Se for responder, diga curto que um especialista da nossa equipe fala com ele por aqui (sem prometer hora e sem dizer nome).';
         } else if (ch.name === 'encerrar') {
           const motivo = ['nao_quer', 'saiu', 'engano', 'xingou', 'ja_cliente'].includes(entrada.motivo) ? entrada.motivo : 'nao_quer';
           acoes.push({ tipo: 'encerrar', args: { motivo, lost_reason: entrada.lost_reason ?? null }, estado: 'pendente' });

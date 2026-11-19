@@ -18,7 +18,7 @@ import {
   ORDEM_DA_QUALIFICACAO, PERGUNTA_DA_DOR, PERGUNTA_DA_DOR_DEPOIS_DE_MARCAR, PERGUNTA_DO_EXEMPLO_DA_DOR,
   perguntasDeDor, respostaVagaDaDor, temDorConcreta,
 } from '../../supabase/functions/_shared/assistente-regras';
-import { INSTRUCOES } from '../../supabase/functions/_shared/assistente-roteiro';
+import { INSTRUCOES, FERRAMENTAS, textoDosFatos } from '../../supabase/functions/_shared/assistente-roteiro';
 import { ROTULO_DO_VIDEO } from '../../supabase/functions/_shared/prospeccao-regras';
 
 /* As regras do assistente de vendas, como o dono definiu em 03/11/2026.
@@ -48,7 +48,7 @@ describe('fiscal: forma', () => {
     expect(regras(['x'.repeat(701)])).toEqual(['tamanho']);
     expect(regras(['x'.repeat(700)])).toEqual([]);
     expect(regras([Array.from({ length: 11 }, (_, i) => `linha ${i}`).join('\n')])).toEqual(['linhas']);
-    expect(regras(['O Xavier te mostra:\n\n• o anúncio\n• o WhatsApp\n• e o *valor*'])).toEqual([]);
+    expect(regras(['Nosso especialista te mostra:\n\n• o anúncio\n• o WhatsApp\n• e o *valor*'])).toEqual([]);
     expect(regras(['• a\n• b\n• c\n• d\n• e'])).toContain('lista');
     expect(regras(['O *único software do Brasil* pra loja de pesados.'])).toEqual([]);
     expect(regras(['O **único** do Brasil.'])).toContain('markdown');
@@ -90,9 +90,9 @@ describe('fiscal: preço e prazo nunca saem', () => {
   });
 
   it('não confunde com o que pode', () => {
-    expect(regras(['15 minutos com o Xavier, terça 10h.'])).toEqual([]);
+    expect(regras(['15 minutos com o especialista, terça 10h.'])).toEqual([]);
     expect(regras(['Se um dia quiser ver, é só chamar aqui.'])).toEqual([]);
-    expect(regras(['O valor o Xavier te mostra nos 15 minutos, junto com o sistema funcionando.'])).toEqual([]);
+    expect(regras(['O valor o especialista te mostra nos 15 minutos, junto com o sistema funcionando.'])).toEqual([]);
     expect(regras(['Marcado: quarta, dia 5, às 9h.'])).toEqual([]);
   });
 
@@ -138,17 +138,19 @@ describe('fiscal: nomes, pedidos e honestidade', () => {
     expect(regras(['Me passa a senha do Instagram'])).toContain('pedido_sensivel');
     expect(regras(['Manda seu CPF pra cadastro'])).toEqual(['pedido_sensivel']);
     expect(regras(['Tá certo desconfiar. Não peço senha, cartão nem pagamento.'])).toEqual([]);
-    expect(regras(['O Xavier mostra tudo por vídeo, nunca a senha.'])).toEqual([]);
+    expect(regras(['O especialista mostra tudo por vídeo, nunca a senha.'])).toEqual([]);
   });
 
   it('nunca finge ser gente nem finge esquecimento', () => {
-    expect(regras(['Sou o Xavier'])).toEqual(['fingir_gente']);
-    expect(regras(['Aqui é o Xavier, tudo bem'])).toEqual(['fingir_gente']);
+    expect(regras(['Sou o Xavier'])).toEqual(['fingir_gente', 'nome_do_dono']);
+    expect(regras(['Aqui é o Xavier, tudo bem'])).toEqual(['fingir_gente', 'nome_do_dono']);
     expect(regras(['Sou uma pessoa de verdade'])).toEqual(['fingir_gente']);
     expect(regras(['Não sou robô não'])).toEqual(['fingir_gente']);
-    expect(regras(['Sou assistente virtual, sim. O Xavier entra quando você quiser.'])).toEqual([]);
-    expect(regras(['Não sou o Xavier: sou o assistente virtual dele.'])).toEqual([]);
-    expect(regras(['Não sou uma pessoa, sou o assistente virtual do Xavier.'])).toEqual([]);
+    expect(regras(['Sou assistente virtual, sim. Alguém da nossa equipe entra quando você quiser.'])).toEqual([]);
+    /* 18/11: a resposta honesta não usa nome; negar ser o dono pelo nome não é fingir gente, mas cai em nome_do_dono. */
+    expect(regras(['Não, aqui é o Davi, atendente virtual do Via Pesados.'])).toEqual([]);
+    expect(regras(['Não sou o Xavier: sou o assistente virtual dele.'])).toEqual(['nome_do_dono']);
+    expect(regras(['Não sou uma pessoa, sou o assistente virtual do Xavier.'])).toEqual(['nome_do_dono']);
     expect(regras(['Esqueci de falar: o site vem junto.'])).toEqual(['esquecimento']);
   });
 
@@ -158,7 +160,7 @@ describe('fiscal: nomes, pedidos e honestidade', () => {
     const texto = explicarViolacoes(r.violacoes);
     expect(texto).toContain('No balão 1');
     expect(texto).toContain('No balão 2');
-    expect(texto).toContain('Xavier');
+    expect(texto).toContain('um especialista da nossa equipe');
   });
 });
 
@@ -431,8 +433,8 @@ describe('revisão de 03/11: o que a revisão achou', () => {
     expect(regras(['A partir de 437'])).toContain('preco');
     expect(regras(['A mensalidade de 587 já inclui tudo'])).toContain('preco');
     expect(regras(['O plano é 587 mensais'])).toContain('preco');
-    expect(regras(['O valor o Xavier te mostra nos 15 minutos, junto com o sistema funcionando.'])).toEqual([]);
-    expect(regras(['O Xavier pode quinta 10h ou sexta 15h, 15 minutos por vídeo.'])).toEqual([]);
+    expect(regras(['O valor o especialista te mostra nos 15 minutos, junto com o sistema funcionando.'])).toEqual([]);
+    expect(regras(['Nosso especialista pode quinta 10h ou sexta 15h, 15 minutos por vídeo.'])).toEqual([]);
   });
 
   it('senha, cartão e CPF: "sem" solto e negação longe não liberam o pedido', () => {
@@ -535,7 +537,7 @@ describe('teste grátis fora da conversa (dono, 05/11/2026)', () => {
     for (const t of ['Antes de pagar tem o teste grátis.', 'É gratuito no começo.', 'Dá pra usar de graça.', 'Tem um período de teste.']) {
       expect(fiscal([t]).violacoes.some((v) => v.regra === 'proibida'), t).toBe(true);
     }
-    expect(fiscal(['O Xavier te mostra o sistema funcionando e o valor.']).ok).toBe(true);
+    expect(fiscal(['O especialista te mostra o sistema funcionando e o valor.']).ok).toBe(true);
   });
 });
 
@@ -577,9 +579,9 @@ describe('o roteiro do Davi (manual de vendas, 05/11/2026)', () => {
 
   it('horário oferecido antes da hora volta para a IA reescrever', () => {
     const cedo = { podeOferecerHorario: false, motivoDoHorario: 'ele quer comprar: antes, até duas perguntas' };
-    expect(regras(['O Xavier pode amanhã 9h30 ou segunda 14h. Qual fica melhor?'], cedo)).toContain('horario_cedo');
+    expect(regras(['Nosso especialista pode amanhã 9h30 ou segunda 14h. Qual fica melhor?'], cedo)).toContain('horario_cedo');
     expect(regras(['Hoje é você mesmo que posta os caminhões?'], cedo)).toEqual([]);
-    expect(regras(['O Xavier pode amanhã 9h30 ou segunda 14h. Qual fica melhor?'], { podeOferecerHorario: true })).toEqual([]);
+    expect(regras(['Nosso especialista pode amanhã 9h30 ou segunda 14h. Qual fica melhor?'], { podeOferecerHorario: true })).toEqual([]);
   });
 
   it('antes de marcar, uma coisa do sistema por resposta (nada de lista)', () => {
@@ -594,10 +596,10 @@ describe('o roteiro do Davi (manual de vendas, 05/11/2026)', () => {
   it('frases de palco, pressão, pedágio e promessa que ele não cumpre', () => {
     for (const t of ['Excelente pergunta!', 'Faz sentido pra você?', 'O começo é uma conversa de 15 minutos.', 'Não perca essa condição especial.',
       'Você está perdendo vendas todo dia.', 'Tenho amanhã 10h livre.', 'Te mando depois o material.', 'Dá pra testar o sistema.', 'Deixa à mão o Insta.',
-      'Pra eu já adiantar pro Xavier: quantos caminhões?', 'Vou passar pro Xavier saber.']) {
+      'Pra eu já adiantar pro Xavier: quantos caminhões?', 'Vou passar pro Xavier saber.', 'Pra eu já adiantar pro especialista: quantos caminhões?']) {
       expect(regras([t]), t).toContain('palco');
     }
-    expect(regras(['O Xavier pode amanhã 10h ou sexta 15h. Qual fica melhor?'])).toEqual([]);
+    expect(regras(['Nosso especialista pode amanhã 10h ou sexta 15h. Qual fica melhor?'])).toEqual([]);
   });
 
   it('a apresentação é do Davi e avisa que é automático; ele nunca nega ser automático', () => {
@@ -721,7 +723,7 @@ describe('bancada de 05/11: o que irritou o lojista', () => {
       'Ele sai em tudo com um cadastro só.', 'Pra ele te responder certinho.', 'Você vê se compensa.', 'Se achar caro, fala na hora.']) {
       expect(regras([t]), t).toContain('palco');
     }
-    expect(regras(['Já chamei o Xavier, dono do Via Pesados. Ele te responde aqui mesmo, nesta conversa.'])).toEqual([]);
+    expect(regras(['Já chamei um especialista da nossa equipe. Ele te responde aqui mesmo, nesta conversa.'])).toEqual([]);
   });
   it('"certinho" só barra quando promete resposta ou valor (dono, 12/11: Contagem Caminhões)', () => {
     for (const t of ['Te passo o valor certinho depois.', 'O Xavier te manda o preço certinho.', 'Ele vai te responder bem certinho.']) {
@@ -904,7 +906,7 @@ describe('depois da reunião marcada, nenhuma pergunta da loja (dono, 06/11/2026
 
   it('o Marcado, o link e a despedida passam', () => {
     expect(regras([
-      'Marcado! ✅\n\n*Segunda às 9h*, 15 minutos com o Xavier no Google Meet.\nSe servir, você já deixa a implantação marcada; se não servir, tudo bem.',
+      'Marcado! ✅\n\n*Segunda às 9h*, 15 minutos com um especialista da nossa equipe no Google Meet.\nSe servir, você já deixa a implantação marcada; se não servir, tudo bem.',
       'https://meet.google.com/abc-defg-hij',
     ], { ...marcada, linkReuniao: 'https://meet.google.com/abc-defg-hij' })).toEqual([]);
     expect(regras(['Fechou, até segunda!'], marcada)).toEqual([]);
@@ -943,7 +945,7 @@ describe('depois da reunião marcada, nenhuma pergunta da loja (dono, 06/11/2026
 });
 
 describe('as perguntas fora de hora que a revisão achou (06/11/2026)', () => {
-  const marcado = 'Marcado! ✅\n\n*Segunda às 9h*, 15 minutos com o Xavier no Google Meet.\nSe servir, você já deixa a implantação marcada; se não servir, tudo bem.';
+  const marcado = 'Marcado! ✅\n\n*Segunda às 9h*, 15 minutos com um especialista da nossa equipe no Google Meet.\nSe servir, você já deixa a implantação marcada; se não servir, tudo bem.';
   const link = 'https://meet.google.com/abc-defg-hij';
   const r = (b: string[], ctx: Record<string, unknown>) => regras(b, { linkReuniao: link, ...ctx });
 
@@ -966,7 +968,7 @@ describe('as perguntas fora de hora que a revisão achou (06/11/2026)', () => {
 
   it('marcada: remarcar com os horários passa, mesmo com a pergunta em outro balão', () => {
     const m = { reuniaoMarcada: true };
-    expect(r(['Sem problema, a gente remarca! O Xavier pode *terça às 9h30* ou *quarta às 13h*.', 'Qual fica melhor?'], m)).toEqual([]);
+    expect(r(['Sem problema, a gente remarca! Nosso especialista pode *terça às 9h30* ou *quarta às 13h*.', 'Qual fica melhor?'], m)).toEqual([]);
     expect(r(['Ele pode *às 9h30* ou *às 11h*. Qual fica melhor?'], m)).toEqual([]);
     expect(r(['Consegue *terça às 10 da manhã* ou *quarta às 2 da tarde*?'], m)).toEqual([]);
     expect(r(['Fechou, até segunda! Se precisar remarcar, me fala.'], m)).toEqual([]);
@@ -1024,7 +1026,7 @@ describe('WhatsApps do aviso de reunião', () => {
 
 describe('a dor antes ou logo depois de marcar (dono, 18/11/2026)', () => {
   const link = 'https://meet.google.com/abc-defg-hij';
-  const marcado = 'Marcado! ✅\n\n*Segunda às 9h*, 15 minutos com o Xavier no Google Meet.\nSe servir, você já deixa a implantação marcada; se não servir, tudo bem.';
+  const marcado = 'Marcado! ✅\n\n*Segunda às 9h*, 15 minutos com um especialista da nossa equipe no Google Meet.\nSe servir, você já deixa a implantação marcada; se não servir, tudo bem.';
   const r = (b: string[], ctx: Record<string, unknown>) => regras(b, { linkReuniao: link, ...ctx });
   const qualificado = { loja: 'KX Caminhões', estoque: 'uns 30', cargo: 'dono' };
 
@@ -1081,7 +1083,7 @@ describe('a dor antes ou logo depois de marcar (dono, 18/11/2026)', () => {
     expect(r([`Tranquilo! ${PERGUNTA_DO_EXEMPLO_DA_DOR}`], { ...m, leadRespondeuVago: true })).toEqual([]);
     expect(r([`Boa! ${PERGUNTA_DO_EXEMPLO_DA_DOR}`], { ...m, dorRegistrada: true })).toContain('pergunta_depois_de_marcar');
     expect(r([`Boa! ${PERGUNTA_DO_EXEMPLO_DA_DOR}`], m)).toContain('pergunta_depois_de_marcar'); // não foi vaga
-    expect(r(['Valeu por contar, isso o Xavier te mostra resolvendo. Até segunda!'], { ...m, dorRegistrada: true })).toEqual([]);
+    expect(r(['Valeu por contar, isso o especialista te mostra resolvendo. Até segunda!'], { ...m, dorRegistrada: true })).toEqual([]);
   });
 
   it('a 3ª pergunta da dor depois do Marcado é barrada', () => {
@@ -1130,5 +1132,74 @@ describe('a dor antes ou logo depois de marcar (dono, 18/11/2026)', () => {
     expect(motor).toContain('perguntasDeDorDepoisDeMarcar');
     const comum = readFileSync('supabase/functions/_shared/assistente.ts', 'utf8');
     expect(comum).toMatch(/if \(estado\.reuniao_id\) patch\.dossie = null/);
+  });
+});
+
+describe('sem o nome do dono para o lead (dono, 18/11/2026: "troca o Xavier por especialista da equipe")', () => {
+  it('o conferente barra "Xavier" em qualquer mensagem, com ou sem acento e maiúscula', () => {
+    for (const t of ['O Xavier te mostra o sistema funcionando.', 'Já chamei o xavier, ele te responde aqui.', 'Fala com o XAVIER, dono do Via Pesados.',
+      'Ele pode amanhã. Abraço do Xávier']) {
+      expect(regras([t]), t).toContain('nome_do_dono');
+    }
+    const r = fiscal(['Show!', 'O Xavier te mostra em 15 minutos.']);
+    expect(r.ok).toBe(false);
+    const v = r.violacoes.find((x) => x.regra === 'nome_do_dono')!;
+    expect(v.mensagem).toBe(1);
+    expect(v.explicacao).toContain('um especialista da nossa equipe');
+    expect(regras(['Na demonstração de *15 minutos*, por vídeo, um especialista da nossa equipe te mostra tudo.'])).toEqual([]);
+    expect(regras(['Um especialista da equipe do Via Pesados.'])).toEqual([]);
+  });
+
+  it('a resposta honesta de "é robô?" não usa nome', () => {
+    expect(PERSONA.souAutomatico).not.toMatch(/xavier/i);
+    expect(PERSONA.souAutomatico).toContain('um especialista da nossa equipe');
+    expect(regras([PERSONA.souAutomatico])).toEqual([]);
+  });
+
+  it('o convite e os exemplos do roteiro falam em "especialista", nunca no nome', () => {
+    const exemplos = INSTRUCOES.slice(INSTRUCOES.indexOf('# Exemplos'), INSTRUCOES.indexOf('O que NÃO fazer'));
+    expect(exemplos).not.toMatch(/xavier/i);
+    expect(exemplos).toContain('Na demonstração de *15 minutos*, por vídeo, um especialista da nossa equipe te mostra:');
+    expect(exemplos).toContain('um especialista da nossa equipe separa *15 minutos* por vídeo');
+    expect(INSTRUCOES).toContain('"Na demonstração de *15 minutos*, por vídeo, um especialista da nossa equipe te mostra:');
+    expect(INSTRUCOES).toMatch(/quem vai estar na reunião[^\n]*especialista da equipe do Via Pesados/i);
+    /* Fora o "O que NÃO fazer", o nome só aparece no aviso da trava e no nome interno da ferramenta. */
+    const semNomesInternos = INSTRUCOES.slice(0, INSTRUCOES.indexOf('O que NÃO fazer')).replace(/chamar_xavier/g, '').replace('o código barra "Xavier"', '');
+    expect(semNomesInternos).not.toMatch(/xavier/i);
+  });
+
+  it('as ferramentas e o estado que a IA lê não sugerem o nome', () => {
+    const ferramentas = JSON.stringify(FERRAMENTAS).replace(/chamar_xavier|perguntas_para_o_xavier/g, '');
+    expect(ferramentas).not.toMatch(/xavier/i);
+    expect(textoDosFatos([])).not.toMatch(/o xavier/i);
+    const motor = readFileSync('supabase/functions/assistente-responder/index.ts', 'utf8');
+    expect(motor).toContain('15 minutos com um especialista da nossa equipe no Google Meet.');
+    for (const l of motor.split('\n').filter((x) => /L\.push|saida = /.test(x))) {
+      expect(l.replace(/chamar_xavier|chamarXavier/g, ''), l).not.toMatch(/xavier/i);
+    }
+    const comum = readFileSync('supabase/functions/_shared/assistente.ts', 'utf8');
+    const preco = comum.slice(comum.indexOf("let preco = '';"), comum.indexOf('if (Object.keys(patch).length) await salvarEstado'));
+    expect(preco.replace(/chamar_xavier|valor_com_o_xavier/g, '')).not.toMatch(/xavier/i);
+  });
+});
+
+describe('a marca no masculino (dono, 18/11/2026: "o Via Pesados")', () => {
+  it('o conferente barra "a/da/na/com a Via Pesados" e deixa o masculino passar', () => {
+    for (const t of ['Aqui é o Davi, atendente virtual da Via Pesados.', 'Na Via Pesados você cadastra uma vez.', 'Com a Via Pesados o caminhão sai em todo canal.',
+      'Bora conhecer a Via Pesados!', 'Seja bem-vindo à Via Pesados.']) {
+      expect(regras([t]), t).toContain('marca_no_feminino');
+    }
+    for (const t of [PERSONA.apresentacao, 'O Via Pesados é o único do Brasil.', 'No Via Pesados você cadastra uma vez.', 'Com o Via Pesados o caminhão sai no Mercado Livre.',
+      'Um especialista da equipe do Via Pesados.', 'Site: viapesados.com.br']) {
+      expect(regras([t]), t).not.toContain('marca_no_feminino');
+    }
+  });
+  it('o roteiro fala "o Via Pesados" (só cita o modelo da prospecção como ele é)', () => {
+    expect(INSTRUCOES).toContain('A marca é no masculino');
+    const semModelo = INSTRUCOES.replace('Automatize suas publicações com a Via Pesados', '').replace('nos recados antigos, "atendente da Via Pesados"', '')
+      .replace('nunca "a/da/na/com a Via Pesados"', '').replace('o modelo diz "a Via Pesados"', '');
+    expect(semModelo).not.toMatch(/\b(?:a|da|na|pela|com a|à) Via Pesados/);
+    expect(PERSONA.apresentacao).toContain('do Via Pesados');
+    expect(PERSONA.souAutomatico).toContain('do Via Pesados');
   });
 });

@@ -71,9 +71,11 @@ export const MARCA_DO_RECADO = 'Somos o único sistema do país feito para lojas
 /** Por este pedaço o código sabe que o lembrete já foi. */
 export const MARCA_DO_LEMBRETE = 'Passando aqui de novo';
 
-/** Dono, 17/11/2026: simples. Quem é, o que é, e a resposta fácil (o mesmo do botão). */
+/** Dono, 17/11/2026: simples. Quem é, o que é, e a resposta fácil (o mesmo do botão).
+ *  18/11/2026: a marca é no masculino ("do Via Pesados"); os recados antigos dizem "da Via
+ *  Pesados" e continuam reconhecidos (MARCA_DO_RECADO + começo "Oi! Aqui é o Davi"). */
 export const RECADO_PARA_A_EQUIPE =
-  `Oi! Aqui é o Davi, atendente da Via Pesados. ${MARCA_DO_RECADO}. `
+  `Oi! Aqui é o Davi, atendente do Via Pesados. ${MARCA_DO_RECADO}. `
   + 'O único com conexões oficiais para *Mercado Livre, Instagram e Facebook*. Pra ver funcionando na sua loja, é só me falar.';
 
 /** Horas depois do recado, sem ninguém responder, para o lembrete sair (dentro das 24h). */
@@ -81,8 +83,9 @@ export const HORAS_ATE_O_LEMBRETE = 4;
 /** Margem antes de a janela de 24h do WhatsApp fechar. */
 const HORAS_DA_JANELA = 23;
 
+/** Dono, 18/11/2026: sem o nome dele ("troca o Xavier por especialista da equipe"). */
 export const LEMBRETE_PARA_A_EQUIPE =
-  `${MARCA_DO_LEMBRETE} 🙂 Conseguiu ver a mensagem acima? É só responder essa mensagem que o Xavier te mostra em 15 minutos.`;
+  `${MARCA_DO_LEMBRETE} 🙂 Conseguiu ver a mensagem acima? É só responder essa mensagem que um especialista da nossa equipe te mostra em 15 minutos.`;
 
 type Msg = { direcao: string; conteudo: string | null; created_at: string };
 

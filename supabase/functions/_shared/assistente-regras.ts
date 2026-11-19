@@ -39,7 +39,7 @@ export const ROTULO_DO_MODO: Record<Modo, string> = {
 export const PERSONA = {
   nome: 'Davi',
   apresentacao: 'Aqui é o Davi, atendente virtual do Via Pesados.',
-  souAutomatico: 'Sou o atendente virtual do Via Pesados, sim. Se preferir, chamo o Xavier pra falar com você por aqui.',
+  souAutomatico: 'Sou o atendente virtual do Via Pesados, sim. Se preferir, chamo um especialista da nossa equipe pra falar com você por aqui.',
 } as const;
 
 export type Etapa =
@@ -341,8 +341,8 @@ export function podeOferecerHorario(x: {
   falta?: ItemDaQualificacao[];
 }): { pode: boolean; precisaInteresse: boolean; motivo: string } {
   if (x.reuniaoMarcada) return { pode: true, precisaInteresse: false, motivo: 'a reunião já está marcada (só para remarcar, se ele pedir)' };
-  if (x.recusou) return { pode: false, precisaInteresse: false, motivo: `ele recusou vídeo ou reunião ("${x.recusou.slice(0, 120)}"): não convide de novo; ofereça, uma vez, falar com o Xavier por aqui. Se ele mesmo pedir para marcar, registre reabriu_reuniao` };
-  if (x.pedido === 'fechar_ja') return { pode: true, precisaInteresse: false, motivo: 'ele pediu para fechar já: horários direto; o que faltar o Xavier vê na reunião' };
+  if (x.recusou) return { pode: false, precisaInteresse: false, motivo: `ele recusou vídeo ou reunião ("${x.recusou.slice(0, 120)}"): não convide de novo; ofereça, uma vez, falar com um especialista da nossa equipe por aqui. Se ele mesmo pedir para marcar, registre reabriu_reuniao` };
+  if (x.pedido === 'fechar_ja') return { pode: true, precisaInteresse: false, motivo: 'ele pediu para fechar já: horários direto; o que faltar o especialista vê na reunião' };
   if (x.pedido === 'ver' || x.interesse) return { pode: true, precisaInteresse: false, motivo: 'ele quer ver funcionando' };
   if (x.pedidosDePreco >= 2) return { pode: true, precisaInteresse: false, motivo: 'segundo pedido de preço: só o horário mais cedo, na resposta do preço' };
   /* Dono, 05/11: poucas perguntas e a reunião o tempo inteiro — a partir da 2ª resposta (quem quer
@@ -352,7 +352,7 @@ export function podeOferecerHorario(x: {
      convite; 18/11: e a dor, a 4ª, para o Xavier não chegar cego na reunião. */
   if (x.falta) {
     if (!x.falta.length) return { pode: true, precisaInteresse: false, motivo: 'a qualificação curta está completa (loja, estoque, cargo e a dor): é a hora do convite' };
-    if (x.respostasSuas >= RESPOSTAS_ATE_CONVIDAR) return { pode: true, precisaInteresse: false, motivo: `já foram ${x.respostasSuas} respostas suas: convide; o que faltar (${x.falta.map((k) => PERGUNTA_DA_QUALIFICACAO[k]).join('; ')}) o Xavier vê na reunião` };
+    if (x.respostasSuas >= RESPOSTAS_ATE_CONVIDAR) return { pode: true, precisaInteresse: false, motivo: `já foram ${x.respostasSuas} respostas suas: convide; o que faltar (${x.falta.map((k) => PERGUNTA_DA_QUALIFICACAO[k]).join('; ')}) o especialista vê na reunião` };
     return { pode: false, precisaInteresse: false, motivo: `falta a qualificação curta; a próxima pergunta é ${PERGUNTA_DA_QUALIFICACAO[x.falta[0]]}` };
   }
   if (x.respostasSuas >= 2) return { pode: true, precisaInteresse: false, motivo: 'você já apresentou o Via Pesados e perguntou da loja' };
@@ -563,7 +563,7 @@ export function cortarMemoria(texto: string | null | undefined): string | null {
 export type RegraFiscal =
   | 'quantidade' | 'vazia' | 'tamanho' | 'linhas' | 'lista' | 'perguntas'
   | 'preco' | 'prazo' | 'percentual' | 'link' | 'proibida' | 'pedido_sensivel'
-  | 'fingir_gente' | 'esquecimento' | 'meu_amigo' | 'apresentacao' | 'horario_cedo' | 'despejo' | 'palco' | 'markdown'
+  | 'fingir_gente' | 'nome_do_dono' | 'marca_no_feminino' | 'esquecimento' | 'meu_amigo' | 'apresentacao' | 'horario_cedo' | 'despejo' | 'palco' | 'markdown'
   | 'vendendo' | 'pergunta_de_ficha' | 'pergunta_depois_de_marcar';
 
 export type Violacao = {
@@ -728,9 +728,9 @@ const PALCO: [RegExp, string][] = [
   [/\bo\s+(?:comeco|primeiro\s+passo)\s+e\b|\be\s+necessario\b/, 'reunião como pedágio'],
   [/\bcabe\s+no\s+bolso\b|\bdepende\s+do\s+plano\b|\brealidade\s+da\s+(?:sua\s+)?loja\b|\bdeixa\s+a\s+mao\b/, 'frase que o dono reprovou'],
   [/\bte\s+(?:mando|envio|passo)\s+(?:depois|mais\s+tarde|amanha)\b|\bte\s+chamo\s+(?:amanha|depois|semana)\b|\bte\s+lembro\b|\bconseguiu\s+(?:ver|falar)\b|\bso\s+passando\b/, 'promessa ou cobrança que você não cumpre'],
-  [/\btenho\s+(?:hoje|amanha|segunda|terca|quarta|quinta|sexta|sabado|domingo)\b/, '"tenho [horário]" (o horário é do Xavier: "o Xavier pode...")'],
+  [/\btenho\s+(?:hoje|amanha|segunda|terca|quarta|quinta|sexta|sabado|domingo)\b/, '"tenho [horário]" (o horário é do especialista: "nosso especialista pode...")'],
   /* Dono, 05/11: o Davi pergunta para entender e ajudar a loja, não para passar adiante. */
-  [/\b(?:adiantar|passar|repassar|levar)\s+(?:isso\s+|tudo\s+)?(?:pro|pra|para\s+o)\s+xavier\b|\bpro\s+xavier\s+(?:ja\s+)?(?:saber|chegar|entender)\b/, 'pergunta "pro Xavier" (você pergunta para entender e ajudar a loja dele)'],
+  [/\b(?:adiantar|passar|repassar|levar)\s+(?:isso\s+|tudo\s+)?(?:pro|pra|para\s+o)\s+(?:nosso\s+)?(?:xavier|especialista)\b|\bpro\s+(?:nosso\s+)?(?:xavier|especialista)\s+(?:ja\s+)?(?:saber|chegar|entender)\b/, 'pergunta "pro especialista" (você pergunta para entender e ajudar a loja dele)'],
   /* Bancada de 05/11: o que irritou o lojista simulado. */
   [/\bsao\s+so\b|\bsem\s+rodeio\b|\bso\s+pra\s+(?:voce\s+saber|constar)\b|\bcontinua\s+com\s+voce\b/, 'pressão disfarçada ou promessa vaga'],
   [/\bem\s+tudo\b|\bem\s+todo\s+lugar\b/, '"em tudo" (diga os lugares: Mercado Livre, Insta, Face e site)'],
@@ -739,7 +739,7 @@ const PALCO: [RegExp, string][] = [
      o Davi seguir a conversa que o conferente barrou por isso. */
   [/\b(?:responder|responde|respondo|passar|passo|passa|mandar|mando|enviar|envio|valor|preco|proposta|orcamento|calcular|calculo)\b(?:\s+\S+){0,3}?\s+certinho\b|\bcompensa\b|\bse\s+achar\s+caro\b|\bsair\s+sabendo\s+o\s+valor\b/, 'o valor como isca ou promessa de resposta que não vem'],
   /* Dono, 06/11: "esse 'cês' não precisa, deixa menos forçado". */
-  [/\bces\b|\bce\b|\bceis\b/, '"cê"/"cês" (escreva "você"/"vocês": o jeito do Xavier sem forçar)'],
+  [/\bces\b|\bce\b|\bceis\b/, '"cê"/"cês" (escreva "você"/"vocês": o jeito do dono sem forçar)'],
 ];
 
 /* Temas do sistema: antes de marcar, uma resposta fala de um só (uma dor, uma prova). Os
@@ -792,7 +792,9 @@ const NEGACAO_ANTES = /\b(?:nao|nunca|jamais|nem)\s+(?:\w+\s+){0,2}$/;
 const NEGA_PEDIDO = /\b(?:nao|nunca|jamais|nem)\s+(?:\w+\s+){0,2}?(?:peco|pedimos|pede|pedem|pedir|precisa|precisamos|preciso|vai\s+precisar|solicit\w*)\b/;
 const NEGA_TERMO = new RegExp(`\\b(?:nao|nunca|jamais|nem|sem)\\s+(?:\\w+\\s+)?${TERMO_SENSIVEL}\\b`);
 
-/* "Não sou o Xavier, sou o assistente virtual dele" é a resposta honesta: o "não" antes libera. */
+/* Se passar pelo dono ("sou o Xavier", "aqui é o Xavier") é fingir gente. Desde 18/11 a resposta
+   honesta não usa nome nenhum ("Não, aqui é o Davi, atendente virtual do Via Pesados"): um "não sou
+   o Xavier" não é fingir gente (o "não" antes libera aqui), mas cai em nome_do_dono, abaixo. */
 const FINGIR_GENTE: RegExp[] = [
   /(?<!\bnao\s)\bsou\s+o\s+xavier\b/,
   /\baqui\s+(?:e|eh)\s+o\s+xavier\b/,
@@ -801,6 +803,12 @@ const FINGIR_GENTE: RegExp[] = [
   /(?<!\bnao\s)\bsou\s+(?:um\s+|uma\s+)?(?:humano|humana|pessoa|gente|de\s+verdade|de\s+carne)\b/,
   /\bnao\s+sou\s+(?:um\s+|uma\s+)?(?:robo|bot|ia|inteligencia\s+artificial|maquina|assistente\s+virtual)\b/,
 ];
+/* Dono, 18/11/2026: "troca o Xavier por especialista da equipe… não precisa focar no meu nome".
+   Nenhuma mensagem do Davi diz o nome dele, nem para negar ("não sou o Xavier"). Sobre o texto plano. */
+const NOME_DO_DONO = /xavier/;
+/* Dono, 18/11/2026: a marca é no masculino ("o Via Pesados", "do", "no", "com o"). Sobre o texto plano
+   (o "à" vira "a"). */
+const MARCA_NO_FEMININO = /\b(?:da|na|pela|com\s+a|para\s+a|a)\s+via\s+pesados\b/;
 const ESQUECIMENTO = /\b(?:esqueci|esquecendo|me\s+esqueci)\b/;
 
 const DOMINIO = /(?:https?:\/\/[^\s<>"']+|\b(?:www\.)?(?:[a-z0-9-]+\.)+(?:com|net|org|br|me|ly|io|app|link|site|info|co|gl|tv|biz|online|store|shop|xyz|ai|dev|page|to)\b(?:\/[^\s<>"']*)?)/g;
@@ -918,9 +926,17 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
     for (const r of FINGIR_GENTE) {
       const achou = p.match(r);
       if (achou) {
-        v.push({ regra: 'fingir_gente', mensagem: i, trecho: achou[0], explicacao: `Você é o ${PERSONA.nome}, atendente virtual do Via Pesados: nunca diga que é uma pessoa ou o Xavier. Se perguntarem, confirme que é virtual.` });
+        v.push({ regra: 'fingir_gente', mensagem: i, trecho: achou[0], explicacao: `Você é o ${PERSONA.nome}, atendente virtual do Via Pesados: nunca diga que é uma pessoa nem alguém da equipe. Se perguntarem, confirme que é virtual.` });
         break;
       }
+    }
+    const nome = p.match(NOME_DO_DONO);
+    if (nome) {
+      v.push({ regra: 'nome_do_dono', mensagem: i, trecho: nome[0], explicacao: 'Não diga o nome do dono ao lead (decisão do dono, 18/11: "não precisa focar no meu nome"). Troque por "um especialista da nossa equipe" (ou "nosso especialista", "alguém da nossa equipe"). Se ele perguntar quem vai estar na reunião, é um especialista da equipe do Via Pesados, sem nome.' });
+    }
+    const fem = p.match(MARCA_NO_FEMININO);
+    if (fem) {
+      v.push({ regra: 'marca_no_feminino', mensagem: i, trecho: fem[0], explicacao: 'A marca é no masculino (decisão do dono, 18/11): "o Via Pesados", "do Via Pesados", "no Via Pesados", "com o Via Pesados". Nunca "a", "da", "na" ou "com a Via Pesados".' });
     }
     const esq = p.match(ESQUECIMENTO);
     if (esq) v.push({ regra: 'esquecimento', mensagem: i, trecho: esq[0], explicacao: 'Não finja esquecimento.' });
@@ -981,7 +997,7 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
                   : 'O pedido de exemplo só cabe depois de uma resposta vaga ("tudo", "de boa"); com resposta concreta, registre a dor, agradeça e se despeça.')
             : ctx.marcandoAgora
               ? `No Marcado não vai pergunta nenhuma: só o "Marcado!" e o link${ctx.dorRegistrada ? '' : ' (e, num 3º balão, só a pergunta da dor com as opções)'}.`
-              : `A reunião já está marcada: não pergunte mais nada da loja (o Xavier vê o resto na reunião). Responda curto o que ele disse ou perguntou e se despeça ("Fechou, até segunda!"). Só cabe pergunta para remarcar, com os horários da lista${ctx.dorRegistrada ? '' : ', ou a da dor'}.` });
+              : `A reunião já está marcada: não pergunte mais nada da loja (o especialista vê o resto na reunião). Responda curto o que ele disse ou perguntou e se despeça ("Fechou, até segunda!"). Só cabe pergunta para remarcar, com os horários da lista${ctx.dorRegistrada ? '' : ', ou a da dor'}.` });
           return;
         }
         continue;
@@ -991,7 +1007,7 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
       const oracao = ultimaOracao(f);
       if (/\bquant[oa]s\b/.test(oracao)) continue; // "quantos caminhões no pátio?" é a pergunta do estoque
       if (FICHA_ANTES_DE_MARCAR.some((r) => r.test(oracao)) || (ctx.lojaConhecida && SO_A_CIDADE.test(oracao))) {
-        v.push({ regra: 'pergunta_de_ficha', mensagem: i, trecho: f.slice(0, 120), explicacao: `Antes da reunião, só as quatro perguntas da qualificação (nome da loja se não souber, estoque, dono ou vendedor, e a da dor, assim: "${PERGUNTA_DA_DOR.split('\n')[0]}" com as opções). Pátio, cidade, Instagram, onde anuncia e quem decide o Xavier vê na reunião. Nunca pergunte o que dá para deduzir (quem tem 35 caminhões tem estoque).` });
+        v.push({ regra: 'pergunta_de_ficha', mensagem: i, trecho: f.slice(0, 120), explicacao: `Antes da reunião, só as quatro perguntas da qualificação (nome da loja se não souber, estoque, dono ou vendedor, e a da dor, assim: "${PERGUNTA_DA_DOR.split('\n')[0]}" com as opções). Pátio, cidade, Instagram, onde anuncia e quem decide o especialista vê na reunião. Nunca pergunte o que dá para deduzir (quem tem 35 caminhões tem estoque).` });
         return;
       }
     }
