@@ -51,8 +51,14 @@ const chip = (ativo: boolean) => cn(
 const inputCls =
   'h-9 w-full px-3 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1] text-[12.5px] text-foreground focus:outline-none focus:border-primary/50';
 
-export function LigacoesTab() {
+export function LigacoesTab({ aoAbrirConversa }: {
+  /** Abrir a conversa ao lado, sem sair da tela (na aba Hoje). Sem isso, vai para a aba WhatsApp. */
+  aoAbrirConversa?: (alvo: { nome: string; conversaId: string }) => void;
+} = {}) {
   const navigate = useNavigate();
+  const abrir = (l: LojaParaLigar) => (aoAbrirConversa
+    ? aoAbrirConversa({ nome: l.dados?.nome_mensagem?.trim() || l.nome, conversaId: l.conversa_id! })
+    : navigate(`/crm?tab=whatsapp&conversa=${l.conversa_id}`));
   const { data: lista = [], isLoading } = useLigacoesDoDia();
   const hoje = useMemo(() => inicioDoDia(), []);
   const semana = useMemo(() => new Date(hoje.getTime() - 6 * 86_400_000), [hoje]);
@@ -73,7 +79,7 @@ export function LigacoesTab() {
       <Panel className="p-5">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex-1 min-w-[220px]">
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-primary flex items-center gap-1.5"><Target className="h-3.5 w-3.5" /> Ligações de hoje</p>
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-foreground/40 flex items-center gap-1.5"><Target className="h-3.5 w-3.5" /> Feitas hoje</p>
             <p className="text-[28px] font-bold tracking-tight tabular-nums">{pHoje.ligacoes} <span className="text-foreground/35 text-[18px]">de {meta}</span></p>
             <div className="mt-2 h-2 rounded-full bg-black/[0.06] dark:bg-white/[0.08] overflow-hidden">
               <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${Math.min(100, (pHoje.ligacoes / Math.max(meta, 1)) * 100)}%` }} />
@@ -111,7 +117,7 @@ export function LigacoesTab() {
         <>
           {faltam.length > 0 && (
             <div className="rounded-2xl border border-black/[0.07] dark:border-white/[0.08] divide-y divide-black/[0.06] dark:divide-white/[0.06]">
-              {faltam.map((l) => <Linha key={l.loja_id} l={l} onRegistrar={() => setAberta(l)} onConversa={l.conversa_id ? () => navigate(`/crm?tab=whatsapp&conversa=${l.conversa_id}`) : undefined} />)}
+              {faltam.map((l) => <Linha key={l.loja_id} l={l} onRegistrar={() => setAberta(l)} onConversa={l.conversa_id ? () => abrir(l) : undefined} />)}
             </div>
           )}
           {feitas.length > 0 && (

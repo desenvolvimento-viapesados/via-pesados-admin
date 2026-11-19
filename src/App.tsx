@@ -13,6 +13,7 @@ import Login from '@/pages/Login';
    de um `if (false)` o Rollup remove inteiro. */
 import DevFicha from '@/pages/DevFicha';
 import DevFrentes from '@/pages/DevFrentes';
+import DevCrm from '@/pages/DevCrm';
 
 const Home           = lazy(() => import('@/pages/Home'));
 const Crm            = lazy(() => import('@/pages/Crm'));
@@ -66,6 +67,11 @@ const Gate = () => {
   // A bancada das frentes (Home nas três frentes e a ficha da transportadora).
   if (import.meta.env.DEV && window.location.pathname.endsWith('/dev/frentes')) {
     return <DevFrentes />;
+  }
+
+  // A bancada do CRM (Hoje e Funil com lojas inventadas).
+  if (import.meta.env.DEV && window.location.pathname.endsWith('/dev/crm')) {
+    return <DevCrm />;
   }
 
   if (loading) {

@@ -72,9 +72,11 @@ async function porIds<T>(ids: string[], consulta: (pedaco: string[]) => PromiseL
 const maisRecente = (...datas: (string | null | undefined)[]) =>
   datas.filter((d): d is string => !!d).sort().pop() ?? '';
 
-export const useFunilDaProspeccao = () =>
+export const useFunilDaProspeccao = (ligado = true) =>
   useQuery({
     queryKey: ['prospeccao', 'funil'],
+    /* A lista da prospecção é só dos lojistas: nas outras frentes ela não é lida. */
+    enabled: ligado,
     queryFn: async () => {
       /* Ordem por id: único e imutável, então nenhuma loja se repete nem some entre uma página e outra. */
       const [lojas, conversas, comCard, { count: naFila }, { data: cfg }] = await Promise.all([

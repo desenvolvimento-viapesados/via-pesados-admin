@@ -990,6 +990,39 @@ export const MODELOS: Modelo[] = [
    }
   ]
  } ,
+ /* Aviso ao dono (18/11/2026): alguém pediu contato pelo formulário da página de vendas
+    (função lead-site). Vai para o assistente_config.aviso_whatsapp; o botão abre a aba Hoje do CRM,
+    onde o pedido está no topo com o telefone para ligar. */
+ {
+  "name": "aviso_lead_novo",
+  "language": "pt_BR",
+  "category": "UTILITY",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Chegou um pedido de contato pelo site.\n\nLoja: {{1}}\nQuem pediu: {{2}}\nWhatsApp: {{3}}\n\nO pedido está no topo do CRM, esperando o primeiro contato.",
+    "example": {
+     "body_text": [
+      [
+       "Minas Caminhões, Governador Valadares/MG",
+       "Carlos",
+       "(33) 99999-0000"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "URL",
+      "text": "Abrir o CRM",
+      "url": "https://viapesados.com.br/admin/crm?tab=hoje"
+     }
+    ]
+   }
+  ]
+ } ,
  /* Cadência da prospecção fria (playbook de 18/11/2026, textos aprovados pelo dono; marca no masculino: "o Via Pesados"). A demonstração
     é com "um especialista da nossa equipe" (dono, 18/11: sem o nome dele). Os vídeos de vendas e de
     relatórios ainda vão ser gravados. Os primeiros nomes (prospeccao_fria_*, lembrete_demonstracao,

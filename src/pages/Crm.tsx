@@ -1,12 +1,14 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense, Fragment } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Kanban, CalendarDays, Radar, Rocket, Hourglass } from 'lucide-react';
+import { ArrowLeft, Plus, Kanban, CalendarDays, Radar, Rocket, Hourglass, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/useTheme';
 import { useFrente } from '@/contexts/FrenteContext';
 import { rotuloDaFrente } from '@/lib/frente';
-import { useCrmCounts, brl } from '@/hooks/useAdmin';
+import { HojeTab } from '@/components/crm/HojeTab';
 import { FunilTab } from '@/components/crm/FunilTab';
+import { useOportunidades } from '@/hooks/useOportunidades';
+import { paraResponder, reunioesDoDia } from '@/lib/oportunidades';
 import { AgendaTab } from '@/components/crm/AgendaTab';
 import { WhatsAppTab } from '@/components/crm/WhatsAppTab';
 import { ProspeccaoTab } from '@/components/crm/ProspeccaoTab';
@@ -15,41 +17,34 @@ import viaPesadosLogoLight from '@/assets/via-pesados-icon-color.png';
 const Implantacao = lazy(() => import('@/pages/Implantacao'));
 const TestesGratis = lazy(() => import('@/pages/TestesGratis'));
 import viaPesadosLogoDark from '@/assets/via-pesados-icon-white.png';
+import { IconeWhatsApp } from '@/components/crm/wa/IconeWhatsApp';
 
-type TabKey = 'whatsapp' | 'funil' | 'reunioes' | 'prospeccao' | 'implantacao' | 'testes';
-
-/**
- * As abas do CRM. A amostra não tem aba: mora na ficha do prospect (clicar
- * no card do funil), onde se cria, edita e apresenta — o card mostra o selo
- * "amostra" de quem já tem.
- */
-/* A marca do WhatsApp em traço único, com fill currentColor: assim ela
-   acende em laranja com a aba ativa e apaga com as outras, como todo ícone
-   da barra. O PNG colorido brigava com o estado — ficava aceso mesmo na aba
-   inativa. Mesmo desenho usado no sistema-lojista. */
-const IconeWhatsApp = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-    <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232" />
-  </svg>
-);
+type TabKey = 'hoje' | 'funil' | 'whatsapp' | 'reunioes' | 'prospeccao' | 'implantacao' | 'testes';
 
 type IconeDaAba = React.ComponentType<{ className?: string }>;
 
-const TABS: { key: TabKey; label: string; newLabel: string | null; icon: IconeDaAba }[] = [
-  // WhatsApp vem primeiro: é onde o dia começa. Quem abre o CRM de manhã
-  // quer ver quem escreveu, não o funil.
-  { key: 'whatsapp', label: 'WhatsApp', newLabel: 'Número',   icon: IconeWhatsApp },
-  { key: 'funil',    label: 'Funil',    newLabel: 'Prospect', icon: Kanban },
-  { key: 'reunioes', label: 'Agenda',   newLabel: 'Reunião',  icon: CalendarDays },
-  // O agente que acha lojas e manda a primeira mensagem. Quem responde
-  // aparece no WhatsApp e entra no funil pelo cadastro breve, como todo mundo.
+/**
+ * As abas do CRM, na ordem de quem vende (dono, 18/11/2026: "bato o olho e não consigo
+ * compreender").
+ *
+ * - Hoje: o que fazer agora. É onde o dia começa.
+ * - Funil: onde está cada oportunidade, num quadro só.
+ * - WhatsApp e Agenda: as conversas e as reuniões.
+ * - Prospecção: o envio automático que alimenta o funil.
+ * - Implantação e Teste grátis: depois da venda (separadas das outras por um traço).
+ *
+ * `depoisDaVenda` marca onde entra o traço.
+ */
+const TABS: { key: TabKey; label: string; newLabel: string | null; icon: IconeDaAba; depoisDaVenda?: boolean }[] = [
+  { key: 'hoje',     label: 'Hoje',     newLabel: null,           icon: Sun },
+  { key: 'funil',    label: 'Funil',    newLabel: 'Oportunidade', icon: Kanban },
+  { key: 'whatsapp', label: 'WhatsApp', newLabel: 'Número',       icon: IconeWhatsApp },
+  { key: 'reunioes', label: 'Agenda',   newLabel: 'Reunião',      icon: CalendarDays },
   { key: 'prospeccao', label: 'Prospecção', newLabel: null, icon: Radar },
   /* Da venda (ou do teste) ao primeiro anúncio no ar, e os 60 dias do teste grátis.
      Saíram da Home em 09/11 a pedido do dono: "vamos jogar isso no CRM mesmo". */
-  { key: 'implantacao', label: 'Implantação', newLabel: null, icon: Rocket },
+  { key: 'implantacao', label: 'Implantação', newLabel: null, icon: Rocket, depoisDaVenda: true },
   { key: 'testes', label: 'Teste grátis', newLabel: null, icon: Hourglass },
-  /* O assistente não tem aba (dono, 09/11: "pode remover essa sessão assistente"): o avanço
-     das lojas fica no Funil › Prospecção automática e a configuração, na aba Prospecção. */
 ];
 
 const isTab = (v: string | null): v is TabKey => TABS.some((t) => t.key === v);
@@ -61,7 +56,7 @@ export default function Crm() {
   const [params, setParams] = useSearchParams();
 
   const urlTab = params.get('tab');
-  const [tab, setTab] = useState<TabKey>(isTab(urlTab) ? urlTab : 'whatsapp');
+  const [tab, setTab] = useState<TabKey>(isTab(urlTab) ? urlTab : 'hoje');
   const [newOpen, setNewOpen] = useState(false);
   const [defaultProspect, setDefaultProspect] = useState<string | null>(null);
 
@@ -71,6 +66,10 @@ export default function Crm() {
     // A implantação saiu do CRM e virou seção própria.
     if (t === 'conexao') { navigate('/crm?tab=implantacao', { replace: true }); return; }
     if (t === 'assistente') { navigate('/crm?tab=prospeccao&vista=assistente', { replace: true }); return; }
+    /* As ligações do dia saíram da Prospecção e moram em Hoje; o funil da prospecção automática
+       virou o Funil. Os endereços antigos levam ao lugar novo. */
+    if (t === 'prospeccao' && params.get('vista') === 'ligacoes') { navigate('/crm?tab=hoje', { replace: true }); return; }
+    if (t === 'funil' && params.get('funil')) { navigate('/crm?tab=funil', { replace: true }); return; }
     if (isTab(t)) setTab(t);
     if (params.get('new') === '1') {
       setNewOpen(true);
@@ -89,7 +88,16 @@ export default function Crm() {
 
   const closeNew = () => { setNewOpen(false); setDefaultProspect(null); };
 
-  const counts = useCrmCounts();
+  /* Os números das abas saem da mesma conta das telas: o que a aba promete é o que ela mostra. */
+  const { oportunidades, soltas, reunioes } = useOportunidades();
+  const counts = useMemo(() => {
+    const doDia = reunioesDoDia(reunioes, oportunidades);
+    return {
+      hoje: paraResponder(oportunidades).length + soltas.length + doDia.filter((r) => r.quando === 'passou').length,
+      funil: oportunidades.filter((o) => !o.perdida && o.etapa !== 'cliente').length,
+      reunioes: doDia.filter((r) => r.quando === 'hoje').length,
+    } as Record<string, number>;
+  }, [oportunidades, soltas, reunioes]);
 
   const current = TABS.find((t) => t.key === tab)!;
 
@@ -114,14 +122,7 @@ export default function Crm() {
             />
           </div>
 
-          <div className="ml-auto text-right z-10">
-            <p className="text-[10px] text-foreground/35 tracking-wide">
-              {rotuloDaFrente(frente)}<span className="hidden sm:inline"> · Pipeline ativo</span>
-            </p>
-            <p className="hidden sm:block text-[15px] font-bold text-foreground tabular-nums leading-tight">
-              {brl(counts.pipeline)}<span className="text-[10px] font-normal text-foreground/35 ml-0.5">/mês</span>
-            </p>
-          </div>
+          <p className="ml-auto text-[11px] text-foreground/35 tracking-wide z-10">{rotuloDaFrente(frente)}</p>
         </div>
 
         {/* ── Abas ─────────────────────────────────────────── */}
@@ -130,14 +131,13 @@ export default function Crm() {
             marcada pelo mesmo filete de 3px que assina o resto do sistema. */}
         <div className="px-4 sm:px-6 flex items-end gap-3">
           <div className={cn('items-end gap-0.5 overflow-x-auto -mb-px', TABS.length > 1 ? 'flex' : 'hidden')} style={{ scrollbarWidth: 'none' }}>
-            {TABS.map(({ key, label, icon: Icon }) => {
+            {TABS.map(({ key, label, icon: Icon, depoisDaVenda }) => {
               const active = tab === key;
-              // WhatsApp não tem contagem no `counts` — o número de não
-              // lidas já aparece dentro da própria aba, por conversa.
-              const count = (counts as Record<string, number>)[key];
+              const count = counts[key] ?? 0;
               return (
+                <Fragment key={key}>
+                {depoisDaVenda && <span className="self-center mx-2 h-4 w-px bg-black/[0.1] dark:bg-white/[0.12] shrink-0" />}
                 <button
-                  key={key}
                   onClick={() => goTab(key)}
                   className={cn(
                     'group relative h-11 px-3.5 text-[12.5px] whitespace-nowrap transition-colors flex items-center gap-1.5',
@@ -149,7 +149,7 @@ export default function Crm() {
                   {count > 0 && (
                     <span className={cn(
                       'text-[10px] font-semibold rounded-full px-1.5 py-px tabular-nums transition-colors',
-                      active ? 'bg-primary/15 text-primary' : 'bg-black/[0.05] dark:bg-white/[0.07] text-foreground/45',
+                      active || key === 'hoje' ? 'bg-primary/15 text-primary' : 'bg-black/[0.05] dark:bg-white/[0.07] text-foreground/45',
                     )}>
                       {count}
                     </span>
@@ -159,6 +159,7 @@ export default function Crm() {
                     active ? 'bg-primary' : 'bg-transparent group-hover:bg-foreground/10',
                   )} />
                 </button>
+                </Fragment>
               );
             })}
           </div>
@@ -177,6 +178,7 @@ export default function Crm() {
       {/* ── Conteúdo ───────────────────────────────────────── */}
       <main className={cn('flex-1 w-full py-5',
         tab === 'funil' || tab === 'whatsapp' || tab === 'reunioes' ? 'px-4 sm:px-6' : 'px-4 sm:px-6 max-w-6xl mx-auto')}>
+        {tab === 'hoje'     && <HojeTab />}
         {tab === 'whatsapp' && <WhatsAppTab newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'funil'    && <FunilTab    newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'reunioes' && <AgendaTab   newOpen={newOpen} onCloseNew={closeNew} defaultProspectId={defaultProspect} />}

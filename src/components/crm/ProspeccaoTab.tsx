@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Panel, EmptyState } from '@/components/admin/ui';
 import { CidadeUF } from './CidadeUF';
 import { AssistenteTab } from './AssistenteTab';
-import { LigacoesTab } from './LigacoesTab';
+import { NumerosDaProspeccao } from './FunilDaProspeccao';
 import {
   useEstadoProspeccao, useLojas, useAcaoProspeccao, type LojaProspeccao, type StatusLoja,
 } from '@/hooks/useProspeccao';
@@ -36,11 +36,11 @@ const quando = (iso: string | null) => iso
   : '—';
 
 const ABAS: { chave: string; rotulo: string; status: StatusLoja[] }[] = [
-  { chave: 'com_voce', rotulo: 'Com você', status: ['com_voce'] },
-  { chave: 'conversando', rotulo: 'Conversando', status: ['conversando'] },
-  { chave: 'contato', rotulo: 'Em contato', status: ['em_contato'] },
+  { chave: 'com_voce', rotulo: 'Esperando você', status: ['com_voce'] },
+  { chave: 'conversando', rotulo: 'Em conversa', status: ['conversando'] },
+  { chave: 'contato', rotulo: 'Receberam, sem resposta ainda', status: ['em_contato'] },
   { chave: 'fila', rotulo: 'Na fila', status: ['nova', 'pronta'] },
-  { chave: 'sem_resposta', rotulo: 'Sem resposta', status: ['sem_resposta'] },
+  { chave: 'sem_resposta', rotulo: 'Não responderam', status: ['sem_resposta'] },
   { chave: 'sem_interesse', rotulo: 'Sem interesse', status: ['sem_interesse'] },
   { chave: 'fora', rotulo: 'Fora da fila', status: ['sem_whatsapp', 'ja_conhecida', 'descartada'] },
 ];
@@ -50,10 +50,10 @@ const SITUACAO: Record<StatusLoja, { rotulo: string; cor: string }> = {
   pronta: { rotulo: 'Na fila', cor: 'bg-sky-500/15 text-sky-500' },
   sem_whatsapp: { rotulo: 'Sem WhatsApp', cor: 'bg-black/[0.05] dark:bg-white/[0.07] text-foreground/40' },
   ja_conhecida: { rotulo: 'Já é contato', cor: 'bg-black/[0.05] dark:bg-white/[0.07] text-foreground/40' },
-  em_contato: { rotulo: 'Em contato', cor: 'bg-blue-500/15 text-blue-400' },
-  sem_resposta: { rotulo: 'Sem resposta', cor: 'bg-black/[0.05] dark:bg-white/[0.07] text-foreground/45' },
-  conversando: { rotulo: 'Conversando', cor: 'bg-violet-500/15 text-violet-400' },
-  com_voce: { rotulo: 'Com você', cor: 'bg-primary/15 text-primary' },
+  em_contato: { rotulo: 'Recebeu a mensagem', cor: 'bg-blue-500/15 text-blue-400' },
+  sem_resposta: { rotulo: 'Não respondeu', cor: 'bg-black/[0.05] dark:bg-white/[0.07] text-foreground/45' },
+  conversando: { rotulo: 'Em conversa', cor: 'bg-violet-500/15 text-violet-400' },
+  com_voce: { rotulo: 'Esperando você', cor: 'bg-primary/15 text-primary' },
   sem_interesse: { rotulo: 'Sem interesse', cor: 'bg-red-500/10 text-red-400' },
   descartada: { rotulo: 'Descartada', cor: 'bg-black/[0.05] dark:bg-white/[0.07] text-foreground/40' },
 };
@@ -102,7 +102,7 @@ function Painel() {
           <Bot className="h-4 w-4" />
         </div>
         <div className="min-w-0">
-          <p className="text-[14px] font-semibold text-foreground">Agente de prospecção</p>
+          <p className="text-[14px] font-semibold text-foreground">Envio automático</p>
           <p className="text-[11.5px] text-foreground/45">
             {cfg?.ligado
               ? (e.horario_de_envio ? 'Enviando agora, no ritmo combinado.' : 'Ligado — volta a enviar no próximo dia útil às 08h.')
@@ -114,7 +114,7 @@ function Painel() {
           <Switch
             checked={!!cfg?.ligado}
             disabled={acao.isPending}
-            onCheckedChange={(v) => mudar({ ligado: v }, v ? 'Agente ligado. A primeira mensagem sai no próximo horário útil.' : 'Agente desligado.')}
+            onCheckedChange={(v) => mudar({ ligado: v }, v ? 'Envio ligado. A primeira mensagem sai no próximo horário útil.' : 'Envio desligado.')}
           />
         </label>
       </div>
@@ -165,11 +165,11 @@ function Painel() {
               } catch (err) { toast.error((err as Error).message); }
             }}
           >
-            {!assistente && <option value="">Assistente ainda não instalado</option>}
-            {MODOS.map((m) => <option key={m} value={m}>Assistente: {ROTULO_DO_MODO[m]}</option>)}
+            {!assistente && <option value="">Davi ainda não instalado</option>}
+            {MODOS.map((m) => <option key={m} value={m}>Davi: {ROTULO_DO_MODO[m]}</option>)}
           </select>
           <p className="text-[10.5px] text-foreground/35">
-            {assistente && !assistente.ligado ? 'O assistente está desligado no geral (aba Assistente). ' : ''}
+            {assistente && !assistente.ligado ? 'O Davi está desligado no geral (em Configurar o Davi). ' : ''}
             Você escreveu na conversa, ele sai.
           </p>
         </div>
@@ -265,27 +265,35 @@ function Previa({ loja, onClose, max }: { loja: LojaProspeccao | null; onClose: 
 }
 
 /**
- * O envio (ligar, fila, busca) e a configuração do assistente, que saiu do topo do CRM
- * (dono, 09/11). O avanço das lojas abordadas fica no Funil › Prospecção automática.
+ * A máquina que enche o funil: o envio automático das mensagens (ligar, número, fila, busca) e a
+ * configuração do Davi, que atende quem responde.
+ *
+ * O que é trabalho do dia saiu daqui em 18/11/2026: as ligações moram em Hoje e as lojas que
+ * responderam, no Funil. Aqui fica só o que se liga, se configura e se confere.
  */
-type Vista = 'ligacoes' | 'envio' | 'assistente';
+type Vista = 'envio' | 'assistente';
 
 export function ProspeccaoTab() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  /* Ligações primeiro: o dia do dono é vender (18/11). */
-  const v0 = params.get('vista');
-  const vista: Vista = v0 === 'assistente' || v0 === 'envio' ? v0 : 'ligacoes';
+  const vista: Vista = params.get('vista') === 'assistente' ? 'assistente' : 'envio';
   const escolher = (v: Vista) => {
     const novo = new URLSearchParams(params);
-    if (v === 'ligacoes') novo.delete('vista'); else novo.set('vista', v);
+    if (v === 'envio') novo.delete('vista'); else novo.set('vista', v);
     setParams(novo, { replace: true });
   };
   return (
     <div className="max-w-6xl mx-auto space-y-4">
+      <div>
+        <h1 className="text-[22px] font-bold tracking-tight text-foreground leading-tight">Prospecção automática</h1>
+        <p className="text-[13px] text-foreground/45 mt-0.5">
+          O sistema manda a primeira mensagem para as lojas da lista e o Davi atende quem responde. Quem respondeu aparece no Funil.
+        </p>
+      </div>
+      <NumerosDaProspeccao />
       <div className="flex flex-wrap items-center gap-2">
         <div className="inline-flex rounded-xl border border-black/[0.08] dark:border-white/[0.08] p-0.5">
-          {([['ligacoes', 'Ligações do dia'], ['envio', 'Envio e fila'], ['assistente', 'Configurar o assistente']] as const).map(([chave, rotulo]) => (
+          {([['envio', 'Envio e fila'], ['assistente', 'Configurar o Davi']] as const).map(([chave, rotulo]) => (
             <button key={chave} onClick={() => escolher(chave)}
               className={cn('h-8 px-3.5 rounded-[10px] text-[12.5px] font-medium transition-colors',
                 vista === chave ? 'bg-primary/10 text-primary' : 'text-foreground/50 hover:text-foreground/80')}>
@@ -293,12 +301,12 @@ export function ProspeccaoTab() {
             </button>
           ))}
         </div>
-        <button onClick={() => navigate('/crm?tab=funil&funil=automatica')}
+        <button onClick={() => navigate('/crm?tab=funil')}
           className="ml-auto h-9 px-3.5 rounded-xl text-[12.5px] font-medium border border-black/[0.1] dark:border-white/[0.1] text-foreground/75 hover:text-foreground flex items-center gap-1.5">
-          <Kanban className="h-4 w-4" /> Ver o funil da prospecção automática
+          <Kanban className="h-4 w-4" /> Ver quem respondeu no Funil
         </button>
       </div>
-      {vista === 'assistente' ? <AssistenteTab /> : vista === 'envio' ? <EnvioEFila /> : <LigacoesTab />}
+      {vista === 'assistente' ? <AssistenteTab /> : <EnvioEFila />}
     </div>
   );
 }

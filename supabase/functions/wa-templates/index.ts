@@ -167,7 +167,10 @@ Deno.serve(async (req) => {
       if (!membro || membro.is_active === false) return json(403, { error: 'acesso negado' });
     }
 
-    const { action } = await req.json().catch(() => ({ action: 'listar' }));
+    const { action, apenas } = await req.json().catch(() => ({ action: 'listar' }));
+    /* `apenas: ['nome']` cria só os modelos pedidos. Sem isso, "criar" manda para a Meta TODOS os
+       que faltam na conta, inclusive texto que o dono ainda não aprovou (18/11/2026). */
+    const soEstes = Array.isArray(apenas) && apenas.length ? new Set(apenas.map(String)) : null;
     const provedor = ycloud ? 'ycloud' : 'meta';
     const conta = ycloud ? ycloud.waba : waba;
 
@@ -221,6 +224,7 @@ Deno.serve(async (req) => {
     const relatorio: { nome: string; resultado: string; detalhe?: string }[] = [];
 
     for (const m of MODELOS) {
+      if (soEstes && !soEstes.has(m.name)) continue;
       if (existentes.has(m.name)) {
         relatorio.push({ nome: m.name, resultado: 'já existe', detalhe: existentes.get(m.name) });
         continue;

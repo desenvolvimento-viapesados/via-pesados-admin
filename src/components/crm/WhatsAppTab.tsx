@@ -38,7 +38,7 @@ import viaCrmLogoClaro from '@/assets/via-crm-logo-light.png';
  * dono quer olhar primeiro.
  */
 
-const fone = (t: string) => {
+export const fone = (t: string) => {
   const d = String(t).replace(/\D/g, '');
   const n = d.startsWith('55') ? d.slice(2) : d;
   if (n.length < 10) return t;
@@ -78,9 +78,12 @@ function remetente(m: Mensagem): string | null {
   return m.enviada_por_nome || null;
 }
 
-type Filtro = 'todas' | 'nao-lidas' | 'fixadas';
+/* "Responder" (18/11/2026): a caixa do número oficial tem mais de cem conversas em que só a nossa
+   mensagem de prospecção saiu. Este filtro deixa só aquelas em que a última palavra é do cliente. */
+type Filtro = 'todas' | 'responder' | 'nao-lidas' | 'fixadas';
 const ABAS: { id: Filtro; rotulo: string }[] = [
   { id: 'todas', rotulo: 'Todas' },
+  { id: 'responder', rotulo: 'Responder' },
   { id: 'nao-lidas', rotulo: 'Não lidas' },
   { id: 'fixadas', rotulo: 'Fixadas' },
 ];
@@ -169,6 +172,7 @@ export function WhatsAppTab({ newOpen, onCloseNew }: { newOpen: boolean; onClose
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase();
     return conversas.filter((c) => {
+      if (filtro === 'responder' && c.ultima_direcao !== 'entrada') return false;
       if (filtro === 'nao-lidas' && !(c.nao_lidas > 0)) return false;
       if (filtro === 'fixadas' && !c.fixada) return false;
       if (!q) return true;
@@ -428,7 +432,7 @@ function Vazio() {
 }
 
 /** Os balões, com a régua do dia. Quem mandou (Davi, aviso automático, alguém da equipe) vai no alto do balão. */
-function Mensagens({ conversaId, mensagens }: { conversaId: string; mensagens: Mensagem[] }) {
+export function Mensagens({ conversaId, mensagens }: { conversaId: string; mensagens: Mensagem[] }) {
   const rolagem = useRef<HTMLDivElement>(null);
   const rolouPara = useRef<string | null>(null);
 
@@ -490,7 +494,7 @@ function Mensagens({ conversaId, mensagens }: { conversaId: string; mensagens: M
 
 /** O campo de escrever do WhatsApp. Só texto: o número oficial e a Evolution recebem
  *  texto por aqui; foto e áudio continuam saindo do celular. */
-function CampoDeEscrever({ conversaId, comAssistente }: { conversaId: string; comAssistente: boolean }) {
+export function CampoDeEscrever({ conversaId, comAssistente }: { conversaId: string; comAssistente: boolean }) {
   const enviar = useEnviar();
   const [texto, setTexto] = useState('');
   const [emojis, setEmojis] = useState(false);

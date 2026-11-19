@@ -17,9 +17,11 @@ const rpc = supabase.rpc.bind(supabase) as unknown as (fn: string, args?: Record
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const tabela = supabase.from.bind(supabase) as unknown as (t: string) => any;
 
-export const useLigacoesDoDia = () =>
+export const useLigacoesDoDia = (ligado = true) =>
   useQuery({
     queryKey: ['ligacoes', 'dia'],
+    /* A lista de ligações é da prospecção de lojistas: nas outras frentes não é lida. */
+    enabled: ligado,
     queryFn: async () => {
       const { data, error } = await rpc('ligacoes_do_dia', {});
       if (error) throw new Error(error.message);
