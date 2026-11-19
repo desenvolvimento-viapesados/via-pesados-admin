@@ -189,7 +189,7 @@ export function emBlocos(md: string): Bloco[] {
   return blocos;
 }
 
-/** Quem ainda não pagou nenhuma mensalidade aceita o contrato antes de pagar. Quem já é cliente, não. */
+/** Cliente novo aceita o contrato (antes ou depois de pagar). Quem já pagava antes do contrato existir na página, não. */
 export const precisaAceitar = (x: { aceitoEm: string | null | undefined; jaPagou: boolean }) => !x.aceitoEm && !x.jaPagou;
 
 export const VERSAO_DO_CONTRATO = 'v6';

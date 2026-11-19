@@ -43,6 +43,8 @@ const json = (status: number, body: unknown) =>
 const baseDaChave = (c: string) =>
   c.includes('_hmlg_') ? 'https://api-sandbox.asaas.com/v3' : 'https://api.asaas.com/v3';
 
+/* Dia em que o contrato entrou na página de pagamento. Quem já pagava antes não é chamado a aceitar. */
+const CONTRATO_NA_PAGINA_DESDE = '2026-11-18T03:00:00Z';
 const soDigitos = (s: unknown) => String(s ?? '').replace(/\D/g, '');
 
 async function asaas(base: string, chave: string, caminho: string, corpo?: unknown, metodo = 'POST') {
@@ -111,16 +113,17 @@ Deno.serve(async (req) => {
     };
 
     /* ── o contrato ──────────────────────────────────────────────────
-       Quem ainda não pagou nenhuma mensalidade lê e aceita o contrato ANTES de pagar
-       (18/11/2026). Quem já é cliente segue pagando como sempre: a trava não o alcança.
+       Cliente novo lê e aceita o contrato, antes OU depois de pagar (19/11/2026: o dono
+       pediu que o pagamento não espere o contrato). Quem já pagava antes de o contrato
+       existir na página (18/11/2026) segue como sempre: o pedido não o alcança.
        É a Cláusula 15: aceite registrado a partir do link exclusivo enviado ao WhatsApp,
        com versão, código de integridade, data e hora, IP e dispositivo. */
-    const jaPagou = async () => {
+    const pagavaAntesDoContrato = async () => {
       const { count } = await db.from('payments').select('id', { count: 'exact', head: true })
-        .eq('client_id', cli!.id).eq('status', 'pago');
+        .eq('client_id', cli!.id).eq('status', 'pago').lt('paid_at', CONTRATO_NA_PAGINA_DESDE);
       return (count ?? 0) > 0;
     };
-    const faltaAceitar = async () => precisaAceitar({ aceitoEm: cli!.contract_signed_at, jaPagou: await jaPagou() });
+    const faltaAceitar = async () => precisaAceitar({ aceitoEm: cli!.contract_signed_at, jaPagou: await pagavaAntesDoContrato() });
     const guardado = {
       razao_social: cli.legal_name ?? '', cnpj: cli.cnpj ?? '', endereco: cli.address ?? '',
       representante_nome: cli.legal_rep_name ?? '', representante_cpf: cli.legal_rep_cpf ?? '',
@@ -265,7 +268,7 @@ Deno.serve(async (req) => {
         valor: Number(cli.mrr) || 0,
         canais: cli.canais ?? [],
         ja_assinou: !!cli.asaas_subscription_id,
-        /* Cliente novo aceita o contrato antes de pagar; depois, a página oferece a via dele. */
+        /* Cliente novo aceita o contrato (antes ou depois de pagar); depois, a página oferece a via dele. */
         contrato: { precisa: await faltaAceitar(), aceito_em: cli.contract_signed_at ?? null },
         /* A página diz "você só paga quando o teste acabar". */
         teste: doTeste && !cli.asaas_subscription_id
@@ -277,11 +280,8 @@ Deno.serve(async (req) => {
     const valor = Number(cli.mrr) || 0;
     if (!(valor > 0)) return json(400, { error: 'Cobrança ainda não configurada. Fale com seu contato na Via Pesados.' });
 
-    /* Daqui para baixo é pagamento. Consultar a situação de uma cobrança que já existe não muda nada;
-       o resto (gerar Pix, boleto, cobrar cartão) espera o contrato de quem é cliente novo. */
-    if (acao !== 'status' && await faltaAceitar()) {
-      return json(400, { error: 'Antes de pagar, leia e aceite o contrato.', falta_contrato: true });
-    }
+    /* Daqui para baixo é pagamento. Não espera o contrato: quem paga primeiro assina em
+       seguida, na mesma página. */
 
     /* ── garante o cadastro do cliente no Asaas ──────────────────── */
     async function garantirCustomer(dados?: { cpfCnpj?: string; nome?: string; email?: string; fone?: string }) {
