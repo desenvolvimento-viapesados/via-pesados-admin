@@ -6,14 +6,16 @@ import {
   PERSONA, pedidoComOBotao, podeOferecerHorario, falaDoPreco, precoDeHoje, valoresLiberados,
   faltaNaQualificacao, PERGUNTA_DA_QUALIFICACAO, perguntouAlgo, soSimCurto,
   PERGUNTA_DA_DOR, PERGUNTA_DA_DOR_DEPOIS_DE_MARCAR, PERGUNTA_DO_EXEMPLO_DA_DOR, perguntasDeDor, respostaVagaDaDor, temDorConcreta,
+  leadNaoEODono,
 } from '../_shared/assistente-regras.ts';
+import { type ModeloRespondido, pediuOutroMomento, ultimoModeloRespondido } from '../_shared/prospeccao-regras.ts';
 import {
   type ArgsRegistrar, type Conversa, type Mensagem,
-  aplicarRegistro, carregarConversa, chamarClaude, chamarXavier, chaveDaIA, concluirTurno, dormir, encerrarConversa,
+  adiarLoja, aplicarRegistro, carregarConversa, conversaAdiada, chamarClaude, chamarXavier, chaveDaIA, concluirTurno, dormir, encerrarConversa,
   equipeEscreveu, fixarParaOXavier, horariosParaOferecer, imagensRecentes, lerConfig, lerEstado, lerFatos, lerLoja,
   linhaDaConversa, REMETENTE_PROSPECCAO, salvarEstado, segredoConfere, transcreverAudios, ultimaEntradaEm, validarMarcacao,
 } from '../_shared/assistente.ts';
-import { FERRAMENTAS, INSTRUCOES, textoDosFatos } from '../_shared/assistente-roteiro.ts';
+import { FERRAMENTAS, INSTRUCOES, NOME_DO_MODELO_RESPONDIDO, textoDosFatos } from '../_shared/assistente-roteiro.ts';
 import { lerRespostasAutomaticas, RECADO_PARA_A_EQUIPE } from '../_shared/resposta-automatica.ts';
 
 /**
@@ -69,6 +71,7 @@ function textoDoEstado(args: {
   livres: Date[]; cfg: AssistenteConfig; semTranscricao: Mensagem[]; reuniaoFalada: string | null; card: { company_name: string; stage: string } | null;
   porta: ReturnType<typeof podeOferecerHorario>; respostasSuas: number; perguntasFeitas: string[];
   perguntasDeDorDepoisDeMarcar: number; leadRespondeuVago: boolean;
+  modeloRespondido: ModeloRespondido | null; podePedirODono: boolean;
 }): string {
   const { estado: e, loja } = args;
   const L: string[] = [];
@@ -95,6 +98,18 @@ function textoDoEstado(args: {
     : `Você ainda não se apresentou nesta conversa: o primeiro balão é o cumprimento dele (ou o da hora) + "${PERSONA.apresentacao}"`);
   L.push(`Origem: ${loja ? 'veio da lista da prospecção (foi chamado por nós, não procurou nada)' : 'escreveu por conta própria'}.`);
   L.push(`Respostas suas nesta conversa até agora: ${args.respostasSuas}.`);
+  /* Dono, 19/11: a primeira resposta segue a mensagem automática que ele respondeu. */
+  if (args.modeloRespondido) {
+    L.push(`Mensagem automática que ele está respondendo (a última que saiu da prospecção): ${NOME_DO_MODELO_RESPONDIDO[args.modeloRespondido]}. Siga a linha dela em "Respondeu qual mensagem".`);
+  }
+  {
+    const adiada = conversaAdiada(e, args.agora);
+    if (adiada) {
+      const b = new Date(adiada.getTime() - 3 * 3_600_000);
+      L.push(`Ele pediu outro momento ("${n(e.situacao?.nao_e_o_momento, 160)}"): a retomada está marcada para ${String(b.getUTCDate()).padStart(2, '0')}/${String(b.getUTCMonth() + 1).padStart(2, '0')}. Não convide, não pergunte e não encerre: se ainda não se despediu, "Tranquilo. Te procuro daqui a 2 meses. Se mudar antes, é só me chamar aqui."; se já se despediu e ele só agradeceu, nada (lista vazia). Se ele mesmo pedir para ver ou marcar, registre o pedido ou o interesse e siga normal.`);
+    }
+  }
+  if (args.podePedirODono) L.push('Quem fala não é o dono ou vai passar a mensagem pra ele: pode perguntar o nome do dono ("Bora marcar com ele junto: qual o nome dele?") ou, se não der pra marcar com ele, o contato de quem cuida dos anúncios.');
   {
     const s0 = e.situacao ?? {};
     const d0 = (loja?.dados ?? {}) as Record<string, unknown>;
@@ -332,6 +347,15 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
     e = { ...e, situacao };
   }
 
+  /* ── o botão "Outro momento" (cadencia_definicao, dono 19/11): nem recusa nem interesse ──
+     Conta no código, antes da IA: a loja sai da cadência, a retomada fica marcada e o Davi só se despede. */
+  const outroMomento = novas.find((m) => pediuOutroMomento(m.conteudo));
+  const soOutroMomento = !!outroMomento && novas.every((m) => pediuOutroMomento(m.conteudo));
+  if (outroMomento && !conversaAdiada(e)) {
+    const r0 = await aplicarRegistro(db, e, { adiar: String(outroMomento.conteudo) }, msgs, conversa);
+    e = r0.estado;
+  }
+
   /* ── ouvir, ver, montar o contexto ───────────────────────────── */
   const semTranscricaoIds = await transcreverAudios(db, msgs, inst, limite - 120_000);
   const semTranscricao = msgs.filter((m) => semTranscricaoIds.includes(m.id));
@@ -371,6 +395,10 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
   const perguntasFeitas = msgs.filter((m) => m.direcao === 'saida' && m.turno_id && /\?/.test(m.conteudo ?? ''))
     .slice(-6).map((m) => String(m.conteudo ?? ''));
   /** O que a qualificação curta já sabe (loja, estoque, cargo e a dor, dono 18/11). */
+  /* Quem fala não é o dono, ou vai passar pra ele: pode perguntar o nome do dono (dono, 19/11). */
+  const textosDoLead = msgs.filter((m) => m.direcao === 'entrada').map((m) => m.transcricao || m.conteudo);
+  const podePedirODono = (est: AssistenteConversa) => leadNaoEODono({ cargo: est.situacao?.cargo, textos: textosDoLead });
+  const modeloRespondido = ultimoModeloRespondido(msgs);
   const qualificacao = (est: AssistenteConversa) => ({
     loja: est.situacao?.loja ?? loja?.nome ?? null, estoque: est.situacao?.estoque, cargo: est.situacao?.cargo, dores: est.dores,
   });
@@ -402,7 +430,8 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
   conteudo.push({
     type: 'text',
     text: textoDoEstado({ agora, estado: e, conversa, loja, livres, cfg, semTranscricao, reuniaoFalada, card,
-      porta: portaDoHorario(e, false, false), respostasSuas, perguntasFeitas, perguntasDeDorDepoisDeMarcar, leadRespondeuVago }),
+      porta: portaDoHorario(e, false, false), respostasSuas, perguntasFeitas, perguntasDeDorDepoisDeMarcar, leadRespondeuVago,
+      modeloRespondido, podePedirODono: podePedirODono(e) }),
     cache_control: { type: 'ephemeral' },
   });
 
@@ -465,6 +494,8 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
           if (soTopouAsPerguntas && (args.interesse || args.pedido === 'ver')) {
             args = { ...args, interesse: undefined, pedido: args.pedido === 'ver' ? undefined : args.pedido };
           }
+          /* "Outro momento" não é interesse (dono, 19/11): só o botão, nada mais, não abre a porta. */
+          if (soOutroMomento && (args.interesse || args.pedido)) args = { ...args, interesse: undefined, pedido: undefined };
           const r2 = await aplicarRegistro(db, estadoAtual, args, msgs, conversa);
           estadoAtual = r2.estado;
           /* A porta pode ter mudado com o que ele acabou de contar (a última pergunta da
@@ -503,6 +534,10 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
         } else if (ch.name === 'chamar_xavier') {
           acoes.push({ tipo: 'chamar_xavier', args: { motivo: String(entrada.motivo ?? '').slice(0, 500) }, estado: 'pendente' });
           saida = 'Certo: a equipe assume esta conversa. Se for responder, diga curto que um especialista da nossa equipe fala com ele por aqui (sem prometer hora e sem dizer nome).';
+        } else if (ch.name === 'encerrar' && soOutroMomento && entrada.motivo !== 'saiu' && entrada.motivo !== 'xingou') {
+          /* "Outro momento" não é recusa (dono, 19/11): a loja volta na retomada, não vira sem interesse. */
+          ehErro = true;
+          saida = 'Não encerre: "Outro momento" não é recusa. A retomada já está marcada. Responda só "Tranquilo. Te procuro daqui a 2 meses. Se mudar antes, é só me chamar aqui."';
         } else if (ch.name === 'encerrar') {
           const motivo = ['nao_quer', 'saiu', 'engano', 'xingou', 'ja_cliente'].includes(entrada.motivo) ? entrada.motivo : 'nao_quer';
           acoes.push({ tipo: 'encerrar', args: { motivo, lost_reason: entrada.lost_reason ?? null }, estado: 'pendente' });
@@ -528,6 +563,7 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
               lojaConhecida: !!(estadoAtual.situacao?.loja ?? loja?.nome),
               dorRegistrada: temDorConcreta(estadoAtual.dores), dorVaga: estadoAtual.dores.length > 0 && !temDorConcreta(estadoAtual.dores),
               leadRespondeuVago, perguntasDeDorDepoisDeMarcar,
+              podePedirODono: podePedirODono(estadoAtual), retomadaMarcada: !!conversaAdiada(estadoAtual),
             });
             fiscalFinal = { ...f, tentativas };
             if (f.ok) { final = lista; saida = 'ok'; }
@@ -547,6 +583,15 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
     if (final === null && !erro) erro = 'a IA não terminou a resposta';
   } catch (err) {
     erro = `falha ao chamar a IA: ${err instanceof Error ? err.message : String(err)}`.slice(0, 500);
+  }
+
+  /* Conversa adiada ("outro momento"): qualquer mensagem nova da loja volta a loja para
+     "conversando"; enquanto ele não reabrir nem encerrar, ela continua fora da cadência. */
+  {
+    const adiada = conversaAdiada(estadoAtual);
+    if (adiada && e.loja_id && !acoes.some((a) => a.tipo === 'encerrar')) {
+      await adiarLoja(db, e.loja_id, String(estadoAtual.situacao?.nao_e_o_momento ?? 'Outro momento'), adiada);
+    }
   }
 
   /* ── o turno gravado, com custo ──────────────────────────────── */

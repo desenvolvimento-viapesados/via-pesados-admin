@@ -18,6 +18,7 @@ import {
   horariosCitados, horariosLivres, janelaAberta, LIMITES, normalizarTexto, porQueNaoPode, proximaEtapa,
   neutro, respostaAoPreco, ROTULO_DA_ETAPA, temFallbackNoServidor, textoDaMensagem, citacaoConfere,
   PEDIDOS, pedidoMaisQuente, type Pedido, falaDoPreco, precoDeHoje, numerosDoAviso,
+  adiadaAte, dataDaRetomada, motivoDoAdiamento,
 } from './assistente-regras.ts';
 import { INSTRUCOES_DOSSIE, SCHEMA_DOSSIE } from './assistente-roteiro.ts';
 import { enviarTemplate, statusDoModelo } from './wa.ts';
@@ -373,6 +374,8 @@ export type ArgsRegistrar = {
   recusou_reuniao?: string;
   /** Depois de ter recusado, ele mesmo pediu para marcar. */
   reabriu_reuniao?: boolean;
+  /** "Outro momento" (dono, 19/11): a frase dele. A cadência para e a retomada fica marcada. */
+  adiar?: string;
 };
 
 /** As mensagens de entrada como fonte de citação (texto + transcrição). */
@@ -440,8 +443,22 @@ export async function aplicarRegistro(db: Db, estado: AssistenteConversa, args: 
     else s.recusou_reuniao = textoOuNada(args.recusou_reuniao);
     patch.situacao = s;
   }
-  if ((args.pedido && PEDIDOS.includes(args.pedido)) || args.interesse === true) {
+  /* "Outro momento" (dono, 19/11): nem recusa nem interesse. Fica a frase, a data da retomada e a
+     loja da lista sai da cadência (adiarLoja). O interesse da mesma chamada não vale. */
+  const adiar = textoOuNada(args.adiar);
+  if (adiar) {
+    if (citacaoConfere(adiar, fontes.map((f) => f.texto))) {
+      const quando = dataDaRetomada();
+      const s: Situacao = { ...(patch.situacao ?? estado.situacao), nao_e_o_momento: adiar, retomar_em: quando.toISOString() };
+      patch.situacao = s;
+      if (estado.loja_id) await adiarLoja(db, estado.loja_id, adiar, quando);
+      avisos.push('Outro momento registrado: a retomada fica marcada. Não convide nem encerre; despeça-se com "Tranquilo. Te procuro daqui a 2 meses. Se mudar antes, é só me chamar aqui."');
+    } else avisos.push(`O adiamento ("${adiar}") não foi gravado: copie a frase dele ao pé da letra.`);
+  }
+  if (!adiar && ((args.pedido && PEDIDOS.includes(args.pedido)) || args.interesse === true)) {
     const s: Situacao = { ...(patch.situacao ?? estado.situacao) };
+    /* Pediu para ver (ou topou) depois do "outro momento": a retomada deixa de valer. */
+    if (s.retomar_em && (args.interesse === true || args.pedido !== 'como_funciona')) s.retomar_em = null;
     const quente = pedidoMaisQuente(s.pedido ?? null, args.pedido ?? null);
     if (quente) s.pedido = quente;
     if (args.interesse === true) s.interesse = 'sim';
@@ -487,6 +504,26 @@ export async function aplicarRegistro(db: Db, estado: AssistenteConversa, args: 
   partes.push(`Etapa agora: ${ROTULO_DA_ETAPA[novo.etapa]}.`);
   return { estado: novo, resposta: partes.join('\n') };
 }
+
+/**
+ * "Outro momento" (dono, 19/11/2026): a loja da lista sai da cadência agora (status sem_resposta,
+ * que a prospecção-enviar não pega), sem virar sem_interesse, com a data da retomada em
+ * proximo_contato_em e o motivo. Também fica fora da fila de ligações até a data
+ * (proxima_ligacao_em), em pedido separado: se a coluna faltar, o resto já ficou gravado.
+ * Idempotente: o motor chama de novo a cada turno enquanto a conversa estiver adiada, porque
+ * qualquer mensagem nova da loja (um "valeu") volta o status para conversando.
+ */
+export async function adiarLoja(db: Db, lojaId: string, frase: string, quando: Date) {
+  const { error } = await db.from('prospeccao_lojas').update({
+    status: 'sem_resposta', motivo: motivoDoAdiamento(frase, quando), proximo_contato_em: quando.toISOString(), atualizada_em: agoraISO(),
+  }).eq('id', lojaId).in('status', ['em_contato', 'sem_resposta', 'conversando']);
+  if (error) { console.warn('assistente: adiamento da loja não gravou', error.message); return; }
+  const { error: e2 } = await db.from('prospeccao_lojas').update({ proxima_ligacao_em: quando.toISOString() }).eq('id', lojaId);
+  if (e2) console.warn('assistente: fila de ligações não foi adiada', e2.message);
+}
+
+/** A conversa está adiada ("outro momento") e a retomada ainda não chegou? */
+export const conversaAdiada = (e: Pick<AssistenteConversa, 'situacao'>, agora = new Date()) => adiadaAte(e.situacao?.retomar_em, agora);
 
 /**
  * A etapa é do código: recalcula pelos fatos gravados e leva o card junto (cria na

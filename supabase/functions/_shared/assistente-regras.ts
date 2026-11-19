@@ -202,6 +202,8 @@ export type Situacao = {
   prazo?: string | null;
   /** Não é o momento: por quê e quando volta (a porta fica aberta, não encerra). */
   nao_e_o_momento?: string | null;
+  /** "Outro momento" (dono, 19/11): quando a retomada fica marcada (ISO). Volta a null se ele reabrir. */
+  retomar_em?: string | null;
   /** O pedido mais quente que ele fez (o código decide se já pode oferecer horário). */
   pedido?: Pedido | null;
   /** Disse "sim" a ver funcionando. */
@@ -318,6 +320,48 @@ export function soSimCurto(texto: string | null | undefined): boolean {
   const t = normalizarTexto(String(texto ?? ''));
   if (!t || t.split(' ').length > 3) return false;
   return /^(bora|bora la|vamos|vamo|pode|pode ser|pode mandar|pode perguntar|manda|sim|claro|ok|okay|beleza|blz|show|top|gostei|massa|fechou|opa|uhum|isso)$/.test(t);
+}
+
+/* ── "outro momento" e quem não é o dono (dono, 19/11/2026: o pós-resposta) ── */
+
+/** "Outro momento": a loja volta na retomada, daqui a tantos dias. */
+export const DIAS_ATE_A_RETOMADA = 60;
+export function dataDaRetomada(agora = new Date()): Date {
+  return new Date(agora.getTime() + DIAS_ATE_A_RETOMADA * 86_400_000);
+}
+/** A retomada marcada ainda está para a frente? (a conversa segue adiada). */
+export function adiadaAte(retomarEm: string | null | undefined, agora = new Date()): Date | null {
+  const d = retomarEm ? new Date(retomarEm) : null;
+  return d && Number.isFinite(d.getTime()) && d.getTime() > agora.getTime() ? d : null;
+}
+/** O motivo que fica na loja da lista (prospeccao_lojas.motivo). */
+export function motivoDoAdiamento(frase: string, retomarEm: Date): string {
+  const b = new Date(retomarEm.getTime() - 3 * 3_600_000);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `Outro momento ("${String(frase).trim().slice(0, 160)}"): retomada em ${p(b.getUTCDate())}/${p(b.getUTCMonth() + 1)}/${b.getUTCFullYear()}.`;
+}
+
+/*
+ * Quem fala não é o dono, ou vai passar para ele ("sou só vendedor", "isso é com o dono",
+ * "vou passar pro dono"): aí, e só aí, o Davi pode perguntar o nome (ou o contato) do dono, para
+ * marcar com os dois juntos. Sobre o texto normalizado (normalizarTexto).
+ */
+const NAO_E_O_DONO: RegExp[] = [
+  /\b(?:vou|vo|posso|vamos|deixa\s+eu|vou\s+ter\s+que)\s+(?:\w+\s+)?(?:passar|repassar|encaminhar|mostrar|mandar|falar|ver|conversar)\s+(?:isso\s+|essa\s+\w+\s+)?(?:pro|pra|para\s+o|ao|com\s+o|com\s+meu|com\s+a)\s+(?:meu\s+|o\s+|minha\s+)?(?:dono|patrao|chefe|socio|gerente|responsavel|proprietario|patroa|dona)\b/,
+  /\b(?:isso\s+)?(?:e|eh|so)\s+com\s+(?:o\s+|meu\s+)?(?:dono|patrao|chefe|socio|responsavel|proprietario)\b/,
+  /\bsou\s+(?:so|apenas|somente)\s+(?:o\s+|um\s+|uma\s+)?(?:vendedor|vendedora|funcionari[oa]|atendente|secretari[oa])\b/,
+  /\bnao\s+sou\s+(?:o\s+|a\s+)?(?:dono|dona|proprietari[oa]|responsavel)\b/,
+  /\bnao\s+(?:e|eh)\s+comigo\b/, /\bnao\s+sou\s+eu\s+(?:que|quem)\s+(?:cuido|cuida|vejo|ve|resolvo|resolve|decido|decide|mando|manda)\b/,
+  /\bquem\s+(?:decide|resolve|manda|ve\s+isso)\s+(?:aqui\s+)?(?:e|eh)\s+(?:o\s+|meu\s+)?(?:dono|patrao|chefe|socio|gerente)\b/,
+];
+const CARGO_DE_DONO = /\b(?:dono|dona|socio|socia|proprietari[oa]|eu\s+mesmo|a\s+loja\s+e\s+minha)\b/;
+const CARGO_DE_FUNCIONARIO = /\b(?:vendedor|vendedora|funcionari[oa]|atendente|secretari[oa]|gerente|consultor|consultora|recepcao|redes|marketing|filho|filha|esposa|trabalho\s+(?:com|pra|para))\b/;
+
+/** Quem fala não é o dono (pelo cargo registrado ou pelo que ele escreveu)? */
+export function leadNaoEODono(x: { cargo?: string | null; textos?: (string | null | undefined)[] }): boolean {
+  const cargo = normalizarTexto(x.cargo);
+  if (cargo && CARGO_DE_FUNCIONARIO.test(cargo) && !CARGO_DE_DONO.test(cargo)) return true;
+  return (x.textos ?? []).some((t) => { const n = normalizarTexto(t); return !!n && NAO_E_O_DONO.some((r) => r.test(n)); });
 }
 
 /** Depois de tantas respostas suas sem completar a qualificação, convida mesmo assim. */
@@ -609,6 +653,10 @@ export type ContextoFiscal = {
   leadRespondeuVago?: boolean;
   /** Perguntas da dor que o Davi já mandou depois do Marcado (perguntasDeDor): no máximo 2 no total. */
   perguntasDeDorDepoisDeMarcar?: number;
+  /** Quem fala não é o dono ou vai passar para ele (leadNaoEODono): pode perguntar o nome ou o contato do dono. */
+  podePedirODono?: boolean;
+  /** Ele pediu "outro momento" e a retomada está marcada: passa o "te procuro daqui a 2 meses". */
+  retomadaMarcada?: boolean;
 };
 
 /*
@@ -635,6 +683,13 @@ const FICHA_ANTES_DE_MARCAR: RegExp[] = [
 const PERGUNTA_DE_DOR = /\b(?:o\s+que|qual\s+(?:coisa|parte))\s+(?:\w+\s+){0,2}?mais\s+(?:(?:te\s+|lhe\s+)?(?:toma|tomando|da|dando|come|consome)\s+(?:\w+\s+){0,2}?(?:tempo|trabalho)\b|(?:te\s+)?atrapalha\b)|\bonde\s+(?:voce\s+|voces\s+)?mais\s+perde\w*\s+tempo\b|\bmaior\s+(?:dor|dificuldade)\b/;
 const PEDIDO_DE_EXEMPLO_DA_DOR = /\bultima\s+vez\s+que\b|\bme\s+(?:conta|da|de|passa)\s+um\s+exemplo\b/;
 const ehPerguntaDaDor = (f: string) => PERGUNTA_DE_DOR.test(f) && !FICHA_DA_LOJA.some((r) => r.test(f)) && !SO_A_CIDADE.test(f);
+/*
+ * O nome ou o contato do dono (dono, 19/11: "Bora marcar com ele junto: qual o nome dele?"). Só
+ * passa quando quem fala não é o dono ou vai passar para ele (ctx.podePedirODono); fora disso,
+ * barra como pergunta de ficha. O "contato de quem cuida dos anúncios" entra junto.
+ */
+const PEDE_O_DONO = /\b(?:nome|contato|numero|whats(?:app)?|telefone|zap)\s+(?:dele|dela|do\s+(?:seu\s+)?(?:dono|patrao|chefe|socio|responsavel|proprietario)|da\s+(?:sua\s+)?(?:dona|patroa|chefe|socia)|de\s+quem\s+(?:decide|manda|resolve|e\s+o\s+dono|cuida\s+d[oa]s?\s+(?:anuncios?|redes?|insta\w*)))\b|\bcomo\s+(?:ele|o\s+(?:seu\s+)?(?:dono|patrao|chefe))\s+(?:se\s+)?chama\b/;
+const ehPerguntaDoDono = (f: string) => PEDE_O_DONO.test(f);
 const ehPedidoDeExemplo = (f: string) => PEDIDO_DE_EXEMPLO_DA_DOR.test(f) && !FICHA_DA_LOJA.some((r) => r.test(f)) && !SO_A_CIDADE.test(f);
 
 /**
@@ -893,8 +948,10 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
         break;
       }
     }
+    /* "Outro momento" (dono, 19/11): a despedida diz quando a retomada vem ("te procuro daqui a 2 meses"). */
+    const pPrazo = ctx.retomadaMarcada ? p.replace(/\bdaqui\s+a\s+(?:2|dois)\s+meses\b/g, ' daqui a pouco ') : p;
     for (const r of PRAZO) {
-      const achou = p.match(r);
+      const achou = pPrazo.match(r);
       if (achou) {
         v.push({ regra: 'prazo', mensagem: i, trecho: achou[0], explicacao: 'Não escreva número com dia, semana, mês ou ano, nem repetindo o que o lead disse: diga "uns dias", "esse tempo todo", "demora".' });
         break;
@@ -1004,6 +1061,12 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
       }
       /* A pergunta da dor é a 4ª da qualificação (dono, 18/11): passa antes de marcar. */
       if (ehPerguntaDaDor(f)) continue;
+      /* O nome ou o contato do dono: só quando quem fala não é o dono ou vai passar para ele (19/11). */
+      if (ehPerguntaDoDono(ultimaOracao(f)) || ehPerguntaDoDono(f)) {
+        if (ctx.podePedirODono) continue;
+        v.push({ regra: 'pergunta_de_ficha', mensagem: i, trecho: f.slice(0, 120), explicacao: 'O nome ou o contato do dono só se pergunta quando ele disse que é vendedor (ou não é o dono) ou que vai passar a mensagem pro dono. Fora disso, siga a qualificação: o convite já chama o sócio ou quem decide junto.' });
+        return;
+      }
       const oracao = ultimaOracao(f);
       if (/\bquant[oa]s\b/.test(oracao)) continue; // "quantos caminhões no pátio?" é a pergunta do estoque
       if (FICHA_ANTES_DE_MARCAR.some((r) => r.test(oracao)) || (ctx.lojaConhecida && SO_A_CIDADE.test(oracao))) {

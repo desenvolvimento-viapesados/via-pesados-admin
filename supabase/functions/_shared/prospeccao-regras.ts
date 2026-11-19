@@ -446,6 +446,8 @@ export const BOTAO_SAIR = 'Não tenho interesse';
 export const BOTAO_VER = 'Quero ver funcionando';
 /** O botão da mensagem do filme (17/11/2026): também é pedido de ver. */
 export const BOTAO_CONHECER = 'Quero conhecer';
+/** O botão do meio da cadencia_definicao (19/11/2026): não é recusa nem interesse; a retomada fica marcada. */
+export const BOTAO_OUTRO_MOMENTO = 'Outro momento';
 /* O vídeo do cabeçalho: o filme de produto da Via Pesados (v5 de 16/11/2026, 38,8 s, H.264 Main
    sem B-frames, que o Android toca). Arquivo novo = nome novo (v4, v5…): a Meta e o WhatsApp
    guardam em cache pelo endereço. O rótulo é o que a caixa do CRM e o Davi leem no lugar do
@@ -526,6 +528,66 @@ const comoBotao = (t: string | null | undefined) =>
 export function pediuParaVer(texto: string | null | undefined): boolean {
   const t = comoBotao(texto);
   return t === comoBotao(BOTAO_VER) || t === comoBotao(BOTAO_CONHECER);
+}
+
+/** A pessoa tocou (ou escreveu só) "Outro momento": adiar, nem recusa nem interesse. */
+export function pediuOutroMomento(texto: string | null | undefined): boolean {
+  return comoBotao(texto) === comoBotao(BOTAO_OUTRO_MOMENTO);
+}
+
+/* ── qual mensagem automática a loja está respondendo ─────────── */
+
+/**
+ * Os modelos que a loja pode estar respondendo (dono, 19/11/2026: o pós-resposta). Na conversa
+ * gravada o modelo aparece com as variáveis já preenchidas e, se tem vídeo, com o rótulo do vídeo
+ * na frente; por isso cada um se reconhece pela frase que só ele tem, perto do começo do corpo.
+ * O filme no masculino (prospeccao_filme) é o mesmo filme do prospeccao_unico: trate igual.
+ */
+export type ModeloRespondido =
+  | 'prospeccao_unico' | 'prospeccao_filme' | 'prospeccao_simples'
+  | 'cadencia_canais' | 'cadencia_vendas' | 'cadencia_vendeu' | 'cadencia_atendimento'
+  | 'cadencia_relatorios' | 'cadencia_definicao' | 'cadencia_encerramento' | 'cadencia_retomada';
+
+/* Sobre o texto sem acento, minúsculo e com espaços únicos. A ordem importa: canais e retomada
+   começam iguais ("oi! aqui e o davi, do via pesados."). */
+const ABERTURAS: [ModeloRespondido, RegExp][] = [
+  ['prospeccao_filme', /^o unico sistema do brasil feito para lojas de veiculos pesados\b[\s\S]{0,80}\bcom o via pesados\b/],
+  ['prospeccao_unico', /^o unico sistema do brasil feito para lojas de veiculos pesados\b/],
+  ['prospeccao_simples', /^(?:fala, [^!]{1,40}! )?ja imaginou atender seus clientes com essa facilidade\b/],
+  ['cadencia_canais', /^oi! aqui e o davi, do via pesados\. uma pergunta rapida sobre\b/],
+  ['cadencia_retomada', /^oi! aqui e o davi, do via pesados\. faz um tempo que te mandei o video\b/],
+  ['cadencia_vendas', /^anunciar e metade\. a venda acontece no atendimento\b/],
+  ['cadencia_vendeu', /^quando um .{1,40} e vendido ai na loja, quem tira o anuncio\b/],
+  ['cadencia_atendimento', /^e no whatsapp: quando o cliente pede foto, ficha e preco\b/],
+  ['cadencia_relatorios', /^voce sabe qual .{1,40} mais vendeu na loja este ano\b/],
+  ['cadencia_definicao', /^toda loja que cresce chega numa hora\b/],
+  ['cadencia_encerramento', /^vou parar de te chamar por aqui pra nao insistir\b/],
+];
+
+/** Qual modelo é este texto de mensagem (o que a caixa grava), ou null. */
+export function modeloDaMensagem(texto: string | null | undefined): ModeloRespondido | null {
+  const corpo = semAcento(String(texto ?? '')).toLowerCase()
+    .replace(/^\s*(?:\[[^\]\n]*\]\s*)+/, '') // o rótulo do vídeo na frente
+    .replace(/\s+/g, ' ').trim();
+  if (!corpo) return null;
+  for (const [modelo, r] of ABERTURAS) if (r.test(corpo)) return modelo;
+  return null;
+}
+
+/** O filme (feminino ou masculino) e o vídeo antigo do Xavier se respondem do mesmo jeito. */
+export const ehOFilme = (m: ModeloRespondido | null | undefined): boolean => m === 'prospeccao_unico' || m === 'prospeccao_filme';
+
+/**
+ * O último modelo da prospecção que saiu na conversa (as mensagens em ordem): é a ele que o lead
+ * está respondendo. Só olha saídas; o recado e as respostas do Davi não casam com nenhum modelo.
+ */
+export function ultimoModeloRespondido(msgs: { direcao: string; conteudo?: string | null }[]): ModeloRespondido | null {
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (msgs[i].direcao !== 'saida') continue;
+    const m = modeloDaMensagem(msgs[i].conteudo);
+    if (m) return m;
+  }
+  return null;
 }
 
 /* ── o que a Meta diz sobre o número ──────────────────────────── */
