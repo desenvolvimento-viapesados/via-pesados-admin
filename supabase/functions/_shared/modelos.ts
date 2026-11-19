@@ -989,5 +989,342 @@ export const MODELOS: Modelo[] = [
     ]
    }
   ]
+ } ,
+ /* Cadência da prospecção fria (playbook de 18/11/2026, textos aprovados pelo dono). A demonstração
+    é com "um especialista da nossa equipe" (dono, 18/11: sem o nome dele). Os vídeos de vendas e de
+    relatórios ainda vão ser gravados: o exemplo é o filme; trocar o vídeo não pede aprovação nova. */
+ {
+  "name": "prospeccao_fria_canais",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Oi! Aqui é o Davi, da Via Pesados. Uma pergunta rápida sobre a {{1}}: hoje vocês anunciam o mesmo {{2}} em quantos lugares?\n\nMercado Livre, Instagram, Facebook, site…\n\nCom a Via Pesados, você cadastra uma vez e ele sai em todos.",
+    "example": {
+     "body_text": [
+      [
+       "RB Caminhões",
+       "caminhão"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "QUICK_REPLY",
+      "text": "Quero ver funcionando"
+     },
+     {
+      "type": "QUICK_REPLY",
+      "text": "Não tenho interesse"
+     }
+    ]
+   }
+  ]
+ } ,
+ {
+  "name": "prospeccao_fria_vendas",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "HEADER",
+    "format": "VIDEO",
+    "example": {
+     "header_url": [
+      "https://ktjvyysqhsyvjmhumjly.supabase.co/storage/v1/object/public/logos/wa/prospeccao-v3.mp4"
+     ]
+    }
+   },
+   {
+    "type": "BODY",
+    "text": "Anunciar é metade. A venda acontece no atendimento.\n\nNa Via Pesados, o vendedor manda o fluxo de fotos do {{1}} num clique. Cada cliente fica salvo com etiquetas do que procura, e o sistema lembra quem chamar de novo, inclusive quando entra no pátio um parecido com o que ele queria.\n\nNenhum cliente esquecido na conversa.",
+    "example": {
+     "body_text": [
+      [
+       "caminhão"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "QUICK_REPLY",
+      "text": "Quero ver funcionando"
+     },
+     {
+      "type": "QUICK_REPLY",
+      "text": "Não tenho interesse"
+     }
+    ]
+   }
+  ]
+ } ,
+ {
+  "name": "prospeccao_fria_vendeu",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Quando um {{1}} é vendido aí na loja, quem tira o anúncio de cada lugar?\n\nNa Via Pesados, vendeu, o anúncio sai de todos os canais sozinho. Mudou o preço, muda em todos de uma vez.\n\nMenos tempo no celular, mais tempo vendendo.",
+    "example": {
+     "body_text": [
+      [
+       "caminhão"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "QUICK_REPLY",
+      "text": "Quero ver funcionando"
+     },
+     {
+      "type": "QUICK_REPLY",
+      "text": "Não tenho interesse"
+     }
+    ]
+   }
+  ]
+ } ,
+ {
+  "name": "prospeccao_fria_atendimento",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "E no WhatsApp: quando o cliente pede foto, ficha e preço de um {{1}}, o vendedor acha na hora ou vai procurar na galeria?\n\nNa Via Pesados, vai tudo pro cliente num clique, direto do estoque.\n\nSe quem cuida disso aí é o dono, pode encaminhar pra ele 🙂",
+    "example": {
+     "body_text": [
+      [
+       "caminhão"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "QUICK_REPLY",
+      "text": "Quero ver funcionando"
+     },
+     {
+      "type": "QUICK_REPLY",
+      "text": "Não tenho interesse"
+     }
+    ]
+   }
+  ]
+ } ,
+ {
+  "name": "prospeccao_fria_relatorios",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "HEADER",
+    "format": "VIDEO",
+    "example": {
+     "header_url": [
+      "https://ktjvyysqhsyvjmhumjly.supabase.co/storage/v1/object/public/logos/wa/prospeccao-v3.mp4"
+     ]
+    }
+   },
+   {
+    "type": "BODY",
+    "text": "Você sabe qual {{1}} mais vendeu na loja este ano? De qual marca, de qual modelo?\n\nNa Via Pesados, cada venda vira relatório na hora: o que mais vende por tipo, por marca e por modelo, e quanto deu de lucro.\n\nComprar o próximo fica mais fácil quando você sabe o que gira.",
+    "example": {
+     "body_text": [
+      [
+       "caminhão"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "QUICK_REPLY",
+      "text": "Quero ver funcionando"
+     },
+     {
+      "type": "QUICK_REPLY",
+      "text": "Não tenho interesse"
+     }
+    ]
+   }
+  ]
+ } ,
+ {
+  "name": "prospeccao_fria_definicao",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Toda loja que cresce chega numa hora em que fazer tudo à mão começa a segurar as vendas.\n\nSerá que essa hora já não chegou pra {{1}}?\n\nSão 15 minutos com um especialista da nossa equipe, por vídeo, pra você ver como fica.",
+    "example": {
+     "body_text": [
+      [
+       "RB Caminhões"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "QUICK_REPLY",
+      "text": "Quero conhecer"
+     },
+     {
+      "type": "QUICK_REPLY",
+      "text": "Outro momento"
+     },
+     {
+      "type": "QUICK_REPLY",
+      "text": "Não tenho interesse"
+     }
+    ]
+   }
+  ]
+ } ,
+ {
+  "name": "prospeccao_fria_encerramento",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Vou parar de te chamar por aqui pra não insistir.\n\nSó deixo uma pergunta: daqui a um ano, a {{1}} quer estar trabalhando do mesmo jeito que hoje?\n\nNo dia que quiser automatizar e vender mais, é só responder essa mensagem: um especialista da nossa equipe te mostra em 15 minutos.",
+    "example": {
+     "body_text": [
+      [
+       "RB Caminhões"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "QUICK_REPLY",
+      "text": "Quero conhecer"
+     },
+     {
+      "type": "QUICK_REPLY",
+      "text": "Não tenho interesse"
+     }
+    ]
+   }
+  ]
+ } ,
+ {
+  "name": "prospeccao_fria_retomada",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Oi! Aqui é o Davi, da Via Pesados. Faz um tempo que te mandei o vídeo da Via Pesados.\n\nSeguimos sendo o único sistema do Brasil feito para lojas de veículos pesados, com conexão oficial ao Mercado Livre, Instagram e Facebook.\n\nBora ver como fica na {{1}}? São 15 minutos.",
+    "example": {
+     "body_text": [
+      [
+       "RB Caminhões"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "QUICK_REPLY",
+      "text": "Quero conhecer"
+     },
+     {
+      "type": "QUICK_REPLY",
+      "text": "Não tenho interesse"
+     }
+    ]
+   }
+  ]
+ } ,
+ {
+  "name": "lembrete_demonstracao",
+  "language": "pt_BR",
+  "category": "UTILITY",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Oi! Passando pra confirmar a demonstração da Via Pesados hoje às {{1}}, com um especialista da nossa equipe. Entre pelo link {{2}} na hora marcada.",
+    "example": {
+     "body_text": [
+      [
+       "15h",
+       "https://meet.google.com/abc-defg-hij"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "QUICK_REPLY",
+      "text": "Confirmado"
+     },
+     {
+      "type": "QUICK_REPLY",
+      "text": "Preciso remarcar"
+     }
+    ]
+   }
+  ]
+ } ,
+ {
+  "name": "demonstracao_remarcar",
+  "language": "pt_BR",
+  "category": "UTILITY",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "Oi! Não conseguimos nos ver às {{1}}. Quer remarcar a demonstração da Via Pesados? Continua em 15 minutos, direto no que importa pra sua loja.",
+    "example": {
+     "body_text": [
+      [
+       "15h"
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "QUICK_REPLY",
+      "text": "Quero remarcar"
+     },
+     {
+      "type": "QUICK_REPLY",
+      "text": "Agora não"
+     }
+    ]
+   }
+  ]
  }
 ];
