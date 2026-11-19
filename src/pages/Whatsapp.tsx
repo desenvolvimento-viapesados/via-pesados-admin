@@ -145,10 +145,12 @@ export default function Whatsapp() {
     } finally { setOcupado(null); }
   };
 
-  const recriar = async () => {
+  /* `apenas` manda para a Meta só o modelo pedido. Sem ele vão todos os que faltam, e pode
+     haver texto no catálogo que o dono ainda não aprovou. */
+  const recriar = async (apenas?: string[]) => {
     setOcupado('modelos');
     try {
-      const d: Modelos = await chamar('wa-templates', { action: 'criar' });
+      const d: Modelos = await chamar('wa-templates', apenas ? { action: 'criar', apenas } : { action: 'criar' });
       if (d?.error) { toast.error(d.error); return; }
       setMod(d);
       const r = d.resumo ?? {};
@@ -443,9 +445,22 @@ export default function Whatsapp() {
             )}
           </>
         )}
-        <Botao onClick={recriar} carregando={ocupado === 'modelos'} desabilitado={!faltando.length}>
+        <Botao onClick={() => recriar()} carregando={ocupado === 'modelos'} desabilitado={!faltando.length}>
           {faltando.length ? `Criar os ${faltando.length} que faltam` : 'Todos os modelos já estão na conta'}
         </Botao>
+        {faltando.length > 1 && (
+          <div className="mt-3 space-y-1.5">
+            <p className="text-[11.5px] text-foreground/45">Ou envie um de cada vez:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {faltando.map((nome) => (
+                <button key={nome} onClick={() => recriar([nome])} disabled={ocupado === 'modelos'}
+                  className="h-8 px-3 rounded-lg text-[12px] font-medium border border-black/[0.1] dark:border-white/[0.12] text-foreground/75 hover:text-foreground hover:border-primary/50 disabled:opacity-50 transition-colors">
+                  Enviar só {nome}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </Bloco>
     </div>
   );
