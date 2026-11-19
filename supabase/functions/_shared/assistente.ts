@@ -400,8 +400,13 @@ export async function aplicarRegistro(db: Db, estado: AssistenteConversa, args: 
     const { aceitos, recusados } = conferirCitacoes(dores, fontes);
     const novas = aceitos.filter((a) => !jaTem(estado.dores, a.citacao))
       .map((a) => ({ texto: String(a.texto).slice(0, 300), citacao: String(a.citacao).slice(0, 500), mensagem_id: a.mensagem_id }));
-    if (novas.length) patch.dores = [...estado.dores, ...novas];
-    for (const r of recusados) avisos.push(`Dor recusada: a citação "${r.citacao}" não está na conversa. Copie a frase do lead ao pé da letra.`);
+    if (novas.length) {
+      patch.dores = [...estado.dores, ...novas];
+      /* Dor contada depois do Marcado (dono, 18/11: reunião "cega"): o dossiê já feito é refeito
+         pela rotina assistente-pendentes, para a dor e a frase dele chegarem ao Xavier. */
+      if (estado.reuniao_id) patch.dossie = null;
+    }
+    for (const r of recusados) avisos.push(`Dor recusada:a citação "${r.citacao}" não está na conversa. Copie a frase do lead ao pé da letra.`);
   }
 
   const objecoes = lista<{ texto: string; citacao: string; resposta?: string }>(args.objecoes).filter((o) => textoOuNada(o?.citacao) && textoOuNada(o?.texto));

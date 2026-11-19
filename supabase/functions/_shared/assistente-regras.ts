@@ -237,21 +237,63 @@ export function pedidoComOBotao(
 /* ── a qualificação curta ─────────────────────────────────────── */
 
 /**
- * Dono, 06/11/2026: antes do convite, três perguntas, nesta ordem e uma por resposta: o nome
+ * Dono, 06/11/2026: antes do convite, perguntas curtas, nesta ordem e uma por resposta: o nome
  * da loja (só se não souber; a loja da lista já vem com o nome), o estoque e se quem fala é o
- * dono ou vendedor. Com as três, o convite.
+ * dono ou vendedor.
+ * Dono, 18/11/2026 ("as reuniões que eu fiz foram meio cegas, sem saber quais eram as maiores
+ * dores"): a dor entra como a 4ª, numa pergunta só, com as quatro promessas do sistema como
+ * opções. Conta como respondida quando há ao menos uma dor registrada (com a frase dele). Quem
+ * pede para ver ou fechar continua indo direto ao convite: a dor vem logo depois do Marcado.
  */
-export type ItemDaQualificacao = 'loja' | 'estoque' | 'cargo';
-export const ORDEM_DA_QUALIFICACAO: readonly ItemDaQualificacao[] = ['loja', 'estoque', 'cargo'];
+export type ItemDaQualificacao = 'loja' | 'estoque' | 'cargo' | 'dor';
+export const ORDEM_DA_QUALIFICACAO: readonly ItemDaQualificacao[] = ['loja', 'estoque', 'cargo', 'dor'];
 export const PERGUNTA_DA_QUALIFICACAO: Record<ItemDaQualificacao, string> = {
   loja: 'o nome da loja (e a cidade, se couber na mesma pergunta)',
   estoque: 'quantos veículos tem no estoque',
   cargo: 'se ele é o dono ou vendedor (ou outro cargo)',
+  dor: 'o que mais toma tempo na loja hoje (a pergunta da dor, com as quatro opções)',
+};
+
+/** As quatro opções da pergunta da dor: as promessas do sistema, na língua do lojista. */
+export const OPCOES_DA_DOR = [
+  'Anunciar em cada lugar',
+  'Responder cliente com foto e ficha',
+  'Lembrar quem procurou o quê',
+  'Saber o que mais vende',
+] as const;
+const LISTA_DA_DOR = OPCOES_DA_DOR.map((o) => `• ${o}`).join('\n');
+/** A pergunta da dor antes do convite (a 4ª da qualificação). */
+export const PERGUNTA_DA_DOR = `E hoje, o que mais toma tempo aí na loja?\n${LISTA_DA_DOR}`;
+/** A mesma pergunta no turno do Marcado, como preparação da reunião (3º balão). */
+export const PERGUNTA_DA_DOR_DEPOIS_DE_MARCAR = `Pra já chegar com a sua loja na tela: o que mais toma tempo hoje?\n${LISTA_DA_DOR}`;
+/** O único aprofundamento, depois de marcar, quando a resposta foi vaga ("tudo", "de boa"). */
+export const PERGUNTA_DO_EXEMPLO_DA_DOR = 'Me conta a última vez que isso pegou aí: o que aconteceu?';
+
+export type DadosDaQualificacao = {
+  loja?: string | null; estoque?: string | null; cargo?: string | null;
+  /** As dores registradas (ou quantas são): uma basta para a 4ª pergunta contar como respondida. */
+  dores?: number | readonly unknown[] | null;
 };
 
 /** O que falta da qualificação curta, na ordem em que se pergunta. */
-export function faltaNaQualificacao(s: Partial<Record<ItemDaQualificacao, string | null>>): ItemDaQualificacao[] {
-  return ORDEM_DA_QUALIFICACAO.filter((k) => !String(s[k] ?? '').trim());
+export function faltaNaQualificacao(s: DadosDaQualificacao): ItemDaQualificacao[] {
+  const qtdDores = typeof s.dores === 'number' ? s.dores : (s.dores?.length ?? 0);
+  return ORDEM_DA_QUALIFICACAO.filter((k) => (k === 'dor' ? qtdDores <= 0 : !String(s[k] ?? '').trim()));
+}
+
+/*
+ * Resposta vaga à pergunta da dor (dono, 18/11: "e sem resposta vaga também"): a mensagem
+ * inteira é só "tudo", "normal", "de boa", "um pouco de cada"... Com isso o Davi pede, uma vez
+ * e só depois de marcar, um exemplo concreto.
+ */
+const DOR_VAGA = /^(?:(?:ah+|olha|bom|cara|rapaz|hmm+|acho\s+que|eu\s+acho|sinceramente|aqui)\s+)*(?:tudo|de\s+tudo|tudo\s+isso|tudo\s+um\s+pouco|um\s+pouco\s+de\s+(?:cada|tudo)|todos?|todas?(?:\s+as\s+opcoes)?|todas\s+elas|normal|tudo\s+normal|de\s+boa|ta\s+de\s+boa|tranquilo|ta\s+tranquilo|tudo\s+tranquilo|nada|nenhum[a]?|nada\s+nao|sei\s+la|nao\s+sei|depende|mais\s+ou\s+menos|tudo\s+certo|tudo\s+bem|ok)(?:\s+(?:mesmo|ne|kkk+|rs+|haha+|aqui|por\s+aqui|gracas\s+a\s+deus))*$/;
+export function respostaVagaDaDor(texto: string | null | undefined): boolean {
+  const t = normalizarTexto(texto);
+  return !!t && DOR_VAGA.test(t);
+}
+/** Há dor concreta registrada? (uma resposta vaga registrada não conta). */
+export function temDorConcreta(dores: readonly { citacao?: string | null }[] | null | undefined): boolean {
+  return (dores ?? []).some((d) => !!normalizarTexto(d?.citacao) && !respostaVagaDaDor(d?.citacao));
 }
 
 /**
@@ -306,9 +348,10 @@ export function podeOferecerHorario(x: {
   /* Dono, 05/11: poucas perguntas e a reunião o tempo inteiro — a partir da 2ª resposta (quem quer
      comprar) ou da 3ª (os demais), ou assim que ele contar uma dor. */
   if (x.pedido === 'comprar' && x.respostasSuas >= 1) return { pode: true, precisaInteresse: false, motivo: 'ele quer comprar e já se apresentou o Via Pesados' };
-  /* Dono, 06/11: a qualificação curta (nome da loja se não souber, estoque, cargo) vem antes do convite. */
+  /* Dono, 06/11: a qualificação curta (nome da loja se não souber, estoque, cargo) vem antes do
+     convite; 18/11: e a dor, a 4ª, para o Xavier não chegar cego na reunião. */
   if (x.falta) {
-    if (!x.falta.length) return { pode: true, precisaInteresse: false, motivo: 'a qualificação curta está completa (loja, estoque e cargo): é a hora do convite' };
+    if (!x.falta.length) return { pode: true, precisaInteresse: false, motivo: 'a qualificação curta está completa (loja, estoque, cargo e a dor): é a hora do convite' };
     if (x.respostasSuas >= RESPOSTAS_ATE_CONVIDAR) return { pode: true, precisaInteresse: false, motivo: `já foram ${x.respostasSuas} respostas suas: convide; o que faltar (${x.falta.map((k) => PERGUNTA_DA_QUALIFICACAO[k]).join('; ')}) o Xavier vê na reunião` };
     return { pode: false, precisaInteresse: false, motivo: `falta a qualificação curta; a próxima pergunta é ${PERGUNTA_DA_QUALIFICACAO[x.falta[0]]}` };
   }
@@ -558,20 +601,54 @@ export type ContextoFiscal = {
   leadPerguntou?: boolean;
   /** O nome da loja já se sabe: a cidade sozinha não se pergunta. */
   lojaConhecida?: boolean;
+  /** Já há dor concreta registrada (temDorConcreta): depois de marcar, a dor não se pergunta mais. */
+  dorRegistrada?: boolean;
+  /** Só há dor vaga registrada ("tudo", "de boa"): cabe o pedido de exemplo. */
+  dorVaga?: boolean;
+  /** A última mensagem dele é uma resposta vaga (respostaVagaDaDor): cabe o pedido de exemplo. */
+  leadRespondeuVago?: boolean;
+  /** Perguntas da dor que o Davi já mandou depois do Marcado (perguntasDeDor): no máximo 2 no total. */
+  perguntasDeDorDepoisDeMarcar?: number;
 };
 
 /*
  * Perguntas sobre a loja fora da qualificação curta (dono, 06/11): o Davi perguntou "têm
  * pátio ou trabalham intermediando?" a quem já tinha dito que tem 35 caminhões, e com a
- * reunião já marcada. Antes de marcar, só as três da qualificação; o resto o Xavier vê na
+ * reunião já marcada. Antes de marcar, só as da qualificação (quatro desde 18/11, com a dor); o resto o Xavier vê na
  * reunião. Vale só a última oração da pergunta ("35 no pátio já é bom, e você é o dono?").
  */
-const FICHA_ANTES_DE_MARCAR: RegExp[] = [
+const FICHA_DA_LOJA: RegExp[] = [
   /\bpatios?\b/, /\bintermed\w*/, /\bloja\s+fisica\b/, /\bgalpao\b/, /\bde\s+terceiros\b/, /\bconsign\w*/,
   /\binsta(?:gram)?\b/, /@/, /\bonde\s+(?:voces\s+)?(?:ja\s+)?anunci\w*/, /\bvoces\s+(?:ja\s+)?anunciam\b/,
   /\bquem\s+(?:posta|anuncia|cuida\s+d[oa]s?\s+(?:anuncio|rede|insta))/, /\bdecide\w*/,
+];
+const FICHA_ANTES_DE_MARCAR: RegExp[] = [
+  ...FICHA_DA_LOJA,
   /\batrapalha\w*/, /\bmais\s+te\s+(?:toma|da)\s+(?:tempo|trabalho)\b/, /\bdificuldade\b/,
 ];
+/*
+ * A pergunta da dor (dono, 18/11): "o que mais toma tempo aí na loja?" (com as opções) passa
+ * antes de marcar, como 4ª da qualificação, e depois de marcar enquanto não há dor concreta. O
+ * pedido de exemplo ("me conta a última vez que isso pegou aí") é o único aprofundamento.
+ * Só a pergunta da dor: se a mesma frase também pergunta pátio, Instagram ou cidade, barra.
+ */
+const PERGUNTA_DE_DOR = /\b(?:o\s+que|qual\s+(?:coisa|parte))\s+(?:\w+\s+){0,2}?mais\s+(?:(?:te\s+|lhe\s+)?(?:toma|tomando|da|dando|come|consome)\s+(?:\w+\s+){0,2}?(?:tempo|trabalho)\b|(?:te\s+)?atrapalha\b)|\bonde\s+(?:voce\s+|voces\s+)?mais\s+perde\w*\s+tempo\b|\bmaior\s+(?:dor|dificuldade)\b/;
+const PEDIDO_DE_EXEMPLO_DA_DOR = /\bultima\s+vez\s+que\b|\bme\s+(?:conta|da|de|passa)\s+um\s+exemplo\b/;
+const ehPerguntaDaDor = (f: string) => PERGUNTA_DE_DOR.test(f) && !FICHA_DA_LOJA.some((r) => r.test(f)) && !SO_A_CIDADE.test(f);
+const ehPedidoDeExemplo = (f: string) => PEDIDO_DE_EXEMPLO_DA_DOR.test(f) && !FICHA_DA_LOJA.some((r) => r.test(f)) && !SO_A_CIDADE.test(f);
+
+/**
+ * Quantas perguntas da dor (a das opções ou o pedido de exemplo) há nestes textos do Davi.
+ * O motor conta as que saíram depois do Marcado: no máximo 2 no total (dono, 18/11).
+ */
+export function perguntasDeDor(textos: (string | null | undefined)[]): number {
+  let n = 0;
+  for (const t of textos ?? []) {
+    const p = plano(String(t ?? '')).replace(/https?:\/\/\S+/g, ' ');
+    for (const f of frasesQuePerguntam(p)) if (ehPerguntaDaDor(f) || ehPedidoDeExemplo(f)) n++;
+  }
+  return n;
+}
 /* A cidade sozinha, quando o nome da loja já se sabe (junto do nome ela é a pergunta 1). */
 const SO_A_CIDADE = /\bcidade\b|\bde\s+onde\b|\bfica\s+onde\b|\bonde\s+(?:fica|voces\s+(?:sao|estao|ficam))\b/;
 /* Depois de marcar, nada que fale da loja dele. */
@@ -871,24 +948,50 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
   /* Sem os links: um "?" dentro do link da reunião não é pergunta. */
   const planos = lista.map((b) => plano(String(b ?? '')).replace(/https?:\/\/\S+/g, ' '));
   const ofereceHorario = !ctx.marcandoAgora && planos.some((p) => HORA_CITADA.test(p));
+  /* A dor depois de marcar (dono, 18/11): no turno do Marcado, a pergunta da dor (fora do 1º
+     balão e de balão com link) enquanto não há dor concreta; nos turnos seguintes, a pergunta
+     enquanto não há dor concreta, e o pedido de exemplo só depois de resposta vaga. Nunca mais
+     de 2 perguntas da dor depois do Marcado, contando as deste turno. */
+  let dorNoTurno = 0;
+  const dorPermitidaDepoisDeMarcar = (f: string, i: number): boolean => {
+    const pergunta = ehPerguntaDaDor(f), exemplo = ehPedidoDeExemplo(f);
+    if (!pergunta && !exemplo) return false;
+    if (ctx.dorRegistrada) return false;
+    if ((ctx.perguntasDeDorDepoisDeMarcar ?? 0) + dorNoTurno >= 2) return false;
+    if (exemplo && !pergunta && !(ctx.dorVaga || ctx.leadRespondeuVago)) return false;
+    if (ctx.marcandoAgora && (i === 0 || linksNoTexto(String(lista[i] ?? '')).length > 0)) return false;
+    return true;
+  };
   planos.forEach((p, i) => {
     for (const f of frasesQuePerguntam(p)) {
       if (ctx.reuniaoMarcada) {
+        if (dorPermitidaDepoisDeMarcar(f, i)) { dorNoTurno++; continue; }
         const daLoja = FALA_DA_LOJA.some((r) => r.test(f));
         const escolha = ofereceHorario && ESCOLHA_DE_HORARIO.test(f) && !FICHA_ANTES_DE_MARCAR.some((r) => r.test(f));
         const esclarece = !ctx.marcandoAgora && !!ctx.leadPerguntou && !daLoja;
         if (ctx.marcandoAgora || !(escolha || esclarece)) {
-          v.push({ regra: 'pergunta_depois_de_marcar', mensagem: i, trecho: f.slice(0, 120), explicacao: ctx.marcandoAgora
-            ? 'No Marcado não vai pergunta nenhuma: só o "Marcado!" e o link.'
-            : 'A reunião já está marcada: não pergunte mais nada da loja (o Xavier vê o resto na reunião). Responda curto o que ele disse ou perguntou e se despeça ("Fechou, até segunda!"). Só cabe pergunta para remarcar, com os horários da lista.' });
+          const sobreDor = ehPerguntaDaDor(f) || ehPedidoDeExemplo(f);
+          v.push({ regra: 'pergunta_depois_de_marcar', mensagem: i, trecho: f.slice(0, 120), explicacao: sobreDor
+            ? (ctx.dorRegistrada
+              ? 'A dor dele já está registrada: não pergunte de novo. Agradeça e se despeça.'
+              : (ctx.perguntasDeDorDepoisDeMarcar ?? 0) + dorNoTurno >= 2
+                ? 'Já foram duas perguntas da dor depois do Marcado: não pergunte mais. Registre o que ele disse, agradeça e se despeça.'
+                : ctx.marcandoAgora
+                  ? 'No turno do Marcado, a pergunta da dor vai sozinha no 3º balão, depois do "Marcado!" e do link.'
+                  : 'O pedido de exemplo só cabe depois de uma resposta vaga ("tudo", "de boa"); com resposta concreta, registre a dor, agradeça e se despeça.')
+            : ctx.marcandoAgora
+              ? `No Marcado não vai pergunta nenhuma: só o "Marcado!" e o link${ctx.dorRegistrada ? '' : ' (e, num 3º balão, só a pergunta da dor com as opções)'}.`
+              : `A reunião já está marcada: não pergunte mais nada da loja (o Xavier vê o resto na reunião). Responda curto o que ele disse ou perguntou e se despeça ("Fechou, até segunda!"). Só cabe pergunta para remarcar, com os horários da lista${ctx.dorRegistrada ? '' : ', ou a da dor'}.` });
           return;
         }
         continue;
       }
+      /* A pergunta da dor é a 4ª da qualificação (dono, 18/11): passa antes de marcar. */
+      if (ehPerguntaDaDor(f)) continue;
       const oracao = ultimaOracao(f);
       if (/\bquant[oa]s\b/.test(oracao)) continue; // "quantos caminhões no pátio?" é a pergunta do estoque
       if (FICHA_ANTES_DE_MARCAR.some((r) => r.test(oracao)) || (ctx.lojaConhecida && SO_A_CIDADE.test(oracao))) {
-        v.push({ regra: 'pergunta_de_ficha', mensagem: i, trecho: f.slice(0, 120), explicacao: 'Antes da reunião, só as três perguntas da qualificação (nome da loja se não souber, estoque, dono ou vendedor). Pátio, cidade, Instagram, onde anuncia, quem decide e o que atrapalha o Xavier vê na reunião. Nunca pergunte o que dá para deduzir (quem tem 35 caminhões tem estoque).' });
+        v.push({ regra: 'pergunta_de_ficha', mensagem: i, trecho: f.slice(0, 120), explicacao: `Antes da reunião, só as quatro perguntas da qualificação (nome da loja se não souber, estoque, dono ou vendedor, e a da dor, assim: "${PERGUNTA_DA_DOR.split('\n')[0]}" com as opções). Pátio, cidade, Instagram, onde anuncia e quem decide o Xavier vê na reunião. Nunca pergunte o que dá para deduzir (quem tem 35 caminhões tem estoque).` });
         return;
       }
     }

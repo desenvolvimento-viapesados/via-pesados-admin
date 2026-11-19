@@ -15,6 +15,8 @@ import {
   faltaNaQualificacao, PERGUNTA_DA_QUALIFICACAO, RESPOSTAS_ATE_CONVIDAR,
   perguntouAlgo,
   soSimCurto,
+  ORDEM_DA_QUALIFICACAO, PERGUNTA_DA_DOR, PERGUNTA_DA_DOR_DEPOIS_DE_MARCAR, PERGUNTA_DO_EXEMPLO_DA_DOR,
+  perguntasDeDor, respostaVagaDaDor, temDorConcreta,
 } from '../../supabase/functions/_shared/assistente-regras';
 import { INSTRUCOES } from '../../supabase/functions/_shared/assistente-roteiro';
 import { ROTULO_DO_VIDEO } from '../../supabase/functions/_shared/prospeccao-regras';
@@ -805,11 +807,14 @@ describe('a oferta de lançamento de novembro (dono, 06/11/2026)', () => {
 describe('a qualificação curta antes do convite (dono, 06/11/2026)', () => {
   const base = { daLista: true, dores: 0, pedidosDePreco: 0 };
 
-  it('o que falta sai na ordem: loja, estoque, cargo', () => {
-    expect(faltaNaQualificacao({})).toEqual(['loja', 'estoque', 'cargo']);
-    expect(faltaNaQualificacao({ loja: 'iTruck Caminhões' })).toEqual(['estoque', 'cargo']);
-    expect(faltaNaQualificacao({ loja: 'iTruck', estoque: 'uns 25', cargo: '  ' })).toEqual(['cargo']);
-    expect(faltaNaQualificacao({ loja: 'iTruck', estoque: 'uns 25', cargo: 'vendedor' })).toEqual([]);
+  it('o que falta sai na ordem: loja, estoque, cargo e a dor (dono, 18/11)', () => {
+    expect(faltaNaQualificacao({})).toEqual(['loja', 'estoque', 'cargo', 'dor']);
+    expect(faltaNaQualificacao({ loja: 'iTruck Caminhões' })).toEqual(['estoque', 'cargo', 'dor']);
+    expect(faltaNaQualificacao({ loja: 'iTruck', estoque: 'uns 25', cargo: '  ' })).toEqual(['cargo', 'dor']);
+    expect(faltaNaQualificacao({ loja: 'iTruck', estoque: 'uns 25', cargo: 'vendedor' })).toEqual(['dor']);
+    expect(faltaNaQualificacao({ loja: 'iTruck', estoque: 'uns 25', cargo: 'vendedor', dores: [] })).toEqual(['dor']);
+    expect(faltaNaQualificacao({ loja: 'iTruck', estoque: 'uns 25', cargo: 'vendedor', dores: [{ texto: 'anunciar', citacao: 'anunciar em cada lugar' }] })).toEqual([]);
+    expect(faltaNaQualificacao({ loja: 'iTruck', estoque: 'uns 25', cargo: 'vendedor', dores: 1 })).toEqual([]);
   });
 
   it('sem as três respostas, nada de horário; com elas, o convite', () => {
@@ -1014,5 +1019,116 @@ describe('WhatsApps do aviso de reunião', () => {
     expect(ehNumeroDeTeste('552797246060', lista)).toBe(true);
     expect(ehNumeroDeTeste('553388144005', lista)).toBe(true);
     expect(ehNumeroDeTeste('5531999990000', lista)).toBe(false);
+  });
+});
+
+describe('a dor antes ou logo depois de marcar (dono, 18/11/2026)', () => {
+  const link = 'https://meet.google.com/abc-defg-hij';
+  const marcado = 'Marcado! ✅\n\n*Segunda às 9h*, 15 minutos com o Xavier no Google Meet.\nSe servir, você já deixa a implantação marcada; se não servir, tudo bem.';
+  const r = (b: string[], ctx: Record<string, unknown>) => regras(b, { linkReuniao: link, ...ctx });
+  const qualificado = { loja: 'KX Caminhões', estoque: 'uns 30', cargo: 'dono' };
+
+  it('a dor é a 4ª da qualificação: sem ela, nada de convite; com uma dor registrada, o convite', () => {
+    expect(ORDEM_DA_QUALIFICACAO).toEqual(['loja', 'estoque', 'cargo', 'dor']);
+    const sem = podeOferecerHorario({ daLista: true, dores: 0, respostasSuas: 2, pedidosDePreco: 0, falta: faltaNaQualificacao(qualificado) });
+    expect(sem.pode).toBe(false);
+    expect(sem.motivo).toContain(PERGUNTA_DA_QUALIFICACAO.dor);
+    const com = faltaNaQualificacao({ ...qualificado, dores: [{ citacao: 'anunciar em cada lugar' }] });
+    expect(podeOferecerHorario({ daLista: true, dores: 1, respostasSuas: 3, pedidosDePreco: 0, falta: com }).pode).toBe(true);
+  });
+
+  it('conversa lenta ainda recebe o convite depois de 4 respostas, mesmo sem a dor', () => {
+    const falta = faltaNaQualificacao(qualificado);
+    expect(podeOferecerHorario({ daLista: true, dores: 0, respostasSuas: RESPOSTAS_ATE_CONVIDAR, pedidosDePreco: 0, falta }).pode).toBe(true);
+  });
+
+  it('lead quente (pedido ver, interesse, fechar já) é convidado sem a dor', () => {
+    const falta = faltaNaQualificacao({ loja: 'KX' });
+    expect(falta).toContain('dor');
+    expect(podeOferecerHorario({ daLista: true, dores: 0, respostasSuas: 0, pedidosDePreco: 0, falta, pedido: 'ver' }).pode).toBe(true);
+    expect(podeOferecerHorario({ daLista: true, dores: 0, respostasSuas: 0, pedidosDePreco: 0, falta, interesse: true }).pode).toBe(true);
+    expect(podeOferecerHorario({ daLista: true, dores: 0, respostasSuas: 0, pedidosDePreco: 0, falta, pedido: 'fechar_ja' }).pode).toBe(true);
+  });
+
+  it('antes de marcar, a pergunta da dor passa (com as opções e no meio da qualificação); cidade, pátio e Insta continuam barrados', () => {
+    expect(r([PERGUNTA_DA_DOR], {})).toEqual([]);
+    expect(r([`Fechou! ${PERGUNTA_DA_DOR}`], { soPerguntar: true, antesDeMarcar: true })).toEqual([]);
+    expect(r(['Boa, 30 já é estoque bom! E hoje, o que mais te toma tempo aí na loja?'], { lojaConhecida: true })).toEqual([]);
+    expect(r(['E o que mais te atrapalha hoje na loja?'], {})).toEqual([]);
+    for (const b of ['Vocês têm pátio com os caminhões aí, ou trabalham mais intermediando?', 'Boa! E a loja de vocês fica em que cidade?',
+      'Me passa o @ do Insta da loja?', 'Isso te atrapalha?', 'Qual a maior dificuldade de vocês com o Instagram?',
+      'E o que mais toma tempo aí no pátio?']) {
+      expect(r([b], { lojaConhecida: true }), b).toContain('pergunta_de_ficha');
+    }
+  });
+
+  it('no turno do Marcado, a pergunta da dor cabe no 3º balão só sem dor concreta registrada', () => {
+    const marcando = { reuniaoMarcada: true, marcandoAgora: true };
+    expect(r([marcado, link, PERGUNTA_DA_DOR_DEPOIS_DE_MARCAR], marcando)).toEqual([]);
+    expect(r([marcado, link, PERGUNTA_DA_DOR_DEPOIS_DE_MARCAR], { ...marcando, dorRegistrada: true })).toContain('pergunta_depois_de_marcar');
+    /* No balão do Marcado, não. */
+    expect(r([`${marcado}\n\n${PERGUNTA_DA_DOR_DEPOIS_DE_MARCAR}`, link], marcando)).toContain('pergunta_depois_de_marcar');
+    /* O pedido de exemplo no Marcado só quando a dor registrada foi vaga. */
+    expect(r([marcado, link, PERGUNTA_DO_EXEMPLO_DA_DOR], marcando)).toContain('pergunta_depois_de_marcar');
+    expect(r([marcado, link, PERGUNTA_DO_EXEMPLO_DA_DOR], { ...marcando, dorVaga: true })).toEqual([]);
+    /* Outra pergunta no 3º balão continua barrada. */
+    expect(r([marcado, link, 'E a loja de vocês fica em que cidade?'], marcando)).toContain('pergunta_depois_de_marcar');
+  });
+
+  it('depois de marcar: resposta vaga ganha um pedido de exemplo, uma vez; resposta concreta, não', () => {
+    const m = { reuniaoMarcada: true, perguntasDeDorDepoisDeMarcar: 1 };
+    expect(r([`Tranquilo! ${PERGUNTA_DO_EXEMPLO_DA_DOR}`], { ...m, leadRespondeuVago: true, dorVaga: true })).toEqual([]);
+    expect(r([`Tranquilo! ${PERGUNTA_DO_EXEMPLO_DA_DOR}`], { ...m, leadRespondeuVago: true })).toEqual([]);
+    expect(r([`Boa! ${PERGUNTA_DO_EXEMPLO_DA_DOR}`], { ...m, dorRegistrada: true })).toContain('pergunta_depois_de_marcar');
+    expect(r([`Boa! ${PERGUNTA_DO_EXEMPLO_DA_DOR}`], m)).toContain('pergunta_depois_de_marcar'); // não foi vaga
+    expect(r(['Valeu por contar, isso o Xavier te mostra resolvendo. Até segunda!'], { ...m, dorRegistrada: true })).toEqual([]);
+  });
+
+  it('a 3ª pergunta da dor depois do Marcado é barrada', () => {
+    const m = { reuniaoMarcada: true, perguntasDeDorDepoisDeMarcar: 2, leadRespondeuVago: true, dorVaga: true };
+    expect(r([PERGUNTA_DO_EXEMPLO_DA_DOR], m)).toContain('pergunta_depois_de_marcar');
+    expect(r([PERGUNTA_DA_DOR_DEPOIS_DE_MARCAR], m)).toContain('pergunta_depois_de_marcar');
+    /* E duas no mesmo turno também não passam do teto. */
+    expect(r([PERGUNTA_DO_EXEMPLO_DA_DOR], { ...m, perguntasDeDorDepoisDeMarcar: 1 })).toEqual([]);
+  });
+
+  it('depois de marcar, sem dor, o resto continua proibido (cidade, pátio, Insta, quem decide)', () => {
+    const m = { reuniaoMarcada: true, perguntasDeDorDepoisDeMarcar: 0 };
+    expect(r([PERGUNTA_DA_DOR_DEPOIS_DE_MARCAR], m)).toEqual([]);
+    for (const b of ['E a loja de vocês fica em que cidade?', 'Vocês têm pátio ou trabalham intermediando?', 'Me passa o @ do Insta da loja?',
+      'Mais alguém decide isso junto com você?', 'E o que mais toma tempo aí no pátio?', 'Quantos caminhões vocês têm hoje?']) {
+      expect(r([b], m), b).toContain('pergunta_depois_de_marcar');
+    }
+  });
+
+  it('o que conta como resposta vaga e como dor concreta', () => {
+    for (const t of ['tudo', 'Tudo kkk', 'normal', 'de boa', 'um pouco de cada', 'ah, um pouco de tudo', 'Tá tranquilo', 'sei lá']) {
+      expect(respostaVagaDaDor(t), t).toBe(true);
+    }
+    for (const t of ['anunciar em cada lugar', 'responder cliente, toda hora pedem foto', 'o segundo', 'tudo, mas principalmente anunciar', null]) {
+      expect(respostaVagaDaDor(t), String(t)).toBe(false);
+    }
+    expect(temDorConcreta([{ citacao: 'tudo' }])).toBe(false);
+    expect(temDorConcreta([{ citacao: 'tudo' }, { citacao: 'semana passada perdi cliente porque demorei a mandar foto' }])).toBe(true);
+    expect(temDorConcreta([])).toBe(false);
+  });
+
+  it('o motor conta as perguntas da dor que já saíram (a das opções e o pedido de exemplo), e só elas', () => {
+    expect(perguntasDeDor([marcado, link, PERGUNTA_DA_DOR_DEPOIS_DE_MARCAR, 'tudo', `Tranquilo! ${PERGUNTA_DO_EXEMPLO_DA_DOR}`])).toBe(2);
+    expect(perguntasDeDor(['Fechou, até segunda!', 'Qual fica melhor?'])).toBe(0);
+  });
+
+  it('o roteiro e o motor levam a dor: 4ª pergunta, 3º balão do Marcado e o dossiê refeito', () => {
+    expect(INSTRUCOES).toContain(PERGUNTA_DA_DOR);
+    expect(INSTRUCOES).toContain(PERGUNTA_DA_DOR_DEPOIS_DE_MARCAR);
+    expect(INSTRUCOES).toContain(PERGUNTA_DO_EXEMPLO_DA_DOR);
+    const i = (t: string) => INSTRUCOES.indexOf(t);
+    expect(i('3. se quem fala é o dono')).toBeLessThan(i('4. o que mais toma tempo'));
+    expect(INSTRUCOES).not.toMatch(/Não fique perguntando o que atrapalha/);
+    const motor = readFileSync('supabase/functions/assistente-responder/index.ts', 'utf8');
+    expect(motor).toContain('PERGUNTA_DA_DOR_DEPOIS_DE_MARCAR');
+    expect(motor).toContain('perguntasDeDorDepoisDeMarcar');
+    const comum = readFileSync('supabase/functions/_shared/assistente.ts', 'utf8');
+    expect(comum).toMatch(/if \(estado\.reuniao_id\) patch\.dossie = null/);
   });
 });
