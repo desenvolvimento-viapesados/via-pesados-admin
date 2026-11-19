@@ -1360,5 +1360,39 @@ export const MODELOS: Modelo[] = [
     ]
    }
   ]
+ } ,
+ /* O filme no masculino (dono, 18/11: "o Via Pesados"). Substitui o prospeccao_unico quando a Meta aprovar. */
+ {
+  "name": "prospeccao_filme",
+  "language": "pt_BR",
+  "category": "MARKETING",
+  "components": [
+   {
+    "type": "HEADER",
+    "format": "VIDEO",
+    "example": {
+     "header_url": [
+      "https://ktjvyysqhsyvjmhumjly.supabase.co/storage/v1/object/public/logos/wa/prospeccao-v3.mp4"
+     ]
+    }
+   },
+   {
+    "type": "BODY",
+    "text": "O único sistema do Brasil feito para lojas de veículos pesados.\n\nAutomatize suas publicações com o Via Pesados: cadastre uma vez e publique em todos os canais."
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "QUICK_REPLY",
+      "text": "Quero conhecer"
+     },
+     {
+      "type": "QUICK_REPLY",
+      "text": "Não tenho interesse"
+     }
+    ]
+   }
+  ]
  }
 ];
