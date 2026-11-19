@@ -41,6 +41,8 @@ export type FatosDaLoja = {
   loja: {
     status: StatusDaLoja; nome?: string | null; respondeu_em?: string | null;
     primeiro_contato_em?: string | null; contatos?: number | null;
+    /** Ligações feitas pelo dono (18/11): ligação também é abordagem. */
+    ligacoes?: number | null;
   };
   conversa?: {
     etapa?: Etapa | null;
@@ -109,7 +111,7 @@ export function posicaoNoFunil(f: FatosDaLoja, agora = new Date()): PosicaoNoFun
 
   /* Abordada é quem recebeu a prospecção (ou já conversa com o Davi por ela). Loja que
      escreveu por conta própria antes de receber nada não é resultado da prospecção. */
-  const abordada = !!f.loja.primeiro_contato_em || (f.loja.contatos ?? 0) > 0 || !!c;
+  const abordada = !!f.loja.primeiro_contato_em || (f.loja.contatos ?? 0) > 0 || (f.loja.ligacoes ?? 0) > 0 || !!c;
   if (!abordada) return { fase: null, lado: null, reuniaoPassou, reuniaoCancelada };
   chegou('abordada');
   /* A conversa do Davi aberta numa loja ainda "em contato" ou "sem resposta" é só o robô da loja

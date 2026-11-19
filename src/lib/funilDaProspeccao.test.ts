@@ -175,3 +175,16 @@ describe('o card mostra o essencial da resposta ao pé da letra', () => {
     expect(vendedorDoAnuncio(null)).toBeNull();
   });
 });
+
+describe('funil: ligação também é abordagem (18/11)', () => {
+  it('loja nova que marcou reunião na ligação aparece em Reunião marcada', () => {
+    const p = posicaoNoFunil({
+      loja: { status: 'com_voce', contatos: 0, primeiro_contato_em: null, ligacoes: 1 },
+      reuniao: { status: 'agendada', scheduled_at: '2099-01-01T12:00:00Z' },
+    });
+    expect(p.fase).toBe('reuniao');
+  });
+  it('sem mensagem e sem ligação, fora do funil', () => {
+    expect(posicaoNoFunil({ loja: { status: 'com_voce', contatos: 0, ligacoes: 0 } }).fase).toBeNull();
+  });
+});

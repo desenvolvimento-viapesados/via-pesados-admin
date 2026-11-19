@@ -126,8 +126,9 @@ Deno.serve(async () => {
       .eq('status', 'em_contato').lt('contatos', maxContatos).lte('proximo_contato_em', agora.toISOString())
       .order('proximo_contato_em').limit(1).maybeSingle();
     if (!loja) {
+      /* "Mandar o vídeo" marcado na ligação passa na frente da fila. */
       ({ data: loja } = await db.from('prospeccao_lojas').select('*')
-        .eq('status', 'pronta').order('criada_em').limit(1).maybeSingle());
+        .eq('status', 'pronta').order('enviar_logo', { ascending: false }).order('criada_em').limit(1).maybeSingle());
     }
     if (!loja) return json(200, { ok: true, fila_vazia: true });
 

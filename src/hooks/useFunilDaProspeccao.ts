@@ -16,6 +16,9 @@ export type LojaDoFunil = {
   dados: Record<string, unknown> | null; status: StatusDaLoja; contatos: number;
   primeiro_contato_em: string | null; ultimo_contato_em: string | null; respondeu_em: string | null;
   conversa_id: string | null; motivo: string | null; humano_assumiu: boolean; atualizada_em: string; fonte_ref: string | null;
+  /** Reunião marcada por ligação (18/11). */
+  reuniao_id?: string | null;
+  ligacoes?: number;
 };
 
 export type ConversaDoFunil = Pick<AssistenteConversa,
@@ -76,7 +79,7 @@ export const useFunilDaProspeccao = () =>
       /* Ordem por id: único e imutável, então nenhuma loja se repete nem some entre uma página e outra. */
       const [lojas, conversas, comCard, { count: naFila }, { data: cfg }] = await Promise.all([
         todas<LojaDoFunil>((de, ate) => supabase.from('prospeccao_lojas')
-          .select('id, nome, cidade, uf, telefone, dados, status, contatos, primeiro_contato_em, ultimo_contato_em, respondeu_em, conversa_id, motivo, humano_assumiu, atualizada_em, fonte_ref')
+          .select('id, nome, cidade, uf, telefone, dados, status, contatos, primeiro_contato_em, ultimo_contato_em, respondeu_em, conversa_id, motivo, humano_assumiu, atualizada_em, fonte_ref, reuniao_id, ligacoes')
           .in('status', ABORDADAS).order('id').range(de, ate)),
         todas<ConversaDoFunil>((de, ate) => supabase.from('assistente_conversas')
           .select('conversa_id, modo, etapa, situacao, dores, objecoes, memoria, decisor_vem, decisor_citacao, quem_vem, pedidos_preco, horarios_oferecidos, reuniao_id, prospect_id, loja_id, dossie, pausado_motivo, atualizado_em')
@@ -106,7 +109,8 @@ export const useFunilDaProspeccao = () =>
         /* A reunião marcada à mão na Agenda fica no card, não na conversa do Davi. */
         porIds<ReuniaoDoFunil>(idsDosCards, (ids) =>
           supabase.from('meetings').select('id, scheduled_at, status, meet_link, prospect_id').in('prospect_id', ids)),
-        porIds<ReuniaoDoFunil>(conversas.map((c) => c.reuniao_id ?? ''), (ids) =>
+        /* A do Davi e a marcada na ligação (prospeccao_lojas.reuniao_id). */
+        porIds<ReuniaoDoFunil>([...conversas.map((c) => c.reuniao_id ?? ''), ...lojas.map((l) => l.reuniao_id ?? '')], (ids) =>
           supabase.from('meetings').select('id, scheduled_at, status, meet_link, prospect_id').in('id', ids)),
       ]);
 
@@ -132,12 +136,13 @@ export const useFunilDaProspeccao = () =>
         const candidatas = [
           ...(conversa?.reuniao_id && reuniaoPorId.get(conversa.reuniao_id) ? [reuniaoPorId.get(conversa.reuniao_id)!] : []),
           ...(cardId ? reunioesDoCardPor.get(cardId) ?? [] : []),
+          ...(loja.reuniao_id && reuniaoPorId.get(loja.reuniao_id) ? [reuniaoPorId.get(loja.reuniao_id)!] : []),
         ];
         const reuniao = reuniaoQueVale([...new Map(candidatas.map((r) => [r.id, r])).values()]);
         const posicao = posicaoNoFunil({
           loja: {
             status: loja.status, nome: nomeDaLoja(loja), respondeu_em: loja.respondeu_em,
-            primeiro_contato_em: loja.primeiro_contato_em, contatos: loja.contatos,
+            primeiro_contato_em: loja.primeiro_contato_em, contatos: loja.contatos, ligacoes: loja.ligacoes ?? 0,
           },
           conversa, reuniao, card,
         }, agora);
