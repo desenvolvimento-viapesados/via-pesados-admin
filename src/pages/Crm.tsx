@@ -162,7 +162,7 @@ export default function Crm() {
 
       {/* ── Conteúdo ───────────────────────────────────────── */}
       <main className={cn('flex-1 w-full py-5',
-        tab === 'whatsapp' || tab === 'reunioes' ? 'px-4 sm:px-6' : 'px-4 sm:px-6 max-w-6xl mx-auto')}>
+        tab === 'whatsapp' || tab === 'reunioes' || tab === 'esteira' ? 'px-4 sm:px-6' : 'px-4 sm:px-6 max-w-6xl mx-auto')}>
         {tab === 'esteira'  && <EsteiraTab  newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'whatsapp' && <WhatsAppTab newOpen={newOpen} onCloseNew={closeNew} />}
         {tab === 'reunioes' && <AgendaTab   newOpen={newOpen} onCloseNew={closeNew} defaultProspectId={defaultProspect} />}
