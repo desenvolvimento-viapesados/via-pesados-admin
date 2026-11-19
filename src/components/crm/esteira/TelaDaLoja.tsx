@@ -197,7 +197,7 @@ export function TelaDaLoja({ item, tela: telaDoEstado, dados, acoes, agora = new
     };
     return (
       <Casca {...base} pergunta={`Mande o link para a ${nome} pagar`}
-        dica="É a página de boas-vindas dela, com o nome da loja e o valor. Quando o pagamento entrar, ela anda sozinha para a Implantação."
+        dica="É a página de boas-vindas dela, com o nome da loja e o valor. Lá ela confere os dados, aceita o contrato e paga. Quando o pagamento entrar, anda sozinha para a Implantação."
         acao={{ rotulo: 'Ver a cobrança', calma: true, onClick: acoes.abrirCobranca }}>
         {link ? (
           <>
@@ -220,7 +220,7 @@ export function TelaDaLoja({ item, tela: telaDoEstado, dados, acoes, agora = new
           </p>
           <p className="flex items-center gap-2.5 px-4 py-3">
             <span className={cn('h-2 w-2 rounded-full', item.cliente?.contratoAssinado ? 'bg-emerald-500' : 'bg-foreground/20')} />
-            <span className="text-foreground">{item.cliente?.contratoAssinado ? 'Contrato assinado' : 'Contrato ainda não assinado'}</span>
+            <span className="text-foreground">{item.cliente?.contratoAssinado ? 'Contrato aceito' : 'Contrato: ele lê e aceita no próprio link, antes de pagar'}</span>
             <button className="ml-auto text-[13px] text-primary font-medium hover:underline" onClick={acoes.abrirFicha}>Abrir a ficha</button>
           </p>
         </div>

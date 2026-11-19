@@ -74,6 +74,10 @@ const Gate = () => {
   if (import.meta.env.DEV && window.location.pathname.endsWith('/dev/crm')) {
     return <DevCrm />;
   }
+  // A bancada do registro da venda em passos (sem card e sem banco).
+  if (import.meta.env.DEV && window.location.pathname.endsWith('/dev/venda')) {
+    return <Suspense fallback={null}><RegistrarVenda teste={window.location.search.includes('teste')} /></Suspense>;
+  }
 
   if (loading) {
     return (

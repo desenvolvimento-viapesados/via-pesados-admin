@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-  ArrowLeft, Check, FileText, Hourglass, KeyRound, Link2, Loader2, Trophy,
-} from 'lucide-react';
+import { Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
@@ -14,92 +12,69 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFrente } from '@/contexts/FrenteContext';
 import { criarTesteGratis } from '@/hooks/useTesteGratis';
 import { CidadeUF } from '@/components/crm/CidadeUF';
+import { APOIO, CAMPO, Casca } from '@/components/crm/esteira/Casca';
 import { mascaraTelefone, mascaraTelefoneDoBanco, soDigitos, mascaraMoeda, valorDaMoeda, moedaDeNumero } from '@/lib/mascaras';
 import { DIAS_DE_TESTE } from '@/lib/testeGratis';
 
-const campo =
-  'w-full h-11 px-3.5 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50 transition-colors';
-
 const CANAIS_VENDA = [
-  { id: 'mercadolivre', nome: 'Mercado Livre', sub: 'anúncios de veículo com preço sincronizado' },
-  { id: 'facebook',     nome: 'Facebook, Instagram e WhatsApp', sub: 'um login libera Página, Instagram e catálogo' },
+  { id: 'mercadolivre', nome: 'Mercado Livre', sub: 'Anúncios de veículo com o preço sincronizado.' },
+  { id: 'facebook',     nome: 'Facebook, Instagram e WhatsApp', sub: 'Um login libera Página, Instagram e catálogo.' },
 ] as const;
 
-/* ── Seção ───────────────────────────────────────────────────── */
-function Secao({
-  numero, titulo, descricao, children, destaque,
-}: {
-  numero: string;
-  titulo: string;
-  descricao?: string;
-  children: React.ReactNode;
-  destaque?: boolean;
-}) {
+/* ── As peças das telas ──────────────────────────────────────────
+   A casca, o campo e o botão de apoio vêm da esteira (Casca.tsx). Aqui só o que esta
+   página tem a mais: o rótulo em cima do campo, a escolha de marcar e a linha do resumo. */
+
+const ROTULO = 'block text-[13px] font-semibold text-foreground mb-1.5';
+const NOTA = 'text-[14px] text-foreground/55 leading-relaxed';
+const ALERTA = 'text-[14px] text-amber-600 dark:text-amber-400 leading-relaxed';
+
+function Rotulado({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return (
-    <section
-      className={cn(
-        'rounded-2xl border p-5 sm:p-6',
-        destaque
-          ? 'border-primary/30 bg-primary/[0.035]'
-          : 'border-black/[0.07] dark:border-white/[0.07] bg-black/[0.015] dark:bg-white/[0.02]',
-      )}
-    >
-      <div className="flex items-baseline gap-3 mb-4">
-        <span className={cn(
-          'text-[11px] font-mono tabular-nums',
-          destaque ? 'text-primary' : 'text-foreground/25',
-        )}>{numero}</span>
-        <div className="min-w-0">
-          <h2 className="text-[13.5px] font-semibold text-foreground leading-tight">{titulo}</h2>
-          {descricao && <p className="text-[11.5px] text-foreground/45 mt-1 leading-snug">{descricao}</p>}
-        </div>
-      </div>
+    <label className="block">
+      <span className={ROTULO}>{rotulo}</span>
       {children}
-    </section>
+    </label>
   );
 }
 
-/* ── Caixa de seleção em linha ───────────────────────────────── */
-function Opcao({
-  ligada, titulo, sub, onClick, disabled, tom = 'primary',
-}: {
-  ligada: boolean;
-  titulo: React.ReactNode;
-  sub?: React.ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-  /* 'neutro' marca a escolha sem recomendá-la: serve para a opção que é a
-     ausência de decisão, que em laranja ganharia peso de sugestão. */
-  tom?: 'primary' | 'emerald' | 'neutro';
+/** A `Opcao` da esteira com a caixinha de marcado: aqui a escolha liga e desliga, não leva a outra tela. */
+function Marcar({ ligada, rotulo, sub, onClick, disabled }: {
+  ligada: boolean; rotulo: string; sub?: string; onClick: () => void; disabled?: boolean;
 }) {
-  const cor = tom === 'emerald'
-    ? { borda: 'border-emerald-400/40 bg-emerald-400/[0.06]', caixa: 'bg-emerald-500 border-emerald-500' }
-    : tom === 'neutro'
-    ? { borda: 'border-black/20 dark:border-white/20 bg-black/[0.03] dark:bg-white/[0.04]', caixa: 'bg-foreground/60 border-foreground/60' }
-    : { borda: 'border-primary/50 bg-primary/[0.06]',         caixa: 'bg-primary border-primary' };
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
+    <button type="button" onClick={onClick} disabled={disabled} aria-pressed={ligada}
       className={cn(
-        'w-full flex items-start gap-3 text-left px-3.5 py-3 rounded-xl border transition-colors disabled:opacity-40 disabled:cursor-not-allowed',
-        ligada ? cor.borda : 'border-black/[0.1] dark:border-white/[0.1] hover:border-black/20 dark:hover:border-white/20',
-      )}
-    >
-      <span className={cn(
-        'mt-px h-4 w-4 shrink-0 rounded-[5px] border flex items-center justify-center',
-        ligada ? cor.caixa : 'border-black/25 dark:border-white/25',
+        'w-full text-left px-5 sm:px-6 py-5 rounded-2xl border-2 transition-all disabled:opacity-50 flex items-center gap-4',
+        ligada ? 'border-primary bg-primary/10' : 'border-black/[0.09] dark:border-white/[0.1] hover:border-primary/40 hover:bg-black/[0.02] dark:hover:bg-white/[0.03]',
       )}>
-        {ligada && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+      <span className="min-w-0 flex-1">
+        <span className={cn('block text-[18px] font-semibold', ligada ? 'text-primary' : 'text-foreground')}>{rotulo}</span>
+        {sub && <span className="block text-[14px] text-foreground/50 mt-0.5 font-normal">{sub}</span>}
       </span>
-      <span className="min-w-0">
-        <span className="block text-[12.5px] font-medium text-foreground">{titulo}</span>
-        {sub && <span className="block text-[11px] text-foreground/45 mt-0.5 leading-snug">{sub}</span>}
+      <span className={cn('h-6 w-6 shrink-0 rounded-lg border-2 flex items-center justify-center',
+        ligada ? 'bg-primary border-primary' : 'border-black/20 dark:border-white/25')}>
+        {ligada && <Check className="h-4 w-4 text-primary-foreground" strokeWidth={3} />}
       </span>
     </button>
   );
 }
+
+/** Uma linha do resumo. Tocar nela leva à tela daquela resposta. */
+function Linha({ rotulo, children, onClick, alerta, disabled }: {
+  rotulo: string; children: ReactNode; onClick: () => void; alerta?: boolean; disabled?: boolean;
+}) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled}
+      className="w-full flex items-baseline justify-between gap-4 py-3 text-left text-[15px] transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.03] disabled:opacity-50">
+      <span className="shrink-0 text-foreground/55">{rotulo}</span>
+      <span className={cn('min-w-0 text-right font-medium [overflow-wrap:anywhere]', alerta ? 'text-amber-600 dark:text-amber-400' : 'text-foreground')}>{children}</span>
+    </button>
+  );
+}
+
+/** As telas do passo a passo. A ordem e quais aparecem saem de quem está comprando (ver `ordem`). */
+type Passo = 'mensalidade' | 'acesso' | 'email' | 'sistema' | 'empresa' | 'cnpj' | 'representante' | 'canais' | 'fim';
 
 const vazio = {
   company_name: '', legal_name: '', cnpj: '', address: '',
@@ -303,227 +278,331 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
     }
   };
 
+  /* ── O passo a passo ─────────────────────────────────────────────
+     Daqui para baixo é só COMO as perguntas aparecem: uma por tela, na casca da esteira
+     (dono, 18/11/2026: quem fecha a venda ao vivo, na chamada, quer o mesmo jeito do
+     "Nova compra"). O que se guarda e o que se grava continuam sendo o `form` e o `salvar`
+     aqui de cima. */
+  const [indice, setIndice] = useState(0);
+  /* Veio do resumo para corrigir uma resposta: os botões da tela devolvem ao resumo. */
+  const [revendo, setRevendo] = useState(false);
+
+  /* Com o card do funil a empresa já vem preenchida, e a conversa começa pelo valor. Sem
+     card (cliente novo, direto), o nome vem primeiro: é ele que diz de quem é a venda.
+     Transportadora não tem amostra para adotar nem canal para contratar. */
+  const ordem = ((prospectId
+    ? ['mensalidade', 'acesso', 'email', 'sistema', 'empresa', 'cnpj', 'representante', 'canais', 'fim']
+    : ['empresa', 'mensalidade', 'acesso', 'email', 'sistema', 'cnpj', 'representante', 'canais', 'fim']
+  ) as Passo[]).filter((p) => !transp || (p !== 'sistema' && p !== 'canais'));
+  const ultimo = ordem.length - 1;
+  const posicao = Math.min(indice, ultimo);
+  const passo = ordem[posicao];
+
+  /* O que trava cada tela, com os mesmos avisos do `salvar`. */
+  const falta = (p: Passo): string | null => {
+    if (p === 'empresa' && !form.company_name.trim()) return 'Informe o nome da empresa';
+    if (p === 'acesso' && soDigitos(form.whatsapp).length < 10) {
+      return 'Informe o WhatsApp — é por onde a confirmação e a nota são enviadas';
+    }
+    if (p === 'email' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.acesso_email.trim().toLowerCase())) {
+      return 'Informe o e-mail de quem recebe o primeiro acesso';
+    }
+    return null;
+  };
+
+  const ir = (i: number) => { setIndice(i); window.scrollTo(0, 0); };
+  const avancar = () => {
+    const aviso = falta(passo);
+    if (aviso) { toast.error(aviso); return; }
+    if (revendo) { setRevendo(false); ir(ultimo); return; }
+    ir(Math.min(posicao + 1, ultimo));
+  };
+  const voltar = () => {
+    if (salvando) return;
+    if (revendo) { setRevendo(false); ir(ultimo); return; }
+    if (posicao === 0) { navigate(prospectId ? `/crm/prospect/${prospectId}` : '/crm'); return; }
+    ir(posicao - 1);
+  };
+  const corrigir = (p: Passo) => { setRevendo(true); ir(ordem.indexOf(p)); };
+  /* Antes de gravar, confere as telas de novo: se faltar algo, abre a tela certa em vez de
+     só avisar por cima do resumo. */
+  const registrar = () => {
+    const parada = ordem.find((p) => falta(p));
+    if (parada) { toast.error(falta(parada)!); corrigir(parada); return; }
+    salvar();
+  };
+  const aoEnter = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter' || e.repeat || e.nativeEvent.isComposing) return;
+    e.preventDefault();
+    avancar();
+  };
+
+  const textos: Record<Passo, { rotulo: string; pergunta: string; dica: string }> = {
+    mensalidade: {
+      rotulo: 'Mensalidade',
+      pergunta: modoTeste ? 'Qual é a mensalidade depois do teste?' : 'Qual é a mensalidade?',
+      dica: modoTeste
+        ? `São ${DIAS_DE_TESTE} dias de teste grátis, contados da implantação, sem cartão. ${transp
+          ? 'Se não assinar, o acesso é bloqueado no fim do teste.'
+          : 'Se não assinar, painel e site saem do ar no dia seguinte ao fim.'}`
+        : 'O valor combinado com o cliente, por mês.',
+    },
+    acesso: {
+      rotulo: 'Acesso',
+      pergunta: 'Quem vai receber o acesso?',
+      dica: transp
+        ? 'É quem entra primeiro no sistema e cadastra a equipe.'
+        : 'É quem entra primeiro no sistema, conecta os canais e cadastra a equipe.',
+    },
+    email: {
+      rotulo: 'E-mail',
+      pergunta: 'Qual é o e-mail do primeiro acesso?',
+      dica: transp
+        ? 'Não precisa combinar senha: a pessoa cria a dela pelo link que sai na ficha, quando o sistema for criado. O link vale 24 horas.'
+        : 'Não precisa combinar senha: a pessoa cria a dela pelo link que chega no WhatsApp quando você liberar o acesso. O link vale 24 horas.',
+    },
+    sistema: {
+      rotulo: 'Sistema',
+      pergunta: 'Qual amostra vira o sistema dele?',
+      dica: 'Digite o e-mail de acesso da amostra que você apresentou.',
+    },
+    empresa: {
+      rotulo: 'Empresa',
+      pergunta: 'Qual é a empresa?',
+      dica: transp ? 'O nome aparece no sistema e no contrato.' : 'O nome aparece no sistema, no site e no contrato.',
+    },
+    cnpj: {
+      rotulo: 'Contrato',
+      pergunta: 'Qual é o CNPJ da empresa?',
+      dica: 'Entra no contrato. Se não tiver agora, pode pular: o cliente preenche no link, antes de aceitar o contrato.',
+    },
+    representante: {
+      rotulo: 'Contrato',
+      pergunta: 'Quem assina o contrato?',
+      dica: 'O representante legal da empresa. Se não tiver agora, pode pular: o cliente preenche no link, antes de aceitar o contrato.',
+    },
+    canais: {
+      rotulo: 'Canais',
+      pergunta: 'Quais canais ele contratou?',
+      dica: 'Toque para marcar. Pode ser os dois, ou nenhum.',
+    },
+    fim: {
+      rotulo: 'Conferir',
+      pergunta: modoTeste ? 'Confira e comece o teste' : 'Confira e registre',
+      dica: 'Toque em uma linha para corrigir.',
+    },
+  };
+  const texto = textos[passo];
+
+  /* Há amostra pronta e nenhuma foi ligada: é quase sempre esquecimento, e o custo é um
+     cliente sem sistema, que trava a implantação inteira depois. */
+  const semAmostra = !transp && !amostra && amostras.length > 0;
+
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-5xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
+    <Casca
+      legenda={form.company_name.trim() || 'Novo cliente'}
+      indice={posicao}
+      total={ordem.length}
+      etapa={`${modoTeste ? 'Teste grátis' : 'Venda'} · ${texto.rotulo}`}
+      pergunta={texto.pergunta}
+      dica={texto.dica}
+      onVoltar={voltar}
+      rotuloVoltar={revendo ? 'Resumo' : posicao === 0 ? 'Cancelar' : 'Voltar'}
+      acao={passo === 'fim'
+        ? { rotulo: modoTeste ? 'Começar o teste grátis' : 'Registrar a venda', ocupado: salvando, onClick: registrar }
+        : { rotulo: revendo ? 'Pronto' : 'Continuar', onClick: avancar }}
+    >
+      {/* `key`: cada tela nasce do zero, e o cursor já cai no campo dela. */}
+      <Fragment key={passo}>
+        {passo === 'mensalidade' && (
+          <div className="relative">
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[20px] font-semibold text-foreground/40">R$</span>
+            {/* Um plano só, e a mensalidade é negociada por cliente: não há o que escolher
+                aqui além do valor. */}
+            <input
+              className={cn(CAMPO, 'h-16 pl-14 text-[26px] font-bold tabular-nums')}
+              inputMode="numeric"
+              autoFocus
+              aria-label="Mensalidade, em reais"
+              placeholder="0,00"
+              value={form.mrr}
+              onChange={(e) => set('mrr', mascaraMoeda(e.target.value))}
+              onKeyDown={aoEnter}
+            />
+          </div>
+        )}
 
-        <button
-          onClick={() => navigate(prospectId ? `/crm/prospect/${prospectId}` : '/crm')}
-          className="flex items-center gap-1.5 text-[12.5px] text-foreground/45 hover:text-foreground transition-colors mb-8"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" /> {prospect?.company_name ?? 'Funil'}
-        </button>
+        {passo === 'acesso' && (
+          <>
+            <Rotulado rotulo="Nome">
+              <input className={CAMPO} autoFocus={!form.acesso_nome.trim()} autoComplete="off" placeholder="Nome de quem recebe"
+                value={form.acesso_nome} onChange={(e) => set('acesso_nome', e.target.value)} onKeyDown={aoEnter} />
+            </Rotulado>
+            <Rotulado rotulo="WhatsApp">
+              <input className={CAMPO} autoFocus={!!form.acesso_nome.trim()} autoComplete="off" inputMode="numeric" placeholder="(00) 00000-0000"
+                value={form.whatsapp} onChange={(e) => set('whatsapp', mascaraTelefone(e.target.value))} onKeyDown={aoEnter} />
+            </Rotulado>
+          </>
+        )}
 
-        {/* Cabeçalho — padrão Via Pesados */}
-        <header className="mb-10">
-          <p className="text-[11px] font-light tracking-[0.22em] uppercase text-primary mb-3">
-            {modoTeste ? 'Teste grátis' : 'Fechamento'}
-          </p>
-          <h1 className="text-[30px] sm:text-[38px] leading-[1.08] tracking-tight">
-            <span className="block font-extralight text-foreground/50">{modoTeste ? 'Começar o teste grátis de' : 'Registrar a venda de'}</span>
-            <span className="block font-bold text-foreground">{form.company_name || 'novo cliente'}</span>
-          </h1>
-          <div className="h-[3px] w-16 bg-primary rounded-full mt-5" />
-        </header>
+        {passo === 'email' && (
+          <input className={CAMPO} type="email" inputMode="email" autoFocus autoComplete="off" autoCapitalize="none" spellCheck={false}
+            aria-label="E-mail do primeiro acesso" placeholder="nome@empresa.com.br"
+            value={form.acesso_email} onChange={(e) => set('acesso_email', e.target.value)} onKeyDown={aoEnter} />
+        )}
 
-        <div className="grid lg:grid-cols-[1fr_300px] gap-6 items-start">
-          <div className="space-y-4">
+        {passo === 'sistema' && (
+          <>
+            {/* Campo aberto, não lista. Quem fecha a venda sabe qual amostra apresentou;
+                obrigar a achá-la numa lista é pedir para reconhecer o que já se sabe. O que
+                a tela deve fazer é confirmar o que ele escreveu, e é o que a linha abaixo faz. */}
+            <input className={CAMPO} type="email" inputMode="email" autoFocus autoComplete="off" autoCapitalize="none" spellCheck={false}
+              aria-label="E-mail de acesso da amostra" placeholder="E-mail de acesso da amostra"
+              value={form.sistema_email} onChange={(e) => set('sistema_email', e.target.value)} onKeyDown={aoEnter} />
+            {!form.sistema_email.trim() ? (
+              <p className={NOTA}>Em branco, o sistema é criado vazio depois, pela ficha do cliente.</p>
+            ) : amostra ? (
+              <>
+                <p className="flex items-start gap-2 text-[15px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  <Check className="h-4 w-4 mt-[3px] shrink-0" strokeWidth={3} />
+                  <span className="min-w-0">{amostra.company_name}: a amostra passa a ser o sistema dele.</span>
+                </p>
+                <p className={NOTA}>
+                  Ao registrar, o conteúdo de demonstração é apagado: veículos, clientes, vendas e
+                  funcionários fictícios. Ficam a identidade visual, o site, o domínio, os cargos, o
+                  plano de contas e as etiquetas. O login da amostra deixa de funcionar.
+                </p>
+              </>
+            ) : (
+              <p className={ALERTA}>
+                Não achei nenhuma amostra com esse e-mail. Confira antes de continuar. Do jeito que
+                está, a venda é registrada e o sistema fica para criar depois.
+              </p>
+            )}
+          </>
+        )}
 
-            <Secao numero="01" titulo="A empresa" descricao="O que o contrato exige e o que aparece no sistema e no site.">
-              <div className="space-y-2.5">
-                <input className={campo} placeholder="Nome da empresa *" value={form.company_name} onChange={(e) => set('company_name', e.target.value)} />
-                <div className="grid sm:grid-cols-2 gap-2.5">
-                  <input className={campo} placeholder="Razão social" value={form.legal_name} onChange={(e) => set('legal_name', e.target.value)} />
-                  <input className={campo} placeholder="CNPJ" value={form.cnpj} onChange={(e) => set('cnpj', e.target.value)} />
-                </div>
-                <input className={campo} placeholder="Endereço completo" value={form.address} onChange={(e) => set('address', e.target.value)} />
+        {passo === 'empresa' && (
+          <>
+            <Rotulado rotulo="Nome da empresa">
+              <input className={CAMPO} autoFocus autoComplete="off" placeholder="Como ela é conhecida"
+                value={form.company_name} onChange={(e) => set('company_name', e.target.value)} onKeyDown={aoEnter} />
+            </Rotulado>
+            <div>
+              <p className={ROTULO}>Cidade</p>
+              {/* O CidadeUF traz o campo dele, menor; aqui os dois botões ficam do tamanho dos outros.
+                  `min-w-0`: sem ele, "Escolha a UF primeiro" empurra a cidade para fora da tela no celular. */}
+              <div className="[&>div>div]:min-w-0 [&>div>div>button]:h-12 [&>div>div>button]:px-4 [&>div>div>button]:text-[15px]">
                 <CidadeUF
                   uf={form.state}
                   cidade={form.city}
                   onChange={({ uf, cidade }) => setForm((f) => ({ ...f, state: uf, city: cidade }))}
                 />
-                <div className="grid sm:grid-cols-2 gap-2.5">
-                  <input className={campo} placeholder="Representante legal" value={form.legal_rep_name} onChange={(e) => set('legal_rep_name', e.target.value)} />
-                  <input className={campo} placeholder="CPF do representante" value={form.legal_rep_cpf} onChange={(e) => set('legal_rep_cpf', e.target.value)} />
-                </div>
-                <div className="grid sm:grid-cols-2 gap-2.5">
-                  <input className={campo} placeholder="Contato" value={form.contact_name} onChange={(e) => set('contact_name', e.target.value)} />
-                  <input className={campo} placeholder="WhatsApp *" inputMode="numeric" value={form.whatsapp} onChange={(e) => set('whatsapp', mascaraTelefone(e.target.value))} />
-                </div>
               </div>
-            </Secao>
+            </div>
+            <Rotulado rotulo="Contato">
+              <input className={CAMPO} autoComplete="off" placeholder="Com quem a gente fala"
+                value={form.contact_name} onChange={(e) => set('contact_name', e.target.value)} onKeyDown={aoEnter} />
+            </Rotulado>
+          </>
+        )}
 
-            <Secao
-              numero="02"
-              titulo="Primeiro acesso"
-              descricao="Quem da empresa recebe o login. É esta pessoa que entra primeiro, conecta os canais e cadastra o resto da equipe."
-              destaque
-            >
-              <div className="space-y-2.5">
-                <div className="grid sm:grid-cols-2 gap-2.5">
-                  <input className={campo} placeholder="Nome de quem recebe" value={form.acesso_nome} onChange={(e) => set('acesso_nome', e.target.value)} />
-                  <input className={campo} type="email" placeholder="E-mail do primeiro acesso *" value={form.acesso_email} onChange={(e) => set('acesso_email', e.target.value)} />
-                </div>
-                <p className="text-[11px] text-foreground/45 leading-snug px-1 flex items-start gap-1.5">
-                  <KeyRound className="h-3 w-3 mt-0.5 shrink-0" />
-                  {transp
-                    ? 'Não há senha a combinar. Quando o sistema for criado na ficha, sai um link de primeiro acesso para entregar a ele, e ele define a própria senha. O link vale 24 horas.'
-                    : 'Não há senha a combinar. Quando você liberar o acesso, ele recebe no WhatsApp um link de primeiro acesso e define a própria senha. O link vale 24 horas.'}
-                </p>
-              </div>
-            </Secao>
+        {passo === 'cnpj' && (
+          <>
+            <Rotulado rotulo="CNPJ">
+              <input className={CAMPO} autoFocus autoComplete="off" placeholder="00.000.000/0000-00"
+                value={form.cnpj} onChange={(e) => set('cnpj', e.target.value)} onKeyDown={aoEnter} />
+            </Rotulado>
+            <Rotulado rotulo="Razão social">
+              <input className={CAMPO} autoComplete="off" placeholder="Como está no CNPJ"
+                value={form.legal_name} onChange={(e) => set('legal_name', e.target.value)} onKeyDown={aoEnter} />
+            </Rotulado>
+            <Rotulado rotulo="Endereço completo">
+              <input className={CAMPO} autoComplete="off" placeholder="Rua, número, bairro e CEP"
+                value={form.address} onChange={(e) => set('address', e.target.value)} onKeyDown={aoEnter} />
+            </Rotulado>
+            <button type="button" className={APOIO} onClick={avancar}>Pular</button>
+          </>
+        )}
 
-            {!transp && (
-            <Secao
-              numero="03"
-              titulo="Vincular projeto a"
-              descricao="O e-mail do sistema que passa a ser dele. A amostra escolhida vira o sistema real da empresa."
-            >
-              {/* Campo aberto, não lista. Quem fecha a venda sabe qual
-                  sistema apresentou; obrigar a achá-lo numa lista é pedir
-                  para reconhecer o que já se sabe. O que a tela deve fazer
-                  é confirmar o que ele escreveu, e é o que a linha abaixo faz. */}
-              <input
-                className={campo}
-                type="email"
-                autoComplete="off"
-                placeholder="E-mail do sistema a vincular"
-                value={form.sistema_email}
-                onChange={(e) => set('sistema_email', e.target.value)}
-              />
-              {!form.sistema_email.trim() ? (
-                <p className="text-[11px] text-foreground/40 leading-snug px-1 pt-2.5">
-                  Em branco, o sistema é criado vazio depois, pela ficha do cliente.
-                </p>
-              ) : amostra ? (
-                <div className="pt-2.5 space-y-1.5">
-                  <p className="text-[11.5px] text-emerald-400 flex items-center gap-1.5">
-                    <Check className="h-3.5 w-3.5 shrink-0" />
-                    {amostra.company_name} — a amostra passa a ser o sistema dele.
-                  </p>
-                  <p className="text-[11px] text-foreground/45 leading-snug">
-                    Ao salvar, o conteúdo de demonstração é apagado — veículos, clientes, vendas e
-                    funcionários fictícios. Ficam a identidade visual, o site, o domínio, os cargos,
-                    o plano de contas e as etiquetas. Este login deixa de funcionar.
-                  </p>
-                </div>
-              ) : (
-                <p className="text-[11.5px] text-amber-500/90 leading-snug px-1 pt-2.5">
-                  Não achei nenhum sistema com esse e-mail. Confira antes de salvar — do jeito que
-                  está, a venda é registrada e o sistema fica para criar depois.
-                </p>
+        {passo === 'representante' && (
+          <>
+            <Rotulado rotulo="Representante legal">
+              <input className={CAMPO} autoFocus autoComplete="off" placeholder="Nome completo"
+                value={form.legal_rep_name} onChange={(e) => set('legal_rep_name', e.target.value)} onKeyDown={aoEnter} />
+            </Rotulado>
+            <Rotulado rotulo="CPF do representante">
+              <input className={CAMPO} autoComplete="off" placeholder="000.000.000-00"
+                value={form.legal_rep_cpf} onChange={(e) => set('legal_rep_cpf', e.target.value)} onKeyDown={aoEnter} />
+            </Rotulado>
+            <button type="button" className={APOIO} onClick={avancar}>Pular</button>
+          </>
+        )}
+
+        {passo === 'canais' && (
+          <div className="grid gap-3">
+            {CANAIS_VENDA.map((c) => (
+              <Marcar key={c.id} ligada={form.canais.includes(c.id)} onClick={() => alternarCanal(c.id)} rotulo={c.nome} sub={c.sub} />
+            ))}
+          </div>
+        )}
+
+        {passo === 'fim' && (
+          <>
+            <div className="divide-y divide-black/[0.06] dark:divide-white/[0.06]">
+              <Linha rotulo="Empresa" disabled={salvando} onClick={() => corrigir('empresa')}>{form.company_name.trim() || '—'}</Linha>
+              <Linha rotulo="Quem recebe" disabled={salvando} onClick={() => corrigir('acesso')}>{form.acesso_nome.trim() || form.contact_name.trim() || '—'}</Linha>
+              <Linha rotulo="WhatsApp" disabled={salvando} onClick={() => corrigir('acesso')}>{form.whatsapp || '—'}</Linha>
+              <Linha rotulo="E-mail" disabled={salvando} onClick={() => corrigir('email')}>{form.acesso_email.trim().toLowerCase() || '—'}</Linha>
+              <Linha rotulo="Mensalidade" disabled={salvando} onClick={() => corrigir('mensalidade')}>
+                {mrrNum > 0 ? `${brlFull(mrrNum)} por mês` : '—'}
+                {modoTeste && <span className="block font-normal text-foreground/55">depois de {DIAS_DE_TESTE} dias grátis</span>}
+              </Linha>
+              {!transp && (
+                <Linha rotulo="Sistema" alerta={semAmostra} disabled={salvando} onClick={() => corrigir('sistema')}>
+                  {amostra ? `Amostra de ${amostra.company_name}` : 'Criado depois, pela ficha'}
+                </Linha>
               )}
-            </Secao>
-            )}
+              {!transp && (
+                <Linha rotulo="Canais" disabled={salvando} onClick={() => corrigir('canais')}>
+                  {form.canais.length
+                    ? CANAIS_VENDA.filter((c) => form.canais.includes(c.id)).map((c) => <span key={c.id} className="block">{c.nome}</span>)
+                    : 'Nenhum'}
+                </Linha>
+              )}
+            </div>
 
-            <Secao numero={transp ? '03' : '04'} titulo={transp ? 'Mensalidade' : 'Mensalidade e canais'}
-              descricao={transp ? 'O valor combinado.' : 'O valor combinado e o que ele contratou.'}>
-              <div className="space-y-2.5">
-                {/* Um plano só, e a mensalidade é negociada por cliente —
-                    não há o que escolher aqui além do valor. */}
-                <input className={campo} inputMode="numeric" placeholder="Mensalidade (R$)" value={form.mrr} onChange={(e) => set('mrr', mascaraMoeda(e.target.value))} />
-                {modoTeste && (
-                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] px-3.5 py-3 flex items-start gap-2.5">
-                    <Hourglass className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
-                    <p className="text-[12px] text-foreground/70 leading-snug">
-                      <span className="font-semibold text-foreground">{DIAS_DE_TESTE} dias de teste grátis</span>, contados da implantação, sem cartão.
-                      O valor acima é a mensalidade que vale depois. {transp
-                        ? 'Se não assinar, o acesso é bloqueado no fim do teste.'
-                        : 'Se não assinar, painel e site saem do ar no dia seguinte ao fim.'}
-                    </p>
-                  </div>
-                )}
-                <Opcao
-                  tom="emerald"
-                  ligada={form.gerar_cobranca}
-                  onClick={() => set('gerar_cobranca', !form.gerar_cobranca)}
-                  titulo={<span className="flex items-center gap-1.5"><Link2 className="h-3 w-3" /> Gerar cobrança mensal no Asaas</span>}
-                  sub={form.mrr ? `${brlFull(mrrNum)} por mês, todo mês, no Pix, boleto ou cartão.` : 'Informe o valor acima para gerar.'}
-                />
-                {!transp && (
-                <div className="pt-2 space-y-1.5">
-                  <p className="text-[11.5px] font-medium text-foreground/70 px-1">Canais contratados</p>
-                  {CANAIS_VENDA.map((c) => (
-                    <Opcao
-                      key={c.id}
-                      ligada={form.canais.includes(c.id)}
-                      onClick={() => alternarCanal(c.id)}
-                      titulo={c.nome}
-                      sub={c.sub}
-                    />
-                  ))}
-                </div>
-                )}
-              </div>
-            </Secao>
+            <Marcar
+              ligada={form.gerar_cobranca}
+              disabled={salvando}
+              onClick={() => set('gerar_cobranca', !form.gerar_cobranca)}
+              rotulo="Gerar a cobrança mensal"
+              sub={mrrNum > 0
+                ? `${brlFull(mrrNum)} por mês, todo mês, no Pix, boleto ou cartão.`
+                : 'Sem mensalidade informada, nenhuma cobrança é gerada.'}
+            />
 
-            <Secao numero={transp ? '04' : '05'} titulo="Responsável" descricao="Quem da Via Pesados responde por esta conta.">
-              <select className={campo} value={form.owner_id} onChange={(e) => set('owner_id', e.target.value)}>
+            <Rotulado rotulo="Responsável pela conta">
+              <select className={CAMPO} disabled={salvando} value={form.owner_id} onChange={(e) => set('owner_id', e.target.value)}>
                 <option value="">Sem responsável</option>
                 {equipe.map((m) => <option key={m.id} value={m.id}>{m.full_name || m.email}</option>)}
               </select>
-            </Secao>
-          </div>
+            </Rotulado>
 
-          {/* Resumo fixo */}
-          <aside className="lg:sticky lg:top-8 space-y-3">
-            <div className="rounded-2xl border border-black/[0.07] dark:border-white/[0.07] bg-black/[0.015] dark:bg-white/[0.02] p-5">
-              <p className="text-[10.5px] font-semibold tracking-widest uppercase text-foreground/30 mb-3">Resumo</p>
-              <dl className="space-y-2.5 text-[12px]">
-                <div className="flex justify-between gap-3">
-                  <dt className="text-foreground/45">Mensalidade</dt>
-                  <dd className="text-foreground font-medium tabular-nums">{form.mrr ? brlFull(mrrNum) : '—'}</dd>
-                </div>
-                <div className="flex justify-between gap-3 min-w-0">
-                  <dt className="text-foreground/45 shrink-0">Primeiro acesso</dt>
-                  <dd className="text-foreground truncate">{form.acesso_email || '—'}</dd>
-                </div>
-                <div className="flex justify-between gap-3 min-w-0">
-                  <dt className="text-foreground/45 shrink-0">Sistema</dt>
-                  {/* Âmbar quando há amostra disponível e nenhuma foi escolhida:
-                      é quase sempre esquecimento, e o custo é um cliente sem
-                      sistema, que trava o onboarding inteiro depois. */}
-                  <dd className={cn('truncate text-right', amostra ? 'text-foreground' : amostras.length ? 'text-amber-400' : 'text-foreground')}>
-                    {amostra ? `amostra de ${amostra.company_name}` : transp ? 'criado depois, na ficha' : 'novo, vazio'}
-                  </dd>
-                </div>
-                {modoTeste && (
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-foreground/45">Teste grátis</dt>
-                    <dd className="text-foreground">{DIAS_DE_TESTE} dias após a implantação</dd>
-                  </div>
-                )}
-                {!transp && (
-                  <div className="flex justify-between gap-3">
-                    <dt className="text-foreground/45">Canais</dt>
-                    <dd className="text-foreground">{form.canais.length || '—'}</dd>
-                  </div>
-                )}
-              </dl>
-            </div>
-
-            <button
-              onClick={salvar}
-              disabled={salvando}
-              className="w-full h-12 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-            >
-              {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trophy className="h-4 w-4" />}
-              {salvando ? 'Fechando…' : modoTeste ? 'Começar o teste grátis' : 'Registrar venda'}
-            </button>
-            {!amostra && amostras.length > 0 && (
-              <p className="text-[11px] text-amber-500/90 leading-snug px-1">
-                Há {amostras.length === 1 ? 'uma amostra provisionada' : `${amostras.length} amostras provisionadas`} e
-                nenhuma foi vinculada. O cliente vai nascer sem sistema, e o onboarding fica parado
-                até você criar um.
+            {semAmostra && (
+              <p className={ALERTA}>
+                Há {amostras.length === 1 ? 'uma amostra pronta' : `${amostras.length} amostras prontas`} e
+                nenhuma foi ligada a esta venda. O cliente nasce sem sistema, e a implantação fica
+                parada até você criar um.
               </p>
             )}
-            <p className="text-[11px] text-foreground/35 leading-snug px-1 flex items-start gap-1.5">
-              <FileText className="h-3 w-3 mt-0.5 shrink-0" />
-              Cria o cliente, emite o contrato em rascunho e{amostra ? ' transforma a amostra no sistema dele' : ' deixa o sistema para criar depois'}.
+            <p className="text-[13px] text-foreground/45 leading-relaxed">
+              Ao confirmar, o cliente é criado, o contrato sai em rascunho
+              e {amostra ? 'a amostra vira o sistema dele' : 'o sistema fica para criar depois'}.
             </p>
-          </aside>
-        </div>
-      </div>
-    </div>
+          </>
+        )}
+      </Fragment>
+    </Casca>
   );
 }

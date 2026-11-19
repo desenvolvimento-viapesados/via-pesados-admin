@@ -3,6 +3,10 @@ import { ligarNotaFiscal } from '../_shared/nota.ts';
 import { hojeBRT } from '../_shared/regua.ts';
 import { primeiroVencimento } from '../_shared/teste.ts';
 import { testeDoCliente, converterTeste } from '../_shared/teste-db.ts';
+import { CONTRATO } from '../_shared/contrato-texto.ts';
+import {
+  VERSAO_DO_CONTRATO, emBlocos, lerDadosDoContrato, mascaraCnpj, precisaAceitar, preencherContrato, registroDoAceite, sha256,
+} from '../_shared/contrato-regras.ts';
 
 /** O que sai como observação na nota fiscal do lojista. */
 const descricaoDaNota = (c: { plan?: string | null } | null | undefined) =>
@@ -91,7 +95,7 @@ Deno.serve(async (req) => {
 
     const { data: cli } = await db
       .from('clients')
-      .select('id, prospect_id, company_name, contact_name, email, whatsapp, cnpj, city, state, plan, mrr, canais, logo_url, asaas_customer_id, asaas_subscription_id, asaas_first_payment_id, checkout_billing_type')
+      .select('id, prospect_id, company_name, contact_name, email, whatsapp, cnpj, city, state, plan, mrr, canais, logo_url, asaas_customer_id, asaas_subscription_id, asaas_first_payment_id, checkout_billing_type, legal_name, address, legal_rep_name, legal_rep_cpf, contract_signed_at, implantado_em')
       .eq('checkout_token', token)
       .maybeSingle();
 
@@ -105,6 +109,91 @@ Deno.serve(async (req) => {
     const assinouNoTeste = async () => {
       if (doTeste) await converterTeste(db, cli!.id, 'assinou pela página de pagamento');
     };
+
+    /* ── o contrato ──────────────────────────────────────────────────
+       Quem ainda não pagou nenhuma mensalidade lê e aceita o contrato ANTES de pagar
+       (18/11/2026). Quem já é cliente segue pagando como sempre: a trava não o alcança.
+       É a Cláusula 15: aceite registrado a partir do link exclusivo enviado ao WhatsApp,
+       com versão, código de integridade, data e hora, IP e dispositivo. */
+    const jaPagou = async () => {
+      const { count } = await db.from('payments').select('id', { count: 'exact', head: true })
+        .eq('client_id', cli!.id).eq('status', 'pago');
+      return (count ?? 0) > 0;
+    };
+    const faltaAceitar = async () => precisaAceitar({ aceitoEm: cli!.contract_signed_at, jaPagou: await jaPagou() });
+    const guardado = {
+      razao_social: cli.legal_name ?? '', cnpj: cli.cnpj ?? '', endereco: cli.address ?? '',
+      representante_nome: cli.legal_rep_name ?? '', representante_cpf: cli.legal_rep_cpf ?? '',
+    };
+    const camposDoContrato = (dados: typeof guardado, quando: Date, registro: string | null) => ({
+      ...dados, valor: Number(cli!.mrr) || 0,
+      dia_vencimento: cli!.implantado_em ? new Date(`${String(cli!.implantado_em).slice(0, 10)}T12:00:00Z`).getUTCDate() : null,
+      data: quando, whatsapp: String(cli!.whatsapp ?? ''), registro,
+    });
+
+    /* O que já se sabe de quem assina, para ele só conferir. O CPF não volta: só se diz que existe. */
+    if (acao === 'contrato_dados') {
+      return json(200, {
+        ok: true, versao: VERSAO_DO_CONTRATO,
+        razao_social: guardado.razao_social || cli.company_name, cnpj: guardado.cnpj ? mascaraCnpj(guardado.cnpj) : '',
+        endereco: guardado.endereco, representante_nome: guardado.representante_nome || (cli.contact_name ?? ''),
+        cpf_informado: !!guardado.representante_cpf,
+      });
+    }
+
+    /* O contrato preenchido, para ler antes de aceitar. Nada é gravado. */
+    if (acao === 'contrato') {
+      const lido = lerDadosDoContrato((corpo as { dados?: Record<string, unknown> }).dados, guardado);
+      if (!lido.ok) return json(400, { error: lido.erro });
+      return json(200, { ok: true, versao: VERSAO_DO_CONTRATO, blocos: emBlocos(preencherContrato(CONTRATO, camposDoContrato(lido.dados, new Date(), null))) });
+    }
+
+    /* O aceite: grava os dados de quem assina, o texto como foi aceito e o registro. */
+    if (acao === 'aceitar') {
+      if (cli.contract_signed_at) return json(200, { ok: true, aceito_em: cli.contract_signed_at });
+      const { dados: digitado, li } = corpo as { dados?: Record<string, unknown>; li?: boolean };
+      if (li !== true) return json(400, { error: 'Marque que leu e aceita o contrato.' });
+      const lido = lerDadosDoContrato(digitado, guardado);
+      if (!lido.ok) return json(400, { error: lido.erro });
+      if (!(Number(cli.mrr) > 0)) return json(400, { error: 'Contrato ainda não configurado. Fale com seu contato no Via Pesados.' });
+
+      const agora = new Date();
+      const semRegistro = preencherContrato(CONTRATO, camposDoContrato(lido.dados, agora, '{{registro_aceite}}'));
+      const hash = await sha256(semRegistro);
+      const registro = registroDoAceite({
+        versao: VERSAO_DO_CONTRATO, hash, quando: agora, ip: ipDoComprador(req) ?? null, dispositivo: req.headers.get('user-agent'),
+      });
+      const texto = semRegistro.replace('{{registro_aceite}}', registro);
+      const quando = agora.toISOString();
+      const aceite = {
+        status: 'assinado', signed_at: quando, versao: VERSAO_DO_CONTRATO, aceite_hash: hash,
+        aceite_ip: ipDoComprador(req) ?? null, aceite_dispositivo: (req.headers.get('user-agent') ?? '').slice(0, 300) || null, texto_aceito: texto,
+      };
+      const { data: rascunho } = await db.from('contracts').select('id, sent_at')
+        .eq('client_id', cli.id).neq('status', 'cancelado').order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const gravou = rascunho
+        ? await db.from('contracts').update({ ...aceite, sent_at: rascunho.sent_at ?? quando }).eq('id', rascunho.id)
+        : await db.from('contracts').insert({
+          ...aceite, client_id: cli.id, prospect_id: cli.prospect_id, sent_at: quando, value: Number(cli.mrr) || 0, recurrence: 'mensal',
+          title: `Contrato de licença de uso — ${cli.company_name}`,
+        });
+      if (gravou.error) { console.error('contrato: aceite não gravou', gravou.error.message); return json(500, { error: 'Não foi possível registrar o aceite. Tente de novo.' }); }
+      const { error: errCli } = await db.from('clients').update({
+        legal_name: lido.dados.razao_social, cnpj: mascaraCnpj(lido.dados.cnpj), address: lido.dados.endereco,
+        legal_rep_name: lido.dados.representante_nome, legal_rep_cpf: lido.dados.representante_cpf, contract_signed_at: quando,
+      }).eq('id', cli.id);
+      if (errCli) { console.error('contrato: cliente não atualizou', errCli.message); return json(500, { error: 'Não foi possível registrar o aceite. Tente de novo.' }); }
+      return json(200, { ok: true, aceito_em: quando });
+    }
+
+    /* A via do cliente: o contrato como foi aceito (Cláusula 15.2). */
+    if (acao === 'contrato_aceito') {
+      const { data: c } = await db.from('contracts').select('texto_aceito, signed_at, versao')
+        .eq('client_id', cli.id).eq('status', 'assinado').not('texto_aceito', 'is', null)
+        .order('signed_at', { ascending: false }).limit(1).maybeSingle();
+      if (!c?.texto_aceito) return json(404, { error: 'O contrato assinado não está disponível aqui. Peça ao seu contato no Via Pesados.' });
+      return json(200, { ok: true, versao: c.versao, aceito_em: c.signed_at, blocos: emBlocos(c.texto_aceito) });
+    }
 
     /* ── abrir: o que a página mostra ────────────────────────────────
        Montado campo a campo de propósito. Nada além disto sai daqui. */
@@ -176,6 +265,8 @@ Deno.serve(async (req) => {
         valor: Number(cli.mrr) || 0,
         canais: cli.canais ?? [],
         ja_assinou: !!cli.asaas_subscription_id,
+        /* Cliente novo aceita o contrato antes de pagar; depois, a página oferece a via dele. */
+        contrato: { precisa: await faltaAceitar(), aceito_em: cli.contract_signed_at ?? null },
         /* A página diz "você só paga quando o teste acabar". */
         teste: doTeste && !cli.asaas_subscription_id
           ? { ate: doTeste.fim, encerrado: doTeste.status === 'encerrado', primeiro_vencimento: primeiroVenc() }
@@ -185,6 +276,12 @@ Deno.serve(async (req) => {
 
     const valor = Number(cli.mrr) || 0;
     if (!(valor > 0)) return json(400, { error: 'Cobrança ainda não configurada. Fale com seu contato na Via Pesados.' });
+
+    /* Daqui para baixo é pagamento. Consultar a situação de uma cobrança que já existe não muda nada;
+       o resto (gerar Pix, boleto, cobrar cartão) espera o contrato de quem é cliente novo. */
+    if (acao !== 'status' && await faltaAceitar()) {
+      return json(400, { error: 'Antes de pagar, leia e aceite o contrato.', falta_contrato: true });
+    }
 
     /* ── garante o cadastro do cliente no Asaas ──────────────────── */
     async function garantirCustomer(dados?: { cpfCnpj?: string; nome?: string; email?: string; fone?: string }) {
