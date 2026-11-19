@@ -13,6 +13,7 @@ import { useFrente } from '@/contexts/FrenteContext';
 import { criarTesteGratis } from '@/hooks/useTesteGratis';
 import { CidadeUF } from '@/components/crm/CidadeUF';
 import { APOIO, CAMPO, Casca, Opcao } from '@/components/crm/esteira/Casca';
+import { DemoDialog } from '@/components/crm/AmostrasTab';
 import { mascaraTelefone, mascaraTelefoneDoBanco, soDigitos, mascaraMoeda, valorDaMoeda, moedaDeNumero } from '@/lib/mascaras';
 import { DIAS_DE_TESTE } from '@/lib/testeGratis';
 
@@ -82,7 +83,6 @@ const vazio = {
   mrr: '', canais: [] as string[],
   gerar_cobranca: true,
   acesso_nome: '', acesso_email: '',
-  sistema_email: '',
   owner_id: '',
 };
 
@@ -128,13 +128,6 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
   const [salvando, setSalvando] = useState(false);
   const set = (k: keyof typeof vazio, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
 
-  /** As amostras que dá para adotar. Quem escolhe é quem apresentou. */
-  const amostras = useMemo(
-    () => demos.filter((d) => d.lojista_company_id
-      && d.status !== 'descartada' && d.status !== 'convertida'),
-    [demos],
-  );
-
   useEffect(() => {
     setForm((f) => ({
       ...f,
@@ -152,13 +145,14 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
   // O campo é texto mascarado ("1.200,00"): Number() nele daria 1.2, e este
   // número vira a cobrança no Asaas.
   const mrrNum = valorDaMoeda(form.mrr) ?? 0;
-  /* O e-mail digitado tem de casar com o login de uma amostra: é ele que
-     carrega o company_id no projeto do lojista. Comparação sem espaço e sem
-     caixa — ninguém digita e-mail com o mesmo capricho duas vezes. */
-  const alvo = form.sistema_email.trim().toLowerCase();
-  const amostra = alvo
-    ? amostras.find((d) => (d.admin_email ?? '').trim().toLowerCase() === alvo) ?? null
+  /* A amostra é sempre a do card (dono, 19/11/2026: "a amostra sempre estará vinculada ao card
+     dele; se não está lá, precisa criar, e a criação deve ser ali"). Nada de escolher numa lista. */
+  const amostraDoCard = prospectId
+    ? demos.find((d) => d.prospect_id === prospectId && d.status !== 'descartada' && d.status !== 'convertida') ?? null
     : null;
+  const [semAmostra, setSemAmostra] = useState(false);
+  const [montando, setMontando] = useState(false);
+  const amostra = !semAmostra && amostraDoCard?.lojista_company_id ? amostraDoCard : null;
 
   const alternarCanal = (cid: string) =>
     setForm((f) => ({
@@ -291,7 +285,7 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
      Transportadora não tem amostra para adotar nem canal para contratar. */
   const ordem = ((prospectId
     ? ['mensalidade', 'acesso', 'email', 'sistema', 'empresa', 'cnpj', 'representante', 'canais', 'fim']
-    : ['empresa', 'mensalidade', 'acesso', 'email', 'sistema', 'cnpj', 'representante', 'canais', 'fim']
+    : ['empresa', 'mensalidade', 'acesso', 'email', 'cnpj', 'representante', 'canais', 'fim']
   ) as Passo[]).filter((p) => !transp || (p !== 'sistema' && p !== 'canais'));
   const ultimo = ordem.length - 1;
   const posicao = Math.min(indice, ultimo);
@@ -362,8 +356,10 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
     },
     sistema: {
       rotulo: 'Sistema',
-      pergunta: 'Você mostrou uma amostra para ele?',
-      dica: 'Amostra é o sistema de demonstração montado com a marca da loja. Se mostrou, ela vira o sistema dele. Se não, o sistema começa do zero.',
+      pergunta: amostraDoCard ? 'O sistema dele é a amostra' : `Monte a amostra da ${form.company_name.trim() || 'loja'}`,
+      dica: amostraDoCard
+        ? 'A amostra ligada a este card vira o sistema dele.'
+        : 'Este card ainda não tem amostra. É dela que nasce o sistema do cliente, com a marca da loja.',
     },
     empresa: {
       rotulo: 'Empresa',
@@ -447,43 +443,42 @@ export default function RegistrarVenda({ teste: modoTeste = false }: { teste?: b
             value={form.acesso_email} onChange={(e) => set('acesso_email', e.target.value)} onKeyDown={aoEnter} />
         )}
 
-        {passo === 'sistema' && (() => {
-          /* Pergunta de sim ou não, com as amostras para tocar (dono, 19/11/2026: "não entendi
-             essa pergunta, essa venda nem tinha amostra"). A da própria loja vem primeiro. */
-          const escolher = (email: string) => { set('sistema_email', email); avancar(); };
-          const dela = amostras.filter((d) => prospectId && d.prospect_id === prospectId);
-          const outras = amostras.filter((d) => !dela.includes(d));
-          const escolhida = (d: typeof amostras[number]) => amostra?.id === d.id;
-          return (
-            <div className="space-y-3">
-              <Opcao rotulo="Não mostrei" sub="O sistema dele começa do zero, criado depois pela ficha."
-                destaque={!amostra && revendo} onClick={() => escolher('')} />
-              {dela.map((d) => (
-                <Opcao key={d.id} rotulo={`Sim, a amostra da ${d.company_name}`} sub="Vira o sistema dele."
-                  destaque={escolhida(d)} onClick={() => escolher(d.admin_email ?? '')} />
-              ))}
-              {outras.length > 0 && (
-                <details className="pt-1" open={!!amostra && !dela.some(escolhida)}>
-                  <summary className="cursor-pointer text-[14px] font-medium text-foreground/60 hover:text-foreground">
-                    {dela.length ? 'Mostrei outra amostra' : 'Sim, mostrei uma amostra'}
-                  </summary>
-                  <div className="mt-3 space-y-2">
-                    {outras.map((d) => (
-                      <Opcao key={d.id} rotulo={d.company_name} sub={d.admin_email ?? undefined}
-                        destaque={escolhida(d)} onClick={() => escolher(d.admin_email ?? '')} />
-                    ))}
-                  </div>
-                </details>
-              )}
-              {amostra && (
-                <p className={NOTA}>
-                  Ao registrar, o conteúdo de demonstração da amostra é apagado (veículos, clientes, vendas e
-                  funcionários fictícios). Ficam a identidade visual, o site e o domínio. O login da amostra deixa de funcionar.
-                </p>
-              )}
-            </div>
-          );
-        })()}
+        {passo === 'sistema' && (
+          <div className="space-y-3">
+            {amostraDoCard ? (
+              amostraDoCard.lojista_company_id ? (
+                <>
+                  <p className="flex items-start gap-2 text-[17px] font-semibold text-foreground">
+                    <Check className="h-5 w-5 mt-[2px] shrink-0 text-emerald-600 dark:text-emerald-400" strokeWidth={3} />
+                    <span className="min-w-0">Amostra da {amostraDoCard.company_name}</span>
+                  </p>
+                  <p className={NOTA}>
+                    Ao registrar, o conteúdo de demonstração é apagado (veículos, clientes, vendas e funcionários
+                    fictícios). Ficam a identidade visual, o site e o domínio. O login da amostra deixa de funcionar.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className={NOTA}>A amostra deste card foi cadastrada, mas o sistema dela ainda não subiu.</p>
+                  <Opcao rotulo="Abrir a amostra" sub="Confira e salve de novo para ela subir." onClick={() => setMontando(true)} />
+                </>
+              )
+            ) : (
+              <>
+                <Opcao rotulo="Montar a amostra agora" sub="Logo, cor e site da loja. Fica ligada a este card." destaque
+                  onClick={() => { setSemAmostra(false); setMontando(true); }} />
+                <button type="button" onClick={() => { setSemAmostra(true); avancar(); }}
+                  className="block pt-2 text-[14px] font-medium text-foreground/50 hover:text-foreground">
+                  Seguir sem amostra: o sistema começa do zero, pela ficha
+                </button>
+              </>
+            )}
+            {montando && prospectId && (
+              <DemoDialog open manterEtapa defaultProspectId={prospectId} demo={amostraDoCard ?? undefined}
+                onClose={() => setMontando(false)} />
+            )}
+          </div>
+        )}
 
         {passo === 'empresa' && (
           <>

@@ -122,10 +122,12 @@ const emptyForm = {
 
 /** Cria ou edita uma amostra. Editando, o que já estiver no ar é atualizado junto. */
 export function DemoDialog({
-  open, onClose, defaultProspectId, demo,
+  open, onClose, defaultProspectId, demo, manterEtapa,
 }: {
   open: boolean;
   onClose: () => void;
+  /** Montada no meio do registro da venda: o card não volta para a etapa Amostra. */
+  manterEtapa?: boolean;
   defaultProspectId?: string | null;
   demo?: Demo | null;
 }) {
@@ -282,7 +284,7 @@ export function DemoDialog({
         });
 
         const prospect = prospects.find((x) => x.id === form.prospect_id);
-        if (prospect) {
+        if (prospect && !manterEtapa) {
           await advance.mutateAsync({ id: prospect.id, from: prospect.stage, to: 'amostra' });
         }
 
