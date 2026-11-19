@@ -36,9 +36,10 @@ type IconeDaAba = React.ComponentType<{ className?: string }>;
  * `depoisDaVenda` marca onde entra o traço.
  */
 const TABS: { key: TabKey; label: string; newLabel: string | null; icon: IconeDaAba; depoisDaVenda?: boolean }[] = [
+  /* WhatsApp em primeiro, a pedido do dono (18/11/2026): "gosto do WhatsApp como a primeira". */
+  { key: 'whatsapp', label: 'WhatsApp', newLabel: 'Número',       icon: IconeWhatsApp },
   { key: 'hoje',     label: 'Hoje',     newLabel: null,           icon: Sun },
   { key: 'funil',    label: 'Funil',    newLabel: 'Oportunidade', icon: Kanban },
-  { key: 'whatsapp', label: 'WhatsApp', newLabel: 'Número',       icon: IconeWhatsApp },
   { key: 'reunioes', label: 'Agenda',   newLabel: 'Reunião',      icon: CalendarDays },
   { key: 'prospeccao', label: 'Prospecção', newLabel: null, icon: Radar },
   /* Da venda (ou do teste) ao primeiro anúncio no ar, e os 60 dias do teste grátis.
@@ -56,7 +57,7 @@ export default function Crm() {
   const [params, setParams] = useSearchParams();
 
   const urlTab = params.get('tab');
-  const [tab, setTab] = useState<TabKey>(isTab(urlTab) ? urlTab : 'hoje');
+  const [tab, setTab] = useState<TabKey>(isTab(urlTab) ? urlTab : 'whatsapp');
   const [newOpen, setNewOpen] = useState(false);
   const [defaultProspect, setDefaultProspect] = useState<string | null>(null);
 
@@ -65,7 +66,7 @@ export default function Crm() {
     const t = params.get('tab');
     // A implantação saiu do CRM e virou seção própria.
     if (t === 'conexao') { navigate('/crm?tab=implantacao', { replace: true }); return; }
-    if (t === 'assistente') { navigate('/crm?tab=prospeccao&vista=assistente', { replace: true }); return; }
+    if (t === 'assistente') { navigate('/crm?tab=prospeccao', { replace: true }); return; }
     /* As ligações do dia saíram da Prospecção e moram em Hoje; o funil da prospecção automática
        virou o Funil. Os endereços antigos levam ao lugar novo. */
     if (t === 'prospeccao' && params.get('vista') === 'ligacoes') { navigate('/crm?tab=hoje', { replace: true }); return; }

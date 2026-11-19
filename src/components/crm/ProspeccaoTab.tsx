@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Loader2, Search, MessageCircle, Eye, Ban, RotateCcw, AlertTriangle, Star, Bot, Kanban,
 } from 'lucide-react';
@@ -9,14 +9,10 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Panel, EmptyState } from '@/components/admin/ui';
 import { CidadeUF } from './CidadeUF';
-import { AssistenteTab } from './AssistenteTab';
 import { NumerosDaProspeccao } from './FunilDaProspeccao';
 import {
   useEstadoProspeccao, useLojas, useAcaoProspeccao, type LojaProspeccao, type StatusLoja,
 } from '@/hooks/useProspeccao';
-import {
-  MODOS, ROTULO_DO_MODO, useAssistenteConfig, useSalvarConfig, type Modo,
-} from '@/hooks/useAssistente';
 
 /**
  * O agente de prospecção, numa tela.
@@ -65,11 +61,6 @@ function Painel() {
   const { data: e, isLoading } = useEstadoProspeccao();
   const acao = useAcaoProspeccao();
   const [teto, setTeto] = useState<string | null>(null);
-  /* Quem responde à prospecção recebe o assistente de vendas no modo da
-     configuração dele (aba Assistente). O antigo "o agente conversa até a
-     amostra" não manda mais. */
-  const { data: assistente } = useAssistenteConfig();
-  const salvarAssistente = useSalvarConfig();
 
   if (isLoading || !e) {
     return <Panel className="p-5 flex justify-center"><Loader2 className="h-4 w-4 animate-spin text-foreground/30" /></Panel>;
@@ -119,7 +110,7 @@ function Painel() {
         </label>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <p className="text-[10.5px] font-semibold tracking-widest uppercase text-foreground/30">Número</p>
           <select
@@ -151,27 +142,6 @@ function Painel() {
             </div>
           </div>
           <p className="text-[10.5px] text-foreground/35">Começa em {e.tetoInicial}/dia e sobe {e.passoSemanal} por semana até o teto.</p>
-        </div>
-        <div className="space-y-1.5">
-          <p className="text-[10.5px] font-semibold tracking-widest uppercase text-foreground/30">Quando a loja responde</p>
-          <select
-            className={cn(inputCls, 'w-full')}
-            value={assistente?.modo_prospeccao ?? ''}
-            disabled={!assistente || salvarAssistente.isPending}
-            onChange={async (ev) => {
-              try {
-                await salvarAssistente.mutateAsync({ modo_prospeccao: ev.target.value as Modo });
-                toast.success('Salvo.');
-              } catch (err) { toast.error((err as Error).message); }
-            }}
-          >
-            {!assistente && <option value="">Davi ainda não instalado</option>}
-            {MODOS.map((m) => <option key={m} value={m}>Davi: {ROTULO_DO_MODO[m]}</option>)}
-          </select>
-          <p className="text-[10.5px] text-foreground/35">
-            {assistente && !assistente.ligado ? 'O Davi está desligado no geral (em Configurar o Davi). ' : ''}
-            Você escreveu na conversa, ele sai.
-          </p>
         </div>
       </div>
 
@@ -265,48 +235,31 @@ function Previa({ loja, onClose, max }: { loja: LojaProspeccao | null; onClose: 
 }
 
 /**
- * A máquina que enche o funil: o envio automático das mensagens (ligar, número, fila, busca) e a
- * configuração do Davi, que atende quem responde.
+ * A máquina que enche o funil: o envio automático das mensagens (ligar, número, fila, busca).
+ * O Davi, que atende quem responde, NÃO é configurado pelo painel (dono, 18/11/2026: "ele é
+ * configurado unicamente pelo Claude Code; não quero essa parte no sistema").
  *
  * O que é trabalho do dia saiu daqui em 18/11/2026: as ligações moram em Hoje e as lojas que
  * responderam, no Funil. Aqui fica só o que se liga, se configura e se confere.
  */
-type Vista = 'envio' | 'assistente';
-
 export function ProspeccaoTab() {
   const navigate = useNavigate();
-  const [params, setParams] = useSearchParams();
-  const vista: Vista = params.get('vista') === 'assistente' ? 'assistente' : 'envio';
-  const escolher = (v: Vista) => {
-    const novo = new URLSearchParams(params);
-    if (v === 'envio') novo.delete('vista'); else novo.set('vista', v);
-    setParams(novo, { replace: true });
-  };
   return (
     <div className="max-w-6xl mx-auto space-y-4">
-      <div>
-        <h1 className="text-[22px] font-bold tracking-tight text-foreground leading-tight">Prospecção automática</h1>
-        <p className="text-[13px] text-foreground/45 mt-0.5">
-          O sistema manda a primeira mensagem para as lojas da lista e o Davi atende quem responde. Quem respondeu aparece no Funil.
-        </p>
-      </div>
-      <NumerosDaProspeccao />
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex rounded-xl border border-black/[0.08] dark:border-white/[0.08] p-0.5">
-          {([['envio', 'Envio e fila'], ['assistente', 'Configurar o Davi']] as const).map(([chave, rotulo]) => (
-            <button key={chave} onClick={() => escolher(chave)}
-              className={cn('h-8 px-3.5 rounded-[10px] text-[12.5px] font-medium transition-colors',
-                vista === chave ? 'bg-primary/10 text-primary' : 'text-foreground/50 hover:text-foreground/80')}>
-              {rotulo}
-            </button>
-          ))}
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <h1 className="text-[22px] font-bold tracking-tight text-foreground leading-tight">Prospecção automática</h1>
+          <p className="text-[13px] text-foreground/45 mt-0.5">
+            O sistema manda a primeira mensagem para as lojas da lista e o Davi atende quem responde. Quem respondeu aparece no Funil.
+          </p>
         </div>
         <button onClick={() => navigate('/crm?tab=funil')}
           className="ml-auto h-9 px-3.5 rounded-xl text-[12.5px] font-medium border border-black/[0.1] dark:border-white/[0.1] text-foreground/75 hover:text-foreground flex items-center gap-1.5">
           <Kanban className="h-4 w-4" /> Ver quem respondeu no Funil
         </button>
       </div>
-      {vista === 'assistente' ? <AssistenteTab /> : <EnvioEFila />}
+      <NumerosDaProspeccao />
+      <EnvioEFila />
     </div>
   );
 }
