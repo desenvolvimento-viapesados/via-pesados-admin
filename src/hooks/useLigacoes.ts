@@ -11,7 +11,11 @@ export type LojaParaLigar = {
   prioridade: number; motivo_da_vez: string | null; ligada_hoje: boolean; resultado_hoje: ResultadoLigacao | null;
 };
 
-const rpc = supabase.rpc as unknown as (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+/* As funções e a tabela são novas e ainda não estão nos tipos gerados. O bind é obrigatório:
+   rpc e from usam o this do cliente. */
+const rpc = supabase.rpc.bind(supabase) as unknown as (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const tabela = supabase.from.bind(supabase) as unknown as (t: string) => any;
 
 export const useLigacoesDoDia = () =>
   useQuery({
@@ -29,7 +33,7 @@ export const useLigacoesDesde = (desde: Date) =>
   useQuery({
     queryKey: ['ligacoes', 'desde', desde.toISOString().slice(0, 13)],
     queryFn: async () => {
-      const { data, error } = await (supabase.from as unknown as (t: string) => any)('prospeccao_ligacoes')
+      const { data, error } = await tabela('prospeccao_ligacoes')
         .select('resultado, quem_atendeu, feita_em')
         .gte('feita_em', desde.toISOString())
         .order('feita_em', { ascending: false })
@@ -44,7 +48,7 @@ export const useMetaDeLigacoes = () =>
   useQuery({
     queryKey: ['ligacoes', 'meta'],
     queryFn: async () => {
-      const { data, error } = await (supabase.from as unknown as (t: string) => any)('prospeccao_config')
+      const { data, error } = await tabela('prospeccao_config')
         .select('meta_ligacoes_dia').eq('id', 1).maybeSingle();
       if (error) throw new Error(error.message);
       return (data?.meta_ligacoes_dia as number | undefined) ?? 20;
@@ -55,7 +59,7 @@ export const useSalvarMeta = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (meta: number) => {
-      const { error } = await (supabase.from as unknown as (t: string) => any)('prospeccao_config')
+      const { error } = await tabela('prospeccao_config')
         .update({ meta_ligacoes_dia: meta }).eq('id', 1);
       if (error) throw new Error(error.message);
     },
