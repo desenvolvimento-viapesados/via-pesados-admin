@@ -129,6 +129,9 @@ const MODELO = Deno.env.get('ROBO_DNS_MODELO') ?? 'claude-opus-5-5';
 
 const pausa = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
 
+/* Painéis que o robô pode abrir quando a aba ficou em branco (o login fica no navegador). */
+const PAINEIS = ['registro.br', 'godaddy.com', 'hostinger.com', 'cloudflare.com', 'locaweb.com.br', 'hostgator.com.br', 'kinghost.com.br', 'uol.com.br', 'namecheap.com', 'wix.com'];
+
 async function executar(nav: Navegador, tela: Tela, a: Record<string, unknown>): Promise<string> {
   const alvo = typeof a.n === 'number' ? tela.elementos.find((e) => e.n === a.n) : undefined;
   const acao = String(a.acao);
@@ -161,10 +164,12 @@ async function executar(nav: Navegador, tela: Tela, a: Record<string, unknown>):
   if (acao === 'rolar') { await nav.avaliar(`window.scrollBy(0, ${a.direcao === 'cima' ? -650 : 650})`); return `rolou para ${a.direcao}`; }
   if (acao === 'esperar') { await pausa(Math.min(8, Number(a.segundos ?? 2)) * 1000); return `esperou ${a.segundos}s`; }
   if (acao === 'abrir') {
-    const atual = new URL(tela.url);
-    const novo = new URL(String(a.url), tela.url);
-    const raiz = (h: string) => h.split('.').slice(-2).join('.');
-    if (raiz(novo.hostname) !== raiz(atual.hostname)) return `BLOQUEADO: ${novo.hostname} fica fora do painel`;
+    const novo = new URL(String(a.url), /^https?:/.test(tela.url) ? tela.url : 'https://invalido/');
+    const raiz = (h: string) => h.split('.').slice(-3).join('.').replace(/^www\./, '');
+    const permitido = /^https?:/.test(tela.url)
+      ? raiz(novo.hostname).split('.').slice(-2).join('.') === raiz(new URL(tela.url).hostname).split('.').slice(-2).join('.')
+      : PAINEIS.some((p) => novo.hostname === p || novo.hostname.endsWith(`.${p}`));
+    if (!permitido) return `BLOQUEADO: ${novo.hostname} fica fora do painel`;
     await nav.ir(novo.href);
     return `abriu ${novo.pathname}`;
   }
@@ -343,8 +348,17 @@ export async function viaRegistroBr(nav: Navegador, plano: Plano, ate: number, a
   const nada = async (motivo: string) => { await aoPassar({ quando: new Date().toISOString(), acao: 'erro', detalhe: `registro.br direto: ${motivo}` }); return null; };
 
   await nav.seguirAbaNova().catch(() => false);
-  const url = await nav.avaliar<string>('location.href').catch(() => '');
-  if (!/registro\.br/.test(url)) return nada(`a janela está em ${url}`);
+  let url = await nav.avaliar<string>('location.href').catch(() => '');
+  /* Depois do código de acesso a aba às vezes fica em branco (about:blank). O login fica
+     guardado no navegador: abre o domínio direto, já logado. */
+  if (!/registro\.br/.test(url)) {
+    const alvos = await nav.enviar<{ targetInfos: { type: string; url: string }[] }>('Target.getTargets', {}, false).catch(() => ({ targetInfos: [] }));
+    await nada(`a janela estava em ${url || '(vazio)'}; abas: ${alvos.targetInfos.filter((t) => t.type === 'page').map((t) => t.url.slice(0, 60)).join(' | ')}`);
+    await nav.ir(`https://registro.br/painel/dominios/?dominio=${d}`).catch(() => null);
+    await pausa(4000);
+    url = await nav.avaliar<string>('location.href').catch(() => '');
+    if (!/registro\.br/.test(url)) return nada(`continua em ${url}`);
+  }
 
   await passo('Abrindo o domínio na sua conta');
   const info = await chamar('GET', `/v2/ajax/domain/${d}`);
