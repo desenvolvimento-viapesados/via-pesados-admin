@@ -1,6 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { Navegador } from '../_shared/cdp.ts';
 import { CHAMAR_RB, LER_TELA, parecePainel, trabalhar, viaRegistroBr, type Plano } from '../_shared/robo-dns.ts';
+import { entrar, informarCodigo } from '../_shared/robo-login.ts';
+import { cifrar, decifrar } from '../_shared/robo-cripto.ts';
 import Anthropic from 'npm:@anthropic-ai/sdk@1.3.0';
 
 /**
@@ -84,47 +86,101 @@ async function rodar(db: Db, id: string, token: string, plano: Plano) {
       if (live) await gravar({ live_url: live });
     };
     await atualizarJanela();
-    await gravar({
-      sessao, estado: 'login',
-      mensagem: plano.provedor
-        ? `Entre na sua conta do ${plano.provedor} na janela abaixo. Depois toque em "Já entrei".`
-        : 'Abra o site onde o seu domínio é administrado, entre na sua conta e toque em "Já entrei".',
-    });
+    await gravar({ sessao, etapa: 'entrando' });
 
-    const historico: string[] = [];
-    for (;;) {
-      /* Espera o cliente entrar (ou desistir). Percebe sozinho quando ele sai da tela de
-         senha e cai no painel; o botão "Já entrei" adianta. */
-      let viuSenha = false;
-      let noPainel = 0;
+    /* Lê a credencial que o pop-up mandou (cifrada) e apaga na hora. */
+    const esperarCredencial = async (): Promise<Record<string, string> | 'janela' | 'parar'> => {
       for (;;) {
-        if (Date.now() > ate) throw new Error('O tempo da janela acabou. Tente de novo: é rapidinho.');
+        if (Date.now() > ate) throw new Error('O tempo acabou. Tente de novo: é rapidinho.');
+        const { data: r } = await db.from('dominio_robo').select('credencial, parar, cliente_pronto, estado').eq('id', id).maybeSingle();
+        if (r?.parar) return 'parar';
+        if (r?.estado === 'janela') return 'janela';
+        if (r?.credencial) {
+          await db.from('dominio_robo').update({ credencial: null }).eq('id', id);
+          const c = await decifrar(r.credencial);
+          if (c) return c;
+        }
+        await pausa(1000);
+      }
+    };
+
+    /* Janela ao vivo (reserva): o cliente termina o acesso ali; o robô percebe quando entrou. */
+    const esperarNaJanela = async (mensagem: string): Promise<boolean> => {
+      await gravar({ estado: 'janela', mensagem, cliente_pronto: false });
+      let viuSenha = false, noPainel = 0;
+      for (;;) {
+        if (Date.now() > ate) throw new Error('O tempo acabou. Tente de novo: é rapidinho.');
         const { data: r } = await db.from('dominio_robo').select('cliente_pronto, parar').eq('id', id).maybeSingle();
-        if (r?.parar) { await gravar({ estado: 'parado', mensagem: 'Parado.' }); return; }
-        if (r?.cliente_pronto) break;
-        if (await nav.seguirAbaNova().catch(() => false)) await atualizarJanela();
-        const temSenha = await nav.avaliar<boolean>(`!!document.querySelector('input[type=password]')`).catch(() => false);
+        if (r?.parar) return false;
+        if (r?.cliente_pronto) return true;
+        if (await nav!.seguirAbaNova().catch(() => false)) await atualizarJanela();
+        const temSenha = await nav!.avaliar<boolean>(`!!document.querySelector('input[type=password]')`).catch(() => false);
         if (temSenha) viuSenha = true;
-        noPainel = viuSenha && (await parecePainel(nav)) ? noPainel + 1 : 0;
-        if (noPainel >= 3) break;
+        noPainel = viuSenha && (await parecePainel(nav!)) ? noPainel + 1 : 0;
+        if (noPainel >= 3) return true;
         await pausa(2000);
       }
-      await gravar({ estado: 'trabalhando', mensagem: 'O robô está fazendo as mudanças. Não precisa mexer na janela.', cliente_pronto: false });
+    };
+
+    /* ── 1. Entrar na conta, pelo pop-up ── */
+    let logado = false;
+    let tentativas = 0;
+    let pedido: 'credenciais' | 'codigo' = 'credenciais';
+    let aviso: string | null = null;
+    while (!logado) {
+      await gravar({ estado: pedido, mensagem: aviso, cliente_pronto: false });
+      const c = await esperarCredencial();
+      if (c === 'parar') { await gravar({ estado: 'parado', mensagem: 'Parado.' }); return; }
+      if (c === 'janela') {
+        if (!(await esperarNaJanela(`Entre na sua conta${plano.provedor ? ` do ${plano.provedor}` : ''} na janela abaixo.`))) { await gravar({ estado: 'parado', mensagem: 'Parado.' }); return; }
+        logado = true; break;
+      }
+      await gravar({ estado: 'trabalhando', etapa: 'entrando', mensagem: null });
+      const sit = pedido === 'codigo'
+        ? await informarCodigo(nav, plano.provedor, c.codigo ?? '')
+        : await entrar(nav, plano.provedor, c.usuario ?? '', c.senha ?? '');
+      if (sit.tipo === 'logado') { logado = true; break; }
+      if (sit.tipo === 'codigo') { pedido = 'codigo'; aviso = sit.mensagem; continue; }
+      if (sit.tipo === 'erro') {
+        tentativas++;
+        await gravar({ tentativas });
+        /* Duas senhas erradas e para: a terceira pode bloquear a conta no painel. */
+        if (tentativas >= 2) {
+          if (!(await esperarNaJanela(`${sit.mensagem} Para não bloquear a sua conta, termine o acesso na janela abaixo.`))) { await gravar({ estado: 'parado', mensagem: 'Parado.' }); return; }
+          logado = true; break;
+        }
+        pedido = 'credenciais'; aviso = sit.mensagem; continue;
+      }
+      if (!(await esperarNaJanela(sit.mensagem))) { await gravar({ estado: 'parado', mensagem: 'Parado.' }); return; }
+      logado = true;
+    }
+
+    /* ── 2. Mexer no DNS ── */
+    const historico: string[] = [];
+    for (let rodada = 0; rodada < 3; rodada++) {
+      await gravar({ estado: 'trabalhando', etapa: 'dominio', mensagem: null, cliente_pronto: false });
+      const comEtapa = async (p: { detalhe?: string; acao?: string }) => {
+        await passou(p);
+        const d = String(p.detalhe ?? '');
+        if (/Trocando|criando/i.test(d)) await gravar({ etapa: 'salvando' });
+        else if (/preparando|modo avançado/i.test(d)) await gravar({ etapa: 'preparando' });
+        else if (p.acao === 'fazer') await gravar({ etapa: 'dns' });
+      };
       /* Registro.br: o caminho direto (o mesmo do botão "Salvar alterações"); se algo
          não bater com o esperado, segue olhando a tela. */
       const direto = plano.provedor === 'Registro.br'
-        ? await viaRegistroBr(nav, plano, ate, passou).catch(async (e) => {
+        ? await viaRegistroBr(nav, plano, ate, comEtapa).catch(async (e) => {
           await passou({ quando: new Date().toISOString(), acao: 'erro', detalhe: `registro.br direto: ${e instanceof Error ? e.message : e}` });
           return null;
         })
         : null;
-      const fim = direto ?? await trabalhar(nav, plano, ate, passou, atualizarJanela, historico);
+      const fim = direto ?? await trabalhar(nav, plano, ate, comEtapa, atualizarJanela, historico);
       if (fim.tipo === 'precisa_cliente') {
-        await gravar({ estado: 'login', mensagem: `${fim.mensagem} Depois toque em "Já entrei".`, cliente_pronto: false });
+        if (!(await esperarNaJanela(fim.mensagem))) { await gravar({ estado: 'parado', mensagem: 'Parado.' }); return; }
         continue;
       }
       if (fim.tipo === 'feito') {
-        await gravar({ estado: 'feito', mensagem: 'Mudanças feitas. Agora é só a internet atualizar.' });
+        await gravar({ estado: 'feito', etapa: 'conferindo', mensagem: null });
         /* Já começa a conferir: põe o domínio na Vercel e cutuca o certificado. */
         await fetch(`${PROPRIO}/dominio-cliente`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -135,6 +191,7 @@ async function rodar(db: Db, id: string, token: string, plano: Plano) {
       }
       return;
     }
+    await gravar({ estado: 'falhou', mensagem: 'Não consegui terminar. Tente de novo.' });
   } catch (e) {
     await gravar({ estado: 'falhou', mensagem: e instanceof Error ? e.message : 'Algo deu errado.' });
   } finally {
@@ -153,7 +210,8 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json(405, { error: 'Use POST' });
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   try {
-    const { token, acao, dominio, robo_id } = await req.json().catch(() => ({}));
+    const corpo = await req.json().catch(() => ({}));
+    const { token, acao, dominio, robo_id } = corpo;
 
     /* Diagnóstico (só com o segredo interno): abre uma janela no Registro.br, lê a tela,
        chama o painel e a IA uma vez, e devolve o que deu em cada parte. */
@@ -224,7 +282,22 @@ Deno.serve(async (req) => {
 
     if (acao === 'estado') {
       const passos = (r.passos ?? []).filter((p: { acao: string }) => p.acao !== 'erro').slice(-8).map((p: { detalhe: string }) => p.detalhe).filter(Boolean);
-      return json(200, { ok: true, estado: r.estado, mensagem: r.mensagem, live_url: r.live_url, provedor: r.provedor, passos });
+      return json(200, { ok: true, estado: r.estado, etapa: r.etapa, mensagem: r.mensagem, live_url: r.live_url, provedor: r.provedor, passos });
+    }
+    if (acao === 'credencial') {
+      const { usuario, senha, codigo } = await Promise.resolve({ usuario: corpo.usuario, senha: corpo.senha, codigo: corpo.codigo });
+      if (codigo !== undefined) {
+        if (!/^[0-9A-Za-z-]{4,12}$/.test(String(codigo))) return json(400, { error: 'Código inválido.' });
+        await db.from('dominio_robo').update({ credencial: await cifrar({ codigo: String(codigo) }), estado: 'trabalhando', etapa: 'entrando' }).eq('id', r.id);
+      } else {
+        if (!usuario || !senha) return json(400, { error: 'Preencha usuário e senha.' });
+        await db.from('dominio_robo').update({ credencial: await cifrar({ usuario: String(usuario).trim(), senha: String(senha) }), estado: 'trabalhando', etapa: 'entrando' }).eq('id', r.id);
+      }
+      return json(200, { ok: true });
+    }
+    if (acao === 'janela') {
+      await db.from('dominio_robo').update({ estado: 'janela' }).eq('id', r.id);
+      return json(200, { ok: true });
     }
     if (acao === 'entrei') {
       await db.from('dominio_robo').update({ cliente_pronto: true }).eq('id', r.id);
