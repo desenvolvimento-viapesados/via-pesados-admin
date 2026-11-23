@@ -18,22 +18,27 @@ const ROTEIROS: Record<string, (d: string) => string> = {
 7. No fim, "Salvar alterações". Sucesso = "Zona DNS atualizada com sucesso!".
 NUNCA clique em "Alterar servidores DNS" nem em "Utilizar DNS do Registro.br".`,
 
-  GoDaddy: () => `ROTEIRO — GoDaddy:
-1. Em "Meus produtos"/"Portfólio de domínios", clique no domínio e vá em "DNS" (ou "Gerenciar DNS").
-2. Se houver "Encaminhamento"/"Forwarding" do domínio ligado, remova o encaminhamento.
-3. Registros: apague os da lista APAGAR (ícone de lápis/lixeira ou menu da linha → "Excluir"/"Delete", confirme). Um A "Parked"/"Estacionado" na raiz também sai.
-4. "Adicionar novo registro"/"Add New Record": Tipo, Nome ("@" para a raiz, "www"), Valor ("Aponta para"/"Value"), TTL padrão → "Salvar".
-5. O www costuma já existir como CNAME para "@": edite o valor para o da lista CRIAR (ou apague e crie).`,
+  GoDaddy: (d) => `ROTEIRO — GoDaddy:
+1. Abra https://dcc.godaddy.com/control/dnsmanagement?domainName=${d} (ou "Portfólio de domínios" → o domínio → aba "DNS").
+2. Se houver "Encaminhamento" (Forwarding) do domínio: aba "Encaminhamento" → "Excluir" → confirmar "Excluir". Com encaminhamento ativo o A da raiz fica travado.
+3. Tabela (Tipo / Nome / Dados / TTL): o A "@" pode mostrar "WebsiteBuilder Site" ou "Parked" em vez de IP — é o A antigo: EDITE para o IP novo (ou exclua). Nunca deixe dois A em "@".
+4. O www costuma ser "CNAME www → @": EDITE esse para o valor da lista CRIAR (um nome não pode ter dois CNAME).
+5. Excluir: botão "Excluir" na linha → confirmar "Excluir registros". Editar: "Editar" → mudar "Valor" → "Salvar".
+6. Criar: "Adicionar novo registro" → Tipo → Nome ("@" na raiz; "www") → Valor → TTL padrão → "Salvar".
+7. Nunca toque em NS, SOA, "_domainconnect", nem nas abas "Nameservers"/"DNSSEC". Se pedir código (SMS/app/e-mail): pedir_ao_cliente.`,
 
-  Hostinger: () => `ROTEIRO — Hostinger (hPanel):
-1. "Domínios" → o domínio → "DNS / Servidores de nomes" (ou "Gerenciar registros DNS").
-2. Apague da tabela os da lista APAGAR ("Excluir"/"Delete" → confirmar). Um ALIAS ou CNAME na raiz apontando para a Hostinger/CDN também sai.
-3. "Adicionar registro": Tipo, Nome ("@" para a raiz, "www"), "Aponta para", TTL padrão → "Adicionar registro".`,
+  Hostinger: (d) => `ROTEIRO — Hostinger (hPanel):
+1. "Domínios" → o domínio (${d}) → "Gerenciar" → "DNS / Nameservers" → "Registros de DNS" (ou Websites → site → "Avançado" → "Editor de Zona DNS").
+2. Se os registros da raiz/www estiverem travados por CDN: Websites → "Gerenciar site" → "Performance" → "CDN" → "Desativar", espere e volte. Se não achar, desistir.
+3. Apagar: "Deletar"/"Remover" (ou lixeira) na linha → confirmar. Na raiz, um "ALIAS"/"CNAME ALIAS" e AAAA velhos também saem.
+4. Criar ("Gerenciar registros DNS"): Tipo, Nome ("@" na raiz; "www"), "Aponta para", TTL padrão → "Adicionar registro".
+5. NUNCA clique em "Redefinir registros DNS" nem mexa em Nameservers/DNSSEC.`,
 
   Cloudflare: () => `ROTEIRO — Cloudflare:
-1. Clique no domínio → "DNS" → "Registros"/"Records".
-2. Apague os da lista APAGAR ("Editar" → "Excluir"/"Delete" → confirmar).
-3. "Adicionar registro"/"Add record": Tipo, Nome ("@" para a raiz, "www"), IPv4/Destino, e DESLIGUE o proxy (nuvem cinza, "Somente DNS"/"DNS only") → "Salvar".`,
+1. Conta → o domínio → "DNS" → "Registros"/"Records".
+2. Conflitos: um CNAME não convive com A/AAAA no mesmo nome (e vice-versa). Apague antes: "Editar"/"Edit" na linha → "Excluir"/"Delete" → confirmar.
+3. Criar: "Adicionar registro"/"Add record" → Tipo → Nome ("@" na raiz; "www") → "Endereço IPv4"/"IPv4 address" (A) ou "Destino"/"Target" (CNAME) → DESLIGUE o proxy (nuvem cinza: "Somente DNS"/"DNS only") → TTL Automático → "Salvar".
+4. Confira pela nuvem CINZA em cada registro novo.`,
 
   Locaweb: () => `ROTEIRO — Locaweb:
 - Entrada: centraldocliente.locaweb.com.br (tem verificação em duas etapas: é com o cliente).
