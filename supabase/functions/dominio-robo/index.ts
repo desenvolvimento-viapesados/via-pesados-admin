@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { Navegador } from '../_shared/cdp.ts';
-import { parecePainel, trabalhar, viaRegistroBr, type Plano } from '../_shared/robo-dns.ts';
+import { CHAMAR_RB, LER_TELA, parecePainel, trabalhar, viaRegistroBr, type Plano } from '../_shared/robo-dns.ts';
+import Anthropic from 'npm:@anthropic-ai/sdk@1.3.0';
 
 /**
  * O robô da conexão de domínio (23/11/2026). PÚBLICA: autentica pelo token do link
@@ -111,7 +112,12 @@ async function rodar(db: Db, id: string, token: string, plano: Plano) {
       await gravar({ estado: 'trabalhando', mensagem: 'O robô está fazendo as mudanças. Não precisa mexer na janela.', cliente_pronto: false });
       /* Registro.br: o caminho direto (o mesmo do botão "Salvar alterações"); se algo
          não bater com o esperado, segue olhando a tela. */
-      const direto = plano.provedor === 'Registro.br' ? await viaRegistroBr(nav, plano, ate, passou).catch(() => null) : null;
+      const direto = plano.provedor === 'Registro.br'
+        ? await viaRegistroBr(nav, plano, ate, passou).catch(async (e) => {
+          await passou({ quando: new Date().toISOString(), acao: 'erro', detalhe: `registro.br direto: ${e instanceof Error ? e.message : e}` });
+          return null;
+        })
+        : null;
       const fim = direto ?? await trabalhar(nav, plano, ate, passou, atualizarJanela, historico);
       if (fim.tipo === 'precisa_cliente') {
         await gravar({ estado: 'login', mensagem: `${fim.mensagem} Depois toque em "Já entrei".`, cliente_pronto: false });
@@ -148,6 +154,45 @@ Deno.serve(async (req) => {
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   try {
     const { token, acao, dominio, robo_id } = await req.json().catch(() => ({}));
+
+    /* Diagnóstico (só com o segredo interno): abre uma janela no Registro.br, lê a tela,
+       chama o painel e a IA uma vez, e devolve o que deu em cada parte. */
+    if (acao === 'diagnostico') {
+      if (!Deno.env.get('DOMINIO_SEGREDO') || req.headers.get('x-dominio-segredo') !== Deno.env.get('DOMINIO_SEGREDO')) return json(403, { error: 'não' });
+      const out: Record<string, unknown> = {};
+      const h = { 'X-BB-API-Key': Deno.env.get('BROWSERBASE_API_KEY') ?? '', 'Content-Type': 'application/json' };
+      let sessao = '';
+      let nav: Navegador | null = null;
+      try {
+        const s = await (await fetch(`${BB}/sessions`, { method: 'POST', headers: h, body: JSON.stringify({ projectId: Deno.env.get('BROWSERBASE_PROJECT_ID'), timeout: 120, browserSettings: { viewport: { width: 1280, height: 800 } }, region: 'us-east-1' }) })).json();
+        sessao = s.id; out.sessao = !!s.id;
+        nav = await Navegador.conectar(s.connectUrl);
+        await nav.prenderAba();
+        await nav.ir('https://registro.br/painel/');
+        await pausa(5000);
+        out.url = await nav.avaliar('location.href').catch((e) => `ERRO ${e}`);
+        try { const t = await nav.avaliar<{ elementos: unknown[]; texto: string }>(LER_TELA); out.tela = { elementos: t?.elementos?.length, texto: t?.texto?.slice(0, 120) }; } catch (e) { out.tela = `ERRO ${e}`; }
+        try { const r = await nav.avaliar(CHAMAR_RB('GET', '/v2/ajax/domains')); out.painel = r; } catch (e) { out.painel = `ERRO ${e}`; }
+        try {
+          const foto = await nav.foto();
+          out.foto_kb = Math.round(foto.length * 0.75 / 1024);
+          const ia = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') });
+          const r = await ia.messages.create({
+            model: 'claude-opus-5-5', max_tokens: 300, tools: [{ name: 'responder', description: 'responde', input_schema: { type: 'object', properties: { tela: { type: 'string' } }, required: ['tela'] } }],
+            tool_choice: { type: 'auto' },
+            messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: foto } }, { type: 'text', text: 'Que tela é esta?' }] }],
+          // deno-lint-ignore no-explicit-any
+          } as any);
+          // deno-lint-ignore no-explicit-any
+          out.ia = (r.content as any[]).find((b) => b.type === 'tool_use')?.input ?? r.content;
+        } catch (e) { out.ia = `ERRO ${e instanceof Error ? e.message : e}`; }
+      } catch (e) { out.erro = e instanceof Error ? e.message : String(e); }
+      finally {
+        nav?.fechar();
+        if (sessao) await fetch(`${BB}/sessions/${sessao}`, { method: 'POST', headers: h, body: JSON.stringify({ projectId: Deno.env.get('BROWSERBASE_PROJECT_ID'), status: 'REQUEST_RELEASE' }) }).catch(() => null);
+      }
+      return json(200, out);
+    }
     const t = String(token ?? '');
     if (t.length < 16) return json(404, { error: 'Link inválido.' });
     const { data: c } = await db.from('clients').select('id').eq('checkout_token', t).maybeSingle();
@@ -178,7 +223,7 @@ Deno.serve(async (req) => {
     if (!r) return json(404, { error: 'Não achei esta conexão.' });
 
     if (acao === 'estado') {
-      const passos = (r.passos ?? []).slice(-8).map((p: { detalhe: string; acao: string }) => p.detalhe).filter(Boolean);
+      const passos = (r.passos ?? []).filter((p: { acao: string }) => p.acao !== 'erro').slice(-8).map((p: { detalhe: string }) => p.detalhe).filter(Boolean);
       return json(200, { ok: true, estado: r.estado, mensagem: r.mensagem, live_url: r.live_url, provedor: r.provedor, passos });
     }
     if (acao === 'entrei') {

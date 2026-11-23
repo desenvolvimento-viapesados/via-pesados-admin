@@ -23,7 +23,7 @@ export type { Desfecho, Passo, Plano, Registro };
 
 
 /* Lê a tela: elementos visíveis e clicáveis (também dentro de iframes do mesmo site e de shadow DOM). */
-const LER_TELA = `(() => {
+export const LER_TELA = `(() => {
   const out = []; let n = 0;
   const visivel = (el, r) => r.width > 2 && r.height > 2 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth
     && getComputedStyle(el).visibility !== 'hidden' && getComputedStyle(el).display !== 'none' && getComputedStyle(el).opacity !== '0';
@@ -119,7 +119,8 @@ REGRAS:
 - Nunca toque em: servidores DNS / nameservers, DNSSEC, pagamento, renovação, transferência, titular, contatos, senha, cancelamento ou exclusão do domínio, compras. Na dúvida: desistir.
 - Banner de cookies, tour ou novidades: feche ou aceite só o necessário.
 - Diálogo "tem certeza?" ao apagar um registro da lista APAGAR: confirme.
-- Só chame concluir quando a tela mostrar a lista final já SALVA, com os valores novos.`;
+- Só chame concluir quando a tela mostrar a lista final já SALVA, com os valores novos.
+- Responda SEMPRE chamando uma ferramenta (fazer, pedir_ao_cliente, concluir ou desistir), nunca só com texto.`;
 }
 
 let cliente: Anthropic | null = null;
@@ -192,7 +193,12 @@ export async function trabalhar(
       tela = await nav.avaliar<Tela>(LER_TELA);
       foto = await nav.foto();
       if (!tela?.elementos) throw new Error('tela vazia');
-    } catch { await pausa(1500); continue; }
+    } catch (e) {
+      const m = `leitura da tela: ${e instanceof Error ? e.message : e}`;
+      console.error('robo-dns:', m);
+      await aoPassar({ quando: new Date().toISOString(), acao: 'erro', detalhe: m });
+      await pausa(1500); continue;
+    }
 
     const lista = tela.elementos.map((e) =>
       `[${e.n}] ${e.tag}${e.tipo ? `(${e.tipo})` : ''} "${e.texto}"${e.valor !== undefined ? ` valor="${e.valor}"` : ''}${e.marcado !== undefined ? (e.marcado ? ' [marcado]' : ' [desmarcado]') : ''}${e.desligado ? ' [desabilitado]' : ''}${e.opcoes ? ` opções: ${e.opcoes.join(' | ')}` : ''}`).join('\n');
@@ -205,7 +211,7 @@ export async function trabalhar(
         max_tokens: 1500,
         system: sistema,
         tools: FERRAMENTAS,
-        tool_choice: { type: 'any' },
+        tool_choice: { type: 'auto' },
         messages: [{
           role: 'user',
           content: [
@@ -216,13 +222,22 @@ export async function trabalhar(
       // deno-lint-ignore no-explicit-any
       } as any);
     } catch (e) {
-      historico.push(`- (erro ao pensar: ${e instanceof Error ? e.message.slice(0, 80) : e})`);
+      const m = `IA: ${e instanceof Error ? e.message.slice(0, 300) : e}`;
+      console.error('robo-dns:', m);
+      await aoPassar({ quando: new Date().toISOString(), acao: 'erro', detalhe: m });
+      historico.push(`- (erro ao pensar: ${m.slice(0, 80)})`);
       await pausa(2000);
       continue;
     }
     // deno-lint-ignore no-explicit-any
     const uso = (r.content as any[]).find((b) => b.type === 'tool_use');
-    if (!uso) continue;
+    if (!uso) {
+      // deno-lint-ignore no-explicit-any
+      const fala = (r.content as any[]).filter((b) => b.type === 'text').map((b) => b.text).join(' ').slice(0, 200);
+      historico.push(`- (respondeu sem ação: "${fala}". Use SEMPRE uma ferramenta.)`);
+      await aoPassar({ quando: new Date().toISOString(), acao: 'erro', detalhe: `IA sem ação: ${fala}` });
+      continue;
+    }
     const a = uso.input as Record<string, unknown>;
 
     if (uso.name === 'pedir_ao_cliente') return { tipo: 'precisa_cliente', mensagem: String(a.mensagem ?? 'Entre na sua conta na janela abaixo.') };
@@ -283,15 +298,23 @@ export async function parecePainel(nav: Navegador): Promise<boolean> {
    e o cabeçalho X-XSRF-TOKEN do cookie XSRF-TOKEN, como o painel faz. */
 
 
-const CHAMAR_RB = (metodo: string, caminho: string, corpo?: unknown) => `(async () => {
-  const m = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/);
-  const r = await fetch(${JSON.stringify(caminho)}, {
-    method: ${JSON.stringify(metodo)}, credentials: 'include',
-    headers: { 'Accept': 'application/json, text/plain, */*', 'Content-Type': 'application/json', ...(m ? { 'X-XSRF-TOKEN': decodeURIComponent(m[1]) } : {}) },
-    ${corpo === undefined ? '' : `body: ${JSON.stringify(JSON.stringify(corpo))},`}
-  });
-  const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch {}
-  return { status: r.status, url: r.url, json: j, texto: t.slice(0, 500) };
+export const CHAMAR_RB = (metodo: string, caminho: string, corpo?: unknown) => `(async () => {
+  /* O painel manda o X-XSRF-TOKEN lido do cookie XSRF-TOKEN. Pode haver mais de um cookie
+     com esse nome (caminhos diferentes): tenta cada um e, por fim, sem o cabeçalho. */
+  const tokens = document.cookie.split('; ').filter(c => c.startsWith('XSRF-TOKEN=')).map(c => decodeURIComponent(c.slice(11)));
+  const tentativas = [...tokens.map(t => ({ 'X-XSRF-TOKEN': t })), {}];
+  let ultimo = null;
+  for (const extra of tentativas) {
+    const r = await fetch(${JSON.stringify(caminho)}, {
+      method: ${JSON.stringify(metodo)}, credentials: 'include',
+      headers: { 'Accept': 'application/json, text/plain, */*', 'Content-Type': 'application/json', ...extra },
+      ${corpo === undefined ? '' : `body: ${JSON.stringify(JSON.stringify(corpo))},`}
+    });
+    const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch {}
+    ultimo = { status: r.status, url: r.url, json: j, texto: t.slice(0, 500), tokens: tokens.length };
+    if (!/invalid-header/.test(t)) return ultimo;
+  }
+  return ultimo;
 })()`;
 
 type Resp = { status: number; url: string; json: unknown; texto: string };
@@ -315,25 +338,27 @@ export async function viaRegistroBr(nav: Navegador, plano: Plano, ate: number, a
   const d = plano.dominio;
   const passo = (detalhe: string) => aoPassar({ quando: new Date().toISOString(), acao: 'registro.br', detalhe });
   const chamar = (m: string, c: string, corpo?: unknown) => nav.avaliar<Resp>(CHAMAR_RB(m, c, corpo));
-  const sessaoCaiu = (r: Resp) => r.status === 401 || /\/login\//.test(r.url);
+  // deno-lint-ignore no-explicit-any
+  const sessaoCaiu = (r: Resp) => r.status === 401 || /\/login\//.test(r.url) || /session:(required|expired)/.test(JSON.stringify((r.json as any)?.messages ?? ''));
+  const nada = async (motivo: string) => { await aoPassar({ quando: new Date().toISOString(), acao: 'erro', detalhe: `registro.br direto: ${motivo}` }); return null; };
 
   const url = await nav.avaliar<string>('location.href').catch(() => '');
-  if (!/registro\.br/.test(url)) return null;
+  if (!/registro\.br/.test(url)) return nada(`a janela está em ${url}`);
 
   await passo('Abrindo o domínio na sua conta');
   const info = await chamar('GET', `/v2/ajax/domain/${d}`);
   if (sessaoCaiu(info)) return { tipo: 'precisa_cliente', mensagem: 'A sua sessão do Registro.br saiu. Entre de novo na janela abaixo.' };
   if (info.status === 404 || info.status === 403) return { tipo: 'falhou', motivo: `O domínio ${d} não aparece nesta conta do Registro.br. Entre com a conta que é dona do domínio.` };
-  if (info.status !== 200 || !info.json) return null;
+  if (info.status !== 200 || !info.json) return nada(`domínio respondeu ${info.status}: ${info.texto.slice(0, 150)}`);
   const status = String(campo(info.json, 'FreeDNSStatus') ?? '');
   if (status === 'not-using') return { tipo: 'falhou', motivo: 'Este domínio usa servidores DNS de outro lugar, não os do Registro.br. A mudança tem de ser feita onde o DNS está.' };
-  if (campo(info.json, 'CanEditFreeDNS') === false) return null;
+  if (campo(info.json, 'CanEditFreeDNS') === false) return nada('CanEditFreeDNS = false');
 
   if (status === 'basic') {
     await passo('Ligando o modo avançado do DNS (pedido do próprio Registro.br)');
     const r = await chamar('PUT', `/v2/ajax/domain/${d}/freedns-advanced`);
     if (sessaoCaiu(r)) return { tipo: 'precisa_cliente', mensagem: 'A sua sessão do Registro.br saiu. Entre de novo na janela abaixo.' };
-    if (r.status >= 300) return null;
+    if (r.status >= 300) return nada(`modo avançado respondeu ${r.status}: ${r.texto.slice(0, 150)}`);
   }
 
   /* Em transição o painel não deixa editar: espera, como pede o aviso deles. */

@@ -82,6 +82,11 @@ export class Navegador {
     const r = await this.enviar<{ result: { value: T }; exceptionDetails?: unknown }>('Runtime.evaluate', {
       expression: expressao, returnByValue: true, awaitPromise: true,
     });
+    if (r.exceptionDetails) {
+      // deno-lint-ignore no-explicit-any
+      const d = r.exceptionDetails as any;
+      throw new Error(`na página: ${d?.exception?.description ?? d?.text ?? 'erro'}`.slice(0, 300));
+    }
     return r.result?.value as T;
   }
 
