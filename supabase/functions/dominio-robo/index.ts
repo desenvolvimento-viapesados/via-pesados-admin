@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { Navegador } from '../_shared/cdp.ts';
-import { trabalhar, type Plano } from '../_shared/robo-dns.ts';
+import { parecePainel, trabalhar, viaRegistroBr, type Plano } from '../_shared/robo-dns.ts';
 
 /**
  * O robô da conexão de domínio (23/11/2026). PÚBLICA: autentica pelo token do link
@@ -36,10 +36,10 @@ const ENTRADA: Record<string, { url: string; barra?: boolean }> = {
   GoDaddy: { url: 'https://dcc.godaddy.com/control/portfolio' },
   Hostinger: { url: 'https://hpanel.hostinger.com/domains' },
   Cloudflare: { url: 'https://dash.cloudflare.com/' },
-  KingHost: { url: 'https://painel.kinghost.com.br/', barra: true },
-  Locaweb: { url: 'https://www.locaweb.com.br/', barra: true },
-  HostGator: { url: 'https://www.hostgator.com.br/', barra: true },
-  'UOL Host': { url: 'https://www.uolhost.uol.com.br/', barra: true },
+  KingHost: { url: 'https://painel.kinghost.com.br/login.php' },
+  Locaweb: { url: 'https://centraldocliente.locaweb.com.br/' },
+  HostGator: { url: 'https://cliente.hostgator.com.br/' },
+  'UOL Host': { url: 'https://painelhost.uol.com.br/myProducts.html', barra: true },
   Namecheap: { url: 'https://ap.www.namecheap.com/domains/list/' },
   Wix: { url: 'https://manage.wix.com/account/domains' },
 };
@@ -74,11 +74,17 @@ async function rodar(db: Db, id: string, token: string, plano: Plano) {
     await nav.prenderAba();
     await nav.ir(entrada.url);
 
-    const dbg = await (await fetch(`${BB}/sessions/${sessao}/debug`, { headers: h })).json();
-    const base = String(dbg?.debuggerFullscreenUrl ?? '');
-    const live = base && !entrada.barra ? `${base}${base.includes('?') ? '&' : '?'}navbar=false` : base;
+    /* A janela ao vivo é por aba: quando o painel abre outra, a janela passa a mostrar a nova. */
+    const atualizarJanela = async () => {
+      const dbg = await (await fetch(`${BB}/sessions/${sessao}/debug`, { headers: h })).json().catch(() => null);
+      const pagina = (dbg?.pages ?? []).find((p: { id: string }) => p.id === nav?.alvo);
+      const base = String(pagina?.debuggerFullscreenUrl ?? dbg?.debuggerFullscreenUrl ?? '');
+      const live = base && !entrada.barra ? `${base}${base.includes('?') ? '&' : '?'}navbar=false` : base;
+      if (live) await gravar({ live_url: live });
+    };
+    await atualizarJanela();
     await gravar({
-      sessao, live_url: live, estado: 'login',
+      sessao, estado: 'login',
       mensagem: plano.provedor
         ? `Entre na sua conta do ${plano.provedor} na janela abaixo. Depois toque em "Já entrei".`
         : 'Abra o site onde o seu domínio é administrado, entre na sua conta e toque em "Já entrei".',
@@ -86,18 +92,29 @@ async function rodar(db: Db, id: string, token: string, plano: Plano) {
 
     const historico: string[] = [];
     for (;;) {
-      /* Espera o cliente entrar (ou desistir). */
+      /* Espera o cliente entrar (ou desistir). Percebe sozinho quando ele sai da tela de
+         senha e cai no painel; o botão "Já entrei" adianta. */
+      let viuSenha = false;
+      let noPainel = 0;
       for (;;) {
         if (Date.now() > ate) throw new Error('O tempo da janela acabou. Tente de novo: é rapidinho.');
         const { data: r } = await db.from('dominio_robo').select('cliente_pronto, parar').eq('id', id).maybeSingle();
         if (r?.parar) { await gravar({ estado: 'parado', mensagem: 'Parado.' }); return; }
         if (r?.cliente_pronto) break;
+        if (await nav.seguirAbaNova().catch(() => false)) await atualizarJanela();
+        const temSenha = await nav.avaliar<boolean>(`!!document.querySelector('input[type=password]')`).catch(() => false);
+        if (temSenha) viuSenha = true;
+        noPainel = viuSenha && (await parecePainel(nav)) ? noPainel + 1 : 0;
+        if (noPainel >= 3) break;
         await pausa(2000);
       }
       await gravar({ estado: 'trabalhando', mensagem: 'O robô está fazendo as mudanças. Não precisa mexer na janela.', cliente_pronto: false });
-      const fim = await trabalhar(nav, plano, ate, passou, historico);
+      /* Registro.br: o caminho direto (o mesmo do botão "Salvar alterações"); se algo
+         não bater com o esperado, segue olhando a tela. */
+      const direto = plano.provedor === 'Registro.br' ? await viaRegistroBr(nav, plano, ate, passou).catch(() => null) : null;
+      const fim = direto ?? await trabalhar(nav, plano, ate, passou, atualizarJanela, historico);
       if (fim.tipo === 'precisa_cliente') {
-        await gravar({ estado: 'login', mensagem: `${fim.mensagem} Depois toque em "Já entrei".` });
+        await gravar({ estado: 'login', mensagem: `${fim.mensagem} Depois toque em "Já entrei".`, cliente_pronto: false });
         continue;
       }
       if (fim.tipo === 'feito') {

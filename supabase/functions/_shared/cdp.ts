@@ -53,8 +53,27 @@ export class Navegador {
     }
     const { sessionId } = await this.enviar<{ sessionId: string }>('Target.attachToTarget', { targetId: pagina.targetId, flatten: true }, false);
     this.sessao = sessionId;
+    this.alvoAtual = pagina.targetId;
     await this.enviar('Page.enable');
     await this.enviar('Runtime.enable');
+  }
+
+  private alvoAtual = '';
+  get alvo() { return this.alvoAtual; }
+
+  /** Se o painel abriu outra aba (link com target=_blank, janela de login), passa para ela. */
+  async seguirAbaNova(): Promise<boolean> {
+    const { targetInfos } = await this.enviar<{ targetInfos: { targetId: string; type: string; url: string }[] }>('Target.getTargets', {}, false);
+    const paginas = targetInfos.filter((t) => t.type === 'page' && !t.url.startsWith('devtools://'));
+    const ultima = paginas[paginas.length - 1];
+    if (!ultima || ultima.targetId === this.alvoAtual) return false;
+    const { sessionId } = await this.enviar<{ sessionId: string }>('Target.attachToTarget', { targetId: ultima.targetId, flatten: true }, false);
+    this.sessao = sessionId;
+    this.alvoAtual = ultima.targetId;
+    await this.enviar('Page.enable');
+    await this.enviar('Runtime.enable');
+    await this.enviar('Target.activateTarget', { targetId: ultima.targetId }, false).catch(() => null);
+    return true;
   }
 
   async ir(url: string) { await this.enviar('Page.navigate', { url }); }
