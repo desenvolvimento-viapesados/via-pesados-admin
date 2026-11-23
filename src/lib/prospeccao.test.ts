@@ -4,7 +4,8 @@ import {
   pediuParaSair, nomeFalado, paramDaMeta, textoDeReserva, pareceLojaDePesados,
   canalDa, REGRAS_DO_CANAL, nomeDaLojaNaMensagem, textoDoModelo, pediuParaVer, BOTAO_VER, BOTAO_CONHECER, BOTAO_SAIR, BOTAO_BORA, MODELO_UNICO,
   MODELO_SIMPLES, MODELO_SIMPLES_NOME, MODELOS_DE_RESERVA, MODELOS_DA_PROSPECCAO, ROTULO_DO_VIDEO,
-  primeiroNomeDoVendedor, sequenciaDaProspeccao,
+  primeiroNomeDoVendedor, sequenciaDaProspeccao, MODELO_FILME, CADENCIA, passosDaCadencia, proximaMensagemDaCadencia,
+  proximaDataDaCadencia, veiculoDaLoja, videoDoPasso, MODELO_RETOMADA,
   lojaDepoisDaFalha, falhaDaConta, FALHAS_QUE_DESLIGAM, motivoParaDesligar, VIDEO_DO_MODELO,
 } from '../../supabase/functions/_shared/prospeccao-regras';
 import { MODELOS } from '../../supabase/functions/_shared/modelos';
@@ -316,8 +317,8 @@ describe('prospecção pelo número oficial', () => {
     expect(canalDa(null)).toBe('evolution');
   });
 
-  it('um contato só por loja, começando em 120 por dia e subindo 10 por semana (dono, 12/11)', () => {
-    expect(REGRAS_DO_CANAL.oficial.maxContatos).toBe(1);
+  it('a cadência por loja (23/11), começando em 120 por dia e subindo 10 por semana (dono, 12/11)', () => {
+    expect(REGRAS_DO_CANAL.oficial.maxContatos).toBe(passosDaCadencia().length);
     const ini = new Date('2026-11-03T13:00:00Z');
     expect(limiteDoDia(200, ini, ini, 'oficial')).toBe(120);
     expect(limiteDoDia(200, ini, new Date('2026-11-11T13:00:00Z'), 'oficial')).toBe(130);
@@ -327,7 +328,7 @@ describe('prospecção pelo número oficial', () => {
   });
 
   it('a mensagem do vídeo existe (com e sem o nome), de marketing; as três de antes ficam de reserva; o antigo com teste grátis não sai mais', () => {
-    expect([...MODELOS_DA_PROSPECCAO]).toEqual([MODELO_UNICO]);
+    expect(MODELOS_DA_PROSPECCAO[0]).toBe(MODELO_FILME);
     for (const m of MODELOS_DA_PROSPECCAO) expect(modelo(m)?.category, m).toBe('MARKETING');
     for (const m of MODELOS_DE_RESERVA) {
       expect(modelo(m)?.category, m).toBe('MARKETING'); // a conta nova recria
@@ -345,7 +346,8 @@ describe('prospecção pelo número oficial', () => {
   });
 
   it('o filme (17/11): o texto do dono, palavra por palavra, sem rodapé, com "Quero conhecer" e "Não tenho interesse"', () => {
-    expect(MODELOS_DA_PROSPECCAO).toEqual([MODELO_UNICO]);
+    expect(corpo(MODELO_FILME)).toBe('O único sistema do Brasil feito para lojas de veículos pesados.\n\nAutomatize suas publicações com o Via Pesados: cadastre uma vez e publique em todos os canais.');
+    expect(botoes(MODELO_FILME).map((b) => b.text)).toEqual([BOTAO_CONHECER, BOTAO_SAIR]);
     expect(corpo(MODELO_UNICO)).toBe('O único sistema do Brasil feito para lojas de veículos pesados.\n\nAutomatize suas publicações com a Via Pesados: cadastre uma vez e publique em todos os canais.');
     const topo = modelo(MODELO_UNICO).components.find((c) => c.type === 'HEADER') as unknown as { format: string; example: { header_url: string[] } };
     expect(topo.format).toBe('VIDEO');
@@ -371,7 +373,7 @@ describe('prospecção pelo número oficial', () => {
 
   it('nenhuma mensagem fala de teste grátis, de prazo, nem de oferta (a Black Friday fica só no vídeo, que troca sem aprovação)', () => {
     for (const m of [...MODELOS_DA_PROSPECCAO, ...MODELOS_DE_RESERVA]) {
-      expect(corpo(m)).not.toMatch(/gr[áa]tis|gratuit|teste|testar|amostra/i);
+      expect(corpo(m), m).not.toMatch(/gr[áa]tis|gratuit|teste|testar|amostra/i);
       expect(corpo(m)).not.toMatch(/\d+ dias/);
     }
     for (const m of MODELOS_DA_PROSPECCAO) expect(corpo(m)).not.toMatch(/oferta|black|novembro|R\$|desconto|promo/i);
@@ -380,7 +382,7 @@ describe('prospecção pelo número oficial', () => {
   it('a sequência: uma mensagem só, o filme, a mesma para toda loja', () => {
     const comVendedor = sequenciaDaProspeccao({ nome: 'Hohl Máquinas Agrícolas - John Deere', dados: { contato: 'vendedor: Marcelo Cristo' } });
     const daLoja = sequenciaDaProspeccao({ nome: 'TREDIESEL CAMINHÕES LTDA', dados: { contato: 'loja' } });
-    for (const s of [comVendedor, daLoja]) expect(s).toEqual([{ modelo: MODELO_UNICO, params: [], video: true, botoes: true }]);
+    for (const s of [comVendedor, daLoja]) expect(s).toEqual([{ modelo: MODELO_FILME, params: [], video: true, botoes: true }]);
     expect(textoDoModelo(corpo(MODELO_SIMPLES_NOME), ['Marcelo'])).toMatch(/^Fala, Marcelo! Já imaginou/);
     expect(ROTULO_DO_VIDEO.startsWith('[vídeo')).toBe(true); // é por aqui que o Davi reconhece a prospecção
     expect(ROTULO_DO_VIDEO).not.toMatch(/Black Friday/); // o filme não promete oferta
@@ -443,5 +445,61 @@ describe('prospecção pelo número oficial', () => {
     expect(motivoParaDesligar('YELLOW', 'CONNECTED')).toContain('amarelo');
     expect(motivoParaDesligar('RED', 'CONNECTED')).toContain('vermelho');
     expect(motivoParaDesligar('GREEN', 'FLAGGED')).toContain('FLAGGED');
+  });
+});
+
+
+/* A cadência de 21 dias (playbook de 18/11/2026, ligada em 23/11/2026). */
+describe('a cadência da prospecção fria', () => {
+  const corpoDe = (nome: string) => String(MODELOS.find((m) => m.name === nome)?.components.find((c) => c.type === 'BODY')?.text ?? '');
+  const temVideo = (nome: string) => !!MODELOS.find((m) => m.name === nome)?.components.find((c) => c.type === 'HEADER');
+  const loja = { nome: 'TREDIESEL CAMINHÕES LTDA', dados: { tipo: 'Caminhões' } };
+
+  it('na ordem do playbook; sem os vídeos de vendas e de relatórios, esses dois não saem', () => {
+    expect(CADENCIA.map((p) => p.dia)).toEqual([1, 4, 7, 10, 13, 16, 19, 21]);
+    expect(passosDaCadencia().map((p) => p.modelo)).toEqual([
+      MODELO_FILME, 'cadencia_canais', 'cadencia_vendeu', 'cadencia_atendimento', 'cadencia_definicao', 'cadencia_encerramento',
+    ]);
+    for (const p of passosDaCadencia()) expect((MODELOS_DA_PROSPECCAO as readonly string[]).includes(p.modelo), p.modelo).toBe(true);
+    expect((MODELOS_DA_PROSPECCAO as readonly string[]).includes(MODELO_RETOMADA)).toBe(true);
+  });
+
+  it('cada passo manda as variáveis e o vídeo que o modelo pede', () => {
+    for (const p of [...passosDaCadencia(), { modelo: MODELO_RETOMADA, video: false }]) {
+      expect(temVideo(p.modelo), p.modelo).toBe(p.video);
+      expect(videoDoPasso(p.modelo), p.modelo).toBe(p.video ? VIDEO_DO_MODELO : null);
+    }
+    for (let feitos = 1; feitos <= passosDaCadencia().length; feitos++) {
+      const m = proximaMensagemDaCadencia({ ...loja, contatos: feitos });
+      const vars = (corpoDe(m.modelo).match(/\{\{\d+\}\}/g) ?? []).length;
+      expect(m.params.length, m.modelo).toBe(vars);
+      expect(textoDoModelo(corpoDe(m.modelo), m.params), m.modelo).not.toMatch(/\{\{/);
+    }
+  });
+
+  it('do filme em diante, um passo por vez; no fim, a retomada; quem adiou também', () => {
+    expect(proximaMensagemDaCadencia({ ...loja, contatos: 1 }).modelo).toBe('cadencia_canais');
+    expect(proximaMensagemDaCadencia({ ...loja, contatos: 1 }).params).toEqual(['Trediesel Caminhões', 'caminhão']);
+    expect(proximaMensagemDaCadencia({ ...loja, contatos: 2 }).modelo).toBe('cadencia_vendeu');
+    expect(proximaMensagemDaCadencia({ ...loja, contatos: 5 }).modelo).toBe('cadencia_encerramento');
+    const fim = proximaMensagemDaCadencia({ ...loja, contatos: 6 });
+    expect([fim.modelo, fim.retomada]).toEqual([MODELO_RETOMADA, true]);
+    expect(proximaMensagemDaCadencia({ ...loja, contatos: 2, respondeu_em: '2026-11-20T12:00:00Z' }).modelo).toBe(MODELO_RETOMADA);
+  });
+
+  it('o veículo no masculino: máquina vira equipamento', () => {
+    expect(veiculoDaLoja({ nome: 'x', dados: { tipo: 'Máquinas e tratores' } })).toBe('equipamento');
+    expect(veiculoDaLoja({ nome: 'x', dados: { tipo: 'Implementos e carretas' } })).toBe('implemento');
+    expect(veiculoDaLoja({ nome: 'x', dados: { tipo: 'Ônibus' } })).toBe('ônibus');
+    expect(veiculoDaLoja({ nome: 'x', dados: {} })).toBe('caminhão');
+  });
+
+  it('as datas: a distância entre os dias do playbook, em dia útil; 90 dias depois do fim; nada depois da retomada', () => {
+    const seg = new Date('2026-11-23T13:00:00Z'); // segunda 10h
+    expect(proximaDataDaCadencia(1, seg, false, () => 0)!.toISOString()).toBe('2026-11-26T12:00:00.000Z'); // +3: quinta 09h
+    expect(proximaDataDaCadencia(2, seg, false, () => 0)!.toISOString()).toBe('2026-11-30T12:00:00.000Z'); // +6: domingo → segunda
+    expect(proximaDataDaCadencia(5, seg, false, () => 0)!.toISOString()).toBe('2026-11-25T12:00:00.000Z'); // dia 19 → 21: +2
+    expect(proximaDataDaCadencia(6, seg, false, () => 0)!.getTime()).toBeGreaterThan(seg.getTime() + 89 * 86_400_000);
+    expect(proximaDataDaCadencia(6, seg, true)).toBeNull();
   });
 });

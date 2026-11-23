@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { conferirParams } from '../../supabase/functions/_shared/conferirParams.ts';
 import { MODELOS } from '../../supabase/functions/_shared/modelos.ts';
-import { sequenciaDaProspeccao, VIDEO_DO_MODELO } from '../../supabase/functions/_shared/prospeccao-regras.ts';
+import { proximaMensagemDaCadencia, sequenciaDaProspeccao, VIDEO_DO_MODELO } from '../../supabase/functions/_shared/prospeccao-regras.ts';
 
 /**
  * Os onze modelos aprovados e o que cada gatilho manda neles.
@@ -86,6 +86,11 @@ const GATILHOS: Record<string, Parameters<typeof conferirParams>[1]> = {
   ...Object.fromEntries(
     sequenciaDaProspeccao({ nome: 'Claudir Caminhões', dados: { contato: 'vendedor: Marcelo' } })
       .concat(sequenciaDaProspeccao({ nome: 'Claudir Caminhões', dados: { contato: 'loja' } }).slice(0, 1))
+      .map((m) => [m.modelo, { ...(m.video ? { video: { link: VIDEO_DO_MODELO } } : {}), ...(m.params.length ? { body: m.params } : {}) }]),
+  ),
+  // prospeccao-enviar, a cadência (proximaMensagemDaCadencia), de cada passo e da retomada
+  ...Object.fromEntries(
+    [1, 2, 3, 4, 5, 6].map((feitos) => proximaMensagemDaCadencia({ nome: 'Claudir Caminhões', dados: { tipo: 'Máquinas e tratores' }, contatos: feitos }))
       .map((m) => [m.modelo, { ...(m.video ? { video: { link: VIDEO_DO_MODELO } } : {}), ...(m.params.length ? { body: m.params } : {}) }]),
   ),
 };

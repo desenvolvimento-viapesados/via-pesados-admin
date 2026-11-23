@@ -8,7 +8,7 @@ import {
   PERGUNTA_DA_DOR, PERGUNTA_DA_DOR_DEPOIS_DE_MARCAR, PERGUNTA_DO_EXEMPLO_DA_DOR, perguntasDeDor, respostaVagaDaDor, temDorConcreta,
   leadNaoEODono,
 } from '../_shared/assistente-regras.ts';
-import { type ModeloRespondido, pediuOutroMomento, ultimoModeloRespondido } from '../_shared/prospeccao-regras.ts';
+import { type ModeloRespondido, pediuOutroMomento, proximaDataDaCadencia, ultimoModeloRespondido } from '../_shared/prospeccao-regras.ts';
 import {
   type ArgsRegistrar, type Conversa, type Mensagem,
   adiarLoja, aplicarRegistro, carregarConversa, conversaAdiada, chamarClaude, chamarXavier, chaveDaIA, concluirTurno, dormir, encerrarConversa,
@@ -314,8 +314,14 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
   const robo = lerRespostasAutomaticas(msgs);
   if (robo.novasSaoRobo) {
     if (!robo.humanoJaFalou && e.loja_id) {
+      /* 23/11/2026: robô não tira a loja da cadência; o próximo passo sai na data de sempre,
+         contada da última mensagem nossa (a entrada da mensagem tinha apagado a data). */
+      const { data: lj } = await db.from('prospeccao_lojas').select('contatos, ultimo_contato_em').eq('id', e.loja_id).maybeSingle();
+      const proxima = lj?.contatos
+        ? proximaDataDaCadencia(lj.contatos, lj.ultimo_contato_em ? new Date(lj.ultimo_contato_em) : new Date())
+        : null;
       await db.from('prospeccao_lojas').update({
-        status: 'sem_resposta', respondeu_em: null, proximo_contato_em: null, atualizada_em: new Date().toISOString(),
+        status: 'sem_resposta', respondeu_em: null, proximo_contato_em: proxima?.toISOString() ?? null, atualizada_em: new Date().toISOString(),
         motivo: 'Só a resposta automática da loja respondeu (saudação, menu ou robô).',
       }).eq('id', e.loja_id).in('status', ['conversando', 'em_contato', 'sem_resposta']);
     }

@@ -53,7 +53,7 @@ export async function aoChegarMensagem(db: Db, instanciaId: string, telefone: st
 export async function aoFalharEntrega(db: Db, ids: string[], codigo: string, motivo: string) {
   if (!ids.length) return;
   const { data: envio } = await db.from('prospeccao_envios')
-    .select('id, loja_id, tipo').in('provider_message_id', ids).in('tipo', ['contato', 'oferta', 'cta']).limit(1).maybeSingle();
+    .select('id, loja_id, tipo').in('provider_message_id', ids).in('tipo', ['contato', 'oferta', 'cta', 'cadencia', 'retomada']).limit(1).maybeSingle();
   if (!envio) return;
   const agora = new Date().toISOString();
   await db.from('prospeccao_envios').update({ erro: `${codigo ? `[${codigo}] ` : ''}${motivo}`.slice(0, 400) }).eq('id', envio.id);

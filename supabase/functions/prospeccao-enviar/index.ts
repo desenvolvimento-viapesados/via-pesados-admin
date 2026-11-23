@@ -5,7 +5,7 @@ import {
 } from '../_shared/prospeccao.ts';
 import {
   canalDa, ehCelular, falhaDaConta, intervaloSorteado, limiteDoDia, MODELOS_DA_PROSPECCAO, NOME_DA_MENSAGEM, podeEnviarAgora, proximoContato,
-  STATUS_NA_META,
+  proximaDataDaCadencia, proximaMensagemDaCadencia, STATUS_NA_META,
   REGRAS_DO_CANAL, variantes,
 } from '../_shared/prospeccao-regras.ts';
 import { modeloAprovado, statusDoModelo } from '../_shared/wa.ts';
@@ -55,10 +55,14 @@ Deno.serve(async () => {
     const canal = canalDa(escolhido?.origem);
     const { maxContatos } = REGRAS_DO_CANAL[canal];
 
-    /* Quem recebeu todos os contatos do canal e não respondeu sai da fila de envio. */
-    await db.from('prospeccao_lojas')
-      .update({ status: 'sem_resposta', proximo_contato_em: null, atualizada_em: agora.toISOString() })
-      .eq('status', 'em_contato').gte('contatos', maxContatos).lte('proximo_contato_em', agora.toISOString());
+    /* Quem recebeu todos os contatos do canal e não respondeu sai da fila de envio. No oficial
+       (cadência de 23/11/2026) quem decide é proximaMensagemDaCadencia: depois do dia 21 vem a
+       retomada, na data já marcada. */
+    if (canal !== 'oficial') {
+      await db.from('prospeccao_lojas')
+        .update({ status: 'sem_resposta', proximo_contato_em: null, atualizada_em: agora.toISOString() })
+        .eq('status', 'em_contato').gte('contatos', maxContatos).lte('proximo_contato_em', agora.toISOString());
+    }
 
     if (!podeEnviarAgora(agora)) return json(200, { ok: true, fora_do_horario: true });
 
@@ -95,7 +99,7 @@ Deno.serve(async () => {
     if (cfg.proximo_envio_em && new Date(cfg.proximo_envio_em) > agora) return json(200, { ok: true, aguardando: cfg.proximo_envio_em });
 
     const { count: hoje } = await db.from('prospeccao_envios').select('id', { count: 'exact', head: true })
-      .eq('tipo', 'contato').is('erro', null).gte('enviada_em', inicioDoDiaBRT(agora));
+      .in('tipo', ['contato', 'cadencia', 'retomada']).is('erro', null).gte('enviada_em', inicioDoDiaBRT(agora));
     const teto = limiteDoDia(cfg.limite_dia, cfg.ligado_desde ? new Date(cfg.ligado_desde) : null, agora, canal);
     if ((hoje ?? 0) >= teto) return json(200, { ok: true, teto_do_dia: teto });
 
@@ -121,16 +125,36 @@ Deno.serve(async () => {
       }
     }
 
-    /* A vez: lembrete vencido primeiro, depois loja nova pronta. */
-    let { data: loja } = await db.from('prospeccao_lojas').select('*')
-      .eq('status', 'em_contato').lt('contatos', maxContatos).lte('proximo_contato_em', agora.toISOString())
-      .order('proximo_contato_em').limit(1).maybeSingle();
+    /* A vez. No oficial (23/11/2026), a cadência e as lojas novas se revezam: o acompanhamento
+       vencido sai enquanto não passar das lojas novas do dia; sem loja nova na fila, só ele.
+       No QR code, lembrete vencido primeiro, depois loja nova pronta. */
+    let loja: Record<string, any> | null = null;
+    let seguimento = false;
+    if (canal === 'oficial') {
+      const { data: vencida } = await db.from('prospeccao_lojas').select('*')
+        .in('status', ['em_contato', 'sem_resposta']).gte('contatos', 1).lte('proximo_contato_em', agora.toISOString())
+        .order('proximo_contato_em').limit(1).maybeSingle();
+      if (vencida) {
+        const contar = (tipos: string[]) => db.from('prospeccao_envios').select('id', { count: 'exact', head: true })
+          .in('tipo', tipos).is('erro', null).gte('enviada_em', inicioDoDiaBRT(agora));
+        const [{ count: novos }, { count: seguidos }, { count: prontas }] = await Promise.all([
+          contar(['contato']), contar(['cadencia', 'retomada']),
+          db.from('prospeccao_lojas').select('id', { count: 'exact', head: true }).eq('status', 'pronta'),
+        ]);
+        if ((seguidos ?? 0) <= (novos ?? 0) || !(prontas ?? 0)) { loja = vencida; seguimento = true; }
+      }
+    } else {
+      ({ data: loja } = await db.from('prospeccao_lojas').select('*')
+        .eq('status', 'em_contato').lt('contatos', maxContatos).lte('proximo_contato_em', agora.toISOString())
+        .order('proximo_contato_em').limit(1).maybeSingle());
+    }
     if (!loja) {
       /* "Mandar o vídeo" marcado na ligação passa na frente da fila. */
       ({ data: loja } = await db.from('prospeccao_lojas').select('*')
         .eq('status', 'pronta').order('enviar_logo', { ascending: false }).order('criada_em').limit(1).maybeSingle());
     }
     if (!loja) return json(200, { ok: true, fila_vazia: true });
+    const lojaDaVez = loja;
 
     /* Pega a loja: duas rodadas ao mesmo tempo não mandam para a mesma. */
     const { data: pega } = await db.from('prospeccao_lojas')
@@ -142,7 +166,10 @@ Deno.serve(async () => {
     /* Na hora de mandar, confere de novo: se a pessoa escreveu para qualquer
        número nosso desde que entrou na fila, não é mais prospecção fria. */
     const tel = loja.telefone_whatsapp ?? loja.telefone;
-    const { data: conversas } = await db.from('wa_conversas').select('id').in('telefone', [...variantes(tel), ...variantes(loja.telefone)]);
+    /* No acompanhamento não: quem respondeu de verdade já saiu da cadência pelo status
+       (conversando), e o robô da loja respondendo não conta (dono, 17/11/2026). */
+    const { data: conversas } = seguimento ? { data: [] as { id: string }[] }
+      : await db.from('wa_conversas').select('id').in('telefone', [...variantes(tel), ...variantes(loja.telefone)]);
     if (conversas?.length) {
       const { count: entrou } = await db.from('wa_mensagens').select('id', { count: 'exact', head: true })
         .in('conversa_id', conversas.map((c) => c.id)).eq('direcao', 'entrada').gte('created_at', loja.criada_em);
@@ -156,9 +183,10 @@ Deno.serve(async () => {
 
     const numero = (loja.contatos ?? 0) + 1;
     let texto: string, por: string;
+    const passo = seguimento ? proximaMensagemDaCadencia(lojaDaVez as never) : null;
     if (canal === 'oficial') {
-      ({ texto } = mensagensDaProspeccao(loja));
-      por = 'modelo';
+      ({ texto } = mensagensDaProspeccao(loja as never, passo ? [passo] : undefined));
+      por = passo ? passo.modelo : 'modelo';
     } else {
       const { data: anteriores } = await db.from('prospeccao_envios').select('texto')
         .eq('loja_id', loja.id).eq('tipo', 'contato').is('erro', null).order('enviada_em');
@@ -174,7 +202,25 @@ Deno.serve(async () => {
         proximo_contato_em: proximoContato(numero, agora).toISOString(),
         conversa_id: conversaId ?? loja.conversa_id, travada_ate: null, atualizada_em: agora.toISOString(),
       });
-      if (canal === 'oficial') {
+      if (canal === 'oficial' && passo) {
+        /* Um passo da cadência (ou a retomada): a loja segue "em contato" com a data do próximo;
+           depois da retomada, fica "sem resposta" sem data (acabou). */
+        const tipo = passo.retomada ? 'retomada' : 'cadencia';
+        const depois = (conversaId: string | null) => ({
+          status: passo.retomada ? 'sem_resposta' : 'em_contato', contatos: numero,
+          ultimo_contato_em: agora.toISOString(),
+          proximo_contato_em: proximaDataDaCadencia(numero, agora, passo.retomada)?.toISOString() ?? null,
+          ...(passo.retomada ? { motivo: `Retomada enviada em ${agora.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}.` } : {}),
+          conversa_id: conversaId ?? lojaDaVez.conversa_id, travada_ate: null, atualizada_em: agora.toISOString(),
+        });
+        ({ conversa_id, provider_id } = await enviarSequenciaEGravar(db, inst, tel, lojaDaVez as never, `${passo.modelo}:${lojaDaVez.id}:${numero}`,
+          async (e) => {
+            await db.from('prospeccao_envios').insert({
+              loja_id: lojaDaVez.id, tipo: e.tipo, numero, texto: e.texto, provider_message_id: e.provider_id, erro: e.erro?.slice(0, 400) ?? null,
+            });
+            if (e.tipo === tipo) await db.from('prospeccao_lojas').update(depois(e.conversa_id)).eq('id', lojaDaVez.id);
+          }, { sequencia: [passo], tipo }));
+      } else if (canal === 'oficial') {
         const { count: tentativas } = await db.from('prospeccao_envios').select('id', { count: 'exact', head: true })
           .eq('loja_id', loja.id).eq('tipo', 'contato');
         /* Cada mensagem é registrada assim que sai (e a loja vira "em contato" com a abertura),
@@ -184,7 +230,11 @@ Deno.serve(async () => {
             await db.from('prospeccao_envios').insert({
               loja_id: loja.id, tipo: e.tipo, numero, texto: e.texto, provider_message_id: e.provider_id, erro: e.erro?.slice(0, 400) ?? null,
             });
-            if (e.tipo === 'contato') await db.from('prospeccao_lojas').update(emContato(e.conversa_id)).eq('id', loja.id);
+            if (e.tipo === 'contato') {
+              await db.from('prospeccao_lojas').update({
+                ...emContato(e.conversa_id), proximo_contato_em: proximaDataDaCadencia(numero, agora)?.toISOString() ?? null,
+              }).eq('id', lojaDaVez.id);
+            }
           }));
       } else {
         ({ conversa_id, provider_id } = await enviarEGravar(db, inst, tel, texto, loja.nome));
@@ -195,10 +245,12 @@ Deno.serve(async () => {
         proximo_envio_em: new Date(agora.getTime() + intervaloSorteado(cfg.intervalo_min, cfg.intervalo_max) * 60_000).toISOString(),
         erros_seguidos: 0, pausado_motivo: null, atualizado_em: agora.toISOString(),
       }).eq('id', 1);
-      return json(200, { ok: true, enviada: loja.id, contato: numero, texto_por: por });
+      return json(200, { ok: true, enviada: loja.id, contato: numero, texto_por: por, seguimento });
     } catch (e) {
       const erro = e instanceof Error ? e.message : String(e);
-      await db.from('prospeccao_envios').insert({ loja_id: loja.id, tipo: 'contato', numero, texto, erro: erro.slice(0, 400) });
+      await db.from('prospeccao_envios').insert({
+        loja_id: loja.id, tipo: passo ? (passo.retomada ? 'retomada' : 'cadencia') : 'contato', numero, texto, erro: erro.slice(0, 400),
+      });
       /* Falha da conta (saldo, chave) não é culpa da loja: ela fica na fila
          e tudo para na hora. Fora isso, no oficial a loja que falhou sai da
          fila (reativar devolve): sem isso, um número inválido seria tentado
@@ -206,7 +258,12 @@ Deno.serve(async () => {
       const daConta = falhaDaConta(erro);
       await db.from('prospeccao_lojas').update({
         travada_ate: null,
-        ...(canal === 'oficial' && !daConta ? { status: 'sem_whatsapp', motivo: `O envio falhou: ${erro.slice(0, 200)}`, atualizada_em: agora.toISOString() } : {}),
+        /* No acompanhamento a loja já recebeu o filme: o passo que falhou não tira ela da cadência
+           (sai de novo na próxima data); a falha fica no histórico de envios. */
+        ...(canal === 'oficial' && !daConta && passo ? {
+          proximo_contato_em: proximaDataDaCadencia(loja.contatos ?? 1, agora)?.toISOString() ?? null, atualizada_em: agora.toISOString(),
+        } : {}),
+        ...(canal === 'oficial' && !daConta && !passo ? { status: 'sem_whatsapp', motivo: `O envio falhou: ${erro.slice(0, 200)}`, atualizada_em: agora.toISOString() } : {}),
       }).eq('id', loja.id);
       const erros = (cfg.erros_seguidos ?? 0) + 1;
       await db.from('prospeccao_config').update({

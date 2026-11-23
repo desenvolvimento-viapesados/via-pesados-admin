@@ -12,7 +12,7 @@ import { evolution, paraEnvio } from './evolution.ts';
 import { MODELOS } from './modelos.ts';
 import {
   BUSCAS, grafiaDaConversa, motivoParaDesligar, nomeFalado, PAUSA_ENTRE_MENSAGENS_MS, pareceLojaDePesados, ROTULO_DO_VIDEO, sequenciaDaProspeccao,
-  telefoneBR, textoDeReserva, textoDoModelo, variantes, VIDEO_DO_MODELO, type LojaDoModelo, type MensagemDaSequencia,
+  telefoneBR, textoDeReserva, textoDoModelo, variantes, VIDEO_DO_MODELO, videoDoPasso, type LojaDoModelo, type MensagemDaSequencia,
 } from './prospeccao-regras.ts';
 import { enviarTemplate } from './wa.ts';
 import { configYCloud, enviarTextoPorYCloud, lerNumero } from './ycloud.ts';
@@ -294,8 +294,10 @@ export type MensagemPronta = MensagemDaSequencia & { texto: string };
  * os botões): o modelo com o vendedor no lugar da variável. Na caixa do CRM o vídeo vira o ROTULO_DO_VIDEO,
  * e é por ele ("[vídeo") que o Davi reconhece que a conversa começou pela prospecção.
  */
-export function mensagensDaProspeccao(loja: LojaDoModelo): { mensagens: MensagemPronta[]; texto: string } {
-  const mensagens = sequenciaDaProspeccao(loja).map((m) => {
+export function mensagensDaProspeccao(
+  loja: LojaDoModelo, sequencia: MensagemDaSequencia[] = sequenciaDaProspeccao(loja),
+): { mensagens: MensagemPronta[]; texto: string } {
+  const mensagens = sequencia.map((m) => {
     const corpo = textoDoModelo(corpoDo(m.modelo), m.params);
     return { ...m, texto: m.video ? `${ROTULO_DO_VIDEO}\n\n${corpo}` : corpo };
   });
@@ -310,15 +312,18 @@ export function mensagensDaProspeccao(loja: LojaDoModelo): { mensagens: Mensagem
  * A primeira que falhar para tudo (nada sai, a loja fica com o erro). Se a 2ª ou a 3ª falhar,
  * a abertura já saiu: a loja segue em contato e a falha volta em `falhas`.
  */
-export type EnvioDaSequencia = { tipo: 'contato' | 'oferta' | 'cta'; texto: string; provider_id: string | null; erro: string | null; conversa_id: string | null };
+export type TipoDoEnvio = 'contato' | 'oferta' | 'cta' | 'cadencia' | 'retomada';
+export type EnvioDaSequencia = { tipo: TipoDoEnvio; texto: string; provider_id: string | null; erro: string | null; conversa_id: string | null };
 
 export async function enviarSequenciaEGravar(
   db: Db, inst: Instancia, telefone: string, loja: LojaDoModelo, chave: string,
   /* Chamado logo depois de cada mensagem, antes da pausa: o registro tem de existir quando o
      aviso de falha de entrega da Meta chegar (ele chega em 1 ou 2 segundos). */
   aoEnviar: (e: EnvioDaSequencia) => Promise<void>,
+  /* 23/11/2026: a cadência manda um passo de cada vez (tipo 'cadencia' ou 'retomada'). */
+  opcoes: { sequencia?: MensagemDaSequencia[]; tipo?: TipoDoEnvio } = {},
 ): Promise<{ conversa_id: string; provider_id: string | null; texto: string }> {
-  const { mensagens, texto } = mensagensDaProspeccao(loja);
+  const { mensagens, texto } = mensagensDaProspeccao(loja, opcoes.sequencia);
   let conversaId = '';
   let providerAbertura: string | null = null;
   let aberturaAgendada = false;
@@ -326,7 +331,7 @@ export async function enviarSequenciaEGravar(
     if (i > 0) await new Promise((ok) => setTimeout(ok, PAUSA_ENTRE_MENSAGENS_MS));
     const r = await enviarTemplate(db, {
       para: telefone, template: m.modelo, chave: i === 0 ? chave : `${chave}:${i + 1}`,
-      params: { ...(m.video ? { video: { link: VIDEO_DO_MODELO } } : {}), ...(m.params.length ? { body: m.params } : {}) },
+      params: { ...(m.video ? { video: { link: videoDoPasso(m.modelo) ?? VIDEO_DO_MODELO } } : {}), ...(m.params.length ? { body: m.params } : {}) },
       /* A abertura saiu agora: a oferta e o convite não esperam a janela de amanhã (a loja pode
          pedir para sair à noite). Se a abertura ficou para as 08h, as três vão juntas, na ordem. */
       ...(i > 0 && !aberturaAgendada ? { validoAte: new Date(Date.now() + 2 * 60_000).toISOString() } : {}),
@@ -341,7 +346,7 @@ export async function enviarSequenciaEGravar(
     }
     if (ok) conversaId = await gravarNaCaixa(db, inst, telefone, m.texto, loja.nome, providerId) || conversaId;
     await aoEnviar({
-      tipo: i === 0 ? 'contato' : i === 1 ? 'oferta' : 'cta', texto: m.texto, provider_id: providerId,
+      tipo: i === 0 ? (opcoes.tipo ?? 'contato') : i === 1 ? 'oferta' : 'cta', texto: m.texto, provider_id: providerId,
       erro: ok ? null : motivo || 'falhou', conversa_id: conversaId || null,
     });
   }

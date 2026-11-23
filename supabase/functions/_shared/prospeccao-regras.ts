@@ -100,7 +100,8 @@ export type Canal = 'evolution' | 'oficial';
 
 export const REGRAS_DO_CANAL: Record<Canal, { maxContatos: number; tetoInicial: number; passoSemanal: number }> = {
   evolution: { maxContatos: MAX_CONTATOS, tetoInicial: 15, passoSemanal: 5 },
-  oficial: { maxContatos: 1, tetoInicial: 120, passoSemanal: 10 },
+  /* 23/11/2026: a cadência de 21 dias (CADENCIA, mais abaixo). O máximo é o número de passos que saem. */
+  oficial: { maxContatos: 6, tetoInicial: 120, passoSemanal: 10 },
 };
 
 /** O número da YCloud é o oficial; o resto foi conectado pelo QR code. */
@@ -418,8 +419,16 @@ export const MODELO_SIMPLES_NOME = 'prospeccao_simples_nome';
  * As duas do vídeo do Xavier (prospeccao_simples*) ficam de reserva.
  */
 export const MODELO_UNICO = 'prospeccao_unico';
-/** Todos precisam estar aprovados para a prospecção sair. */
-export const MODELOS_DA_PROSPECCAO = [MODELO_UNICO] as const;
+/**
+ * Dono, 18/11/2026: o mesmo filme com a marca no masculino ("com o Via Pesados"). Desde 23/11/2026 é
+ * a primeira mensagem da prospecção; o prospeccao_unico (feminino) fica de reserva.
+ */
+export const MODELO_FILME = 'prospeccao_filme';
+/** Todos precisam estar aprovados para a prospecção sair (o filme e a cadência inteira). */
+export const MODELOS_DA_PROSPECCAO = [
+  MODELO_FILME, 'cadencia_canais', 'cadencia_vendeu', 'cadencia_atendimento', 'cadencia_definicao', 'cadencia_encerramento',
+  'cadencia_retomada',
+] as const;
 /**
  * As três mensagens de antes (06/11/2026): seguem aprovadas na Meta e no catálogo, de reserva,
  * e não saem mais. Conversa antiga pode ter começado por elas (o "Bora!" do convite).
@@ -432,6 +441,10 @@ export const MODELOS_DE_RESERVA = [MODELO_ABERTURA, MODELO_ABERTURA_NOME, MODELO
 /** Como cada modelo aparece para o dono (no aviso de por que a prospecção não sai). */
 export const NOME_DA_MENSAGEM: Record<string, string> = {
   [MODELO_UNICO]: 'a do filme da Via Pesados',
+  [MODELO_FILME]: 'a do filme do Via Pesados',
+  cadencia_canais: 'a do dia 4 (canais)', cadencia_vendeu: 'a do dia 10 (vendeu, sai de todos)',
+  cadencia_atendimento: 'a do dia 13 (foto, ficha e preço)', cadencia_definicao: 'a do dia 19 (será que é a hora?)',
+  cadencia_encerramento: 'a do dia 21 (vou parar de chamar)', cadencia_retomada: 'a da retomada',
   [MODELO_SIMPLES]: 'a do vídeo', [MODELO_SIMPLES_NOME]: 'a do vídeo com o nome do vendedor',
 };
 export const STATUS_NA_META: Record<string, string> = {
@@ -508,8 +521,104 @@ export type MensagemDaSequencia = { modelo: string; params: string[]; video: boo
  * e os botões; com o nome do vendedor quando o portal tem).
  */
 export function sequenciaDaProspeccao(_loja: LojaDoModelo): MensagemDaSequencia[] {
-  /* 17/11/2026: o filme, a mesma mensagem para toda loja (sem o nome do vendedor). */
-  return [{ modelo: MODELO_UNICO, params: [], video: true, botoes: true }];
+  /* 17/11/2026: o filme, a mesma mensagem para toda loja (sem o nome do vendedor). 23/11: no masculino. */
+  return [{ modelo: MODELO_FILME, params: [], video: true, botoes: true }];
+}
+
+/* ── a cadência (playbook de 18/11/2026, ligada em 23/11/2026) ─────────────
+
+   Quem recebeu o filme e não respondeu recebe uma mensagem a cada ~3 dias até o dia 21; quem
+   respondeu sai da cadência (status conversando) e é com o Davi. As ligações dos dias 2, 11 e 20
+   são do dono (Ligações do dia). Depois do dia 21 sem resposta, uma retomada 90 dias depois;
+   "Outro momento", 60 dias depois (o Davi marca a data em proximo_contato_em).
+
+   Os passos de vídeo próprio (vendas, dia 7; relatórios, dia 16) ficam de fora até os vídeos
+   existirem: ponha o endereço em VIDEO_DA_CADENCIA e eles voltam sozinhos, sem aprovação nova. */
+
+export type PassoDaCadencia = { modelo: string; dia: number; params: 'tipo' | 'loja' | 'loja_tipo' | null; video: boolean };
+
+export const CADENCIA: PassoDaCadencia[] = [
+  { modelo: MODELO_FILME, dia: 1, params: null, video: true },
+  { modelo: 'cadencia_canais', dia: 4, params: 'loja_tipo', video: false },
+  { modelo: 'cadencia_vendas', dia: 7, params: 'tipo', video: true },
+  { modelo: 'cadencia_vendeu', dia: 10, params: 'tipo', video: false },
+  { modelo: 'cadencia_atendimento', dia: 13, params: 'tipo', video: false },
+  { modelo: 'cadencia_relatorios', dia: 16, params: 'tipo', video: true },
+  { modelo: 'cadencia_definicao', dia: 19, params: 'loja', video: false },
+  { modelo: 'cadencia_encerramento', dia: 21, params: 'loja', video: false },
+];
+export const MODELO_RETOMADA = 'cadencia_retomada';
+/** Dias até a retomada de quem chegou ao fim da cadência sem responder. */
+export const RETOMADA_SEM_RESPOSTA_DIAS = 90;
+
+/**
+ * O vídeo de cada passo com vídeo próprio. null = o vídeo ainda não foi gravado e o passo não sai.
+ * O filme do primeiro passo é o VIDEO_DO_MODELO.
+ */
+export const VIDEO_DA_CADENCIA: Record<string, string | null> = {
+  cadencia_vendas: null,
+  cadencia_relatorios: null,
+};
+
+/** Os passos que saem hoje, na ordem (sem os de vídeo que ainda não existe). */
+export function passosDaCadencia(): PassoDaCadencia[] {
+  return CADENCIA.filter((p) => !(p.modelo in VIDEO_DA_CADENCIA) || !!VIDEO_DA_CADENCIA[p.modelo]);
+}
+
+/** O vídeo que vai no cabeçalho de um modelo da prospecção (null = sem vídeo). */
+export function videoDoPasso(modelo: string): string | null {
+  if (modelo in VIDEO_DA_CADENCIA) return VIDEO_DA_CADENCIA[modelo];
+  return CADENCIA.find((p) => p.modelo === modelo)?.video ? VIDEO_DO_MODELO : null;
+}
+
+/**
+ * O veículo da loja no singular e no masculino, para os modelos ("o mesmo {{2}}", "quando um {{1}}
+ * é vendido", "do {{1}}"). Máquinas vira "equipamento": "um máquina" não dá.
+ */
+export function veiculoDaLoja(loja: LojaDoModelo): string {
+  const t = semAcento(String(loja.dados?.tipo ?? '')).toLowerCase();
+  if (/maquin|trator/.test(t)) return 'equipamento';
+  if (/implement|carreta/.test(t)) return 'implemento';
+  if (/onibus/.test(t)) return 'ônibus';
+  return 'caminhão';
+}
+
+/**
+ * A próxima mensagem para uma loja da prospecção que ainda não respondeu, ou null se não há.
+ *   - `contatos` = quantas mensagens da cadência já saíram (o filme é a 1ª);
+ *   - quem respondeu e adiou ("Outro momento") ou terminou a cadência recebe a retomada;
+ *   - a retomada sai uma vez só (depois dela proximo_contato_em fica vazio).
+ */
+export function proximaMensagemDaCadencia(
+  loja: LojaDoModelo & { contatos?: number | null; respondeu_em?: string | null },
+): MensagemDaSequencia & { retomada: boolean } {
+  const passos = passosDaCadencia();
+  const feitos = loja.contatos ?? 0;
+  const params = (p: PassoDaCadencia['params']) => {
+    const nome = nomeDaLojaNaMensagem(loja), tipo = veiculoDaLoja(loja);
+    return p === 'loja_tipo' ? [nome, tipo] : p === 'loja' ? [nome] : p === 'tipo' ? [tipo] : [];
+  };
+  if (loja.respondeu_em || feitos >= passos.length) {
+    return { modelo: MODELO_RETOMADA, params: params('loja'), video: false, botoes: true, retomada: true };
+  }
+  const p = passos[Math.max(0, feitos)];
+  return { modelo: p.modelo, params: params(p.params), video: p.video, botoes: true, retomada: false };
+}
+
+/**
+ * Quando sai a próxima depois de mandar o passo `feitos` (1 = o filme): a distância entre os dias
+ * do playbook, num horário útil sorteado (como proximoContato). Depois do último, a data da
+ * retomada (90 dias). Depois da retomada, null: acabou.
+ */
+export function proximaDataDaCadencia(feitos: number, agora = new Date(), retomada = false, sorteio = Math.random): Date | null {
+  if (retomada) return null;
+  const passos = passosDaCadencia();
+  const dias = feitos >= passos.length ? RETOMADA_SEM_RESPOSTA_DIAS : passos[feitos].dia - passos[Math.max(0, feitos - 1)].dia;
+  const b = emBRT(agora);
+  const alvo = new Date(Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate() + dias));
+  while (!diaDeTrabalho(alvo)) alvo.setUTCDate(alvo.getUTCDate() + 1);
+  const minutos = 9 * 60 + Math.floor(sorteio() * 8 * 60);
+  return new Date(alvo.getTime() + minutos * 60_000 - BRT_MS);
 }
 
 /** O texto do modelo com as variáveis no lugar: é o que aparece na caixa do CRM. */
