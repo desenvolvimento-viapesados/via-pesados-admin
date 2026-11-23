@@ -64,9 +64,15 @@ export class Navegador {
   /** Se o painel abriu outra aba (link com target=_blank, janela de login), passa para ela. */
   async seguirAbaNova(): Promise<boolean> {
     const { targetInfos } = await this.enviar<{ targetInfos: { targetId: string; type: string; url: string }[] }>('Target.getTargets', {}, false);
-    const paginas = targetInfos.filter((t) => t.type === 'page' && !t.url.startsWith('devtools://'));
+    /* Só aba com página de verdade: aba em branco (about:blank, que aparece no login com
+       código, 23/11/2026) nunca vira a aba do robô. Se a atual ficou em branco e existe outra
+       com página, volta para ela. */
+    const real = (u: string) => /^https?:\/\//.test(u);
+    const paginas = targetInfos.filter((t) => t.type === 'page' && real(t.url));
+    const atual = targetInfos.find((t) => t.targetId === this.alvoAtual);
     const ultima = paginas[paginas.length - 1];
     if (!ultima || ultima.targetId === this.alvoAtual) return false;
+    if (atual && real(atual.url) && paginas.length && !paginas.some((p) => p.targetId !== this.alvoAtual && p.targetId === ultima.targetId)) return false;
     const { sessionId } = await this.enviar<{ sessionId: string }>('Target.attachToTarget', { targetId: ultima.targetId, flatten: true }, false);
     this.sessao = sessionId;
     this.alvoAtual = ultima.targetId;

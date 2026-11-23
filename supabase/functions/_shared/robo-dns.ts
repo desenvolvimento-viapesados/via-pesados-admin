@@ -342,6 +342,7 @@ export async function viaRegistroBr(nav: Navegador, plano: Plano, ate: number, a
   const sessaoCaiu = (r: Resp) => r.status === 401 || /\/login\//.test(r.url) || /session:(required|expired)/.test(JSON.stringify((r.json as any)?.messages ?? ''));
   const nada = async (motivo: string) => { await aoPassar({ quando: new Date().toISOString(), acao: 'erro', detalhe: `registro.br direto: ${motivo}` }); return null; };
 
+  await nav.seguirAbaNova().catch(() => false);
   const url = await nav.avaliar<string>('location.href').catch(() => '');
   if (!/registro\.br/.test(url)) return nada(`a janela está em ${url}`);
 
