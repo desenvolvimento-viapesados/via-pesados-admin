@@ -68,6 +68,24 @@ Deno.serve(async () => {
     };
   } catch { /* diagnóstico não pode derrubar a sonda */ }
 
+  /* Taxas da conta e o volume real recebido (24/11/2026): só contagens e
+     somas por forma de pagamento, nada de cliente. */
+  let taxas: unknown = null; const volume: Record<string, { qtd: number; bruto: number; liquido: number }> = {};
+  try {
+    taxas = await (await fetch(`${base}/myAccount/fees`, { headers: h })).json();
+    for (const st of ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH']) {
+      for (let off = 0; off < 1000; off += 100) {
+        const pg = await (await fetch(`${base}/payments?status=${st}&limit=100&offset=${off}`, { headers: h })).json();
+        for (const c of pg?.data ?? []) {
+          const k = `${c.billingType}|${String(c.paymentDate ?? c.confirmedDate ?? c.dueDate).slice(0, 7)}`;
+          const v = (volume[k] ??= { qtd: 0, bruto: 0, liquido: 0 });
+          v.qtd++; v.bruto += Number(c.value ?? 0); v.liquido += Number(c.netValue ?? 0);
+        }
+        if (!pg?.hasMore) break;
+      }
+    }
+  } catch { /* diagnóstico */ }
+
   /* O que o município exige para emitir NFS-e, e se a assinatura aceita
      emissão automática. É isso que separa "dá para fazer" de "dá para
      fazer sozinho". */
@@ -88,6 +106,6 @@ Deno.serve(async () => {
     };
   } catch (e) { fiscal = { erro: e instanceof Error ? e.message : 'falha' }; }
 
-  return new Response(JSON.stringify({ ambiente: base.includes('sandbox') ? 'sandbox' : 'producao', conta, fiscal, sonda: saida }, null, 1),
+  return new Response(JSON.stringify({ ambiente: base.includes('sandbox') ? 'sandbox' : 'producao', conta, fiscal, taxas, volume, sonda: saida }, null, 1),
     { headers: { ...cors, 'Content-Type': 'application/json' } });
 });
