@@ -15,6 +15,8 @@ import { SectionHeader, Panel } from '@/components/admin/ui';
 import { useFrente } from '@/contexts/FrenteContext';
 import { rotuloDaFrente } from '@/lib/frente';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { RepasseAutomatico } from '@/components/admin/RepasseAutomatico';
+import { useAuth } from '@/contexts/AuthContext';
 
 /* ══════════════════════════════════════════════════════════════════
    Uma pergunta: sobra ou falta dinheiro?
@@ -324,6 +326,7 @@ export default function Financeiro() {
      diz de onde é, e só o custo geral se mexe aqui — lançamento de uma
      frente se edita dentro dela (o banco também só deixa assim). */
   const naEmpresa = frente === 'empresa';
+  const { isAdmin } = useAuth();
   const daqui = (t: FinTransaction) => !naEmpresa || t.frente === 'empresa';
   const { data: payments = [] } = usePayments();
   const { data: transacoes = [], isLoading } = useFinTransactions();
@@ -661,6 +664,8 @@ export default function Financeiro() {
           )}
         </Panel>
       </div>
+
+      {isAdmin && <RepasseAutomatico />}
 
       {lancar && <LancamentoDialog open onClose={() => setLancar(false)} />}
       {detalhar && (
