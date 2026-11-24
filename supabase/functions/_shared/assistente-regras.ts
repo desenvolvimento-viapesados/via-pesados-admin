@@ -962,7 +962,7 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
 
     for (const link of linksNoTexto(m)) {
       if (!linkLiberado(link, ctx.linkReuniao)) {
-        v.push({ regra: 'link', mensagem: i, trecho: link, explicacao: 'Só pode link de viapesados.com.br ou o link da reunião.' });
+        v.push({ regra: 'link', mensagem: i, trecho: link, explicacao: 'Só pode link de viapesados.com.br (o link da reunião não vai mais: o especialista chama pelo WhatsApp).' });
       }
     }
 
@@ -1050,10 +1050,10 @@ export function fiscal(mensagens: string[], ctx: ContextoFiscal = {}): Resultado
               : (ctx.perguntasDeDorDepoisDeMarcar ?? 0) + dorNoTurno >= 2
                 ? 'Já foram duas perguntas da dor depois do Marcado: não pergunte mais. Registre o que ele disse, agradeça e se despeça.'
                 : ctx.marcandoAgora
-                  ? 'No turno do Marcado, a pergunta da dor vai sozinha no 3º balão, depois do "Marcado!" e do link.'
+                  ? 'No turno do Marcado, a pergunta da dor vai sozinha no balão seguinte, depois do "Marcado!".'
                   : 'O pedido de exemplo só cabe depois de uma resposta vaga ("tudo", "de boa"); com resposta concreta, registre a dor, agradeça e se despeça.')
             : ctx.marcandoAgora
-              ? `No Marcado não vai pergunta nenhuma: só o "Marcado!" e o link${ctx.dorRegistrada ? '' : ' (e, num 3º balão, só a pergunta da dor com as opções)'}.`
+              ? `No Marcado não vai pergunta nenhuma: só o "Marcado!"${ctx.dorRegistrada ? '' : ' (e, no balão seguinte, só a pergunta da dor com as opções)'}.`
               : `A reunião já está marcada: não pergunte mais nada da loja (o especialista vê o resto na reunião). Responda curto o que ele disse ou perguntou e se despeça ("Fechou, até segunda!"). Só cabe pergunta para remarcar, com os horários da lista${ctx.dorRegistrada ? '' : ', ou a da dor'}.` });
           return;
         }

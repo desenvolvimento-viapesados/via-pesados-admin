@@ -989,13 +989,9 @@ export async function concluirTurno(db: Db, args: {
     marcadaAcao = a;
   }
 
-  /* 4. as mensagens (com o link garantido quando marcou) */
+  /* 4. as mensagens */
   const textos = args.mensagens.map((m) => String(m ?? '').trim()).filter(Boolean);
-  const link = args.cfg.link_reuniao?.trim();
-  if (marcada?.ok && link) {
-    const chave = link.replace(/^https?:\/\//, '').replace(/\/+$/, '').toLowerCase();
-    if (!textos.some((t) => t.toLowerCase().includes(chave))) textos.push(link);
-  }
+  /* Dono, 24/11/2026: o link do Meet não vai mais na conversa; quem marcou recebe a ligação do especialista. */
   const finais: string[] = [];
   for (const texto of textos) {
     if (finais.length) await dormir(1500);
@@ -1054,6 +1050,14 @@ export async function concluirTurno(db: Db, args: {
   return { ok: true, enviadas: finais.length, acoes };
 }
 
+/** Telefone como se fala: 5511973072325 → (11) 97307-2325. */
+function telefoneFalado(t?: string | null): string {
+  const d = String(t ?? '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '');
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return d;
+}
+
 /** Parâmetro de modelo: uma linha só, sem espaço sobrando (a Meta recusa quebra de linha). */
 function umaLinha(t: string, max = 80): string {
   return t.replace(/\s+/g, ' ').trim().slice(0, max);
@@ -1083,13 +1087,17 @@ export async function avisarReuniao(db: Db, cfg: AssistenteConfig | null, conver
       : { data: null };
     const nome = card?.company_name || e?.situacao?.loja || loja?.nome || conversa.nome || conversa.telefone || 'sem nome';
     const cidade = e?.situacao?.cidade || card?.city || (loja?.cidade ? `${loja.cidade}${loja.uf ? `/${loja.uf}` : ''}` : '');
+    /* Dono, 24/11/2026: o aviso traz quem marcou e o telefone, para ele já ligar e se apresentar. */
+    const quem = umaLinha(String(e?.situacao?.quem_fala || conversa.nome || ''), 40);
+    const tel = telefoneFalado(conversa.telefone);
+    const contato = [quem, tel].filter(Boolean).join(' · ');
     /* Um envio por número, cada um com a sua trava: o primeiro que falha não segura o outro. */
     for (const para of destinos) {
       const res = await enviarTemplate(db, {
         para,
         template: 'aviso_reuniao_marcada',
         params: {
-          body: [r.evento, umaLinha(cidade ? `${nome}, ${cidade}` : String(nome)), horarioFalado(r.inicio)],
+          body: [r.evento, umaLinha([cidade ? `${nome}, ${cidade}` : String(nome), contato].filter(Boolean).join(' · '), 160), horarioFalado(r.inicio)],
           urlSuffix: conversa.id,
         },
         chave: destinos.length > 1 ? `aviso_reuniao:${r.chave}:${para}` : `aviso_reuniao:${r.chave}`,

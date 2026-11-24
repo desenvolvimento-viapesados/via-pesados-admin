@@ -1173,7 +1173,10 @@ describe('sem o nome do dono para o lead (dono, 18/11/2026: "troca o Xavier por 
     expect(ferramentas).not.toMatch(/xavier/i);
     expect(textoDosFatos([])).not.toMatch(/o xavier/i);
     const motor = readFileSync('supabase/functions/assistente-responder/index.ts', 'utf8');
-    expect(motor).toContain('15 minutos com um especialista da nossa equipe no Google Meet.');
+    expect(motor).toContain('15 minutos com um especialista da nossa equipe.\\nEle te chama aqui no WhatsApp nesse horário.');
+    /* Dono, 24/11/2026: o link do Meet não vai mais na conversa. */
+    expect(motor).not.toContain('Google Meet');
+    expect(motor).not.toMatch(/Link da chamada:/);
     for (const l of motor.split('\n').filter((x) => /L\.push|saida = /.test(x))) {
       expect(l.replace(/chamar_xavier|chamarXavier/g, ''), l).not.toMatch(/xavier/i);
     }

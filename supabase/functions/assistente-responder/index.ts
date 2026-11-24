@@ -164,11 +164,9 @@ function textoDoEstado(args: {
   L.push(`Mostrou o sistema ligado à dor: ${e.prova_enviada ? 'sim' : 'não'}.`);
   if (e.horarios_oferecidos?.length) L.push(`Horários já oferecidos: ${e.horarios_oferecidos.map((h) => horarioFalado(new Date(h))).join('; ')}.`);
   L.push(args.reuniaoFalada
-    ? `Reunião JÁ MARCADA: ${args.reuniaoFalada}. Link da chamada: ${args.cfg.link_reuniao ?? '(sem link)'}. Nada da loja se pergunta (só a dor, como diz a qualificação acima): responda curto o que ele disse ou perguntou e se despeça. Para remarcar, dois horários da lista e marcar_reuniao com o novo.`
+    ? `Reunião JÁ MARCADA: ${args.reuniaoFalada}. Sem link de chamada (dono, 24/11/2026): um especialista da nossa equipe chama ele aqui pelo WhatsApp; nunca mande link. Nada da loja se pergunta (só a dor, como diz a qualificação acima): responda curto o que ele disse ou perguntou e se despeça. Para remarcar, dois horários da lista e marcar_reuniao com o novo.`
     : 'Reunião: ainda não marcada.');
-  if (args.cfg.link_reuniao && !args.reuniaoFalada) {
-    L.push(`Link da chamada (mande só DEPOIS que marcar_reuniao der certo, copiado exatamente): ${args.cfg.link_reuniao}`);
-  }
+  /* Dono, 24/11/2026: o link do Meet não vai mais na conversa ("esse link tá dando errado"). */
   L.push(`Mensagens suas já enviadas nesta conversa: ${e.mensagens_enviadas}.`);
 
   L.push(`# Pode oferecer horário agora? ${args.porta.pode ? 'SIM' : 'NÃO'}`);
@@ -394,7 +392,7 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
   const novasDoLead = msgs.slice(ultimaNossa + 1).filter((m) => m.direcao === 'entrada');
   const soTopouAsPerguntas = ultimaNossa >= 0 && msgs[ultimaNossa].enviada_por_nome === REMETENTE_PROSPECCAO
     && novasDoLead.length > 0 && novasDoLead.every((m) => soSimCurto(m.transcricao || m.conteudo));
-  const ctxFiscal = { linkReuniao: cfg.link_reuniao, precisaApresentar: !e.apresentou, meuAmigoJaUsado };
+  const ctxFiscal = { linkReuniao: null, /* link da reunião não vai mais (24/11) */ precisaApresentar: !e.apresentou, meuAmigoJaUsado };
   /* A porta do horário é do código (manual de vendas de 05/11): recalculada a cada responder,
      com o que a IA registrou neste turno (pedido, interesse, dor, pedido de preço). */
   const respostasSuas = new Set(msgs.filter((m) => m.direcao === 'saida' && m.turno_id).map((m) => m.turno_id)).size;
@@ -410,9 +408,8 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
   });
   /* As perguntas da dor que o Davi já mandou depois do Marcado (o 1º balão com o link da reunião
      marca a hora): no máximo 2 no total (dono, 18/11). */
-  const iDoMarcado = cfg.link_reuniao
-    ? msgs.findIndex((m) => m.direcao === 'saida' && String(m.conteudo ?? '').includes(cfg.link_reuniao!))
-    : -1;
+  const iDoMarcado = msgs.findIndex((m) => m.direcao === 'saida'
+    && (String(m.conteudo ?? '').includes('Marcado!') || (!!cfg.link_reuniao && String(m.conteudo ?? '').includes(cfg.link_reuniao))));
   const perguntasDeDorDepoisDeMarcar = reuniaoFalada && iDoMarcado >= 0
     ? perguntasDeDor(msgs.slice(iDoMarcado).filter((m) => m.direcao === 'saida' && m.turno_id).map((m) => m.conteudo))
     : 0;
@@ -532,7 +529,7 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
               : estadoAtual.dores.length
                 ? ` E num terceiro balão, sozinho, o pedido de exemplo da dor (a resposta dele foi vaga): "${PERGUNTA_DO_EXEMPLO_DA_DOR}"`
                 : ` E num terceiro balão, sozinho, a pergunta da dor como preparação, exatamente assim: "${PERGUNTA_DA_DOR_DEPOIS_DE_MARCAR}"`;
-            saida = `Pode confirmar ${horarioFalado(v.inicio)}. Link da chamada: ${cfg.link_reuniao}. A reunião é gravada quando a sua mensagem sair. Agora chame responder com o "Marcado!" e o link, sem pergunta nenhuma neles (dono, 06/11): "Marcado! ✅\n\n*[dia] às [hora]*, 15 minutos com um especialista da nossa equipe no Google Meet.\nSe servir, você já deixa a implantação marcada; se não servir, tudo bem." (formato do dia: "amanhã, sexta, às 9h30" ou "segunda às 10h") / o link sozinho no balão, copiado exatamente.${dorNoMarcado} O que faltar da loja o especialista vê na reunião.`;
+            saida = `Pode confirmar ${horarioFalado(v.inicio)}. A reunião é gravada quando a sua mensagem sair. Agora chame responder com o "Marcado!", SEM link nenhum (dono, 24/11/2026) e sem pergunta nenhuma nele (dono, 06/11): "Marcado! ✅\n\n*[dia] às [hora]*, 15 minutos com um especialista da nossa equipe.\nEle te chama aqui no WhatsApp nesse horário. Se servir, você já deixa a implantação marcada; se não servir, tudo bem." (formato do dia: "amanhã, sexta, às 9h30" ou "segunda às 10h").${dorNoMarcado} O que faltar da loja o especialista vê na reunião.`;
           } else {
             ehErro = true;
             saida = v.motivo + (v.chamarXavier ? ' Não marque: chame a equipe (chamar_xavier) e diga que um especialista da nossa equipe combina o horário por aqui.' : '');
