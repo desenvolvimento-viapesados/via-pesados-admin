@@ -19,6 +19,14 @@ export interface CadastroParaEscala {
   name: string;
   email?: string;
   phone?: string;
+  company?: string;
+  /** Reenviar o mesmo cadastro não cria lead novo (API da Escala). */
+  external_id?: string;
+  /** Aparece como "Formulário" no lead (Marketing) e na ficha do negócio (CRM). */
+  form_name?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
   custom_fields: Record<string, string>;
 }
 
@@ -45,6 +53,32 @@ export interface ExtrasDoCadastro {
   plano?: string | null;
   /** O cliente nasceu como teste grátis. */
   testeGratis?: boolean;
+  /** O id do cadastro no nosso banco: vira o external_id. */
+  id?: string | null;
+}
+
+/**
+ * Dono, 24/11/2026: no CRM da Escala não dava para separar o lead das campanhas deles do lead do
+ * nosso próprio trabalho ("atividade própria, prospecção própria"). Todo cadastro nosso vai com o
+ * Formulário dizendo de onde veio e com as UTMs de uso interno, para não contar como lead de anúncio.
+ */
+const PROSPECCAO = new Set(['Assistente de vendas', 'Prospecção ativa', 'Base de contatos', 'Reativação', 'Grupo de WhatsApp']);
+const NOME_DO_CANAL: Record<string, string> = {
+  'Assistente de vendas': 'WhatsApp (Davi)',
+  'Prospecção ativa': 'Prospecção ativa',
+  'Site / inbound': 'Site Via Pesados',
+};
+export function origemPropria(canal: string | null | undefined): { form_name: string; utm_source: string; utm_medium: string; utm_campaign: string } {
+  const c = limpo(canal);
+  const tipo = c && PROSPECCAO.has(c) ? 'Prospecção própria' : 'Atividade própria';
+  const detalhe = c ? (NOME_DO_CANAL[c] ?? c) : 'Via Pesados';
+  const slug = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return {
+    form_name: detalhe === 'Prospecção ativa' ? 'Prospecção própria · Ativa' : `${tipo} · ${detalhe}`,
+    utm_source: slug(tipo),
+    utm_medium: slug(c ?? 'via-pesados'),
+    utm_campaign: 'via-pesados-interno',
+  };
 }
 
 /** A agência pede DDD + número, sem o 55 e com o 9: "11999998888" (ver telefone.ts). */
@@ -123,6 +157,9 @@ export function montarCadastro(
     name,
     ...(email && EMAIL.test(email) ? { email } : {}),
     ...(phone ? { phone } : {}),
+    ...(empresa ? { company: empresa } : {}),
+    ...(x.id ? { external_id: `via-${origem}-${x.id}` } : {}),
+    ...origemPropria(origem === 'lead' ? x.canal : null),
     custom_fields,
   };
 }

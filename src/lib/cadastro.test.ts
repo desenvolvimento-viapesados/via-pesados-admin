@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  desfechoDaResposta, ehCadastroDeTeste, montarCadastro, proximaTentativa, reais, telefoneParaEscala,
+  desfechoDaResposta, ehCadastroDeTeste, montarCadastro, origemPropria, proximaTentativa, reais, telefoneParaEscala,
   ESPERA_ENTRE_TENTATIVAS_MIN,
 } from '../../supabase/functions/_shared/cadastro-regras';
 import { mascaraTelefoneDoBanco } from './mascaras';
@@ -42,10 +42,13 @@ describe('cadastro para a Escala SaaS', () => {
       company_name: '5533999990000', contact_name: 'João', whatsapp: '5533999990000',
       email: null, city: 'Governador Valadares', state: 'mg', frente: 'lojista', stage: 'contato',
       proposal_value: null, plan: null,
-    }, { canal: 'Assistente de vendas' });
+    }, { canal: 'Assistente de vendas', id: 'abc' });
     expect(c).toEqual({
       name: 'João',
       phone: '33999990000',
+      external_id: 'via-lead-abc',
+      form_name: 'Prospecção própria · WhatsApp (Davi)',
+      utm_source: 'prospeccao-propria', utm_medium: 'assistente-de-vendas', utm_campaign: 'via-pesados-interno',
       custom_fields: {
         'Tipo de cadastro': 'Lead', Cidade: 'Governador Valadares', UF: 'MG', Frente: 'Lojista',
         Origem: 'Assistente de vendas', Etapa: 'Contato',
@@ -66,10 +69,11 @@ describe('cadastro para a Escala SaaS', () => {
       company_name: 'Loja X', contact_name: ' Ana Souza ', whatsapp: '(11) 99999-8888', email: ' Ana@Empresa.com ',
       frente: 'transportadora', mrr: 1437.5, plan: null,
     }, { plano: 'Completo', testeGratis: true });
-    expect(c).toEqual({
+    expect(c).toMatchObject({
       name: 'Ana Souza',
       email: 'ana@empresa.com',
       phone: '11999998888',
+      company: 'Loja X',
       custom_fields: {
         'Tipo de cadastro': 'Teste grátis', Empresa: 'Loja X', Frente: 'Transportadora',
         Mensalidade: 'R$ 1.437,50', 'Plano escolhido': 'Completo',
@@ -88,6 +92,15 @@ describe('cadastro para a Escala SaaS', () => {
     const registro = { contact_name: 'Ana', admin_password: 'x', legal_rep_cpf: '1', checkout_token: 't' };
     const corpo = JSON.stringify(montarCadastro('cliente', registro as never));
     expect(corpo).not.toMatch(/admin_password|legal_rep_cpf|checkout_token/);
+  });
+
+  it('dono, 24/11/2026: todo cadastro nosso chega marcado como atividade ou prospecção própria', () => {
+    expect(origemPropria('Base de contatos').form_name).toBe('Prospecção própria · Base de contatos');
+    expect(origemPropria('Prospecção ativa').form_name).toBe('Prospecção própria · Ativa');
+    expect(origemPropria('Site / inbound')).toMatchObject({ form_name: 'Atividade própria · Site Via Pesados', utm_source: 'atividade-propria', utm_medium: 'site-inbound' });
+    expect(origemPropria('Indicação').form_name).toBe('Atividade própria · Indicação');
+    expect(origemPropria(null).form_name).toBe('Atividade própria · Via Pesados');
+    expect(montarCadastro('lead', { contact_name: 'Bia', whatsapp: '(33) 99999-0000' })?.utm_campaign).toBe('via-pesados-interno');
   });
 
   it('reais: zero e vazio não viram campo', () => {

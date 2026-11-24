@@ -82,6 +82,11 @@ async function enviar(db: any, url: string, item: ItemDaFila, testes: string[]) 
   const fechar = (campos: Record<string, unknown>) =>
     db.from('cadastro_envios').update({ travado_ate: null, ...campos }).eq('id', item.id);
 
+  /* Dono, 24/11/2026: cliente (assinou ou está no teste grátis) não é lead; não vai para o CRM da agência. */
+  if (item.origem === 'cliente') {
+    await fechar({ status: 'ignorado', erro: 'Cliente não vai como lead para a agência (dono, 24/11/2026).' });
+    return { id: item.id, desfecho: 'ignorado' };
+  }
   const lido = await lerCadastro(db, item.origem, item.registro_id);
   if (!lido) {
     await fechar({ status: 'ignorado', erro: 'O cadastro foi apagado antes do envio.' });
@@ -164,7 +169,7 @@ async function lerCadastro(db: any, origem: OrigemDoCadastro, id: string): Promi
     const { data: canal } = p.channel_id
       ? await db.from('acquisition_channels').select('name').eq('id', p.channel_id).maybeSingle()
       : { data: null };
-    return { registro: p, extras: { canal: canal?.name ?? null } };
+    return { registro: p, extras: { canal: canal?.name ?? null, id } };
   }
   const { data: c, error } = await db.from('clients')
     .select('company_name, contact_name, whatsapp, email, city, state, frente, plan, plan_id, mrr')
@@ -175,5 +180,5 @@ async function lerCadastro(db: any, origem: OrigemDoCadastro, id: string): Promi
     c.plan_id ? db.from('plans').select('name').eq('id', c.plan_id).maybeSingle() : Promise.resolve({ data: null }),
     db.from('testes_gratis').select('id', { count: 'exact', head: true }).eq('client_id', id),
   ]);
-  return { registro: c, extras: { plano: plano?.name ?? null, testeGratis: (count ?? 0) > 0 } };
+  return { registro: c, extras: { plano: plano?.name ?? null, testeGratis: (count ?? 0) > 0, id } };
 }
