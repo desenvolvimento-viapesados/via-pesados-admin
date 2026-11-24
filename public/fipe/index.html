@@ -53,6 +53,10 @@
   @keyframes gira { to { transform:rotate(360deg); } }
   h3 { font-size:15px; font-weight:800; margin:22px 0 4px; }
   .nota { font-size:12px; color:var(--cinza); margin-top:10px; line-height:1.4; }
+  .abas { display:flex; gap:6px; background:#E9E5DE; border-radius:14px; padding:4px; margin-top:18px; }
+  .abas button { flex:1; border:0; background:transparent; border-radius:11px; padding:11px 6px; font:700 14px Inter,sans-serif; color:var(--cinza); cursor:pointer; }
+  .abas button.ativa { background:#fff; color:var(--texto); box-shadow:0 2px 8px rgba(40,30,20,.08); }
+  .aba { display:none; } .aba.ativa { display:block; }
   .rodape { margin-top:34px; font-size:13px; color:var(--cinza); text-align:center; line-height:1.5; }
   .rodape a { color:var(--texto); font-weight:700; }
 </style>
@@ -165,28 +169,48 @@
       .then(function () { b.disabled = false; });
   });
 
+  var TIPOS = [['cavalo', 'Cavalos mecânicos'], ['caminhao', 'Caminhões']];
   function desenharEstoque(d) {
-    var abaixo = d.ofertas.filter(function (o) { return o.diferenca < 0; }).length;
-    var h = '<div class="resumo"><div><b>' + (d.ofertas.length + d.semPreco.length) + '</b><span>caminhões comparados</span></div>'
+    var de = function (t) { return function (o) { return (o.tipo || 'caminhao') === t; }; };
+    var cont = TIPOS.map(function (t) { return d.ofertas.filter(de(t[0])).length + d.semPreco.filter(de(t[0])).length; });
+    var inicial = cont[0] >= cont[1] ? 0 : 1;
+    var h = '<div class="abas">' + TIPOS.map(function (t, i) {
+      return '<button type="button" data-aba="' + t[0] + '" class="' + (i === inicial ? 'ativa' : '') + '">' + t[1] + ' (' + cont[i] + ')</button>';
+    }).join('') + '</div>';
+    h += TIPOS.map(function (t, i) {
+      return '<div class="aba ' + (i === inicial ? 'ativa' : '') + '" data-aba="' + t[0] + '">' + painel(d.ofertas.filter(de(t[0])), d.semPreco.filter(de(t[0])), t[1]) + '</div>';
+    }).join('');
+    if (d.fora && d.fora.length) h += '<p class="nota">Não comparados (' + d.fora.length + '): ' + d.fora.map(function (x) { return esc(x.titulo) + ' (' + esc(x.motivo) + ')'; }).join('; ') + '.</p>';
+    h += '<p class="nota">Tabela FIPE de ' + esc(d.mes) + '. "Perde por dia" é a queda da FIPE nos últimos 12 meses dividida pelos dias.</p>';
+    return h;
+  }
+  function painel(ofertas, semPreco, nome) {
+    if (!ofertas.length && !semPreco.length) return '<p class="nota" style="margin-top:16px">Nenhum ' + (nome === 'Caminhões' ? 'caminhão' : 'cavalo mecânico') + ' encontrado nessa página.</p>';
+    var abaixo = ofertas.filter(function (o) { return o.diferenca < 0; }).length;
+    var h = '<div class="resumo"><div><b>' + (ofertas.length + semPreco.length) + '</b><span>comparados</span></div>'
       + '<div><b style="color:var(--verde)">' + abaixo + '</b><span>abaixo da FIPE</span></div>'
-      + '<div><b style="color:var(--verm)">' + (d.ofertas.length - abaixo) + '</b><span>acima da FIPE</span></div></div>';
-    if (d.ofertas.length) {
-      h += '<h3>Da melhor oferta à pior</h3><div class="res">' + d.ofertas.map(function (o) {
+      + '<div><b style="color:var(--verm)">' + (ofertas.length - abaixo) + '</b><span>acima da FIPE</span></div></div>';
+    if (ofertas.length) {
+      h += '<h3>Da melhor oferta à pior</h3><div class="res">' + ofertas.map(function (o) {
         var bom = o.diferenca < 0;
         return '<div class="item"><b>' + esc(o.titulo) + '</b><em class="tag ' + (bom ? 'bom' : 'ruim') + '">' + (bom ? '−' : '+') + brl(o.diferenca) + '</em>'
           + '<span>' + o.ano + ' · anunciado ' + brl(o.preco) + ' · FIPE ' + brl(o.fipe) + (o.porDia ? ' · perde ' + brl(o.porDia) + '/dia' : '') + '</span></div>';
       }).join('') + '</div>';
     }
-    if (d.semPreco.length) {
-      h += '<h3>Sem preço no site: quanto cada um perde parado</h3><div class="res">' + d.semPreco.map(function (o) {
+    if (semPreco.length) {
+      h += '<h3>Sem preço no site: quanto cada um perde parado</h3><div class="res">' + semPreco.map(function (o) {
         return '<div class="item"><b>' + esc(o.titulo) + '</b><em class="tag ' + (o.porDia ? 'ruim' : 'neutro') + '">' + (o.porDia ? '−' + brl(o.porDia) + '/dia' : '—') + '</em>'
           + '<span>' + o.ano + ' · FIPE ' + brl(o.fipe) + '</span></div>';
       }).join('') + '</div>';
     }
-    if (d.fora && d.fora.length) h += '<p class="nota">Não comparados (' + d.fora.length + '): ' + d.fora.map(function (x) { return esc(x.titulo) + ' (' + esc(x.motivo) + ')'; }).join('; ') + '.</p>';
-    h += '<p class="nota">Tabela FIPE de ' + esc(d.mes) + '. "Perde por dia" é a queda da FIPE nos últimos 12 meses dividida pelos dias.</p>';
     return h;
   }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('.abas button'); if (!b) return;
+    var t = b.getAttribute('data-aba'), box = b.closest('#r-estoque');
+    box.querySelectorAll('.abas button').forEach(function (x) { x.classList.toggle('ativa', x === b); });
+    box.querySelectorAll('.aba').forEach(function (x) { x.classList.toggle('ativa', x.getAttribute('data-aba') === t); });
+  });
 
   /* 3. desvalorização */
   var marcasCarregadas = false;

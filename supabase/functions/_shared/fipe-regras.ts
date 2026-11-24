@@ -137,3 +137,14 @@ export function textoDaPagina(html: string, max = 60_000): string {
     .replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n')
     .trim().slice(0, max);
 }
+
+/**
+ * Cavalo mecânico ou caminhão (dono, 24/11/2026: "sempre separe a análise de cavalos mecânicos e caminhão…
+ * a diferença é grande"). Vale o que a IA leu no anúncio; sem isso, o texto do anúncio decide.
+ */
+export function tipoDoVeiculo(lido: unknown, texto: string): 'cavalo' | 'caminhao' {
+  const l = semAcento(String(lido ?? '')).toLowerCase();
+  if (l.startsWith('cavalo')) return 'cavalo';
+  if (l.startsWith('caminhao')) return 'caminhao';
+  return /cavalo|tractor|trator/i.test(semAcento(texto)) ? 'cavalo' : 'caminhao';
+}

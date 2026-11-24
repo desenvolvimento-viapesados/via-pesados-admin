@@ -68,3 +68,13 @@ describe('ferramenta FIPE (dono, 24/11/2026)', () => {
     expect(enderecoDoSite('nada')).toBeNull();
   });
 });
+
+describe('cavalo mecânico × caminhão (dono, 24/11/2026)', () => {
+  it('vale o que a IA leu; sem isso, o texto do anúncio', async () => {
+    const { tipoDoVeiculo } = await import('../../supabase/functions/_shared/fipe-regras');
+    expect(tipoDoVeiculo('cavalo', 'Volvo FH 540')).toBe('cavalo');
+    expect(tipoDoVeiculo('caminhao', 'Cavalo 6x4')).toBe('caminhao');
+    expect(tipoDoVeiculo(null, 'VOLVO FH 540 Cavalo 6x4')).toBe('cavalo');
+    expect(tipoDoVeiculo(undefined, 'Constellation 24.280 baú')).toBe('caminhao');
+  });
+});
