@@ -6,7 +6,7 @@ import {
   preencherContrato, registroDoAceite, sha256, valorEmReais, valorPorExtenso,
 } from '../../supabase/functions/_shared/contrato-regras.ts';
 
-/* O contrato no link de boas-vindas: o cliente confere os dados, lê e aceita antes de pagar. */
+/* Os Termos de Uso no link de boas-vindas (até a v6, o contrato): o cliente paga, confere os dados, lê e aceita. */
 
 const DADOS = {
   razao_social: 'Minas Caminhões Ltda', cnpj: '11.222.333/0001-81', endereco: 'Rua das Flores, 100, Centro, Governador Valadares/MG',
@@ -18,33 +18,33 @@ const campos = (x: Record<string, unknown> = {}) => ({
   whatsapp: '(33) 99999-0000', registro: null, ...x,
 });
 
-describe('o texto do contrato', () => {
+describe('o texto dos Termos de Uso', () => {
   it('a cópia que a função usa é idêntica ao documento em docs/contrato', () => {
-    expect(CONTRATO).toBe(readFileSync('docs/contrato/contrato-assinatura-via-pesados.md', 'utf8'));
+    expect(CONTRATO).toBe(readFileSync('docs/contrato/termos-de-uso-via-pesados.md', 'utf8'));
   });
   it('preenche todos os campos e não deixa nenhum {{ }} para trás', () => {
-    const t = preencherContrato(CONTRATO, campos({ registro: 'versão v6; código…' }));
+    const t = preencherContrato(CONTRATO, campos({ registro: 'versão v7; código…' }));
     expect(t).not.toMatch(/\{\{|\}\}/);
     expect(t).toContain('Minas Caminhões Ltda, CNPJ 11.222.333/0001-81, com sede em Rua das Flores');
     expect(t).toContain('Carlos Menezes, CPF 529.982.247-25');
     expect(t).toContain('R$ 437,00 (quatrocentos e trinta e sete reais)');
     expect(t).toContain('Governador Valadares/MG, 18 de novembro de 2026.');
-    expect(t).toContain('pelo WhatsApp (33) 99999-0000');
-    expect(t).not.toContain('Minuta v6');
+    expect(t).toContain('pelo link enviado ao WhatsApp (33) 99999-0000');
+    expect(t).not.toContain('Minuta v7');
   });
   it('sem a data da implantação o dia do vencimento fica "a definir"; com ela, o dia', () => {
-    expect(preencherContrato(CONTRATO, campos())).toContain('Todo dia a definir, que é o dia da Data de Implantação');
-    expect(preencherContrato(CONTRATO, campos({ dia_vencimento: 14 }))).toContain('Todo dia 14, que é o dia da Data de Implantação');
+    expect(preencherContrato(CONTRATO, campos())).toContain('Todo dia a definir, o dia da implantação');
+    expect(preencherContrato(CONTRATO, campos({ dia_vencimento: 14 }))).toContain('Todo dia 14, o dia da implantação');
   });
   it('antes do aceite, o registro avisa que ainda vai ser gerado', () => {
     expect(preencherContrato(CONTRATO, campos())).toContain('Registro do aceite: gerado no momento do aceite');
   });
   it('vira blocos que a página desenha: título, seções, quadro-resumo e parágrafos, sem marcas', () => {
     const b = emBlocos(preencherContrato(CONTRATO, campos()));
-    expect(b[0]).toEqual({ t: 'titulo', texto: 'CONTRATO DE ASSINATURA DA PLATAFORMA VIA PESADOS' });
-    expect(b.filter((x) => x.t === 'linha')).toHaveLength(10);
+    expect(b[0]).toEqual({ t: 'titulo', texto: 'TERMOS DE USO DA VIA PESADOS' });
+    expect(b.filter((x) => x.t === 'linha')).toHaveLength(8);
     expect(b.find((x) => x.t === 'linha' && x.rotulo === 'Mensalidade')).toEqual({ t: 'linha', rotulo: 'Mensalidade', texto: 'R$ 437,00 (quatrocentos e trinta e sete reais)' });
-    expect(b.filter((x) => x.t === 'secao').map((x) => x.texto)).toContain('15. ASSINATURA ELETRÔNICA');
+    expect(b.filter((x) => x.t === 'secao').map((x) => x.texto)).toContain('13. Comunicação e aceite');
     expect(b.every((x) => !/\*\*|`|^\|/.test(x.texto))).toBe(true);
   });
 });
@@ -70,8 +70,8 @@ describe('quem assina', () => {
     expect(erro({ razao_social: '' })).toBe('Informe a razão social da empresa.');
     expect(erro({ cnpj: '11.222.333/0001-82' })).toBe('Confira o CNPJ: o número não é válido.');
     expect(erro({ endereco: 'Rua' })).toBe('Informe o endereço completo da empresa.');
-    expect(erro({ representante_nome: 'Carlos' })).toBe('Informe o nome completo de quem assina.');
-    expect(erro({ representante_cpf: '123' })).toBe('Confira o CPF de quem assina: o número não é válido.');
+    expect(erro({ representante_nome: 'Carlos' })).toBe('Informe o nome completo de quem aceita.');
+    expect(erro({ representante_cpf: '123' })).toBe('Confira o CPF de quem aceita: o número não é válido.');
     expect(erro({})).toBeNull();
   });
   it('só cliente novo aceita antes de pagar: quem já pagou ou já aceitou segue direto', () => {

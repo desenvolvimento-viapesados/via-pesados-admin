@@ -155,10 +155,10 @@ Deno.serve(async (req) => {
     if (acao === 'aceitar') {
       if (cli.contract_signed_at) return json(200, { ok: true, aceito_em: cli.contract_signed_at });
       const { dados: digitado, li } = corpo as { dados?: Record<string, unknown>; li?: boolean };
-      if (li !== true) return json(400, { error: 'Marque que leu e aceita o contrato.' });
+      if (li !== true) return json(400, { error: 'Marque que leu e aceita os Termos de Uso.' });
       const lido = lerDadosDoContrato(digitado, guardado);
       if (!lido.ok) return json(400, { error: lido.erro });
-      if (!(Number(cli.mrr) > 0)) return json(400, { error: 'Contrato ainda não configurado. Fale com seu contato no Via Pesados.' });
+      if (!(Number(cli.mrr) > 0)) return json(400, { error: 'Assinatura ainda não configurada. Fale com seu contato no Via Pesados.' });
 
       const agora = new Date();
       const semRegistro = preencherContrato(CONTRATO, camposDoContrato(lido.dados, agora, '{{registro_aceite}}'));
@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
         ? await db.from('contracts').update({ ...aceite, sent_at: rascunho.sent_at ?? quando }).eq('id', rascunho.id)
         : await db.from('contracts').insert({
           ...aceite, client_id: cli.id, prospect_id: cli.prospect_id, sent_at: quando, value: Number(cli.mrr) || 0, recurrence: 'mensal',
-          title: `Contrato de licença de uso — ${cli.company_name}`,
+          title: `Termos de Uso — ${cli.company_name}`,
         });
       if (gravou.error) { console.error('contrato: aceite não gravou', gravou.error.message); return json(500, { error: 'Não foi possível registrar o aceite. Tente de novo.' }); }
       const { error: errCli } = await db.from('clients').update({
@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
       const { data: c } = await db.from('contracts').select('texto_aceito, signed_at, versao')
         .eq('client_id', cli.id).eq('status', 'assinado').not('texto_aceito', 'is', null)
         .order('signed_at', { ascending: false }).limit(1).maybeSingle();
-      if (!c?.texto_aceito) return json(404, { error: 'O contrato assinado não está disponível aqui. Peça ao seu contato no Via Pesados.' });
+      if (!c?.texto_aceito) return json(404, { error: 'Os Termos aceitos não estão disponíveis aqui. Peça ao seu contato no Via Pesados.' });
       return json(200, { ok: true, versao: c.versao, aceito_em: c.signed_at, blocos: emBlocos(c.texto_aceito) });
     }
 

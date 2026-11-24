@@ -113,8 +113,8 @@ export function lerDadosDoContrato(
   if (dados.razao_social.length < 3) return { ok: false, erro: 'Informe a razão social da empresa.' };
   if (!cnpjValido(dados.cnpj)) return { ok: false, erro: 'Confira o CNPJ: o número não é válido.' };
   if (dados.endereco.length < 8) return { ok: false, erro: 'Informe o endereço completo da empresa.' };
-  if (dados.representante_nome.split(' ').length < 2) return { ok: false, erro: 'Informe o nome completo de quem assina.' };
-  if (!cpfValido(dados.representante_cpf)) return { ok: false, erro: 'Confira o CPF de quem assina: o número não é válido.' };
+  if (dados.representante_nome.split(' ').length < 2) return { ok: false, erro: 'Informe o nome completo de quem aceita.' };
+  if (!cpfValido(dados.representante_cpf)) return { ok: false, erro: 'Confira o CPF de quem aceita: o número não é válido.' };
   return { ok: true, dados };
 }
 
@@ -192,4 +192,5 @@ export function emBlocos(md: string): Bloco[] {
 /** Cliente novo aceita o contrato (antes ou depois de pagar). Quem já pagava antes do contrato existir na página, não. */
 export const precisaAceitar = (x: { aceitoEm: string | null | undefined; jaPagou: boolean }) => !x.aceitoEm && !x.jaPagou;
 
-export const VERSAO_DO_CONTRATO = 'v6';
+/* v7 = Termos de Uso (24/11/2026, dono: "o contrato cria uma barreira"); até a v6 era o contrato. */
+export const VERSAO_DO_CONTRATO = 'v7';
