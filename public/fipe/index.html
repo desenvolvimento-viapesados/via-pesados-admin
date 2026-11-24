@@ -178,7 +178,8 @@
       return '<button type="button" data-aba="' + t[0] + '" class="' + (i === inicial ? 'ativa' : '') + '">' + t[1] + ' (' + cont[i] + ')</button>';
     }).join('') + '</div>';
     h += TIPOS.map(function (t, i) {
-      return '<div class="aba ' + (i === inicial ? 'ativa' : '') + '" data-aba="' + t[0] + '">' + painel(d.ofertas.filter(de(t[0])), d.semPreco.filter(de(t[0])), t[1]) + '</div>';
+      var aviso = t[0] === 'caminhao' ? '<p class="nota" style="margin-top:14px">Atenção: a FIPE é só do caminhão. Se o anúncio inclui baú, caçamba, munck ou outra carroceria, o preço fica acima da FIPE por causa dela.</p>' : '';
+      return '<div class="aba ' + (i === inicial ? 'ativa' : '') + '" data-aba="' + t[0] + '">' + aviso + painel(d.ofertas.filter(de(t[0])), d.semPreco.filter(de(t[0])), t[1]) + '</div>';
     }).join('');
     if (d.fora && d.fora.length) h += '<p class="nota">Não comparados (' + d.fora.length + '): ' + d.fora.map(function (x) { return esc(x.titulo) + ' (' + esc(x.motivo) + ')'; }).join('; ') + '.</p>';
     h += '<p class="nota">Tabela FIPE de ' + esc(d.mes) + '. "Perde por dia" é a queda da FIPE nos últimos 12 meses dividida pelos dias.</p>';
