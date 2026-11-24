@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Ferramenta FIPE grátis · Via Pesados</title>
+<meta name="description" content="Veja a melhor oferta do seu estoque de caminhões em comparação à Tabela FIPE e quanto cada caminhão está desvalorizando. Grátis." />
+<meta property="og:title" content="Ferramenta FIPE grátis para lojas de caminhão" />
+<meta property="og:description" content="A melhor oferta do seu estoque em comparação à FIPE e quanto cada caminhão desvaloriza." />
+<link rel="icon" href="/favicon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root { --fundo:#F5F3EF; --texto:#0B0B0C; --cinza:#6E6B74; --linha:#E2DED6; --lar:#E06100; --verde:#167A43; --verdeF:#E3F4EA; --verm:#C4321C; --vermF:#FBE7E4; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { background:var(--fundo); color:var(--texto); font-family:Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  .app { max-width:460px; margin:0 auto; min-height:100vh; padding:28px 18px 60px; }
+  .topo { display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; }
+  .topo img { height:30px; }
+  .topo small { font-size:12px; font-weight:700; color:var(--cinza); letter-spacing:.06em; text-transform:uppercase; }
+  h1 { font-size:30px; font-weight:800; letter-spacing:-.03em; line-height:1.1; }
+  h1 i { font-style:normal; font-weight:300; display:block; color:var(--cinza); }
+  .sub { font-size:15px; color:var(--cinza); margin-top:10px; line-height:1.45; }
+  .tela { display:none; } .tela.ativa { display:block; }
+  label.campo { display:block; background:#fff; border:1.5px solid var(--linha); border-radius:14px; padding:12px 16px; margin-top:12px; }
+  label.campo span { display:block; font-size:12px; color:var(--cinza); font-weight:600; margin-bottom:4px; }
+  label.campo input, label.campo select { width:100%; border:0; outline:0; font:600 17px Inter,sans-serif; background:transparent; color:var(--texto); }
+  label.campo:focus-within { border-color:var(--lar); }
+  .isca { position:absolute; left:-9999px; }
+  button.btn { width:100%; border:0; cursor:pointer; background:var(--texto); color:#fff; border-radius:14px; padding:17px; font:700 16px Inter,sans-serif; margin-top:18px; }
+  button.btn.lar { background:var(--lar); } button.btn:disabled { opacity:.5; }
+  .erro { color:var(--verm); font-size:14px; font-weight:600; margin-top:12px; min-height:18px; }
+  .card { width:100%; text-align:left; border:0; cursor:pointer; background:#fff; border-radius:20px; padding:20px; margin-top:14px; box-shadow:0 8px 24px rgba(40,30,20,.06); display:flex; gap:14px; align-items:center; font-family:inherit; color:inherit; }
+  .card .n { width:44px; height:44px; border-radius:12px; background:var(--fundo); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px; color:var(--lar); flex:none; }
+  .card b { display:block; font-size:17px; letter-spacing:-.01em; line-height:1.25; } .card span { font-size:13px; color:var(--cinza); }
+  .voltar { background:0; border:0; font:600 14px Inter,sans-serif; color:var(--cinza); margin-bottom:14px; cursor:pointer; }
+  .res { background:#fff; border-radius:20px; padding:18px; margin-top:16px; box-shadow:0 8px 24px rgba(40,30,20,.06); }
+  .resumo { display:flex; gap:10px; margin-top:16px; } .resumo div { flex:1; background:#fff; border-radius:16px; padding:14px; }
+  .resumo b { display:block; font-size:24px; font-weight:800; } .resumo span { font-size:12px; color:var(--cinza); }
+  .item { display:grid; grid-template-columns:1fr auto; gap:4px 10px; align-items:center; padding:13px 0; border-top:1px solid #EEEAE3; }
+  .item:first-child { border-top:0; } .item b { font-size:15px; } .item span { font-size:12px; color:var(--cinza); grid-column:1; }
+  em.tag { grid-row:1 / span 2; grid-column:2; font-style:normal; font-size:13px; font-weight:800; padding:7px 10px; border-radius:999px; white-space:nowrap; }
+  em.bom { background:var(--verdeF); color:var(--verde); } em.ruim { background:var(--vermF); color:var(--verm); } em.neutro { background:var(--fundo); color:var(--cinza); }
+  .rot { font-size:12px; font-weight:700; color:var(--cinza); text-transform:uppercase; letter-spacing:.06em; }
+  .grande { font-size:44px; font-weight:800; letter-spacing:-.04em; color:var(--lar); line-height:1.1; margin-top:4px; }
+  svg.graf { width:100%; height:150px; margin-top:12px; }
+  .meses { display:flex; justify-content:space-between; font-size:10px; color:#9A97A0; }
+  .dupla { display:flex; gap:10px; margin-top:14px; } .dupla div { flex:1; background:var(--fundo); border-radius:14px; padding:12px; }
+  .dupla b { display:block; font-size:20px; font-weight:800; color:var(--verm); } .dupla span { font-size:12px; color:var(--cinza); }
+  .carregando { text-align:center; padding:40px 10px; color:var(--cinza); font-size:15px; }
+  .carregando::before { content:''; display:block; width:34px; height:34px; margin:0 auto 14px; border:3px solid var(--linha); border-top-color:var(--lar); border-radius:50%; animation:gira 0.8s linear infinite; }
+  @keyframes gira { to { transform:rotate(360deg); } }
+  h3 { font-size:15px; font-weight:800; margin:22px 0 4px; }
+  .nota { font-size:12px; color:var(--cinza); margin-top:10px; line-height:1.4; }
+  .rodape { margin-top:34px; font-size:13px; color:var(--cinza); text-align:center; line-height:1.5; }
+  .rodape a { color:var(--texto); font-weight:700; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topo"><img src="/fipe/logo.svg" alt="Via Pesados" /><small>FIPE grátis</small></div>
+
+  <!-- 0. Liberar -->
+  <section class="tela" id="t-liberar">
+    <h1><i>Ferramenta grátis</i>Seu estoque na FIPE.</h1>
+    <p class="sub">Para liberar, só o nome da loja e o seu WhatsApp.</p>
+    <form id="f-liberar">
+      <label class="campo"><span>Nome da loja</span><input name="loja" autocomplete="organization" required /></label>
+      <label class="campo"><span>Seu WhatsApp</span><input name="whatsapp" inputmode="tel" autocomplete="tel" placeholder="(33) 99999-0000" required /></label>
+      <input class="isca" name="site_isca" tabindex="-1" autocomplete="off" />
+      <button class="btn lar" type="submit">Liberar a ferramenta</button>
+      <div class="erro" id="e-liberar"></div>
+    </form>
+  </section>
+
+  <!-- 1. Menu -->
+  <section class="tela" id="t-menu">
+    <h1><i>O que você quer ver?</i>Escolha uma.</h1>
+    <button class="card" data-ir="t-estoque"><div class="n">1</div><div><b>Qual a melhor oferta do meu estoque em comparação à FIPE</b><span>Cole o site da sua loja</span></div></button>
+    <button class="card" data-ir="t-queda"><div class="n">2</div><div><b>Quanto um caminhão está desvalorizando</b><span>Por mês, por dia, em 90 dias</span></div></button>
+  </section>
+
+  <!-- 2. Estoque -->
+  <section class="tela" id="t-estoque">
+    <button class="voltar" data-ir="t-menu">← Voltar</button>
+    <h1><i>A melhor oferta do</i>seu estoque × FIPE</h1>
+    <form id="f-estoque">
+      <label class="campo"><span>Site da loja (a página do estoque)</span><input name="site" inputmode="url" placeholder="minhaloja.com.br/estoque" required /></label>
+      <button class="btn" type="submit">Analisar meu estoque</button>
+      <div class="erro" id="e-estoque"></div>
+    </form>
+    <div id="r-estoque"></div>
+  </section>
+
+  <!-- 3. Desvalorização -->
+  <section class="tela" id="t-queda">
+    <button class="voltar" data-ir="t-menu">← Voltar</button>
+    <h1><i>Quanto ele está</i>desvalorizando?</h1>
+    <form id="f-queda">
+      <label class="campo"><span>Marca</span><select name="marca" required><option value="">Carregando…</option></select></label>
+      <label class="campo"><span>Modelo</span><select name="modelo" required disabled><option value="">Escolha a marca</option></select></label>
+      <label class="campo"><span>Ano</span><select name="ano" required disabled><option value="">Escolha o modelo</option></select></label>
+      <button class="btn" type="submit">Ver a desvalorização</button>
+      <div class="erro" id="e-queda"></div>
+    </form>
+    <div id="r-queda"></div>
+  </section>
+
+  <p class="rodape">Tabela FIPE oficial, atualizada todo mês.<br />Feito pelo <a href="https://viapesados.com.br" target="_blank">Via Pesados</a>, o sistema para lojas de veículos pesados.</p>
+</div>
+
+<script>
+(function () {
+  var API = 'https://ktjvyysqhsyvjmhumjly.supabase.co/functions/v1/fipe-ferramenta';
+  var PASSE = 'fipe-passe';
+  var $ = function (s) { return document.querySelector(s); };
+  var guardar = function (k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
+  var ler = function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  var passe = ler(PASSE);
+  var brl = function (n) { return 'R$ ' + Math.round(Math.abs(n)).toLocaleString('pt-BR'); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+
+  function ir(id) {
+    document.querySelectorAll('.tela').forEach(function (t) { t.classList.toggle('ativa', t.id === id); });
+    window.scrollTo(0, 0);
+    if (id === 't-queda') carregarMarcas();
+  }
+  document.addEventListener('click', function (e) { var b = e.target.closest('[data-ir]'); if (b) { e.preventDefault(); ir(b.getAttribute('data-ir')); } });
+
+  function chamar(corpo) {
+    if (passe) corpo.passe = passe;
+    return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) })
+      .then(function (r) { return r.json().then(function (d) {
+        if (d && d.liberar) { passe = null; guardar(PASSE, null); ir('t-liberar'); }
+        if (!r.ok) throw new Error((d && d.error) || 'Algo deu errado. Tente de novo.');
+        return d;
+      }); });
+  }
+
+  /* 0. liberar */
+  $('#f-liberar').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = e.target, b = f.querySelector('button');
+    b.disabled = true; $('#e-liberar').textContent = '';
+    chamar({ acao: 'liberar', loja: f.loja.value, whatsapp: f.whatsapp.value, site_isca: f.site_isca.value })
+      .then(function (d) {
+        passe = d.passe; guardar(PASSE, passe);
+        try { window.fbq && fbq('track', 'Lead', { content_name: 'Ferramenta FIPE' }); } catch (x) {}
+        ir('t-menu');
+      })
+      .catch(function (x) { $('#e-liberar').textContent = x.message; })
+      .then(function () { b.disabled = false; });
+  });
+
+  /* 2. estoque */
+  $('#f-estoque').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = e.target, b = f.querySelector('button'), out = $('#r-estoque');
+    b.disabled = true; $('#e-estoque').textContent = '';
+    out.innerHTML = '<div class="carregando">Lendo o seu estoque e comparando com a FIPE…<br>Leva até 1 minuto.</div>';
+    chamar({ acao: 'estoque', site: f.site.value })
+      .then(function (d) { out.innerHTML = desenharEstoque(d); })
+      .catch(function (x) { out.innerHTML = ''; $('#e-estoque').textContent = x.message; })
+      .then(function () { b.disabled = false; });
+  });
+
+  function desenharEstoque(d) {
+    var abaixo = d.ofertas.filter(function (o) { return o.diferenca < 0; }).length;
+    var h = '<div class="resumo"><div><b>' + (d.ofertas.length + d.semPreco.length) + '</b><span>caminhões comparados</span></div>'
+      + '<div><b style="color:var(--verde)">' + abaixo + '</b><span>abaixo da FIPE</span></div>'
+      + '<div><b style="color:var(--verm)">' + (d.ofertas.length - abaixo) + '</b><span>acima da FIPE</span></div></div>';
+    if (d.ofertas.length) {
+      h += '<h3>Da melhor oferta à pior</h3><div class="res">' + d.ofertas.map(function (o) {
+        var bom = o.diferenca < 0;
+        return '<div class="item"><b>' + esc(o.titulo) + '</b><em class="tag ' + (bom ? 'bom' : 'ruim') + '">' + (bom ? '−' : '+') + brl(o.diferenca) + '</em>'
+          + '<span>' + o.ano + ' · anunciado ' + brl(o.preco) + ' · FIPE ' + brl(o.fipe) + (o.porDia ? ' · perde ' + brl(o.porDia) + '/dia' : '') + '</span></div>';
+      }).join('') + '</div>';
+    }
+    if (d.semPreco.length) {
+      h += '<h3>Sem preço no site: quanto cada um perde parado</h3><div class="res">' + d.semPreco.map(function (o) {
+        return '<div class="item"><b>' + esc(o.titulo) + '</b><em class="tag ' + (o.porDia ? 'ruim' : 'neutro') + '">' + (o.porDia ? '−' + brl(o.porDia) + '/dia' : '—') + '</em>'
+          + '<span>' + o.ano + ' · FIPE ' + brl(o.fipe) + '</span></div>';
+      }).join('') + '</div>';
+    }
+    if (d.fora && d.fora.length) h += '<p class="nota">Não comparados (' + d.fora.length + '): ' + d.fora.map(function (x) { return esc(x.titulo) + ' (' + esc(x.motivo) + ')'; }).join('; ') + '.</p>';
+    h += '<p class="nota">Tabela FIPE de ' + esc(d.mes) + '. "Perde por dia" é a queda da FIPE nos últimos 12 meses dividida pelos dias.</p>';
+    return h;
+  }
+
+  /* 3. desvalorização */
+  var marcasCarregadas = false;
+  function opcoes(sel, lista, vazio) {
+    sel.innerHTML = '<option value="">' + vazio + '</option>' + lista.map(function (x) { return '<option value="' + esc(x.codigo) + '">' + esc(x.nome) + '</option>'; }).join('');
+  }
+  function carregarMarcas() {
+    if (marcasCarregadas || !passe) return;
+    chamar({ acao: 'marcas' }).then(function (d) { marcasCarregadas = true; opcoes($('#f-queda').marca, d.marcas, 'Escolha a marca'); })
+      .catch(function (x) { $('#e-queda').textContent = x.message; });
+  }
+  $('#f-queda').marca.addEventListener('change', function (e) {
+    var f = $('#f-queda'); f.modelo.disabled = true; f.ano.disabled = true; opcoes(f.ano, [], 'Escolha o modelo');
+    if (!e.target.value) return;
+    f.modelo.innerHTML = '<option>Carregando…</option>';
+    chamar({ acao: 'modelos', marca: e.target.value }).then(function (d) { opcoes(f.modelo, d.modelos, 'Escolha o modelo'); f.modelo.disabled = false; });
+  });
+  $('#f-queda').modelo.addEventListener('change', function (e) {
+    var f = $('#f-queda'); f.ano.disabled = true;
+    if (!e.target.value) return;
+    f.ano.innerHTML = '<option>Carregando…</option>';
+    chamar({ acao: 'anos', marca: f.marca.value, modelo: e.target.value }).then(function (d) { opcoes(f.ano, d.anos, 'Escolha o ano'); f.ano.disabled = false; });
+  });
+  $('#f-queda').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = e.target, b = f.querySelector('button'), out = $('#r-queda');
+    b.disabled = true; $('#e-queda').textContent = '';
+    out.innerHTML = '<div class="carregando">Buscando 12 meses de FIPE…</div>';
+    chamar({ acao: 'queda', marca: f.marca.value, modelo: f.modelo.value, ano: f.ano.value })
+      .then(function (d) { out.innerHTML = desenharQueda(d, f.ano.options[f.ano.selectedIndex].text); })
+      .catch(function (x) { out.innerHTML = ''; $('#e-queda').textContent = x.message; })
+      .then(function () { b.disabled = false; });
+  });
+  function desenharQueda(d, ano) {
+    var v = d.meses.map(function (m) { return m.valor; }).filter(Boolean);
+    var mx = Math.max.apply(null, v), mn = Math.min.apply(null, v), W = 320, H = 130, n = d.meses.length;
+    var pts = d.meses.map(function (m, i) { return m.valor ? (i * W / (n - 1)).toFixed(1) + ',' + (H - (m.valor - mn) / ((mx - mn) || 1) * H * 0.85 - 8).toFixed(1) : null; }).filter(Boolean).join(' ');
+    var nomes = d.meses.map(function (m) { return (m.mes.split(' ')[0] || '').slice(0, 3); });
+    var caiu = d.perda > 0;
+    return '<div class="res"><div class="rot">' + esc(d.modelo) + ' · ' + esc(ano) + '</div>'
+      + '<div class="rot" style="margin-top:14px">' + (caiu ? 'Perdeu em 12 meses' : 'Valorizou em 12 meses') + '</div>'
+      + '<div class="grande"' + (caiu ? '' : ' style="color:var(--verde)"') + '>' + (caiu ? '−' : '+') + brl(d.perda) + '</div>'
+      + '<span style="font-size:13px;color:var(--cinza)">' + Math.abs(d.pct).toFixed(1).replace('.', ',') + '% · de ' + brl(d.inicio) + ' para ' + brl(d.fim) + '</span>'
+      + '<svg class="graf" viewBox="0 0 ' + W + ' ' + (H + 10) + '" preserveAspectRatio="none"><polyline points="' + pts + '" fill="none" stroke="#E06100" stroke-width="3" stroke-linejoin="round"/></svg>'
+      + '<div class="meses">' + nomes.map(function (x) { return '<span>' + x + '</span>'; }).join('') + '</div>'
+      + (caiu ? '<div class="dupla"><div><b>−' + brl(d.porDia) + '</b><span>por dia</span></div><div><b>−' + brl(d.em90) + '</b><span>parado 90 dias</span></div></div>' : '')
+      + '<p class="nota">Tabela FIPE de ' + esc(d.desde) + ' a ' + esc(d.ate) + '.</p></div>';
+  }
+
+  ir(passe ? 't-menu' : 't-liberar');
+})();
+</script>
+<script src="/conheca/medicao.js?v=5" async></script>
+</body>
+</html>
