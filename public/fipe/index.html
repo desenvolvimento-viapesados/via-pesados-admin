@@ -198,7 +198,7 @@
       }).join('') + '</div>';
     }
     if (semPreco.length) {
-      h += '<h3>Sem preço no site: quanto cada um perde parado</h3><div class="res">' + semPreco.map(function (o) {
+      h += '<h3>Sem preço para comparar: quanto cada um perde parado</h3><div class="res">' + semPreco.map(function (o) {
         return '<div class="item"><b>' + esc(o.titulo) + '</b><em class="tag ' + (o.porDia ? 'ruim' : 'neutro') + '">' + (o.porDia ? '−' + brl(o.porDia) + '/dia' : '—') + '</em>'
           + '<span>' + o.ano + ' · FIPE ' + brl(o.fipe) + '</span></div>';
       }).join('') + '</div>';

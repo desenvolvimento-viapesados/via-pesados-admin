@@ -60,10 +60,10 @@ export type ModeloFipe = { codigo: string; nome: string };
  * O modelo da FIPE para o anúncio. Exige casar pelo menos um número de modelo (540, 2651, 24280):
  * sem número, "Scania" casaria com qualquer Scania. Empate: Euro 6 a partir de 2023, Euro 5 antes.
  */
-export function escolherModelo(anuncio: string, ano: number | null, modelos: ModeloFipe[]): ModeloFipe | null {
+export function candidatosDoModelo(anuncio: string, ano: number | null, modelos: ModeloFipe[]): ModeloFipe[] {
   const numerosDoAnuncio = pedacos(anuncio).filter((p) => /^\d{3,}$/.test(p));
-  if (!numerosDoAnuncio.length) return null;
-  let melhor: { m: ModeloFipe; n: number } | null = null;
+  if (!numerosDoAnuncio.length) return [];
+  const notas: { m: ModeloFipe; n: number }[] = [];
   for (const m of modelos) {
     const f = pedacos(m.nome.replace(/\(.*?\)/g, ' '));
     if (!f.some((p) => numerosDoAnuncio.includes(p))) continue;
@@ -71,9 +71,29 @@ export function escolherModelo(anuncio: string, ano: number | null, modelos: Mod
     const e6 = /\(E6\)/i.test(m.nome), e5 = /\(E5\)/i.test(m.nome);
     if (ano && ano >= 2023 && e6) n += 0.5;
     if (ano && ano < 2023 && e5) n += 0.5;
-    if (!melhor || n > melhor.n) melhor = { m, n };
+    if (n >= 3) notas.push({ m, n });
   }
-  return melhor && melhor.n >= 3 ? melhor.m : null;
+  return notas.sort((a, b) => b.n - a.n).map((x) => x.m);
+}
+
+/** O melhor candidato (o primeiro da lista). Quem consulta a FIPE tenta os seguintes se o ano não existir. */
+export const escolherModelo = (anuncio: string, ano: number | null, modelos: ModeloFipe[]): ModeloFipe | null =>
+  candidatosDoModelo(anuncio, ano, modelos)[0] ?? null;
+
+/**
+ * Preço longe demais da FIPE quase sempre é entrada, parcela ou erro do anúncio ("financiado, R$ 64 mil"):
+ * não serve para dizer se é boa oferta.
+ */
+export const precoPlausivel = (preco: number, fipe: number) => preco >= fipe * 0.5 && preco <= fipe * 1.6;
+
+/** O mesmo caminhão listado duas vezes na página (destaque e lista): fica um. */
+export function semRepetidos<T extends { titulo?: unknown; modelo?: unknown; ano?: unknown; preco?: unknown }>(lista: T[]): T[] {
+  const vistos = new Set<string>();
+  return lista.filter((c) => {
+    const k = [pedacos(`${c.modelo ?? ''}`).filter((p) => /\d/.test(p)).join(' '), anoDoModelo(c.ano), precoEmReais(c.preco) ?? String(c.titulo ?? '')].join('|');
+    if (vistos.has(k)) return false;
+    vistos.add(k); return true;
+  });
 }
 
 /** "R$ 729.000,00", "729000", "729.000" → 729000. Fora de R$ 20 mil a R$ 5 mi não é preço de caminhão. */
