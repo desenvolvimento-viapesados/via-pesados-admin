@@ -68,7 +68,7 @@ export const ROTULO_DA_ETAPA: Record<Etapa, string> = {
 };
 
 export const LIMITES = {
-  /** Reunião só em hora cheia e 1 h entre o começo de uma e o da outra (dono, 25/11/2026). */
+  /** 1 h entre o começo de uma reunião e o da outra; horário quebrado pode (dono, 25/11/2026). */
   INTERVALO_ENTRE_REUNIOES_MIN: 60,
   /** Balões por turno. */
   MAX_MENSAGENS: 3,
@@ -1183,7 +1183,7 @@ export type ReuniaoMarcada = {
 export type OpcoesDaAgenda = {
   /** Na remarcação, a própria reunião não conta como conflito nem no teto do dia. */
   ignorarReuniaoId?: string | null;
-  /** De quanto em quanto tempo nasce um horário candidato (padrão 60 min: só hora cheia). */
+  /** De quanto em quanto tempo nasce um horário candidato (padrão 30 min). */
   passoMin?: number;
   /** Distância mínima entre dois horários sugeridos no mesmo dia (padrão 240 min), para variar. */
   espacoMin?: number;
@@ -1217,8 +1217,6 @@ function motivoDeRecusa(inicio: Date, agora: Date, agenda: Agenda, reunioes: Reu
   const ini = b.getUTCHours() * 60 + b.getUTCMinutes();
   const dur = Math.max(1, Number(agenda.duracao_min) || 15);
   if (ini < minutosDoDia(agenda.hora_inicio) || ini + dur > minutosDoDia(agenda.hora_fim)) return 'fora do expediente';
-  /* Dono, 25/11/2026 ("de 1 em 1 hora, não dá para ser de 30 em 30"): só hora cheia. */
-  if (b.getUTCMinutes() !== 0) return 'só em hora cheia';
   if (inicio.getTime() < agora.getTime() + (Number(agenda.folga_min_horas) || 0) * 3_600_000) return 'em cima da hora';
   if (inicio.getTime() > agora.getTime() + (op.diasAFrente ?? 21) * 86_400_000) return 'longe demais';
   const fim = inicio.getTime() + dur * 60_000;
@@ -1255,14 +1253,14 @@ export function porQueNaoPode(
 }
 
 /**
- * Os próximos n horários para oferecer, em ordem. Candidatos a cada hora cheia desde
+ * Os próximos n horários para oferecer, em ordem. Candidatos a cada 30 min desde
  * hora_inicio; por dia no máximo 2 sugeridos, a pelo menos 4h um do outro (variedade:
  * "amanhã 9h ou quinta 13h"). Todos passam por horarioLivre.
  */
 export function horariosLivres(
   agora: Date, agenda: Agenda, reunioes: ReuniaoMarcada[], n: number = LIMITES.HORARIOS_OFERECIDOS, opcoes: OpcoesDaAgenda = {},
 ): Date[] {
-  const passo = Math.max(5, opcoes.passoMin ?? 60);
+  const passo = Math.max(5, opcoes.passoMin ?? 30);
   const espaco = Math.max(0, opcoes.espacoMin ?? 240);
   const porDia = Math.max(1, opcoes.maxPorDia ?? 2);
   const diasAFrente = opcoes.diasAFrente ?? 21;
