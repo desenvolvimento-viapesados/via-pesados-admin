@@ -4,7 +4,7 @@ import {
   dentroDoHorario, ehNumeroDeTeste, ETAPAS_SEM_RESPOSTA, janelaAberta, MODOS, proximaEtapa, tetoDoDiaAtingido,
 } from '../_shared/assistente-regras.ts';
 import {
-  carregarConversa, chamarMotor, chaveDaIA, concluirTurno, lerConfig, lerEstado, salvarEstado, transcritor, ultimaEntradaEm,
+  avisarLeadNoCrm, carregarConversa, chamarMotor, chaveDaIA, concluirTurno, lerConfig, lerEstado, salvarEstado, transcritor, ultimaEntradaEm,
 } from '../_shared/assistente.ts';
 import { statusDoModelo } from '../_shared/wa.ts';
 
@@ -75,13 +75,24 @@ Deno.serve(async (req) => {
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   try {
     const auth = req.headers.get('Authorization')?.replace('Bearer ', '') ?? '';
+    const corpo = await req.json().catch(() => ({}));
+    const acao = String(corpo?.acao ?? '');
+
+    /* Reenviar o aviso de lead ao dono (25/11/2026): só pela chave de serviço, do terminal. */
+    if (acao === 'avisar_lead') {
+      const { error: naoEServico } = await createClient(Deno.env.get('SUPABASE_URL')!, auth).auth.admin.listUsers({ page: 1, perPage: 1 });
+      if (naoEServico) return json(403, { error: 'só com a chave de serviço' });
+      const e = await lerEstado(db, String(corpo?.conversa_id ?? ''));
+      if (!e) return json(404, { error: 'conversa sem assistente' });
+      const destino = (['contato', 'oportunidade', 'com_voce'].includes(corpo?.destino) ? corpo.destino : 'oportunidade') as 'contato' | 'oportunidade' | 'com_voce';
+      await avisarLeadNoCrm(db, e, null, destino, `${destino}:${e.conversa_id}`);
+      return json(200, { ok: true });
+    }
+
     const { data: { user } } = await db.auth.getUser(auth);
     if (!user) return json(401, { error: 'não autenticado' });
     const { data: membro } = await db.from('team_members').select('id, full_name, is_active').eq('id', user.id).maybeSingle();
     if (!membro || membro.is_active === false) return json(403, { error: 'acesso negado' });
-
-    const corpo = await req.json().catch(() => ({}));
-    const acao = String(corpo?.acao ?? '');
 
     /* ── o que falta para funcionar ─────────────────────────────── */
     if (acao === 'situacao' || acao === 'status') {

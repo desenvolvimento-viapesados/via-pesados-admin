@@ -1120,6 +1120,18 @@ export async function avisarReuniao(db: Db, cfg: AssistenteConfig | null, conver
   }
 }
 
+/** O número escreveu para o oficial (YCloud) nas últimas 24 h? Então cabe mensagem avulsa. */
+async function janelaDe24hAberta(db: Db, para: string): Promise<boolean> {
+  const fim = String(para).replace(/\D/g, '').slice(-8);
+  const { data: convs } = await db.from('wa_conversas').select('id, wa_instancias!inner(origem)')
+    .like('telefone', `%${fim}`).eq('wa_instancias.origem', 'ycloud');
+  const ids = (convs ?? []).map((c: { id: string }) => c.id);
+  if (!ids.length) return false;
+  const { data: m } = await db.from('wa_mensagens').select('id').in('conversa_id', ids).eq('direcao', 'entrada')
+    .gte('created_at', new Date(Date.now() - 23.5 * 3600_000).toISOString()).limit(1).maybeSingle();
+  return !!m;
+}
+
 /**
  * Avisa os números do aviso de reunião que o Davi levou um lead ao CRM, e por quê (dono,
  * 25/11/2026), pelo modelo aviso_lead_no_crm. Sem o modelo aprovado não manda; falhar aqui
@@ -1131,10 +1143,7 @@ export async function avisarLeadNoCrm(db: Db, e: AssistenteConversa, conversa: C
     const cfg = await lerConfig(db);
     const destinos = numerosDoAviso(cfg?.aviso_whatsapp);
     if (!destinos.length) return;
-    if ((await statusDoModelo('aviso_lead_no_crm')) !== 'APPROVED') {
-      console.warn('assistente: aviso de lead não saiu: o modelo aviso_lead_no_crm ainda não foi aprovado');
-      return;
-    }
+    const aprovado = (await statusDoModelo('aviso_lead_no_crm')) === 'APPROVED';
     const cv = conversa ?? (await db.from('wa_conversas').select('id, telefone, nome, instancia_id, prospect_id, frente, fixada').eq('id', e.conversa_id).maybeSingle()).data as Conversa | null;
     if (!cv) return;
     const loja = await lerLoja(db, e.loja_id ?? null);
@@ -1161,22 +1170,55 @@ export async function avisarLeadNoCrm(db: Db, e: AssistenteConversa, conversa: C
       ultimaFala: ult ? textoDaMensagem(ult) : null,
     });
 
+    const params = {
+      body: [
+        umaLinha([cidade ? `${nome}, ${cidade}` : String(nome), contato].filter(Boolean).join(' · '), 160),
+        DESTINO_DO_LEAD[destino],
+        umaLinha(porque, 300),
+      ],
+      urlSuffix: cv.id,
+    };
+    const validoAte = new Date(Date.now() + 24 * 3600_000).toISOString();
+    const ycloud = configYCloud();
+    const primeiro = String(quem || 'O lead').split(/[\s(]/)[0] || 'O lead';
+    const textoAvulso = [
+      `🔔 *${primeiro} virou lead*`,
+      '',
+      `Loja: ${cidade ? `${nome}, ${cidade}` : nome}`,
+      `Quem: ${quem || '—'}`,
+      `WhatsApp: ${telefoneFalado(cv.telefone)}`,
+      `Foi para: ${DESTINO_DO_LEAD[destino]}`,
+      `Por quê: ${porque}`,
+      '',
+      `Abrir a conversa: https://viapesados.com.br/admin/crm?tab=whatsapp&conversa=${cv.id}`,
+    ].join('\n');
     for (const para of destinos) {
-      const res = await enviarTemplate(db, {
-        para,
-        template: 'aviso_lead_no_crm',
-        params: {
-          body: [
-            umaLinha([cidade ? `${nome}, ${cidade}` : String(nome), contato].filter(Boolean).join(' · '), 160),
-            DESTINO_DO_LEAD[destino],
-            umaLinha(porque, 300),
-          ],
-          urlSuffix: cv.id,
-        },
-        chave: `aviso_lead_crm:${chave}:${para}`,
-        /* Fora das 08h–20h espera a janela; passou um dia, perdeu o sentido. */
-        validoAte: new Date(Date.now() + 24 * 3600_000).toISOString(),
-      });
+      const chaveDoEnvio = `aviso_lead_crm:${chave}:${para}`;
+      /* Dono, 25/11/2026: com a janela de 24 h aberta (ele escreveu para o oficial), vai
+         mensagem avulsa na hora, sem depender de modelo. A trava de wa_envios evita repetir. */
+      if (ycloud && await janelaDe24hAberta(db, para)) {
+        const { error: dup } = await db.from('wa_envios').insert({ template: 'aviso_lead_avulso', chave: chaveDoEnvio, destino: para });
+        if (dup) continue;
+        try {
+          const { id } = await enviarTextoPorYCloud(ycloud, { para, texto: textoAvulso });
+          await db.from('wa_envios').update({ message_id: id || null, enviado_em: agoraISO() }).eq('template', 'aviso_lead_avulso').eq('chave', chaveDoEnvio);
+          continue;
+        } catch (err) {
+          await db.from('wa_envios').delete().eq('template', 'aviso_lead_avulso').eq('chave', chaveDoEnvio);
+          console.warn('assistente: avulso do aviso de lead falhou; vai o modelo', err instanceof Error ? err.message : err);
+        }
+      }
+      if (!aprovado) {
+        /* Modelo ainda na Meta: o aviso espera na fila (wa-fila tenta a cada 10 min) e sai
+           assim que for aprovado, em vez de se perder (o Diego, 25/11/2026). */
+        const { error } = await db.from('wa_fila').upsert({
+          template: 'aviso_lead_no_crm', chave: chaveDoEnvio, para, params,
+          enviar_apos: agoraISO(), valido_ate: validoAte, condicao: null,
+        }, { onConflict: 'template,chave', ignoreDuplicates: true });
+        if (error) console.warn('assistente: aviso de lead não entrou na fila', error.message);
+        continue;
+      }
+      const res = await enviarTemplate(db, { para, template: 'aviso_lead_no_crm', params, chave: chaveDoEnvio, validoAte });
       if (!res.ok) console.warn('assistente: aviso de lead não saiu', para.slice(-4), res.motivo);
     }
   } catch (err) {

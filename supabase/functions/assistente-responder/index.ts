@@ -529,7 +529,7 @@ async function trabalhar(db: any, conversaId: string, token: string, esperar: bo
               : estadoAtual.dores.length
                 ? ` E num terceiro balão, sozinho, o pedido de exemplo da dor (a resposta dele foi vaga): "${PERGUNTA_DO_EXEMPLO_DA_DOR}"`
                 : ` E num terceiro balão, sozinho, a pergunta da dor como preparação, exatamente assim: "${PERGUNTA_DA_DOR_DEPOIS_DE_MARCAR}"`;
-            saida = `Pode confirmar ${horarioFalado(v.inicio)}. A reunião é gravada quando a sua mensagem sair. Agora chame responder com o "Marcado!", SEM link nenhum (dono, 24/11/2026) e sem pergunta nenhuma nele (dono, 06/11): "Marcado! ✅\n\n*[dia] às [hora]*, 15 minutos com um especialista da nossa equipe.\nEle te chama aqui no WhatsApp nesse horário. Se servir, você já deixa a implantação marcada; se não servir, tudo bem." (formato do dia: "amanhã, sexta, às 9h30" ou "segunda às 10h").${dorNoMarcado} O que faltar da loja o especialista vê na reunião.`;
+            saida = `Pode confirmar ${horarioFalado(v.inicio)}. A reunião é gravada quando a sua mensagem sair. Agora chame responder com o "Marcado!", SEM link nenhum (dono, 24/11/2026) e sem pergunta nenhuma nele (dono, 06/11): "Marcado! ✅\n\n*[dia] às [hora]*, 15 minutos com um especialista da nossa equipe.\nEle te chama aqui no WhatsApp nesse horário. Se servir, você já deixa a implantação marcada; se não servir, tudo bem." (formato do dia: "amanhã, sexta, às 9h" ou "segunda às 10h").${dorNoMarcado} O que faltar da loja o especialista vê na reunião.`;
           } else {
             ehErro = true;
             saida = v.motivo + (v.chamarXavier ? ' Não marque: chame a equipe (chamar_xavier) e diga que um especialista da nossa equipe combina o horário por aqui.' : '');

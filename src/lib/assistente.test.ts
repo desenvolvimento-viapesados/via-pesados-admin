@@ -193,14 +193,17 @@ describe('horários livres', () => {
     const reuniao = { id: 'r1', inicio: '2026-11-04T12:00:00Z', duracao_min: 15, status: 'agendada' };
     expect(horarioLivre(new Date('2026-11-04T12:00:00Z'), TERCA_10H, AGENDA, [reuniao])).toBe(false);
     expect(horarioLivre(new Date('2026-11-04T12:10:00Z'), TERCA_10H, AGENDA, [reuniao])).toBe(false);
-    expect(horarioLivre(new Date('2026-11-04T12:15:00Z'), TERCA_10H, AGENDA, [reuniao])).toBe(true);
+    // 1 hora entre uma e outra, só hora cheia (dono, 25/11/2026)
+    expect(porQueNaoPode(new Date('2026-11-04T12:30:00Z'), TERCA_10H, AGENDA, [reuniao])).toBe('só em hora cheia');
+    expect(horarioLivre(new Date('2026-11-04T13:00:00Z'), TERCA_10H, AGENDA, [reuniao])).toBe(true);
+    expect(porQueNaoPode(new Date('2026-11-04T13:00:00Z'), TERCA_10H, AGENDA, [{ ...reuniao, inicio: '2026-11-04T12:30:00Z' }])).toBe('conflito');
     expect(horarioLivre(new Date('2026-11-04T11:45:00Z'), TERCA_10H, AGENDA, [reuniao])).toBe(false); // antes das 9h
     // remarcar: a própria reunião não conta
     expect(horarioLivre(new Date('2026-11-04T12:00:00Z'), TERCA_10H, AGENDA, [reuniao], { ignorarReuniaoId: 'r1' })).toBe(true);
     // cancelada não ocupa
     expect(horarioLivre(new Date('2026-11-04T12:00:00Z'), TERCA_10H, AGENDA, [{ ...reuniao, status: 'cancelada' }])).toBe(true);
     const terca18h = new Date('2026-11-03T21:00:00Z');
-    expect(iso(horariosLivres(terca18h, AGENDA, [reuniao], 2))).toEqual(['2026-11-04T12:30:00.000Z', '2026-11-04T16:30:00.000Z']);
+    expect(iso(horariosLivres(terca18h, AGENDA, [reuniao], 2))).toEqual(['2026-11-04T13:00:00.000Z', '2026-11-04T17:00:00.000Z']);
   });
 
   it('respeita o teto de reuniões por dia', () => {
@@ -216,9 +219,10 @@ describe('horários livres', () => {
   });
 
   it('a reunião inteira cabe no expediente, com folga e sem ir longe demais', () => {
-    expect(horarioLivre(new Date('2026-11-04T20:45:00Z'), TERCA_10H, AGENDA, [])).toBe(true);  // quarta 17h45
+    expect(horarioLivre(new Date('2026-11-04T20:00:00Z'), TERCA_10H, AGENDA, [])).toBe(true);  // quarta 17h
+    expect(porQueNaoPode(new Date('2026-11-04T20:45:00Z'), TERCA_10H, AGENDA, [])).toBe('só em hora cheia');
     expect(porQueNaoPode(new Date('2026-11-04T20:50:00Z'), TERCA_10H, AGENDA, [])).toBe('fora do expediente');
-    expect(porQueNaoPode(new Date('2026-11-03T14:59:00Z'), TERCA_10H, AGENDA, [])).toBe('em cima da hora');
+    expect(porQueNaoPode(new Date('2026-11-03T14:00:00Z'), TERCA_10H, AGENDA, [])).toBe('em cima da hora');
     expect(horarioLivre(new Date('2026-11-03T15:00:00Z'), TERCA_10H, AGENDA, [])).toBe(true);
     expect(porQueNaoPode(new Date('2026-12-03T13:00:00Z'), TERCA_10H, AGENDA, [])).toBe('longe demais');
     expect(porQueNaoPode(new Date('2026-11-04T13:00:30Z'), TERCA_10H, AGENDA, [])).toBe('horário quebrado');

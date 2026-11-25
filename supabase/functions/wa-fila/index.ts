@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { enviarTemplate, type Condicao } from '../_shared/wa.ts';
-import { dentroDaJanela } from '../_shared/regua.ts';
+import { enviarTemplate, statusDoModelo, type Condicao } from '../_shared/wa.ts';
+import { AVISOS_AO_DONO, dentroDaJanela } from '../_shared/regua.ts';
 import { tentarNotasPendentes } from '../_shared/nota-aviso.ts';
 
 /**
@@ -33,15 +33,18 @@ async function aindaFazSentido(db: { from: (t: string) => any }, c: Condicao | n
 }
 
 Deno.serve(async () => {
-  if (!dentroDaJanela()) return json(200, { ok: true, fora_do_horario: true });
+  /* Fora das 08h–20h só os avisos ao próprio dono andam (dono, 25/11/2026). */
+  const soAvisosAoDono = !dentroDaJanela();
 
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const agora = new Date().toISOString();
 
-  const { data: fila, error } = await db.from('wa_fila')
+  let consulta = db.from('wa_fila')
     .select('id, template, chave, client_id, para, params, valido_ate, condicao')
     .is('processado_em', null)
-    .lte('enviar_apos', agora)
+    .lte('enviar_apos', agora);
+  if (soAvisosAoDono) consulta = consulta.in('template', [...AVISOS_AO_DONO]);
+  const { data: fila, error } = await consulta
     .order('enviar_apos')
     .order('criado_em') // mesma hora (a sequência da prospecção às 08h): sai na ordem em que entrou
     .limit(40);
@@ -56,7 +59,15 @@ Deno.serve(async () => {
     if (!pego) continue;
 
     let resultado: string;
-    if (item.valido_ate && new Date(item.valido_ate) < new Date()) {
+    const expirou = !!item.valido_ate && new Date(item.valido_ate) < new Date();
+    /* Aviso ao dono com modelo ainda em análise na Meta: volta para a fila e tenta em 10 min. */
+    if (!expirou && AVISOS_AO_DONO.has(item.template) && (await statusDoModelo(item.template)) !== 'APPROVED') {
+      await db.from('wa_fila').update({
+        processado_em: null, enviar_apos: new Date(Date.now() + 10 * 60_000).toISOString(), resultado: 'esperando a Meta aprovar o modelo',
+      }).eq('id', item.id);
+      continue;
+    }
+    if (expirou) {
       resultado = 'perdeu o sentido antes de abrir o horário';
     } else {
       const motivo = await aindaFazSentido(db, item.condicao as Condicao | null);
