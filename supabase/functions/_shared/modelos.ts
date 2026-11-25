@@ -1023,6 +1023,42 @@ export const MODELOS: Modelo[] = [
    }
   ]
  } ,
+ /* Aviso ao dono (25/11/2026): o Davi levou um lead para o CRM (card novo em Contato ou
+    Oportunidade, ou a conversa passada para ele), com o porquê. Vai para o
+    assistente_config.aviso_whatsapp; o botão abre a conversa no CRM. */
+ {
+  "name": "aviso_lead_no_crm",
+  "language": "pt_BR",
+  "category": "UTILITY",
+  "components": [
+   {
+    "type": "BODY",
+    "text": "O Davi levou um lead para o CRM.\n\nLoja: {{1}}\nFoi para: {{2}}\nPor quê: {{3}}\n\nA conversa inteira está no CRM.",
+    "example": {
+     "body_text": [
+      [
+       "Minas Caminhões, Governador Valadares/MG · Carlos · (33) 99999-0000",
+       "Oportunidade, no Funil",
+       "Pediu para ver o sistema funcionando, e o Davi ofereceu horários para a demonstração. Ele escreveu: \"Quero ver funcionando\""
+      ]
+     ]
+    }
+   },
+   {
+    "type": "BUTTONS",
+    "buttons": [
+     {
+      "type": "URL",
+      "text": "Abrir a conversa",
+      "url": "https://viapesados.com.br/admin/crm?tab=whatsapp&conversa={{1}}",
+      "example": [
+       "https://viapesados.com.br/admin/crm?tab=whatsapp&conversa=exemplo123"
+      ]
+     }
+    ]
+   }
+  ]
+ } ,
  /* Cadência da prospecção fria (playbook de 18/11/2026, textos aprovados pelo dono; marca no masculino: "o Via Pesados"). A demonstração
     é com "um especialista da nossa equipe" (dono, 18/11: sem o nome dele). Os vídeos de vendas e de
     relatórios ainda vão ser gravados. Os primeiros nomes (prospeccao_fria_*, lembrete_demonstracao,

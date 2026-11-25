@@ -1391,6 +1391,65 @@ export function estagioDoCard(etapa: Etapa): EstagioDoCard | null {
   }
 }
 
+/* ── aviso de lead no CRM ─────────────────────────────────────── */
+
+/** Para onde o lead foi, como o dono lê no aviso. */
+export const DESTINO_DO_LEAD = {
+  contato: 'Contato, no Funil',
+  oportunidade: 'Oportunidade, no Funil',
+  com_voce: 'Com você (o Davi parou e passou a conversa)',
+} as const;
+export type DestinoDoLead = keyof typeof DESTINO_DO_LEAD;
+
+/**
+ * O card do Davi pede aviso quando nasce ou anda para Contato ou Oportunidade. Reunião já tem
+ * o aviso_reuniao_marcada (não duplica); perdido não é lead indo para o CRM.
+ */
+export function destinoQuePedeAviso(antes: EstagioDoCard | null, depois: EstagioDoCard | null): DestinoDoLead | null {
+  if (!depois || depois === antes) return null;
+  return depois === 'contato' || depois === 'oportunidade' ? depois : null;
+}
+
+const POR_QUE_DO_PEDIDO: Record<Pedido, string> = {
+  fechar_ja: 'Disse que quer fechar já',
+  comprar: 'Disse que quer contratar',
+  ver: 'Pediu para ver o sistema funcionando',
+  como_funciona: 'Perguntou como o sistema funciona',
+};
+
+/**
+ * O "por quê" do aviso (dono, 25/11/2026: "explica o motivo, por que ele foi parar lá no CRM").
+ * Uma linha, em palavras do dono, com a última fala do lead entre aspas quando houver.
+ */
+export function motivoDoLead(x: {
+  destino: DestinoDoLead;
+  dor?: string | null;
+  pedido?: Pedido | null;
+  interesse?: boolean;
+  provaEnviada?: boolean;
+  motivoDoDavi?: string | null;
+  ultimaFala?: string | null;
+}): string {
+  const limpa = (t: string | null | undefined) => String(t ?? '').replace(/\s+/g, ' ').trim();
+  const dor = limpa(x.dor);
+  let base: string;
+  if (x.destino === 'com_voce') {
+    base = `O Davi chamou você: ${limpa(x.motivoDoDavi) || 'ele pediu ajuda nesta conversa'}`;
+  } else if (x.destino === 'oportunidade') {
+    const pq = x.pedido ? POR_QUE_DO_PEDIDO[x.pedido] : dor ? `Contou o que atrapalha a loja (${dor})` : x.interesse ? 'Mostrou interesse' : 'Aceitou conhecer o sistema';
+    base = `${pq}, e o Davi ofereceu horários para a demonstração`;
+  } else {
+    base = dor ? `Contou o que atrapalha a loja: ${dor}`
+      : x.provaEnviada ? 'Pediu para ver como funciona e recebeu o vídeo do sistema'
+      : x.pedido ? POR_QUE_DO_PEDIDO[x.pedido] : 'Respondeu e mostrou interesse';
+  }
+  base = base.replace(/[.\s]+$/, '');
+  const fala = limpa(x.ultimaFala).replace(/"/g, "'");
+  if (!fala || dor.includes(fala)) return `${base}.`;
+  const curta = fala.length > 120 ? `${fala.slice(0, 117).trimEnd()}…` : fala;
+  return `${base}. Ele escreveu: "${curta}"`;
+}
+
 /* ── travas da conversa ───────────────────────────────────────── */
 
 export type MensagemParaTrava = {

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   fiscal, explicarViolacoes, linksNoTexto, linkLiberado,
   horariosLivres, horarioLivre, porQueNaoPode, horarioFalado, horariosCitados, diaDaSemanaSP, minutosDoDia,
-  proximaEtapa, estagioDoCard, ehLateral, ETAPAS_DO_FUNIL, ETAPAS_LATERAIS, ROTULO_DA_ETAPA, ROTULO_DO_MODO, MODOS,
+  proximaEtapa, estagioDoCard, destinoQuePedeAviso, motivoDoLead, ehLateral, ETAPAS_DO_FUNIL, ETAPAS_LATERAIS, ROTULO_DA_ETAPA, ROTULO_DO_MODO, MODOS,
   citacaoConfere, ondeEstaCitacao, conferirCitacoes, textoDaMensagem, normalizarTexto, cortarMemoria,
   custo, somarUso, PRECOS,
   dentroDoHorario, janelaAberta, podeResponderAgora, inicioDoDiaSP, esperaDoAgrupamento, filaDasPendentes,
@@ -1204,5 +1204,34 @@ describe('a marca no masculino (dono, 18/11/2026: "o Via Pesados")', () => {
     expect(semModelo).not.toMatch(/\b(?:a|da|na|pela|com a|à) Via Pesados/);
     expect(PERSONA.apresentacao).toContain('do Via Pesados');
     expect(PERSONA.souAutomatico).toContain('do Via Pesados');
+  });
+});
+
+describe('aviso de lead no CRM (dono, 25/11/2026)', () => {
+  it('avisa quando o card nasce ou anda para Contato ou Oportunidade, nunca reunião nem perdido', () => {
+    expect(destinoQuePedeAviso(null, 'contato')).toBe('contato');
+    expect(destinoQuePedeAviso(null, 'oportunidade')).toBe('oportunidade');
+    expect(destinoQuePedeAviso('contato', 'oportunidade')).toBe('oportunidade');
+    expect(destinoQuePedeAviso('contato', 'contato')).toBeNull();
+    expect(destinoQuePedeAviso('oportunidade', 'reuniao')).toBeNull();
+    expect(destinoQuePedeAviso('contato', 'perdido')).toBeNull();
+    expect(destinoQuePedeAviso(null, null)).toBeNull();
+  });
+
+  it('explica o porquê com a fala do lead (o caso do Marcelo)', () => {
+    expect(motivoDoLead({ destino: 'oportunidade', pedido: 'ver', interesse: true, ultimaFala: 'Quero ver funcionando' }))
+      .toBe('Pediu para ver o sistema funcionando, e o Davi ofereceu horários para a demonstração. Ele escreveu: "Quero ver funcionando"');
+  });
+
+  it('dor vira o motivo do Contato e não se repete como fala', () => {
+    expect(motivoDoLead({ destino: 'contato', dor: 'demoro pra anunciar no Mercado Livre', ultimaFala: 'demoro pra anunciar no Mercado Livre' }))
+      .toBe('Contou o que atrapalha a loja: demoro pra anunciar no Mercado Livre.');
+  });
+
+  it('com você traz o motivo do Davi e corta fala longa', () => {
+    const t = motivoDoLead({ destino: 'com_voce', motivoDoDavi: 'Pediu para falar com uma pessoa.', ultimaFala: 'x'.repeat(200) });
+    expect(t.startsWith('O Davi chamou você: Pediu para falar com uma pessoa. Ele escreveu: "')).toBe(true);
+    expect(t.length).toBeLessThan(200);
+    expect(t).not.toMatch(/\n/);
   });
 });

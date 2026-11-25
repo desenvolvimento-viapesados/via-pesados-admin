@@ -23,6 +23,11 @@ const GATILHOS: Record<string, Parameters<typeof conferirParams>[1]> = {
     body: ['marcou', 'Minas Caminhões, Governador Valadares/MG', 'segunda, 10/11, 9h'],
     urlSuffix: '4dc9af26-4176-4904-801e-dc3c4694e159',
   },
+  /* assistente.ts, avisarLeadNoCrm */
+  aviso_lead_no_crm: {
+    body: ['Minas Caminhões, Governador Valadares/MG · Carlos · (33) 99999-0000', 'Oportunidade, no Funil', 'Pediu para ver o sistema funcionando, e o Davi ofereceu horários para a demonstração.'],
+    urlSuffix: '4dc9af26-4176-4904-801e-dc3c4694e159',
+  },
   /* lead-site/index.ts: pedido de contato pelo formulário do site */
   aviso_lead_novo: { body: ['Minas Caminhões, Governador Valadares/MG', 'Carlos', '(33) 99999-0000'] },
   cobranca_mensal_disponivel: {

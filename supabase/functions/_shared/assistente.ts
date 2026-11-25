@@ -19,6 +19,7 @@ import {
   neutro, respostaAoPreco, ROTULO_DA_ETAPA, temFallbackNoServidor, textoDaMensagem, citacaoConfere,
   PEDIDOS, pedidoMaisQuente, type Pedido, falaDoPreco, precoDeHoje, numerosDoAviso,
   adiadaAte, dataDaRetomada, motivoDoAdiamento,
+  DESTINO_DO_LEAD, type DestinoDoLead, destinoQuePedeAviso, motivoDoLead,
 } from './assistente-regras.ts';
 import { INSTRUCOES_DOSSIE, SCHEMA_DOSSIE } from './assistente-roteiro.ts';
 import { enviarTemplate, statusDoModelo } from './wa.ts';
@@ -544,7 +545,12 @@ export async function atualizarEtapaECard(db: Db, conversaId: string, conversa?:
       p_stage: estagio,
     });
     if (error) console.warn('assistente: card não andou', error.message);
-    else if (prospectId && prospectId !== e.prospect_id) e.prospect_id = prospectId;
+    else {
+      if (prospectId && prospectId !== e.prospect_id) e.prospect_id = prospectId;
+      /* Dono, 25/11/2026: lead que o Davi leva ao CRM chega também no WhatsApp, com o porquê. */
+      const destino = destinoQuePedeAviso(estagioDoCard(e.etapa), estagio);
+      if (destino) await avisarLeadNoCrm(db, { ...e, etapa: nova }, conversa ?? null, destino, `${destino}:${conversaId}`);
+    }
   }
   return { ...e, etapa: nova };
 }
@@ -561,6 +567,8 @@ export async function chamarXavier(db: Db, conversaId: string, motivo: string) {
   }
   await salvarEstado(db, conversaId, { etapa: 'com_xavier', pausado_motivo: motivo.slice(0, 500), pendente_desde: null, token: null });
   await fixarParaOXavier(db, conversaId, e?.loja_id ?? null, `Assistente chamou você: ${motivo}`.slice(0, 500));
+  /* Só na primeira vez que vem para você: chamar de novo na mesma conversa não repete o aviso. */
+  if (e && e.etapa !== 'com_xavier') await avisarLeadNoCrm(db, e, null, 'com_voce', `com_voce:${conversaId}:${e.ultimo_turno_em ?? ''}`, motivo);
 }
 
 const MOTIVO_FALADO: Record<string, string> = {
@@ -1109,6 +1117,70 @@ export async function avisarReuniao(db: Db, cfg: AssistenteConfig | null, conver
     }
   } catch (err) {
     console.warn('assistente: aviso de reunião falhou', err instanceof Error ? err.message : err);
+  }
+}
+
+/**
+ * Avisa os números do aviso de reunião que o Davi levou um lead ao CRM, e por quê (dono,
+ * 25/11/2026), pelo modelo aviso_lead_no_crm. Sem o modelo aprovado não manda; falhar aqui
+ * nunca derruba o turno: o card já está no CRM. `chave` é do evento (destino + conversa),
+ * então o mesmo lead não avisa duas vezes para o mesmo lugar.
+ */
+export async function avisarLeadNoCrm(db: Db, e: AssistenteConversa, conversa: Conversa | null, destino: DestinoDoLead, chave: string, motivoDoDavi?: string) {
+  try {
+    const cfg = await lerConfig(db);
+    const destinos = numerosDoAviso(cfg?.aviso_whatsapp);
+    if (!destinos.length) return;
+    if ((await statusDoModelo('aviso_lead_no_crm')) !== 'APPROVED') {
+      console.warn('assistente: aviso de lead não saiu: o modelo aviso_lead_no_crm ainda não foi aprovado');
+      return;
+    }
+    const cv = conversa ?? (await db.from('wa_conversas').select('id, telefone, nome, instancia_id, prospect_id, frente, fixada').eq('id', e.conversa_id).maybeSingle()).data as Conversa | null;
+    if (!cv) return;
+    const loja = await lerLoja(db, e.loja_id ?? null);
+    const { data: card } = e.prospect_id
+      ? await db.from('prospects').select('company_name, city').eq('id', e.prospect_id).maybeSingle()
+      : { data: null };
+    const nome = card?.company_name || e.situacao?.loja || loja?.nome || cv.nome || cv.telefone || 'sem nome';
+    const cidade = e.situacao?.cidade || card?.city || (loja?.cidade ? `${loja.cidade}${loja.uf ? `/${loja.uf}` : ''}` : '');
+    const quem = umaLinha(String(e.situacao?.quem_fala || cv.nome || ''), 40);
+    const contato = [quem, telefoneFalado(cv.telefone)].filter(Boolean).join(' · ');
+
+    /* A última coisa que o lead disse (botão tocado também conta). */
+    let q = db.from('wa_mensagens').select('conteudo, transcricao').eq('conversa_id', e.conversa_id).eq('direcao', 'entrada');
+    if (e.historico_desde) q = q.gte('created_at', e.historico_desde);
+    const { data: ult } = await q.order('created_at', { ascending: false }).limit(1).maybeSingle();
+    const ultimaDor = (e.dores ?? []).at(-1);
+    const porque = motivoDoLead({
+      destino,
+      dor: ultimaDor?.citacao || ultimaDor?.texto || null,
+      pedido: e.situacao?.pedido ?? null,
+      interesse: e.situacao?.interesse === 'sim',
+      provaEnviada: !!e.prova_enviada,
+      motivoDoDavi: motivoDoDavi ?? null,
+      ultimaFala: ult ? textoDaMensagem(ult) : null,
+    });
+
+    for (const para of destinos) {
+      const res = await enviarTemplate(db, {
+        para,
+        template: 'aviso_lead_no_crm',
+        params: {
+          body: [
+            umaLinha([cidade ? `${nome}, ${cidade}` : String(nome), contato].filter(Boolean).join(' · '), 160),
+            DESTINO_DO_LEAD[destino],
+            umaLinha(porque, 300),
+          ],
+          urlSuffix: cv.id,
+        },
+        chave: `aviso_lead_crm:${chave}:${para}`,
+        /* Fora das 08h–20h espera a janela; passou um dia, perdeu o sentido. */
+        validoAte: new Date(Date.now() + 24 * 3600_000).toISOString(),
+      });
+      if (!res.ok) console.warn('assistente: aviso de lead não saiu', para.slice(-4), res.motivo);
+    }
+  } catch (err) {
+    console.warn('assistente: aviso de lead falhou', err instanceof Error ? err.message : err);
   }
 }
 
