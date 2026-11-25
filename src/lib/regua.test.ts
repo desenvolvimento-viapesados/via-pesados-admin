@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  hojeBRT, dentroDaJanela, proximaAbertura, somarMeses, vencimentosDoCiclo, hojeEnviaMensalidade, passouDaTolerancia,
+  hojeBRT, dentroDaJanela, respeitaJanela, proximaAbertura, somarMeses, vencimentosDoCiclo, hojeEnviaMensalidade, passouDaTolerancia,
 } from '../../supabase/functions/_shared/regua';
 
 /* As regras da cobrança, como o dono definiu em 09/10/2026. */
@@ -44,5 +44,16 @@ describe('régua da mensalidade', () => {
     expect(hojeEnviaMensalidade('2026-10-14', '2026-10-15')).toBe(false);
     expect(passouDaTolerancia('2026-10-14', '2026-10-16')).toBe(false);
     expect(passouDaTolerancia('2026-10-14', '2026-10-17')).toBe(true);
+  });
+});
+
+describe('avisos ao dono fora do horário (25/11/2026)', () => {
+  it('aviso ao dono sai a qualquer hora; mensagem a cliente ou lead respeita 08h–20h', () => {
+    expect(respeitaJanela('aviso_lead_no_crm')).toBe(false);
+    expect(respeitaJanela('aviso_reuniao_marcada')).toBe(false);
+    expect(respeitaJanela('aviso_lead_novo')).toBe(false);
+    expect(respeitaJanela('reuniao_lembrete')).toBe(true);
+    expect(respeitaJanela('cadencia_canais')).toBe(true);
+    expect(respeitaJanela('cobranca_em_atraso')).toBe(true);
   });
 });

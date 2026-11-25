@@ -28,7 +28,7 @@
 
 import { configYCloud, enviarPorYCloud, ycloudPelaMetade, listarTemplates } from './ycloud.ts';
 import { conferirParams } from './conferirParams.ts';
-import { dentroDaJanela, proximaAbertura } from './regua.ts';
+import { dentroDaJanela, proximaAbertura, respeitaJanela } from './regua.ts';
 import { grafiaDaConversa, variantes } from './prospeccao-regras.ts';
 import { textoDoModeloEnviado } from './modelo-texto.ts';
 
@@ -188,10 +188,11 @@ export async function enviarTemplate(
     return { ok: false, motivo: `${args.template}: ${problemas.join('; ')}` };
   }
 
-  /* Fora das 08h–20h nada sai — regra do dono, sem exceção. A mensagem
+  /* Fora das 08h–20h nada sai para cliente nem lead — regra do dono. A mensagem
      vai para a fila e sai na próxima abertura (rotina wa-fila). Fica ANTES
-     da trava de wa_envios: a chave continua livre para quando a fila mandar. */
-  if (!dentroDaJanela()) {
+     da trava de wa_envios: a chave continua livre para quando a fila mandar.
+     Exceção: os avisos ao próprio dono (AVISOS_AO_DONO) saem na hora (25/11/2026). */
+  if (respeitaJanela(args.template) && !dentroDaJanela()) {
     const quando = proximaAbertura();
     if (args.validoAte && quando > new Date(args.validoAte)) {
       return { ok: false, motivo: 'fora do horário de envio, e às 08h já não faz sentido' };

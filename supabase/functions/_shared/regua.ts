@@ -36,6 +36,17 @@ export function hojeBRT(agora = new Date()): string {
   return `${b.getUTCFullYear()}-${p2(b.getUTCMonth() + 1)}-${p2(b.getUTCDate())}`;
 }
 
+/**
+ * Avisos que vão para o próprio dono, não para cliente nem lead: saem a qualquer hora
+ * (dono, 25/11/2026: "pode fazer fora do horário, como é pra mim mesmo").
+ */
+export const AVISOS_AO_DONO: ReadonlySet<string> = new Set(['aviso_reuniao_marcada', 'aviso_lead_no_crm', 'aviso_lead_novo']);
+
+/** O modelo respeita a janela das 08h–20h? Só os avisos ao dono escapam. */
+export function respeitaJanela(template: string): boolean {
+  return !AVISOS_AO_DONO.has(template);
+}
+
 export function dentroDaJanela(agora = new Date()): boolean {
   const h = emBRT(agora).getUTCHours();
   return h >= JANELA_ABRE && h < JANELA_FECHA;
