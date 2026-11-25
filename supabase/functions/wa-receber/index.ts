@@ -4,6 +4,14 @@ import { aoChegarMensagem, aoFalharEntrega } from '../_shared/prospeccao-entrada
 import { grafiaDaConversa, variantes } from '../_shared/prospeccao-regras.ts';
 import { aoChegarParaOAssistente } from '../_shared/assistente-entrada.ts';
 import { deBase64, guardarMidia } from '../_shared/assistente-midia.ts';
+import { ehNumeroDeTeste, numerosDoAviso } from '../_shared/assistente-regras.ts';
+
+/** Um dos números que recebem os avisos (o dono)? Leve: o gestor só carrega a IA lá. */
+// deno-lint-ignore no-explicit-any
+async function ehODono(db: any, telefone: string): Promise<boolean> {
+  const { data: cfg } = await db.from('assistente_config').select('aviso_whatsapp').eq('id', 1).maybeSingle();
+  return ehNumeroDeTeste(telefone, numerosDoAviso(cfg?.aviso_whatsapp));
+}
 
 /**
  * Entrada de mensagens, das TRÊS origens, no mesmo modelo.
@@ -370,6 +378,19 @@ Deno.serve(async (req) => {
         } catch (e) {
           console.warn('wa-receber: mídia não guardada', e);
         }
+      }
+      /* O dono escrevendo para o número oficial (dono, 25/11/2026): quem responde é o
+         gestor dele, não o Davi, a qualquer hora. */
+      if (origem === 'ycloud' && gravada?.id && await ehODono(db, n.telefone).catch(() => false)) {
+        const chamada = fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/gestor-responder`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-interno': Deno.env.get('WA_INTERNAL_SECRET') ?? '' },
+          body: JSON.stringify({ conversa_id: conversa.id, mensagem_id: gravada.id }),
+          signal: AbortSignal.timeout(10_000),
+        }).catch((e) => console.warn('wa-receber: gestor não chamado', e));
+        // deno-lint-ignore no-explicit-any
+        (globalThis as any).EdgeRuntime?.waitUntil?.(chamada);
+        return ok({ ok: true, conversa: conversa.id, gestor: true });
       }
       /* Loja da prospecção respondendo (de QUALQUER origem, o número oficial inclusive):
          vira "conversando" e o assistente de vendas decide quem atende. Falha aqui não

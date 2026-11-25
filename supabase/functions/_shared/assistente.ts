@@ -1133,6 +1133,27 @@ async function janelaDe24hAberta(db: Db, para: string): Promise<boolean> {
 }
 
 /**
+ * Grava na conversa do dono (número oficial) um aviso que já saiu para ele, para o gestor
+ * dele saber de quem o dono fala quando responde "e ele?" logo depois (dono, 25/11/2026).
+ */
+export async function gravarAvisoNaConversaDoDono(db: Db, para: string, texto: string, providerId: string | null) {
+  try {
+    const fim = String(para).replace(/\D/g, '').slice(-8);
+    const { data } = await db.from('wa_conversas').select('id, instancia_id, wa_instancias!inner(origem)')
+      .like('telefone', `%${fim}`).eq('wa_instancias.origem', 'ycloud').limit(1).maybeSingle();
+    if (!data) return;
+    const agora = agoraISO();
+    await db.from('wa_mensagens').insert({
+      conversa_id: data.id, instancia_id: data.instancia_id, direcao: 'saida', tipo: 'texto', conteudo: texto,
+      provider_message_id: providerId, status: 'enviada', enviada_por_nome: REMETENTE, created_at: agora,
+    });
+    await db.from('wa_conversas').update({ ultima_mensagem: texto, ultima_mensagem_em: agora, ultima_direcao: 'saida', updated_at: agora }).eq('id', data.id);
+  } catch (e) {
+    console.warn('assistente: aviso não gravado na conversa do dono', e instanceof Error ? e.message : e);
+  }
+}
+
+/**
  * Avisa os números do aviso de reunião que o Davi levou um lead ao CRM, e por quê (dono,
  * 25/11/2026), pelo modelo aviso_lead_no_crm. Sem o modelo aprovado não manda; falhar aqui
  * nunca derruba o turno: o card já está no CRM. `chave` é do evento (destino + conversa),
@@ -1202,6 +1223,8 @@ export async function avisarLeadNoCrm(db: Db, e: AssistenteConversa, conversa: C
         try {
           const { id } = await enviarTextoPorYCloud(ycloud, { para, texto: textoAvulso });
           await db.from('wa_envios').update({ message_id: id || null, enviado_em: agoraISO() }).eq('template', 'aviso_lead_avulso').eq('chave', chaveDoEnvio);
+          /* Fica na conversa do dono: o gestor dele precisa saber de quem ele fala depois (25/11). */
+          await gravarAvisoNaConversaDoDono(db, para, textoAvulso, id || null);
           continue;
         } catch (err) {
           await db.from('wa_envios').delete().eq('template', 'aviso_lead_avulso').eq('chave', chaveDoEnvio);
