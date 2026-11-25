@@ -9,7 +9,7 @@
  */
 import {
   type Conversa, type Db, type Instancia, type Mensagem, REMETENTE,
-  atualizarEtapaECard, carregarConversa, chamarClaude, lerConfig, linhaDaConversa, transcreverAudios,
+  atualizarEtapaECard, carregarConversa, chamarClaude, lerConfig, linhaDaConversa, marcarReuniao, transcreverAudios,
 } from './assistente.ts';
 import { ROTULO_DA_ETAPA, dentroDoHorario, type Etapa } from './assistente-regras.ts';
 import { configYCloud, enviarTextoPorYCloud } from './ycloud.ts';
@@ -114,6 +114,71 @@ const FERRAMENTAS = [
       type: 'object',
       properties: { conversa_id: { type: 'string' }, texto: { type: 'string' } },
       required: ['conversa_id', 'texto'],
+    },
+  },
+  {
+    name: 'reabrir_lead',
+    description: 'Reabre um lead que o Davi encerrou (perdido ou "não te chamo mais"): a conversa volta a andar, a loja volta para "conversando", o card sai de perdido para oportunidade e o Davi volta a atender (ou fica com o dono, se davi_atende=false).',
+    input_schema: {
+      type: 'object',
+      properties: { conversa_id: { type: 'string' }, davi_atende: { type: 'boolean', description: 'padrão true' } },
+      required: ['conversa_id'],
+    },
+  },
+  {
+    name: 'mover_card',
+    description: 'Move o card do lead no funil do CRM para qualquer etapa: contato, amostra, oportunidade, reuniao, teste, vendido, perdido (perdido exige motivo).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        conversa_id: { type: 'string' }, prospect_id: { type: 'string' },
+        etapa: { type: 'string', enum: ['contato', 'amostra', 'oportunidade', 'reuniao', 'teste', 'vendido', 'perdido'] },
+        motivo: { type: 'string' },
+      },
+      required: ['etapa'],
+    },
+  },
+  {
+    name: 'marcar_reuniao',
+    description: 'Marca uma demonstração nova para o lead de uma conversa (cria o card se não tiver). Segue a agenda do Davi (dias, horário, 1 h entre reuniões); se a regra recusar, devolve o motivo e só marca por cima com forcar=true depois que o dono confirmar. Não avisa o lead.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        conversa_id: { type: 'string' },
+        inicio: { type: 'string', description: 'horário de Brasília, "AAAA-MM-DDTHH:MM"' },
+        forcar: { type: 'boolean' },
+      },
+      required: ['conversa_id', 'inicio'],
+    },
+  },
+  {
+    name: 'anotar_no_card',
+    description: 'Grava uma anotação na ficha do lead no CRM (o que o dono contou, combinado por telefone etc.).',
+    input_schema: {
+      type: 'object',
+      properties: { conversa_id: { type: 'string' }, prospect_id: { type: 'string' }, texto: { type: 'string' } },
+      required: ['texto'],
+    },
+  },
+  {
+    name: 'criar_tarefa',
+    description: 'Cria uma tarefa para o dono no painel (ex.: "ligar pro Carlos amanhã 9h"), ligada ao lead se houver.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        titulo: { type: 'string' }, detalhe: { type: 'string' },
+        quando: { type: 'string', description: 'horário de Brasília, "AAAA-MM-DDTHH:MM"' },
+        conversa_id: { type: 'string' }, prospect_id: { type: 'string' },
+      },
+      required: ['titulo'],
+    },
+  },
+  {
+    name: 'disparos_da_prospeccao',
+    description: 'Liga ou pausa o envio automático de mensagens para lojas novas (a sequência). Não mexe nas conversas em andamento. Sem "ligado", só informa como está.',
+    input_schema: {
+      type: 'object',
+      properties: { ligado: { type: 'boolean' }, motivo: { type: 'string' } },
     },
   },
 ] as const;
@@ -369,6 +434,122 @@ async function enviarAoLead(db: Db, e: Entrada) {
   return { feito: true, enviado: texto, para: c.conversa.nome ?? c.conversa.telefone };
 }
 
+async function cardDaConversa(db: Db, e: Entrada): Promise<string | null> {
+  if (e.prospect_id) return String(e.prospect_id);
+  if (!e.conversa_id) return null;
+  const { data: a } = await db.from('assistente_conversas').select('prospect_id').eq('conversa_id', String(e.conversa_id)).maybeSingle();
+  if (a?.prospect_id) return a.prospect_id;
+  const { data: c } = await db.from('wa_conversas').select('prospect_id').eq('id', String(e.conversa_id)).maybeSingle();
+  return c?.prospect_id ?? null;
+}
+
+async function reabrirLead(db: Db, e: Entrada) {
+  const id = String(e.conversa_id ?? '');
+  const davi = e.davi_atende !== false;
+  const { data: s } = await db.from('assistente_conversas').select('etapa, loja_id, prospect_id').eq('conversa_id', id).maybeSingle();
+  if (!s) return { erro: 'o Davi nunca esteve nessa conversa: não há o que reabrir' };
+  const { error } = await db.from('assistente_conversas').update({
+    etapa: davi ? 'conversa' : 'com_xavier', modo: davi ? 'sozinho' : 'desligado',
+    pausado_motivo: davi ? null : 'Reaberta pelo dono, que vai atender.', pendente_desde: null, token: null,
+  }).eq('conversa_id', id);
+  if (error) return { erro: error.message };
+  if (s.loja_id) await db.from('prospeccao_lojas').update({ status: davi ? 'conversando' : 'com_voce', motivo: 'Reaberta pelo dono.', atualizada_em: agoraISO() }).eq('id', s.loja_id);
+  let card: string | null = null;
+  if (s.prospect_id) {
+    const { data: p } = await db.from('prospects').select('stage').eq('id', s.prospect_id).maybeSingle();
+    if (p?.stage === 'perdido') {
+      await db.from('prospects').update({ stage: 'oportunidade', lost_reason: null }).eq('id', s.prospect_id);
+      card = 'voltou de perdido para oportunidade';
+    }
+  }
+  if (davi) await atualizarEtapaECard(db, id).catch(() => null);
+  else await db.from('wa_conversas').update({ fixada: true }).eq('id', id);
+  return {
+    feito: true, quem_atende: davi ? 'o Davi' : 'o dono', card,
+    observacao: davi ? 'O Davi responde quando o lead escrever de novo; ele não manda nada sozinho agora.' : null,
+  };
+}
+
+async function moverCard(db: Db, e: Entrada) {
+  const id = await cardDaConversa(db, e);
+  if (!id) return { erro: 'essa conversa não tem card no CRM (marcar_reuniao cria um)' };
+  const etapa = String(e.etapa ?? '');
+  if (etapa === 'perdido' && !String(e.motivo ?? '').trim()) return { erro: 'para perdido, diga o motivo' };
+  const { data: antes } = await db.from('prospects').select('stage, company_name').eq('id', id).maybeSingle();
+  if (!antes) return { erro: 'card não encontrado' };
+  const { error } = await db.from('prospects').update({
+    stage: etapa, lost_reason: etapa === 'perdido' ? corta(e.motivo, 300) : null,
+  }).eq('id', id);
+  if (error) return { erro: error.message };
+  return { feito: true, card: antes.company_name, de: antes.stage, para: etapa };
+}
+
+async function marcarNova(db: Db, e: Entrada) {
+  const id = String(e.conversa_id ?? '');
+  const inicio = lerHorario(String(e.inicio ?? ''));
+  if (!inicio) return { erro: 'horário inválido: use AAAA-MM-DDTHH:MM (Brasília)' };
+  if (inicio.getTime() < Date.now()) return { erro: 'esse horário já passou' };
+  const cfg = await lerConfig(db);
+  const c = await carregarConversa(db, id);
+  if (!c || !cfg) return { erro: 'conversa não encontrada' };
+  await db.from('assistente_conversas').upsert({ conversa_id: id, modo: 'desligado' }, { onConflict: 'conversa_id', ignoreDuplicates: true });
+  const r = await marcarReuniao(db, cfg, c.conversa, { inicio: inicio.toISOString() });
+  if (r.ok) return { feito: true, quando: quandoFalado(r.inicio), remarcou_a_que_existia: r.remarcou, lead_avisado: false };
+  if (e.forcar !== true) return { feito: false, motivo: r.motivo, instrucao: 'Conte ao dono; só marque por cima com forcar=true se ele confirmar.' };
+  /* Por cima da regra, a pedido do dono: grava direto na agenda. */
+  const { data: est } = await db.from('assistente_conversas').select('prospect_id, reuniao_id').eq('conversa_id', id).maybeSingle();
+  let prospect = est?.prospect_id ?? c.conversa.prospect_id ?? null;
+  if (!prospect) {
+    const { data: pid } = await db.rpc('assistente_criar_card', { p_conversa: id, p_contact_name: c.conversa.nome ?? null, p_city: null, p_stage: 'reuniao' });
+    prospect = pid ?? null;
+  }
+  const { data: card } = prospect ? await db.from('prospects').select('company_name').eq('id', prospect).maybeSingle() : { data: null };
+  const { data: nova, error } = await db.from('meetings').insert({
+    prospect_id: prospect, title: `Via Pesados · ${card?.company_name ?? c.conversa.nome ?? c.conversa.telefone}`.slice(0, 200),
+    scheduled_at: inicio.toISOString(), duration_min: cfg.duracao_min, kind: 'demo', status: 'agendada',
+    meet_link: cfg.link_reuniao, owner_id: cfg.responsavel_id, notes: 'Marcada pelo dono pelo WhatsApp.', frente: c.conversa.frente,
+  }).select('id').single();
+  if (error || !nova) return { erro: error?.message ?? 'a agenda não aceitou' };
+  await db.from('assistente_conversas').update({ reuniao_id: nova.id, prospect_id: prospect }).eq('conversa_id', id);
+  if (prospect) await db.from('prospects').update({ stage: 'reuniao' }).eq('id', prospect).in('stage', ['contato', 'amostra', 'oportunidade', 'perdido']);
+  return { feito: true, quando: quandoFalado(inicio), por_cima_da_regra: r.motivo, lead_avisado: false };
+}
+
+async function anotar(db: Db, e: Entrada) {
+  const id = await cardDaConversa(db, e);
+  if (!id) return { erro: 'essa conversa não tem card no CRM' };
+  const texto = String(e.texto ?? '').trim();
+  if (!texto) return { erro: 'anotação vazia' };
+  const { error } = await db.from('activities').insert({ prospect_id: id, kind: 'nota', content: `${texto}\n(pelo WhatsApp, com o gestor)` });
+  return error ? { erro: error.message } : { feito: true };
+}
+
+async function criarTarefa(db: Db, e: Entrada) {
+  const titulo = corta(e.titulo, 200);
+  if (!titulo) return { erro: 'tarefa sem título' };
+  const quando = e.quando ? lerHorario(String(e.quando)) : null;
+  if (e.quando && !quando) return { erro: 'horário inválido: use AAAA-MM-DDTHH:MM (Brasília)' };
+  const cfg = await lerConfig(db);
+  const prospect = await cardDaConversa(db, e);
+  const { error } = await db.from('tarefas').insert({
+    titulo, detalhe: e.detalhe ? corta(e.detalhe, 1000) : null, quando: quando?.toISOString() ?? null,
+    prospect_id: prospect, owner_id: cfg?.responsavel_id ?? null, origem: 'manual',
+  });
+  return error ? { erro: error.message } : { feito: true, titulo, quando: quando ? quandoFalado(quando) : 'sem horário' };
+}
+
+async function disparos(db: Db, e: Entrada) {
+  const { data: cfg } = await db.from('prospeccao_config').select('ligado, limite_dia, pausado_motivo, proximo_envio_em').eq('id', 1).maybeSingle();
+  if (!cfg) return { erro: 'configuração da prospecção não encontrada' };
+  if (typeof e.ligado !== 'boolean') {
+    return { ligado: cfg.ligado, por_dia: cfg.limite_dia, aviso: cfg.pausado_motivo, proximo_envio: cfg.proximo_envio_em ? quandoFalado(cfg.proximo_envio_em) : null };
+  }
+  const patch: Record<string, unknown> = { ligado: e.ligado, atualizado_em: agoraISO(), pausado_motivo: e.ligado ? null : (corta(e.motivo, 200) || 'Pausado pelo dono pelo WhatsApp.') };
+  if (e.ligado && !cfg.ligado) patch.ligado_desde = agoraISO();
+  const { error } = await db.from('prospeccao_config').update(patch).eq('id', 1);
+  return error ? { erro: error.message } : { feito: true, ligado: e.ligado };
+}
+
 async function rodarFerramenta(db: Db, nome: string, e: Entrada): Promise<unknown> {
   switch (nome) {
     case 'numeros_da_prospeccao': return await numerosDaProspeccao(db, e);
@@ -380,6 +561,12 @@ async function rodarFerramenta(db: Db, nome: string, e: Entrada): Promise<unknow
     case 'cancelar_reuniao': return await cancelar(db, e);
     case 'davi_na_conversa': return await daviNaConversa(db, e);
     case 'enviar_mensagem_ao_lead': return await enviarAoLead(db, e);
+    case 'reabrir_lead': return await reabrirLead(db, e);
+    case 'mover_card': return await moverCard(db, e);
+    case 'marcar_reuniao': return await marcarNova(db, e);
+    case 'anotar_no_card': return await anotar(db, e);
+    case 'criar_tarefa': return await criarTarefa(db, e);
+    case 'disparos_da_prospeccao': return await disparos(db, e);
     default: return { erro: `ferramenta desconhecida: ${nome}` };
   }
 }
@@ -411,7 +598,7 @@ function instrucoes(agora: Date): string {
     '- Números e fatos só das ferramentas. Nunca invente loja, conversa, número ou horário. Se não achou, diga que não achou.',
     '- Na língua do dono: o efeito no negócio, nunca nome de tabela, de função ou de status interno.',
     '- "Ele", "esse cliente", "o último": é o lead do aviso ou da conversa mais recente aqui no histórico. Se houver dúvida real entre dois, pergunte qual.',
-    '- Quando ele pede para mudar algo no sistema (remarcar, cancelar, tirar o Davi), faça e confirme em uma linha o que mudou. Se faltar dado (qual reunião, que dia), pergunte antes.',
+    '- Você mexe no sistema de verdade: remarcar, cancelar ou marcar reunião, reabrir lead encerrado, mover card no funil, anotar na ficha, criar tarefa, ligar ou desligar o Davi numa conversa, pausar ou ligar os disparos. Quando ele pede, faça e confirme em uma linha o que mudou. Se faltar dado (qual lead, que dia), pergunte antes. Nunca diga que fez sem a ferramenta ter devolvido feito.',
     '- Remarcar ou cancelar NÃO avisa o lead. Diga isso e ofereça avisar. Mensagem ao lead só quando ele pedir com todas as letras; mostre o texto que saiu.',
     '- Na análise ("o criativo tá ruim?", "por que ninguém responde?"), use os números de resposta por mensagem da sequência, compare períodos se ajudar, e diga com honestidade o que dá e o que não dá para concluir com o volume que tem. Recomende uma coisa, não uma lista.',
     '- Viu algo errado do Davi numa conversa (respondeu mal, parou quando o lead quis ver), aponte com a citação e diga o que você faria.',
