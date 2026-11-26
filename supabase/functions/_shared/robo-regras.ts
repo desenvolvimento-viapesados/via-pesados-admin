@@ -45,3 +45,22 @@ export function mudancasRegistroBr(rrs: RR[], plano: Plano): { add: RR[]; remove
   const add = criar.filter((c) => !rrs.some((r) => relativo(r.Ownername, d) === c.Ownername && r.Type === c.Type && mesmo(r.Rdata, c.Rdata)));
   return { add, remove };
 }
+
+/* Cloudflare com proxy (nuvem laranja): a internet vê os IPs da própria Cloudflare, não o
+   servidor de verdade que está na zona. Então o plano não sabe o VALOR a apagar — só o nome.
+   Faixas publicadas em cloudflare.com/ips (26/11/2026). */
+const CF_V4 = ['173.245.48.0/20', '103.21.244.0/22', '103.22.200.0/22', '103.31.4.0/22', '141.101.64.0/18', '108.162.192.0/18', '190.93.240.0/20', '188.114.96.0/20', '197.234.240.0/22', '198.41.128.0/17', '162.158.0.0/15', '104.16.0.0/13', '104.24.0.0/14', '172.64.0.0/13', '131.0.72.0/22'];
+const CF_V6 = ['2400:cb00:', '2606:4700:', '2803:f800:', '2405:b500:', '2405:8100:', '2a06:98c', '2a06:98c0:', '2c0f:f248:'];
+const num = (ip: string) => ip.split('.').reduce((a, p) => a * 256 + Number(p), 0);
+export function ehIpCloudflare(ip: string): boolean {
+  const v = ip.trim().toLowerCase();
+  if (v.includes(':')) return CF_V6.some((p) => v.startsWith(p));
+  if (!/^\d+\.\d+\.\d+\.\d+$/.test(v)) return false;
+  return CF_V4.some((faixa) => {
+    const [base, bits] = faixa.split('/');
+    const m = 2 ** (32 - Number(bits));
+    return Math.floor(num(v) / m) === Math.floor(num(base) / m);
+  });
+}
+/** Valor de "apagar" quando o registro está atrás do proxy: o robô apaga pelo NOME, qualquer valor. */
+export const QUALQUER_VALOR = '(qualquer valor: está atrás do proxy da Cloudflare)';

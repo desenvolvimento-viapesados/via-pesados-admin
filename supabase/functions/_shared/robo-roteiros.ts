@@ -35,10 +35,11 @@ NUNCA clique em "Alterar servidores DNS" nem em "Utilizar DNS do Registro.br".`,
 5. NUNCA clique em "Redefinir registros DNS" nem mexa em Nameservers/DNSSEC.`,
 
   Cloudflare: () => `ROTEIRO — Cloudflare:
-1. Conta → o domínio → "DNS" → "Registros"/"Records".
-2. Conflitos: um CNAME não convive com A/AAAA no mesmo nome (e vice-versa). Apague antes: "Editar"/"Edit" na linha → "Excluir"/"Delete" → confirmar.
-3. Criar: "Adicionar registro"/"Add record" → Tipo → Nome ("@" na raiz; "www") → "Endereço IPv4"/"IPv4 address" (A) ou "Destino"/"Target" (CNAME) → DESLIGUE o proxy (nuvem cinza: "Somente DNS"/"DNS only") → TTL Automático → "Salvar".
-4. Confira pela nuvem CINZA em cada registro novo.`,
+1. Conta → o domínio → "DNS" → "Registros"/"Records". Se aparecer mais de uma conta, escolha a que tem o domínio.
+2. "(qualquer valor…)" em APAGAR quer dizer: o registro está atrás do proxy (nuvem laranja) e a tela mostra o servidor real, não o que a internet vê. Apague TODO registro daquele TIPO com aquele NOME (raiz = o nome igual ao domínio, ou "@"; e "www"), seja qual for o valor. Nunca apague o "*" (curinga), MX, TXT nem outros nomes.
+3. Conflitos: um CNAME não convive com A/AAAA no mesmo nome (e vice-versa). Apague antes: "Editar"/"Edit" na linha → "Excluir"/"Delete" → confirmar.
+4. Criar: "Adicionar registro"/"Add record" → Tipo → Nome ("@" na raiz; "www") → "Endereço IPv4"/"IPv4 address" (A) ou "Destino"/"Target" (CNAME) → DESLIGUE o proxy (o botão vem LIGADO por padrão: deixe a nuvem cinza, "Somente DNS"/"DNS only") → TTL Automático → "Salvar"/"Save".
+5. Confira: na raiz e no www só podem sobrar os registros de CRIAR, todos com a nuvem CINZA. Se a tela pedir login, código ou "verify you are human": pedir_ao_cliente.`,
 
   Locaweb: () => `ROTEIRO — Locaweb:
 - Entrada: centraldocliente.locaweb.com.br (tem verificação em duas etapas: é com o cliente).

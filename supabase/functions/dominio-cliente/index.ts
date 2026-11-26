@@ -1,3 +1,4 @@
+import { ehIpCloudflare, QUALQUER_VALOR } from '../_shared/robo-regras.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 /**
@@ -223,15 +224,23 @@ Deno.serve(async (req) => {
       const criar: Reg[] = [];
       const manter: Reg[] = [];
       /* Na raiz: tudo que não é nosso sai; o que é nosso e já está lá não se repete. */
-      for (const ip of a) if (!ipv4.includes(ip)) apagar.push({ tipo: 'A', nome: raiz, valor: ip });
-      for (const ip of aaaa) apagar.push({ tipo: 'AAAA', nome: raiz, valor: ip });
-      for (const alvo of cn) apagar.push({ tipo: 'CNAME', nome: raiz, valor: alvo });
-      for (const ip of ipv4) if (!a.includes(ip)) criar.push({ tipo: 'A', nome: raiz, valor: ip });
+      /* Cloudflare com proxy: o que a internet vê são os IPs da Cloudflare; o valor real só
+         aparece no painel. Apaga-se pelo nome (A, AAAA e CNAME), qualquer valor. */
+      const proxyRaiz = provedor === 'Cloudflare' && [...a, ...aaaa].some(ehIpCloudflare);
+      const proxyWww = provedor === 'Cloudflare' && wwwA.some(ehIpCloudflare);
+      if (proxyRaiz) for (const tipo of ['A', 'AAAA', 'CNAME']) apagar.push({ tipo, nome: raiz, valor: QUALQUER_VALOR });
+      else {
+        for (const ip of a) if (!ipv4.includes(ip)) apagar.push({ tipo: 'A', nome: raiz, valor: ip });
+        for (const ip of aaaa) apagar.push({ tipo: 'AAAA', nome: raiz, valor: ip });
+        for (const alvo of cn) apagar.push({ tipo: 'CNAME', nome: raiz, valor: alvo });
+      }
+      for (const ip of ipv4) if (proxyRaiz || !a.includes(ip)) criar.push({ tipo: 'A', nome: raiz, valor: ip });
       /* No www: um CNAME só, o nosso. */
       const wwwJaCerto = wwwC.some((x) => x === cname);
       if (!wwwJaCerto) {
         for (const alvo of wwwC) apagar.push({ tipo: 'CNAME', nome: 'www', valor: alvo });
-        if (!wwwC.length) for (const ip of wwwA) apagar.push({ tipo: 'A', nome: 'www', valor: ip });
+        if (proxyWww) for (const tipo of ['A', 'AAAA', 'CNAME']) apagar.push({ tipo, nome: 'www', valor: QUALQUER_VALOR });
+        else if (!wwwC.length) for (const ip of wwwA) apagar.push({ tipo: 'A', nome: 'www', valor: ip });
         criar.push({ tipo: 'CNAME', nome: 'www', valor: cname });
       }
       /* O que fica: e-mail e verificações. */

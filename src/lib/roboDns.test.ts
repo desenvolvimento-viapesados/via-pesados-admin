@@ -54,3 +54,20 @@ describe('conferência e travas', () => {
     for (const t of ['Nova entrada', 'Salvar alterações', 'Adicionar', 'Configurar zona DNS', 'Modo avançado', 'Remover record', 'Adicionar registro']) expect(PROIBIDO.test(t), t).toBe(false);
   });
 });
+
+describe('Cloudflare com proxy (MF Caminhões, 26/11/2026)', () => {
+  it('reconhece os IPs que a Cloudflare mostra no lugar do servidor', async () => {
+    const { ehIpCloudflare } = await import('../../supabase/functions/_shared/robo-regras');
+    expect(ehIpCloudflare('104.21.81.30')).toBe(true);
+    expect(ehIpCloudflare('172.67.156.121')).toBe(true);
+    expect(ehIpCloudflare('2606:4700:3033::6815:511e')).toBe(true);
+    expect(ehIpCloudflare('76.76.21.21')).toBe(false);
+    expect(ehIpCloudflare('216.198.79.1')).toBe(false);
+    expect(ehIpCloudflare('200.219.148.10')).toBe(false);
+  });
+  it('com valor desconhecido, a tela confere sem acusar sobra', async () => {
+    const { telaConfere, QUALQUER_VALOR } = await import('../../supabase/functions/_shared/robo-regras');
+    const plano = { dominio: 'x.com.br', provedor: 'Cloudflare', apagar: [{ tipo: 'A', nome: '@', valor: QUALQUER_VALOR }], criar: [{ tipo: 'A', nome: '@', valor: '216.198.79.1' }], manter: [] };
+    expect(telaConfere('A x.com.br 216.198.79.1 DNS only', plano).ok).toBe(true);
+  });
+});
