@@ -38,14 +38,26 @@ export function DateRangeSelector({ value, onChange, customStart, customEnd, onC
   const endYear    = customEnd   ? parseInt(customEnd.slice(0, 4))   : CUR_YEAR;
   const endMonth   = customEnd   ? parseInt(customEnd.slice(5, 7)) - 1 : 11;
 
+  /* Escolher só o começo tem de bastar.
+  
+     Quem clicava em "Janeiro" no início e não mexia no fim ficava com um
+     intervalo pela metade — e o filtro, sem as duas pontas, caía no padrão
+     "mês atual". Escolhia janeiro e via setembro, sem nenhum aviso. Agora a
+     ponta que falta se completa sozinha: janeiro sozinho é janeiro inteiro. */
   const setStart = (year: number, month: number) => {
-    const d = new Date(year, month, 1);
-    onCustomStart(format(startOfMonth(d), 'yyyy-MM-dd'));
+    const inicio = format(startOfMonth(new Date(year, month, 1)), 'yyyy-MM-dd');
+    onCustomStart(inicio);
+    if (!customEnd || customEnd < inicio) {
+      onCustomEnd(format(endOfMonth(new Date(year, month, 1)), 'yyyy-MM-dd'));
+    }
   };
 
   const setEnd = (year: number, month: number) => {
-    const d = new Date(year, month, 1);
-    onCustomEnd(format(endOfMonth(d), 'yyyy-MM-dd'));
+    const fim = format(endOfMonth(new Date(year, month, 1)), 'yyyy-MM-dd');
+    onCustomEnd(fim);
+    if (!customStart || customStart > fim) {
+      onCustomStart(format(startOfMonth(new Date(year, month, 1)), 'yyyy-MM-dd'));
+    }
   };
 
   const displayRange = isCustom && customStart && customEnd
@@ -58,10 +70,10 @@ export function DateRangeSelector({ value, onChange, customStart, customEnd, onC
       <div className="relative">
         <button
           onClick={() => setOpen(o => !o)}
-          className="flex items-center gap-2 h-8 px-3.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.10] dark:border-white/[0.08] hover:bg-white/[0.07] hover:border-white/[0.14] text-[13px] text-foreground/70 hover:text-foreground transition-all duration-200"
+          className="flex items-center gap-2 h-8 px-3.5 shrink-0 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.10] dark:border-white/[0.08] hover:bg-white/[0.07] hover:border-white/[0.14] text-[13px] text-foreground/70 hover:text-foreground transition-all duration-200"
         >
           <CalendarDays className="h-3.5 w-3.5 text-foreground/40" />
-          <span>{displayRange ?? label}</span>
+          <span className="whitespace-nowrap">{displayRange ?? label}</span>
           <ChevronDown className={cn('h-3.5 w-3.5 text-foreground/30 transition-transform duration-200', open && 'rotate-180')} />
           {displayRange && (
             <span role="button" onClick={e => { e.stopPropagation(); onCustomStart(''); onCustomEnd(''); onChange('mes'); }}
@@ -74,7 +86,7 @@ export function DateRangeSelector({ value, onChange, customStart, customEnd, onC
         {open && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-            <div className="absolute top-full mt-1.5 left-0 z-50 rounded-2xl border border-white/[0.10] bg-background/98 backdrop-blur-xl shadow-2xl shadow-black/50 overflow-hidden min-w-[200px]">
+            <div className="absolute top-full mt-1.5 right-0 z-50 rounded-2xl border border-black/[0.08] dark:border-white/[0.10] bg-popover text-popover-foreground shadow-2xl shadow-black/50 min-w-[210px] max-w-[calc(100vw-1.5rem)] max-h-[min(70vh,470px)] overflow-y-auto overscroll-contain">
 
               {/* Standard periods */}
               <div className="py-1.5">
@@ -88,7 +100,7 @@ export function DateRangeSelector({ value, onChange, customStart, customEnd, onC
               </div>
 
               {/* Divider + custom */}
-              <div className="border-t border-white/[0.06] p-3">
+              <div className="border-t border-black/[0.06] dark:border-white/[0.06] p-3">
                 <p className="text-[10px] text-foreground/30 uppercase tracking-widest mb-2.5 px-1">Personalizado</p>
 
                 {/* Start */}
@@ -97,12 +109,12 @@ export function DateRangeSelector({ value, onChange, customStart, customEnd, onC
                   <div className="flex gap-1.5">
                     <select value={startMonth}
                       onChange={e => { setStart(startYear, Number(e.target.value)); onChange('personalizado'); }}
-                      className="flex-1 bg-white/[0.06] border border-white/[0.10] rounded-xl px-2 py-1.5 text-[12px] text-foreground outline-none cursor-pointer">
+                      className="flex-1 bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.10] dark:border-white/[0.10] rounded-xl px-2 py-1.5 text-[12px] text-foreground outline-none cursor-pointer">
                       {MESES.map((m, i) => <option key={i} value={i}>{m}</option>)}
                     </select>
                     <select value={startYear}
                       onChange={e => { setStart(Number(e.target.value), startMonth); onChange('personalizado'); }}
-                      className="w-20 bg-white/[0.06] border border-white/[0.10] rounded-xl px-2 py-1.5 text-[12px] text-foreground outline-none cursor-pointer">
+                      className="w-20 bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.10] dark:border-white/[0.10] rounded-xl px-2 py-1.5 text-[12px] text-foreground outline-none cursor-pointer">
                       {ANOS.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
                   </div>
@@ -114,12 +126,12 @@ export function DateRangeSelector({ value, onChange, customStart, customEnd, onC
                   <div className="flex gap-1.5">
                     <select value={endMonth}
                       onChange={e => { setEnd(endYear, Number(e.target.value)); onChange('personalizado'); }}
-                      className="flex-1 bg-white/[0.06] border border-white/[0.10] rounded-xl px-2 py-1.5 text-[12px] text-foreground outline-none cursor-pointer">
+                      className="flex-1 bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.10] dark:border-white/[0.10] rounded-xl px-2 py-1.5 text-[12px] text-foreground outline-none cursor-pointer">
                       {MESES.map((m, i) => <option key={i} value={i}>{m}</option>)}
                     </select>
                     <select value={endYear}
                       onChange={e => { setEnd(Number(e.target.value), endMonth); onChange('personalizado'); }}
-                      className="w-20 bg-white/[0.06] border border-white/[0.10] rounded-xl px-2 py-1.5 text-[12px] text-foreground outline-none cursor-pointer">
+                      className="w-20 bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.10] dark:border-white/[0.10] rounded-xl px-2 py-1.5 text-[12px] text-foreground outline-none cursor-pointer">
                       {ANOS.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
                   </div>
