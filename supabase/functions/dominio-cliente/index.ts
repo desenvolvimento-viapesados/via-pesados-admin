@@ -148,6 +148,17 @@ async function adicionarNaVercel(v: NonNullable<Awaited<ReturnType<typeof vercel
   return r.ok || r.status === 409 || d?.error?.code === 'domain_already_in_use';
 }
 
+/* A Vercel só marca `verified` quando o domínio é nosso NESTE projeto: domínio
+   que já está em outra conta da Vercel pede TXT de posse e fica `false`.
+   É a prova que faltava antes de gravar o domínio na loja (auditoria 27/11). */
+async function verificadoNaVercel(v: NonNullable<Awaited<ReturnType<typeof vercel>>>, nome: string) {
+  try {
+    const r = await fetch(`${API}/v9/projects/${v.projeto}/domains/${encodeURIComponent(nome)}${v.q}`, { headers: v.h });
+    if (!r.ok) return false;
+    return (await r.json())?.verified === true;
+  } catch { return false; }
+}
+
 async function alvoDaVercel(v: NonNullable<Awaited<ReturnType<typeof vercel>>>, nome: string) {
   const valores = (lista: unknown): string[] => {
     if (!Array.isArray(lista)) return [];
@@ -198,6 +209,12 @@ Deno.serve(async (req) => {
 
     const d = limpar(dominio);
     if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d)) return json(400, { error: 'Digite só o endereço, por exemplo: minhaloja.com.br' });
+
+    /* O domínio que a equipe já gravou na ficha manda: o link não troca por outro. */
+    const daFicha = c.domain ? limpar(String(c.domain)).replace(/^www\./, '') : '';
+    if (daFicha && d.replace(/^www\./, '') !== daFicha) {
+      return json(409, { error: `Este link é para o domínio ${daFicha}. Para outro endereço, fale com a equipe do Via Pesados.` });
+    }
 
     if (acao === 'preparar') {
       const alheio = await gravarNaLoja(c.lojista_company_id, d, true);
@@ -258,7 +275,7 @@ Deno.serve(async (req) => {
       const v = await vercel();
       const alvo = v ? await alvoDaVercel(v, d) : { ipv4: [], cname: [] };
       const r = await fetch(`${PROPRIO}/dominio-verificar`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-interno': Deno.env.get('WA_INTERNAL_SECRET') ?? '' },
         body: JSON.stringify({ dominio: d, esperado: alvo }),
       });
       const diag = await r.json();
@@ -272,6 +289,9 @@ Deno.serve(async (req) => {
         }
       }
 
+      if (codigo === 'pronto' && v && !(await verificadoNaVercel(v, d))) {
+        return json(200, { ok: true, etapa: 'certificado', achado: diag?.dns?.A ?? [] });
+      }
       if (codigo === 'pronto') {
         const g = await gravarNaLoja(c.lojista_company_id, d);
         if (!g?.ok) return json(200, { ok: true, etapa: 'quase', motivo: 'Seu domínio já responde. Estamos terminando a ligação com a sua loja.' });

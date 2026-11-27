@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2, RefreshCw, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase, FUNCTIONS_URL } from '@/integrations/supabase/client';
+import { comLogin } from '@/lib/comLogin';
 
 /**
  * O canal oficial, numa tela.
@@ -95,8 +96,8 @@ export default function Whatsapp() {
   const ler = useCallback(async () => {
     setLendo(true);
     const [d, i, m] = await Promise.all([
-      fetch(`${FUNCTIONS_URL}/wa-diagnostico`).then((r) => r.json()).catch(() => ({ error: 'sem resposta' })),
-      fetch(`${FUNCTIONS_URL}/wa-inscricao`).then((r) => r.json()).catch(() => ({ erro: 'sem resposta' })),
+      fetch(`${FUNCTIONS_URL}/wa-diagnostico`, { headers: await comLogin() }).then((r) => r.json()).catch(() => ({ error: 'sem resposta' })),
+      fetch(`${FUNCTIONS_URL}/wa-inscricao`, { headers: await comLogin() }).then((r) => r.json()).catch(() => ({ erro: 'sem resposta' })),
       chamar('wa-templates', { action: 'listar' }).catch(() => ({ error: 'sem resposta' })),
     ]);
     setDiag(d); setInsc(i); setMod(m);
@@ -108,7 +109,7 @@ export default function Whatsapp() {
   const inscrever = async () => {
     setOcupado('webhook');
     try {
-      const d = await fetch(`${FUNCTIONS_URL}/wa-inscricao`, { method: 'POST' }).then((r) => r.json());
+      const d = await fetch(`${FUNCTIONS_URL}/wa-inscricao`, { method: 'POST', headers: await comLogin() }).then((r) => r.json());
       if (d?.ok) { toast.success('Conta inscrita no app'); await ler(); }
       else toast.error(d?.erro?.message ?? d?.error ?? 'Não consegui inscrever');
     } finally { setOcupado(null); }

@@ -33,8 +33,21 @@ export async function evolution(
   return d.dados;
 }
 
-export const webhookDaInstancia = (instancia: string) =>
-  `${Deno.env.get('SUPABASE_URL')}/functions/v1/wa-receber?origem=evolution&instancia=${encodeURIComponent(instancia)}`;
+/**
+ * Chave do webhook de UMA instância: HMAC do nome com o segredo interno.
+ * A URL do webhook a leva, e o wa-receber recusa evento da Evolution sem ela —
+ * antes, quem adivinhasse o nome da instância escrevia na caixa (auditoria 27/11).
+ */
+export async function chaveDaInstancia(instancia: string): Promise<string> {
+  const segredo = Deno.env.get('WA_INTERNAL_SECRET');
+  if (!segredo) throw new Error('WA_INTERNAL_SECRET ausente');
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(segredo), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const mac = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(`evolution:${instancia}`));
+  return Array.from(new Uint8Array(mac)).map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 40);
+}
+
+export const webhookDaInstancia = async (instancia: string) =>
+  `${Deno.env.get('SUPABASE_URL')}/functions/v1/wa-receber?origem=evolution&instancia=${encodeURIComponent(instancia)}&chave=${await chaveDaInstancia(instancia)}`;
 
 /* Confirmado contra o servidor v2.1.1: o corpo precisa vir embrulhado numa
    chave "webhook" de primeiro nível, ao contrário do que a maioria dos
@@ -44,7 +57,7 @@ export async function garantirWebhook(instancia: string) {
     await evolution('webhook/set', instancia, 'POST', {
       webhook: {
         enabled: true,
-        url: webhookDaInstancia(instancia),
+        url: await webhookDaInstancia(instancia),
         webhookByEvents: false,
         webhookBase64: true,
         events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],

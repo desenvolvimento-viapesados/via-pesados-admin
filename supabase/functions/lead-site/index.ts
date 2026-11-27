@@ -2,7 +2,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { enviarTemplate, statusDoModelo } from '../_shared/wa.ts';
 import { numerosDoAviso } from '../_shared/assistente-regras.ts';
 import {
-  TETO_POR_HORA, chaveDoWhatsapp, lerPedido, mascaraDoPedido, notasDoPedido, quandoFalado,
+  TETO_GLOBAL_HORA, TETO_POR_IP_HORA, anexarNota, chaveDoWhatsapp, ipDoPedido, janelaDe, lerPedido, mascaraDoPedido,
+  notasDoPedido, oQueFazerNoCard, passouDoTeto, quandoFalado,
 } from '../_shared/lead-site-regras.ts';
 
 /**
@@ -14,8 +15,12 @@ import {
  *
  * - O pedido nasce em "Novos" (stage contato, canal Site), com as respostas nas anotações.
  *   A aba Hoje confere de 20 em 20 segundos, então ele aparece no topo em seguida.
- * - Mesmo WhatsApp de novo: não cria outro card; anota "pediu contato de novo" no que já existe.
- * - Campo isca `site` preenchido e mais de 40 pedidos em uma hora: responde "recebemos" e não grava.
+ * - Mesmo WhatsApp de novo: não cria outro card; anota "pediu contato de novo" no que já existe,
+ *   no máximo 3 vezes por dia e só enquanto as anotações têm menos de 4.000 letras. Card
+ *   "perdido" volta para o começo uma vez por dia, no máximo.
+ * - Campo isca `site` preenchido, mais de 5 envios do mesmo IP em uma hora ou mais de 200 no
+ *   total em uma hora (criar e atualizar contam igual): responde "recebemos" e não grava.
+ *   A contagem fica em limite_publico (migration 20261127210000).
  * - O aviso sai pelo modelo `aviso_lead_novo`, para os números de assistente_config.aviso_whatsapp.
  *   Enquanto a Meta não aprovar o modelo, o pedido entra no CRM do mesmo jeito, só sem aviso.
  *
@@ -46,17 +51,26 @@ Deno.serve(async (req) => {
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const agora = new Date();
 
-  const { data: canal } = await db.from('acquisition_channels').select('id').eq('slug', 'site').maybeSingle();
+  /* Soma 1 na chave e devolve o total da janela. Se a contagem falhar, a porta segue aberta: perder um
+     lead de verdade custa mais que um envio a mais (e o erro fica no console). */
+  const contar = async (chave: string, tamanho: 'hora' | 'dia') => {
+    const { data, error } = await db.rpc('limite_publico_contar', { p_chave: chave, p_janela: janelaDe(agora, tamanho) });
+    if (error) { console.error('lead-site: contagem falhou', chave.split(':').slice(0, 2).join(':'), error.message); return 0; }
+    return Number(data ?? 0);
+  };
 
-  /* Enxurrada: a porta fecha sozinha por uma hora, sem contar para quem está batendo. */
-  if (canal?.id) {
-    const { count } = await db.from('prospects').select('id', { count: 'exact', head: true })
-      .eq('channel_id', canal.id).gte('created_at', new Date(agora.getTime() - 3_600_000).toISOString());
-    if ((count ?? 0) >= TETO_POR_HORA) {
-      console.warn('lead-site: teto por hora atingido; pedido não gravado');
-      return json(200, RECEBEMOS);
-    }
+  /* Enxurrada: a porta fecha sozinha, sem contar para quem está batendo. Primeiro o IP, depois o total. */
+  const ip = ipDoPedido(req.headers);
+  if (passouDoTeto(await contar(`lead-site:ip:${ip}`, 'hora'), TETO_POR_IP_HORA)) {
+    console.warn('lead-site: teto por IP atingido; pedido não gravado');
+    return json(200, RECEBEMOS);
   }
+  if (passouDoTeto(await contar('lead-site:total', 'hora'), TETO_GLOBAL_HORA)) {
+    console.warn('lead-site: teto por hora atingido; pedido não gravado');
+    return json(200, RECEBEMOS);
+  }
+
+  const { data: canal } = await db.from('acquisition_channels').select('id').eq('slug', 'site').maybeSingle();
 
   const notas = notasDoPedido(p, agora);
   const chave = chaveDoWhatsapp(p.whatsapp);
@@ -70,13 +84,21 @@ Deno.serve(async (req) => {
   let prospectId: string;
   if (existente) {
     prospectId = existente.id;
-    const { error } = await db.from('prospects').update({
-      notes: [existente.notes, `Pediu contato de novo pelo site em ${quandoFalado(agora)}.`, notas.split('\n').slice(1).join('\n')].filter(Boolean).join('\n'),
-      /* Quem tinha sido dado como perdido e voltou a pedir contato volta para o começo. */
-      ...(existente.stage === 'perdido' ? { stage: 'contato', lost_reason: null } : {}),
-      updated_at: agora.toISOString(),
-    }).eq('id', existente.id);
-    if (error) { console.error('lead-site: não atualizou', error.message); return json(500, { error: 'Não foi possível registrar. Tente de novo.' }); }
+    const faz = oQueFazerNoCard({
+      notas: existente.notes, stage: existente.stage,
+      anexosHoje: await contar(`lead-site:anexo:${existente.id}`, 'dia'),
+      reaberturasHoje: existente.stage === 'perdido' ? await contar(`lead-site:reabre:${existente.id}`, 'dia') : 0,
+    });
+    if (faz.anexar || faz.reabrir) {
+      const nova = [`Pediu contato de novo pelo site em ${quandoFalado(agora)}.`, notas.split('\n').slice(1).join('\n')].filter(Boolean).join('\n');
+      const { error } = await db.from('prospects').update({
+        ...(faz.anexar ? { notes: anexarNota(existente.notes, nova) } : {}),
+        /* Quem tinha sido dado como perdido e voltou a pedir contato volta para o começo (uma vez por dia). */
+        ...(faz.reabrir ? { stage: 'contato', lost_reason: null } : {}),
+        updated_at: agora.toISOString(),
+      }).eq('id', existente.id);
+      if (error) { console.error('lead-site: não atualizou', error.message); return json(500, { error: 'Não foi possível registrar. Tente de novo.' }); }
+    }
   } else {
     const { data: novo, error } = await db.from('prospects').insert({
       company_name: p.loja, contact_name: p.nome, whatsapp: mascaraDoPedido(p.whatsapp),

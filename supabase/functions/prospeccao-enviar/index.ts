@@ -9,6 +9,7 @@ import {
   REGRAS_DO_CANAL, variantes,
 } from '../_shared/prospeccao-regras.ts';
 import { modeloAprovado, statusDoModelo } from '../_shared/wa.ts';
+import { exigir } from '../_shared/acesso.ts';
 
 /**
  * A rotina do agente de prospecção. O pg_cron chama de minuto em minuto (desde 12/11/2026); cada
@@ -39,7 +40,10 @@ const inicioDoDiaBRT = (agora = new Date()) => {
   return new Date(Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate(), 3, 0, 0)).toISOString();
 };
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  /* Só a rotina agendada (x-cron) ou a equipe pelo terminal. Era aberta: auditoria 27/11. */
+  const recusa = await exigir(req, ['cron', 'servico']);
+  if (recusa) return recusa;
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const agora = new Date();
 

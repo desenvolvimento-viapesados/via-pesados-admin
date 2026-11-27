@@ -331,16 +331,24 @@ Deno.serve(async (req) => {
           description: `Via Pesados — ${cli.plan ? `plano ${cli.plan}` : 'mensalidade'}`,
           externalReference: cli.id,
         });
-        subId = sub.id;
-        await db.from('clients').update({
-          asaas_subscription_id: subId,
+        /* Grava só se ninguém gravou antes: dois cliques ao mesmo tempo criavam duas
+           assinaturas (auditoria 27/11). Quem perde a corrida apaga a sua no Asaas. */
+        const { data: ganhou } = await db.from('clients').update({
+          asaas_subscription_id: sub.id,
           checkout_billing_type: 'UNDEFINED',
-        }).eq('id', cli.id);
-        await assinouNoTeste();
-        /* Emissão de nota é por assinatura. Falhar aqui não derruba a venda:
-           `nota-configurar` conserta depois, e perder o cliente não tem
-           conserto. */
-        await ligarNotaFiscal(base, chave, subId!, descricaoDaNota(cli));
+        }).eq('id', cli.id).is('asaas_subscription_id', null).select('id');
+        if (!ganhou?.length) {
+          await fetch(`${base}/subscriptions/${encodeURIComponent(sub.id)}`, { method: 'DELETE', headers: { access_token: chave, 'User-Agent': 'ViaPesados/1.0' } }).catch(() => null);
+          const { data: atual } = await db.from('clients').select('asaas_subscription_id').eq('id', cli.id).maybeSingle();
+          subId = atual?.asaas_subscription_id ?? null;
+        } else {
+          subId = sub.id;
+          await assinouNoTeste();
+          /* Emissão de nota é por assinatura. Falhar aqui não derruba a venda:
+             `nota-configurar` conserta depois, e perder o cliente não tem
+             conserto. */
+          await ligarNotaFiscal(base, chave, subId!, descricaoDaNota(cli));
+        }
       }
 
       const cobranca = await primeiraCobranca(subId!);

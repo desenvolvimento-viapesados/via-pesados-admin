@@ -4,6 +4,7 @@ import { apagarWebhook, configYCloud, criarWebhook, enviarTextoPorYCloud, EVENTO
   from '../_shared/ycloud.ts';
 import { enviarTemplate } from '../_shared/wa.ts';
 import { exemploDoModelo } from '../_shared/conferirParams.ts';
+import { ehNumeroDeTeste, numerosDoAviso } from '../_shared/assistente-regras.ts';
 
 /**
  * O que a tela de WhatsApp precisa fazer do lado do servidor.
@@ -215,6 +216,15 @@ Deno.serve(async (req) => {
 
       const params = exemploDoModelo(template);
       if (!params) return json(400, { error: `Não conheço o modelo "${template}"` });
+
+      /* Teste só para os números da equipe (os de aviso e os de teste do assistente):
+         antes saía modelo do número oficial para qualquer telefone (auditoria 27/11). */
+      const { data: cfgTeste } = await db.from('assistente_config')
+        .select('aviso_whatsapp, telefones_teste').limit(1).maybeSingle();
+      const daEquipe = [...numerosDoAviso(cfgTeste?.aviso_whatsapp), ...((cfgTeste?.telefones_teste as string[] | null) ?? [])];
+      if (!ehNumeroDeTeste(telefone.replace(/\D/g, '').replace(/^(?!55)/, '55'), daEquipe)) {
+        return json(403, { error: 'Teste só vai para os números da equipe (aviso ou teste do assistente).' });
+      }
 
       const r = await enviarTemplate(db, {
         para: telefone,

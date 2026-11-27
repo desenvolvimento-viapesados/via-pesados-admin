@@ -90,10 +90,14 @@ export async function moverTeste(db: Db, teste: TesteGratis, inicio: string) {
  * para perguntar por que não assinou quem já assinou é ruído. Rodar duas
  * vezes não faz nada na segunda.
  */
-export async function converterTeste(db: Db, clientId: string, como: string) {
+export async function converterTeste(db: Db, clientId: string, como: string, pago = false) {
+  /* Teste já ENCERRADO (loja cortada) só vira convertido com pagamento confirmado
+     (webhook). Antes, clicar em "Pix" na página sem pagar convertia e a loja voltava
+     ao ar no dia seguinte (auditoria 27/11). */
+  const status = pago ? ['aguardando_implantacao', 'em_teste', 'encerrado'] : ['aguardando_implantacao', 'em_teste'];
   const { data: t } = await db.from('testes_gratis')
     .update({ status: 'convertido', convertido_em: new Date().toISOString(), atualizado_em: new Date().toISOString() })
-    .eq('client_id', clientId).in('status', ['aguardando_implantacao', 'em_teste', 'encerrado'])
+    .eq('client_id', clientId).in('status', status)
     .select('id').maybeSingle();
   if (!t) return false;
   // No funil, sai de "Teste grátis" e vai para Fechado — só se ainda estiver lá.

@@ -11,6 +11,7 @@
  *   2. o que o município exige para autenticar?
  *   3. já saiu alguma nota? (é o que prova que ninguém emitiu sem querer)
  */
+import { exigir } from '../_shared/acesso.ts';
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, content-type',
@@ -28,6 +29,8 @@ const mascara = (v: unknown) => {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
+  const recusa = await exigir(req, ['admin','servico']); /* auditoria 27/11: era aberta */
+  if (recusa) return recusa;
   const chave = Deno.env.get('ASAAS_API_KEY');
   if (!chave) return json(500, { error: 'ASAAS_API_KEY ausente' });
   const base = chave.includes('_hmlg_') ? 'https://api-sandbox.asaas.com/v3' : 'https://api.asaas.com/v3';

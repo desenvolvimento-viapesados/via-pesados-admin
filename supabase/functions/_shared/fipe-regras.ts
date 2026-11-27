@@ -134,16 +134,128 @@ export function ordenarOfertas(lista: Oferta[]): Oferta[] {
 export const oferta = (titulo: string, ano: number, preco: number, fipe: number): Oferta =>
   ({ titulo, ano, preco, fipe, diferenca: preco - fipe, pct: fipe ? ((preco - fipe) / fipe) * 100 : 0 });
 
-/** Endereço de site digitado de qualquer jeito → URL https. null se não parece site. */
+/**
+ * Endereço de site digitado de qualquer jeito → URL https. null se não parece site.
+ * Só http/https na porta padrão, sem usuário/senha e sem IP de rede interna escrito direto.
+ * O nome ainda precisa passar por destinoSeguro (que resolve o DNS) antes de abrir.
+ */
 export function enderecoDoSite(v: unknown): string | null {
   let s = String(v ?? '').trim();
-  if (!s || /\s/.test(s)) return null;
-  if (!/^https?:\/\//i.test(s)) s = 'https://' + s;
+  if (!s || /\s/.test(s) || s.length > 2000) return null;
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) s = 'https://' + s;
   try {
     const u = new URL(s);
-    if (!/\./.test(u.hostname) || /^(localhost|127\.|10\.|192\.168\.|169\.254\.)/.test(u.hostname)) return null;
+    if (!enderecoAceito(u)) return null;
+    if (!/\./.test(u.hostname) && !u.hostname.startsWith('[')) return null;
     return u.toString();
   } catch { return null; }
+}
+
+/** Esquema, porta, credencial e nome que a ferramenta aceita abrir (antes de olhar o DNS). */
+function enderecoAceito(u: URL): boolean {
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return false;
+  if (u.port !== '' || u.username || u.password) return false;
+  const h = u.hostname.toLowerCase().replace(/\.$/, '');
+  if (!h || h === 'localhost' || /\.(localhost|local|internal|lan|home|arpa)$/.test(h)) return false;
+  const ip = ipDoNome(h);
+  return !(ip && ipProibido(ip));
+}
+
+/** O IP escrito direto no endereço ("10.0.0.1", "[::1]"); null quando é nome. */
+function ipDoNome(h: string): string | null {
+  if (h.startsWith('[') && h.endsWith(']')) return h.slice(1, -1);
+  return /^\d+\.\d+\.\d+\.\d+$/.test(h) ? h : null;
+}
+
+const IPV4_PROIBIDOS: [number, number][] = [
+  // [rede, tamanho do prefixo]
+  [0x00000000, 8],    // 0.0.0.0/8 ("esta rede")
+  [0x0a000000, 8],    // 10.0.0.0/8 privada
+  [0x64400000, 10],   // 100.64.0.0/10 CGNAT
+  [0x7f000000, 8],    // 127.0.0.0/8 loopback
+  [0xa9fe0000, 16],   // 169.254.0.0/16 link-local (metadados de nuvem)
+  [0xac100000, 12],   // 172.16.0.0/12 privada
+  [0xc0000000, 24],   // 192.0.0.0/24 protocolos
+  [0xc0000200, 24],   // 192.0.2.0/24 documentação
+  [0xc0586300, 24],   // 192.88.99.0/24 relay 6to4
+  [0xc0a80000, 16],   // 192.168.0.0/16 privada
+  [0xc6120000, 15],   // 198.18.0.0/15 testes
+  [0xc6336400, 24],   // 198.51.100.0/24 documentação
+  [0xcb007100, 24],   // 203.0.113.0/24 documentação
+  [0xe0000000, 4],    // 224.0.0.0/4 multicast
+  [0xf0000000, 4],    // 240.0.0.0/4 reservada e 255.255.255.255
+];
+
+function ipv4EmNumero(ip: string): number | null {
+  const p = ip.split('.');
+  if (p.length !== 4 || p.some((x) => !/^\d{1,3}$/.test(x) || Number(x) > 255)) return null;
+  return p.reduce((n, x) => n * 256 + Number(x), 0);
+}
+
+/** IPv6 em 8 blocos de 16 bits (aceita "::" e IPv4 no fim). null se não é IPv6. */
+function ipv6EmBlocos(ip: string): number[] | null {
+  let s = ip.toLowerCase().replace(/%.*$/, '');
+  const v4 = s.match(/^(.*:)(\d+\.\d+\.\d+\.\d+)$/);
+  if (v4) {
+    const n = ipv4EmNumero(v4[2]);
+    if (n === null) return null;
+    s = v4[1] + (n >>> 16).toString(16) + ':' + (n & 0xffff).toString(16);
+  }
+  const partes = s.split('::');
+  if (partes.length > 2) return null;
+  const esq = partes[0] ? partes[0].split(':') : [];
+  const dir = partes.length === 2 && partes[1] ? partes[1].split(':') : [];
+  const faltam = 8 - esq.length - dir.length;
+  if (partes.length === 1 ? esq.length !== 8 : faltam < 1) return null;
+  const blocos = [...esq, ...Array(partes.length === 2 ? faltam : 0).fill('0'), ...dir];
+  if (blocos.some((b) => !/^[0-9a-f]{1,4}$/.test(b))) return null;
+  return blocos.map((b) => parseInt(b, 16));
+}
+
+/**
+ * IP que a ferramenta nunca abre: privada, loopback, link-local, CGNAT, multicast, reservada,
+ * documentação, 0.0.0.0; no IPv6 também ::, ::1, fc00::/7, fe80::/10, ff00::/8, IPv4-mapeado
+ * (::ffff:x) e os que carregam um IPv4 dentro (64:ff9b::/96, 2002::/16) quando ele é proibido.
+ * O que não dá para ler como IP também é proibido.
+ */
+export function ipProibido(ip: string): boolean {
+  const v4 = ipv4EmNumero(ip);
+  if (v4 !== null) return IPV4_PROIBIDOS.some(([rede, bits]) => (v4 >>> (32 - bits)) === (rede >>> (32 - bits)));
+  const b = ipv6EmBlocos(ip);
+  if (!b) return true;
+  const zerosAte = (n: number) => b.slice(0, n).every((x) => x === 0);
+  if (zerosAte(6)) return true;                                       // ::, ::1 e IPv4-compatível (::a.b.c.d)
+  if (zerosAte(5) && b[5] === 0xffff) return true;                    // ::ffff:a.b.c.d (IPv4-mapeado)
+  if ((b[0] & 0xfe00) === 0xfc00) return true;                        // fc00::/7 local única
+  if ((b[0] & 0xffc0) === 0xfe80 || (b[0] & 0xffc0) === 0xfec0) return true; // fe80::/10 e fec0::/10
+  if ((b[0] & 0xff00) === 0xff00) return true;                        // ff00::/8 multicast
+  if (b[0] === 0x2001 && b[1] === 0x0db8) return true;                // 2001:db8::/32 documentação
+  if (b[0] === 0x0064 && b[1] === 0xff9b) return ipProibido(v4DosBlocos(b[6], b[7])); // NAT64
+  if (b[0] === 0x2002) return ipProibido(v4DosBlocos(b[1], b[2]));    // 6to4
+  return false;
+}
+const v4DosBlocos = (alto: number, baixo: number) => [alto >> 8, alto & 0xff, baixo >> 8, baixo & 0xff].join('.');
+
+/** Quem resolve o nome: na função é o Deno.resolveDns; nos testes, um de mentira. */
+export type Resolvedor = (nome: string, tipo: 'A' | 'AAAA') => Promise<string[]>;
+
+/**
+ * O endereço pode ser aberto? Confere esquema, porta e nome, resolve o nome (A e AAAA) e recusa se
+ * QUALQUER IP for de rede interna, ou se o nome não resolver. Vale para o primeiro endereço e para
+ * cada redirecionamento.
+ */
+export async function destinoSeguro(url: string, resolver: Resolvedor): Promise<boolean> {
+  let u: URL;
+  try { u = new URL(url); } catch { return false; }
+  if (!enderecoAceito(u)) return false;
+  const h = u.hostname.toLowerCase().replace(/\.$/, '');
+  if (ipDoNome(h)) return true; // IP escrito direto já passou por enderecoAceito
+  const [a, aaaa] = await Promise.all([
+    resolver(h, 'A').catch(() => [] as string[]),
+    resolver(h, 'AAAA').catch(() => [] as string[]),
+  ]);
+  const ips = [...a, ...aaaa];
+  return ips.length > 0 && !ips.some(ipProibido);
 }
 
 /** Texto limpo da página para a IA ler: sem script, estilo e tags; corta no tamanho. */

@@ -1,8 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { chamarClaude } from '../_shared/assistente.ts';
-import { chaveDoWhatsapp, mascaraDoPedido, quandoFalado, whatsappDoPedido } from '../_shared/lead-site-regras.ts';
 import {
-  anoDoModelo, enderecoDoSite, tipoDoVeiculo, candidatosDoModelo, precoPlausivel, semRepetidos, marcaFipe, oferta, ordenarOfertas, precoEmReais, queda,
+  anexarNota, chaveDoWhatsapp, ipDoPedido, janelaDe, mascaraDoPedido, passouDoTeto, quandoFalado, whatsappDoPedido,
+} from '../_shared/lead-site-regras.ts';
+import {
+  anoDoModelo, destinoSeguro, enderecoDoSite, type Resolvedor, tipoDoVeiculo, candidatosDoModelo, precoPlausivel, semRepetidos, marcaFipe, oferta, ordenarOfertas, precoEmReais, queda,
   textoDaPagina, valorFipe, type ModeloFipe, type Oferta,
 } from '../_shared/fipe-regras.ts';
 
@@ -17,6 +19,13 @@ import {
  *   estoque      {passe, site}               → os caminhões do site comparados com a FIPE, da melhor oferta à pior
  *
  * A FIPE vem do site oficial (veiculos.fipe.org.br) e fica guardada em fipe_cache: o valor de um mês não muda.
+ *
+ * Limites (27/11/2026), contados em limite_publico (migration 20261127210000):
+ *   - no máximo 3 passes novos por IP por dia e 1 por WhatsApp por dia (o mesmo número no mesmo dia
+ *     recebe de volta o passe que já tem, sem anotar de novo no CRM);
+ *   - no máximo 15 análises de estoque por IP por dia (além das 15 por passe);
+ *   - o site da loja só é aberto se o nome não aponta para rede interna (DNS conferido a cada
+ *     redirecionamento, no máximo 3), e só os primeiros 3 MB da página são lidos.
  */
 
 const cors = {
@@ -28,6 +37,21 @@ const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+/** Erro cuja mensagem pode ir para o visitante. Qualquer outro vira "Algo deu errado" (o detalhe fica no console). */
+class ErroPublico extends Error {}
+
+const PASSES_POR_IP_DIA = 3;
+const PASSES_POR_ZAP_DIA = 1;
+const ESTOQUES_POR_IP_DIA = 15;
+const JA_USOU = 'Você já usou bastante hoje. Fale com a gente no WhatsApp para analisar mais.';
+
+/** Soma 1 na chave e devolve o total da janela. Se a contagem falhar, conta como estourado: a porta fecha. */
+async function contar(chave: string, tamanho: 'hora' | 'dia'): Promise<number> {
+  const { data, error } = await db.rpc('limite_publico_contar', { p_chave: chave, p_janela: janelaDe(new Date(), tamanho) });
+  if (error) { console.error('fipe-ferramenta: contagem falhou', chave.split(':').slice(0, 2).join(':'), error.message); return Number.POSITIVE_INFINITY; }
+  return Number(data ?? 0);
+}
 
 /* ── FIPE oficial, com cache ─────────────────────────────────────── */
 
@@ -55,7 +79,7 @@ async function fipe(ep: string, corpo: Record<string, unknown>) {
     } catch { /* tenta de novo */ }
     await new Promise((ok) => setTimeout(ok, 900 * (t + 1)));
   }
-  throw new Error('A Tabela FIPE não respondeu. Tente de novo em instantes.');
+  throw new ErroPublico('A Tabela FIPE não respondeu. Tente de novo em instantes.');
 }
 
 /** O mês de referência mais novo (codigo) e o nome dele ("novembro/2026"). */
@@ -94,7 +118,7 @@ async function lerPasse(passe: unknown) {
   return data;
 }
 
-async function liberar(corpo: Record<string, unknown>) {
+async function liberar(corpo: Record<string, unknown>, ip: string) {
   if (String(corpo.site_isca ?? '').trim()) return json(200, { passe: crypto.randomUUID() });
   const loja = String(corpo.loja ?? '').replace(/\s+/g, ' ').trim().slice(0, 120);
   const zap = whatsappDoPedido(corpo.whatsapp);
@@ -102,17 +126,42 @@ async function liberar(corpo: Record<string, unknown>) {
   if (!zap) return json(400, { error: 'Confira o WhatsApp: precisa do DDD.' });
 
   const agora = new Date();
-  const { data: canal } = await db.from('acquisition_channels').select('id').eq('slug', 'ferramenta-fipe').maybeSingle();
+  const hoje = janelaDe(agora, 'dia');
   const chave = chaveDoWhatsapp(zap);
-  const { data: comZap } = await db.from('prospects').select('id, whatsapp, stage, notes')
-    .eq('frente', 'lojista').not('whatsapp', 'is', null).order('created_at', { ascending: false }).limit(2000);
-  const existente = (comZap ?? []).find((x: { whatsapp: string | null; stage: string }) => chaveDoWhatsapp(x.whatsapp) === chave);
+
+  /* O mesmo número já liberou hoje: devolve o passe que ele tem, sem passe novo e sem anotar de novo no CRM. */
+  const { data: deHoje } = await db.from('fipe_acessos').select('id')
+    .eq('whatsapp', zap).gte('criado_em', hoje).order('criado_em', { ascending: false }).limit(1).maybeSingle();
+  if (deHoje) return json(200, { passe: deHoje.id, loja });
+
+  if (passouDoTeto(await contar(`fipe:passe:ip:${ip}`, 'dia'), PASSES_POR_IP_DIA)
+    || passouDoTeto(await contar(`fipe:passe:zap:${chave}`, 'dia'), PASSES_POR_ZAP_DIA)) {
+    console.warn('fipe-ferramenta: teto de passes atingido');
+    return json(429, { error: JA_USOU });
+  }
+
+  const { data: canal } = await db.from('acquisition_channels').select('id').eq('slug', 'ferramenta-fipe').maybeSingle();
   const nota = `Usou a Ferramenta FIPE em ${quandoFalado(agora)} (loja: ${loja}).`;
+
+  /* O card desse número: primeiro o que um passe antigo já ligou, depois o do funil com o mesmo WhatsApp. */
+  type Card = { id: string; whatsapp: string | null; notes: string | null };
+  let existente: Card | undefined;
+  const { data: passeAntigo } = await db.from('fipe_acessos').select('prospect_id')
+    .eq('whatsapp', zap).not('prospect_id', 'is', null).order('criado_em', { ascending: false }).limit(1).maybeSingle();
+  if (passeAntigo?.prospect_id) {
+    const { data } = await db.from('prospects').select('id, whatsapp, notes').eq('id', passeAntigo.prospect_id).maybeSingle();
+    existente = data ?? undefined;
+  }
+  if (!existente) {
+    const { data: comZap } = await db.from('prospects').select('id, whatsapp, notes')
+      .eq('frente', 'lojista').not('whatsapp', 'is', null).order('created_at', { ascending: false }).limit(2000);
+    existente = (comZap ?? []).find((x: Card) => chaveDoWhatsapp(x.whatsapp) === chave);
+  }
 
   let prospectId: string | null = null;
   if (existente) {
     prospectId = existente.id;
-    await db.from('prospects').update({ notes: [existente.notes, nota].filter(Boolean).join('\n'), updated_at: agora.toISOString() }).eq('id', existente.id);
+    await db.from('prospects').update({ notes: anexarNota(existente.notes, nota), updated_at: agora.toISOString() }).eq('id', existente.id);
   } else {
     const { data: novo, error } = await db.from('prospects').insert({
       company_name: loja, contact_name: null, whatsapp: mascaraDoPedido(zap), channel_id: canal?.id ?? null,
@@ -123,7 +172,7 @@ async function liberar(corpo: Record<string, unknown>) {
   }
   const { data: acesso, error } = await db.from('fipe_acessos')
     .insert({ prospect_id: prospectId, loja, whatsapp: zap }).select('id').single();
-  if (error || !acesso) return json(500, { error: 'Não deu para liberar agora. Tente de novo.' });
+  if (error || !acesso) { console.error('fipe-ferramenta: passe não gravou', error?.message); return json(500, { error: 'Não deu para liberar agora. Tente de novo.' }); }
   return json(200, { passe: acesso.id, loja });
 }
 
@@ -145,18 +194,69 @@ async function serieDoModelo(marca: string, modelo: string, anoCodigo: string) {
 
 type Lido = { titulo: string; marca: string; modelo: string; ano: unknown; preco: unknown; tipo?: string };
 
+/* async: se o resolvedor nem existir, vira promessa recusada e o endereço é recusado (lado seguro). */
+const resolverDns: Resolvedor = async (nome, tipo) => {
+  const opcoes = { signal: AbortSignal.timeout(5_000) };
+  return tipo === 'A' ? await Deno.resolveDns(nome, 'A', opcoes) : await Deno.resolveDns(nome, 'AAAA', opcoes);
+};
+
+const MAX_REDIRECIONAMENTOS = 3;
+const MAX_BYTES = 3_000_000;
+
+/** Lê o corpo até MAX_BYTES e corta o resto (página gigante não enche a memória da função). */
+async function lerCorpo(r: Response): Promise<string> {
+  if (!r.body) return '';
+  const leitor = r.body.getReader();
+  const pedacos: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (total < MAX_BYTES) {
+      const { done, value } = await leitor.read();
+      if (done) break;
+      pedacos.push(value); total += value.length;
+    }
+  } finally { leitor.cancel().catch(() => {}); }
+  const tudo = new Uint8Array(Math.min(total, MAX_BYTES));
+  let i = 0;
+  for (const p of pedacos) { const parte = p.subarray(0, tudo.length - i); tudo.set(parte, i); i += parte.length; if (i >= tudo.length) break; }
+  return new TextDecoder().decode(tudo);
+}
+
+/**
+ * Abre o site da loja sem deixar ele levar a função para dentro da rede: cada endereço (o primeiro e
+ * cada redirecionamento, no máximo 3) passa por destinoSeguro antes do fetch. `bloqueado` diz que
+ * algum endereço apontava para rede interna.
+ */
+async function buscarSite(url: string): Promise<{ r: Response | null; bloqueado: boolean }> {
+  let atual = url;
+  for (let salto = 0; salto <= MAX_REDIRECIONAMENTOS; salto++) {
+    if (!(await destinoSeguro(atual, resolverDns))) { console.warn('fipe-ferramenta: endereço recusado', salto); return { r: null, bloqueado: true }; }
+    const r = await fetch(atual, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/130 Safari/537.36', Accept: 'text/html' },
+      redirect: 'manual', signal: AbortSignal.timeout(20_000),
+    }).catch(() => null);
+    if (!r) return { r: null, bloqueado: false };
+    const destino = r.status >= 300 && r.status < 400 ? r.headers.get('location') : null;
+    if (!destino) return { r, bloqueado: false };
+    r.body?.cancel().catch(() => {});
+    try { atual = new URL(destino, atual).toString(); } catch { return { r: null, bloqueado: false }; }
+  }
+  console.warn('fipe-ferramenta: redirecionamentos demais');
+  return { r: null, bloqueado: false };
+}
+
 /** O texto de uma página (e o bruto, para achar as próximas páginas). Página montada por JavaScript vai pelo leitor público. */
 async function abrirPagina(url: string): Promise<{ texto: string; bruto: string; status: number }> {
-  const r = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/130 Safari/537.36', Accept: 'text/html' },
-    redirect: 'follow', signal: AbortSignal.timeout(20_000),
-  }).catch(() => null);
-  const html = r?.ok ? await r.text() : '';
+  const { r, bloqueado } = await buscarSite(url);
+  /* Endereço de rede interna: nem o leitor público recebe. */
+  if (bloqueado) return { texto: '', bruto: '', status: 0 };
+  const html = r?.ok ? await lerCorpo(r) : '';
+  if (r && !r.ok) r.body?.cancel().catch(() => {});
   let texto = textoDaPagina(html, 200_000), bruto = html;
   if (texto.length < 1500 || !/R\$/.test(texto)) {
     for (let t = 0; t < 3; t++) {
       const j = await fetch('https://r.jina.ai/' + url, { headers: { Accept: 'text/plain', 'X-Timeout': '30' }, signal: AbortSignal.timeout(45_000) }).catch((e) => { console.warn('fipe-ferramenta: leitor falhou', String(e)); return null; });
-      if (j?.ok) { const lido = await j.text(); if (/R\$|\d{4}\/\d{4}/.test(lido)) { texto = lido.slice(0, 200_000); bruto = lido; break; } }
+      if (j?.ok) { const lido = await lerCorpo(j); if (/R\$|\d{4}\/\d{4}/.test(lido)) { texto = lido.slice(0, 200_000); bruto = lido; break; } }
       else console.warn('fipe-ferramenta: leitor respondeu', j?.status);
       await new Promise((ok) => setTimeout(ok, 2_000 * (t + 1)));
     }
@@ -206,8 +306,8 @@ async function listarCaminhoes(trecho: string): Promise<Lido[]> {
 
 async function lerSite(url: string): Promise<Lido[]> {
   const primeira = await abrirPagina(url);
-  if (!primeira.texto) throw new Error(`O site não abriu (${primeira.status}). Confira o endereço.`);
-  if (primeira.texto.length < 200) throw new Error('Não achamos caminhões nessa página. Cole o endereço da página do estoque.');
+  if (!primeira.texto) { console.warn('fipe-ferramenta: site não abriu', primeira.status); throw new ErroPublico('O site não abriu. Confira o endereço.'); }
+  if (primeira.texto.length < 200) throw new ErroPublico('Não achamos caminhões nessa página. Cole o endereço da página do estoque.');
   const outras = await Promise.all(proximasPaginas(url, primeira.bruto).map((u) => abrirPagina(u).catch(() => null)));
   const textos = [primeira.texto, ...outras.filter(Boolean).map((p) => p!.texto)];
   const trechos = textos.flatMap((t) => pedacosDoTexto(t)).slice(0, 30);
@@ -224,7 +324,7 @@ async function emLotes<T, R>(itens: T[], n: number, f: (x: T) => Promise<R>): Pr
 async function estoque(url: string) {
   const ref = await referencia();
   const lidos = semRepetidos(await lerSite(url)).slice(0, 150);
-  if (!lidos.length) throw new Error('Não achamos caminhões nessa página. Cole o endereço da página do estoque.');
+  if (!lidos.length) throw new ErroPublico('Não achamos caminhões nessa página. Cole o endereço da página do estoque.');
   const listaMarcas = await marcas(ref.codigo);
   const resultado = await emLotes(lidos, 5, async (c) => { try {
     const preco = precoEmReais(c.preco);
@@ -276,7 +376,7 @@ Deno.serve(async (req) => {
   try { corpo = await req.json(); } catch { return json(400, { error: 'Pedido inválido.' }); }
   const acao = String(corpo.acao ?? '');
   try {
-    if (acao === 'liberar') return await liberar(corpo);
+    if (acao === 'liberar') return await liberar(corpo, ipDoPedido(req.headers));
 
     const acesso = await lerPasse(corpo.passe);
     if (!acesso) return json(401, { error: 'Libere a ferramenta de novo.', liberar: true });
@@ -293,7 +393,8 @@ Deno.serve(async (req) => {
     if (acao === 'estoque') {
       const url = enderecoDoSite(corpo.site);
       if (!url) return json(400, { error: 'Cole o endereço do site da loja, como minhaloja.com.br/estoque.' });
-      if (acesso.consultas_estoque >= 15) return json(429, { error: 'Você já usou bastante hoje. Fale com a gente no WhatsApp para analisar mais.' });
+      if (acesso.consultas_estoque >= 15) return json(429, { error: JA_USOU });
+      if (passouDoTeto(await contar(`fipe:estoque:ip:${ipDoPedido(req.headers)}`, 'dia'), ESTOQUES_POR_IP_DIA)) return json(429, { error: JA_USOU });
       await db.from('fipe_acessos').update({ consultas_estoque: acesso.consultas_estoque + 1, ultimo_site: url, usado_em: new Date().toISOString() }).eq('id', acesso.id);
       return json(200, await estoque(url));
     }
@@ -301,6 +402,6 @@ Deno.serve(async (req) => {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error('fipe-ferramenta', acao, msg);
-    return json(500, { error: /FIPE|site|caminh|endereço/i.test(msg) ? msg : 'Algo deu errado. Tente de novo.' });
+    return json(500, { error: e instanceof ErroPublico ? msg : 'Algo deu errado. Tente de novo.' });
   }
 });

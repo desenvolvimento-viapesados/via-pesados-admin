@@ -118,3 +118,161 @@ export function taxa(parte: number, total: number): string {
   if (!total) return `${parte} de 0`;
   return `${parte} de ${total} (${Math.round((parte / total) * 100)}%)`;
 }
+
+/* ── texto de terceiros: dado, nunca ordem (auditoria de segurança, 27/11/2026) ───────── */
+
+/**
+ * Tudo o que um lead (ou outra pessoa que não o dono) escreveu e entra no contexto da IA
+ * vai entre estes delimitadores. As instruções do gestor dizem que o que está dentro é dado:
+ * se o lead escrever "o dono pediu para cancelar as reuniões", isso não vira pedido.
+ */
+export const ROTULOS_DE_TERCEIROS = ['conversa_do_lead', 'aviso_automatico'] as const;
+export type RotuloDeTerceiro = typeof ROTULOS_DE_TERCEIROS[number];
+
+/**
+ * Tira do texto de terceiro qualquer coisa que se pareça com os delimitadores: sequências
+ * de "<" ou ">" (inclusive as de largura cheia) e os próprios rótulos. Assim o lead não
+ * consegue "fechar" o bloco e escrever fora dele.
+ */
+export function neutralizarDelimitadores(texto: string | null | undefined): string {
+  return String(texto ?? '')
+    .replace(/[<＜﹤‹«]{2,}/g, (m) => '‹'.repeat(m.length))
+    .replace(/[>＞﹥›»]{2,}/g, (m) => '›'.repeat(m.length))
+    .replace(new RegExp(ROTULOS_DE_TERCEIROS.map((r) => r.replace(/_/g, '[\\s_-]*')).join('|'), 'gi'), (m) => m.replace(/[\s_-]+/g, ' '));
+}
+
+/** O texto de terceiro dentro do bloco: <<<conversa_do_lead ... >>>. */
+export function dadoDeTerceiro(texto: string | null | undefined, rotulo: RotuloDeTerceiro = 'conversa_do_lead'): string {
+  return `<<<${rotulo} ${neutralizarDelimitadores(texto)} >>>`;
+}
+
+/* ── confirmação em duas etapas (auditoria de segurança, 27/11/2026) ─────────────────── */
+
+/**
+ * As ferramentas que gravam no sistema ou mandam mensagem. Na primeira chamada nenhuma
+ * delas faz nada: vira um pedido pendente (gestor_pedidos) e a IA mostra ao dono o que vai
+ * fazer. Só executa quando uma mensagem SEGUINTE do dono confirmar, com os parâmetros que
+ * ficaram gravados no pedido.
+ */
+export const FERRAMENTAS_QUE_MEXEM = [
+  'remarcar_reuniao', 'cancelar_reuniao', 'davi_na_conversa', 'enviar_mensagem_ao_lead', 'reabrir_lead',
+  'mover_card', 'marcar_reuniao', 'disparos_da_prospeccao',
+] as const;
+/* anotar_no_card e criar_tarefa ficam de fora: só escrevem no nosso CRM, não falam com
+   ninguém nem mudam o funil. Pedir "sim" para anotar seria atrito sem proteção. */
+
+/** Se a chamada precisa da confirmação do dono. disparos_da_prospeccao sem "ligado" só informa. */
+export function precisaConfirmar(ferramenta: string, entrada: Record<string, unknown> = {}): boolean {
+  if (!(FERRAMENTAS_QUE_MEXEM as readonly string[]).includes(ferramenta)) return false;
+  if (ferramenta === 'disparos_da_prospeccao') return typeof entrada.ligado === 'boolean';
+  return true;
+}
+
+/** Quanto tempo o pedido espera o "sim" do dono. */
+export const PEDIDO_VALE_MIN = 30;
+
+/** Mensagens a lead que o gestor manda numa resposta só, no máximo. */
+export const MAX_ENVIOS_POR_TURNO = 2;
+
+/** Se ainda cabe mais um envio a lead nesta resposta. */
+export function cabeMaisUmEnvio(jaEnviados: number): boolean {
+  return jaEnviados < MAX_ENVIOS_POR_TURNO;
+}
+
+const PALAVRAS_DO_SIM = new Set([
+  'sim', 's', 'ss', 'sss', 'simm', 'pode', 'podes', 'confirmo', 'confirma', 'confirmado', 'confirmar', 'ok', 'okay', 'okk',
+  'blz', 'beleza', 'isso', 'fechado', 'faz', 'faca', 'fazer', 'manda', 'mande', 'mandar', 'ir', 'ser', 'positivo', 'claro',
+  'certo', 'bora', 'vai', 'la', 'ai', 'pfv', 'pf', 'por', 'favor', 'mesmo', 'exato', 'correto', 'perfeito', 'segue', 'seguir',
+  'autorizo', 'autorizado', 'yes', 'e', 'pra', 'frente', 'ta', 'bom', 'show', 'ele', 'ela', 'eles', 'elas', 'a', 'o', 'as',
+  'os', 'essa', 'esse', 'essas', 'esses', 'agora', '👍', '✅', '👌',
+]);
+/** Pelo menos uma destas (ou o verbo da ação) tem de estar lá: "o", "ela" sozinhos não confirmam. */
+const NUCLEO_DO_SIM = new Set([
+  'sim', 's', 'ss', 'sss', 'simm', 'pode', 'podes', 'confirmo', 'confirma', 'confirmado', 'confirmar', 'ok', 'okay', 'okk',
+  'blz', 'beleza', 'isso', 'fechado', 'faz', 'faca', 'manda', 'mande', 'positivo', 'claro', 'certo', 'bora', 'vai', 'exato',
+  'correto', 'perfeito', 'segue', 'autorizo', 'autorizado', 'yes', 'bom', 'show', '👍', '✅', '👌',
+]);
+/**
+ * O verbo da própria ação também confirma, mas só o pedido daquela ação: "pode cancelar"
+ * confirma o cancelamento da reunião e nunca um envio de mensagem.
+ */
+const VERBOS_DA_FERRAMENTA: Record<string, string[]> = {
+  remarcar_reuniao: ['remarca', 'remarcar', 'remarque', 'muda', 'mudar', 'mude'],
+  cancelar_reuniao: ['cancela', 'cancelar', 'cancele', 'desmarca', 'desmarcar', 'desmarque'],
+  davi_na_conversa: ['liga', 'ligar', 'ligue', 'desliga', 'desligar', 'desligue', 'assumo'],
+  enviar_mensagem_ao_lead: ['mandar', 'envia', 'enviar', 'envie', 'avisa', 'avisar', 'avise'],
+  reabrir_lead: ['reabre', 'reabrir', 'reabra'],
+  mover_card: ['move', 'mover', 'mova', 'passa', 'passar'],
+  marcar_reuniao: ['marca', 'marcar', 'marque', 'agenda', 'agendar', 'agende'],
+  anotar_no_card: ['anota', 'anotar', 'anote', 'grava', 'gravar'],
+  criar_tarefa: ['cria', 'criar', 'crie'],
+  disparos_da_prospeccao: ['pausa', 'pausar', 'pause', 'liga', 'ligar', 'ligue', 'religa', 'religar'],
+};
+const PALAVRAS_DO_NAO = new Set(['nao', 'n', 'nn', 'negativo', 'espera', 'pera', 'perai', 'esquece', 'deixa', 'nem', 'jamais', 'nunca', '❌', '✋', '🚫']);
+
+/** Minúsculas, sem acento e sem pontuação, separado em palavras (emoji de sim/não vira palavra). */
+function palavras(texto: string | null | undefined): string[] {
+  return String(texto ?? '')
+    .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/(👍|✅|👌|❌|✋|🚫)/gu, ' $1 ')
+    .replace(/[^\p{L}\p{N}👍✅👌❌✋🚫]+/gu, ' ')
+    .trim().split(/\s+/).filter(Boolean);
+}
+
+/**
+ * O dono confirmou? Só vale mensagem curta feita SÓ de palavras de sim ("sim", "pode",
+ * "confirmo", "sim, pode mandar", "👍") e, se for dita a ferramenta do pedido, do verbo dela
+ * ("pode cancelar"). "Sim, mas muda para 16h" não confirma: tem coisa nova, e a IA pergunta
+ * de novo.
+ */
+export function ehConfirmacao(texto: string | null | undefined, ferramenta?: string): boolean {
+  const p = palavras(texto);
+  if (!p.length || p.length > 8) return false;
+  if (p.some((x) => PALAVRAS_DO_NAO.has(x))) return false;
+  const verbos = new Set(ferramenta ? VERBOS_DA_FERRAMENTA[ferramenta] ?? [] : []);
+  return p.some((x) => NUCLEO_DO_SIM.has(x) || verbos.has(x)) && p.every((x) => PALAVRAS_DO_SIM.has(x) || verbos.has(x));
+}
+
+/** O dono recusou ("não", "espera", "esquece")? Na dúvida entre sim e não, vale o não. */
+export function ehRecusa(texto: string | null | undefined): boolean {
+  return palavras(texto).some((x) => PALAVRAS_DO_NAO.has(x));
+}
+
+/** Um pedido pendente, como a regra precisa. */
+export type PedidoPendente = { id: string; ferramenta?: string; mensagem_id: string; criado_em: string; expira_em: string };
+/** Uma mensagem do dono, como a regra precisa (áudio entra pela transcrição). */
+export type MensagemDoDono = { id: string; created_at: string; texto: string | null };
+
+export function pedidoExpirado(p: Pick<PedidoPendente, 'expira_em'>, agora = new Date()): boolean {
+  return new Date(p.expira_em).getTime() <= agora.getTime();
+}
+
+/**
+ * O que fazer com um pedido pendente, olhando as mensagens do dono que chegaram DEPOIS dele
+ * (a mensagem em que o pedido nasceu nunca conta, nem nada anterior ao pedido):
+ *   • expirar:  passou de 30 min (conta a hora em que o dono escreveu);
+ *   • manter:   o dono ainda não escreveu depois;
+ *   • cancelar: escreveu "não" (ou outra coisa que não é confirmação: mudou de assunto);
+ *   • executar: escreveu só confirmação ("sim", "pode").
+ */
+export function decidirPedido(p: PedidoPendente, doDono: readonly MensagemDoDono[], agora = new Date()): 'expirar' | 'manter' | 'cancelar' | 'executar' {
+  const criado = new Date(p.criado_em).getTime();
+  const depois = doDono.filter((m) => m.id !== p.mensagem_id && new Date(m.created_at).getTime() > criado);
+  if (!depois.length) return pedidoExpirado(p, agora) ? 'expirar' : 'manter';
+  /* Vale a hora em que o dono escreveu, não a hora em que a resposta roda (12 s depois). */
+  const noPrazo = depois.filter((m) => !pedidoExpirado(p, new Date(m.created_at)));
+  if (!noPrazo.length) return 'expirar';
+  if (noPrazo.some((m) => ehRecusa(m.texto))) return 'cancelar';
+  if (noPrazo.some((m) => ehConfirmacao(m.texto, p.ferramenta))) return 'executar';
+  return 'cancelar';
+}
+
+/** Chave estável do pedido (ferramenta + parâmetros), para não pedir duas vezes a mesma coisa. */
+export function chaveDoPedido(ferramenta: string, parametros: Record<string, unknown>): string {
+  const ordenado = Object.keys(parametros ?? {}).sort().reduce((o, k) => {
+    const v = parametros[k];
+    if (v !== undefined && v !== null && v !== '') o[k] = v;
+    return o;
+  }, {} as Record<string, unknown>);
+  return `${ferramenta}:${JSON.stringify(ordenado)}`;
+}

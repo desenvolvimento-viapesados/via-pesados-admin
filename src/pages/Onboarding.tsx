@@ -16,6 +16,7 @@ import { supabase, FUNCTIONS_URL, LOJISTA_APP_URL } from '@/integrations/supabas
 import { CorpoDominio, ORDEM_ETAPAS } from '@/components/admin/EtapasCliente';
 import { CampoMascarado } from '@/components/crm/CampoMascarado';
 import { mascaraTelefone, soDigitos } from '@/lib/mascaras';
+import { comLogin } from '@/lib/comLogin';
 
 /** A marca do WhatsApp. Um balão genérico não é o WhatsApp — e o que sai
     daqui é uma mensagem no WhatsApp, não "uma mensagem". */
@@ -76,10 +77,10 @@ function useDiagnosticoWa(): DiagnosticoWa {
         /* Primeiro o resumo (número e status dos modelos), para saber qual
            mensagem sai: a de conclusão, quando aprovada; senão o acesso_equipe
            — a mesma regra do cliente-avisar-acesso. */
-        const n = await fetch(`${FUNCTIONS_URL}/wa-diagnostico`).then((r) => r.json());
+        const n = await fetch(`${FUNCTIONS_URL}/wa-diagnostico`, { headers: await comLogin() }).then((r) => r.json());
         const aprovado = (n?.templates ?? []).some(
           (x: { nome?: string; status?: string }) => x.nome === 'implantacao_concluida' && x.status === 'APPROVED');
-        const t = await fetch(`${FUNCTIONS_URL}/wa-diagnostico?template=${aprovado ? 'implantacao_concluida' : 'acesso_equipe'}`)
+        const t = await fetch(`${FUNCTIONS_URL}/wa-diagnostico?template=${aprovado ? 'implantacao_concluida' : 'acesso_equipe'}`, { headers: await comLogin() })
           .then((r) => r.json());
         if (!vivo) return;
         type Comp = { type: string; text?: string; buttons?: { text: string; url: string }[] };

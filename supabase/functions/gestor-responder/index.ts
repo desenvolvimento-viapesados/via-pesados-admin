@@ -11,7 +11,9 @@ import { turnoDoGestor } from '../_shared/gestor.ts';
  *   1. espera 12 s para juntar a rajada ("você passou o site?" + "qual o nome dele?");
  *      se chegou mensagem mais nova, esta rodada desiste (a da mais nova responde);
  *   2. trava pela mensagem (wa_envios, template gestor_turno): nunca responde duas vezes;
- *   3. pensa com as ferramentas e responde (gestor.ts).
+ *   3. resolve os pedidos que esperavam o "sim" do dono (confirmação em duas etapas, 27/11/2026):
+ *      se esta mensagem confirma, o código executa o que ficou gravado em gestor_pedidos;
+ *   4. pensa com as ferramentas e responde (gestor.ts). Ferramenta que mexe só vira pedido.
  */
 const json = (s: number, b: unknown) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
 

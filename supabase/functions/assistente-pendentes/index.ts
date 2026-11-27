@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { dentroDoHorario, ETAPAS_SEM_RESPOSTA, filaDasPendentes, tetoDoDiaAtingido, type AssistenteConfig } from '../_shared/assistente-regras.ts';
 import { carregarConversa, chamarMotor, chaveDaIA, concluirTurno, dossiesPendentes, fixarParaOXavier, lerConfig } from '../_shared/assistente.ts';
 import { horaDoLembrete, LEMBRETE_PARA_A_EQUIPE, lerRespostasAutomaticas } from '../_shared/resposta-automatica.ts';
+import { exigir } from '../_shared/acesso.ts';
 
 /**
  * A rotina das pendentes do assistente de vendas (pg_cron, de 5 em 5 minutos; o SQL está
@@ -62,7 +63,10 @@ async function lembretesDoRobo(db: Db, cfg: AssistenteConfig, agora: Date): Prom
   return mandados;
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  /* Só a rotina agendada (x-cron) ou a equipe pelo terminal. Era aberta: auditoria 27/11. */
+  const recusa = await exigir(req, ['cron', 'servico']);
+  if (recusa) return recusa;
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const agora = new Date();
   try {

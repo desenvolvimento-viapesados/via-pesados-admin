@@ -4,7 +4,10 @@
  * ou IA: só é digitada no campo de senha do painel (23/11/2026).
  */
 async function chave(): Promise<CryptoKey> {
-  const s = new TextEncoder().encode(Deno.env.get('DOMINIO_SEGREDO') ?? '');
+  /* Sem segredo a chave seria SHA-256(""), conhecida de todos: falha fechada. */
+  const segredo = Deno.env.get('DOMINIO_SEGREDO') ?? '';
+  if (!segredo) throw new Error('DOMINIO_SEGREDO ausente');
+  const s = new TextEncoder().encode(segredo);
   const h = await crypto.subtle.digest('SHA-256', s);
   return crypto.subtle.importKey('raw', h, 'AES-GCM', false, ['encrypt', 'decrypt']);
 }

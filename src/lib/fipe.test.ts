@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  anoDoModelo, enderecoDoSite, escolherModelo, marcaFipe, ordenarOfertas, oferta, pedacos, precoEmReais, queda,
+  anoDoModelo, destinoSeguro, enderecoDoSite, escolherModelo, ipProibido, marcaFipe, ordenarOfertas, oferta, pedacos, precoEmReais, queda,
 } from '../../supabase/functions/_shared/fipe-regras';
 
 const VOLVO = [
@@ -76,5 +76,71 @@ describe('cavalo mecânico × caminhão (dono, 24/11/2026)', () => {
     expect(tipoDoVeiculo('caminhao', 'Cavalo 6x4')).toBe('caminhao');
     expect(tipoDoVeiculo(null, 'VOLVO FH 540 Cavalo 6x4')).toBe('cavalo');
     expect(tipoDoVeiculo(undefined, 'Constellation 24.280 baú')).toBe('caminhao');
+  });
+});
+
+describe('ferramenta FIPE não abre rede interna (27/11/2026)', () => {
+  it('recusa IP privado, loopback, link-local, CGNAT, multicast e 0.0.0.0', () => {
+    for (const ip of [
+      '10.0.0.1', '10.255.255.255', '172.16.0.1', '172.31.255.254', '192.168.1.10', '127.0.0.1', '127.8.8.8',
+      '169.254.169.254', '100.64.0.1', '100.127.255.254', '0.0.0.0', '224.0.0.1', '255.255.255.255',
+    ]) expect(ipProibido(ip), ip).toBe(true);
+  });
+
+  it('recusa IPv6 local, privado e IPv4-mapeado', () => {
+    for (const ip of [
+      '::1', '::', '::ffff:127.0.0.1', '::ffff:7f00:1', '::ffff:8.8.8.8', 'fc00::1', 'fd12:3456::1', 'fe80::1', 'fe80::1%en0',
+      'ff02::1', '64:ff9b::a9fe:a9fe', '2002:0a00:0001::1', 'nao-e-ip', '1::2::3',
+    ]) expect(ipProibido(ip), ip).toBe(true);
+  });
+
+  it('deixa passar IP público, inclusive 172.32.x e 100.128.x, que ficam fora das faixas', () => {
+    for (const ip of ['172.32.0.1', '172.15.255.255', '100.128.0.1', '8.8.8.8', '200.147.67.142', '2804:14c::1', '2606:4700::6810:84e5']) {
+      expect(ipProibido(ip), ip).toBe(false);
+    }
+  });
+
+  it('o endereço digitado: só http/https, porta padrão, sem senha e sem IP interno escrito direto', () => {
+    expect(enderecoDoSite('http://minhaloja.com.br')).toBe('http://minhaloja.com.br/');
+    expect(enderecoDoSite('https://minhaloja.com.br:443/estoque')).toBe('https://minhaloja.com.br/estoque');
+    expect(enderecoDoSite('minhaloja.com.br:8080')).toBeNull();
+    expect(enderecoDoSite('ftp://minhaloja.com.br')).toBeNull();
+    expect(enderecoDoSite('file:///etc/passwd')).toBeNull();
+    expect(enderecoDoSite('https://user:senha@minhaloja.com.br')).toBeNull();
+    expect(enderecoDoSite('172.16.0.1')).toBeNull();
+    expect(enderecoDoSite('http://2130706433/')).toBeNull(); // 127.0.0.1 escrito como número
+    expect(enderecoDoSite('http://0x7f.1/')).toBeNull();
+    expect(enderecoDoSite('http://[::1]/')).toBeNull();
+    expect(enderecoDoSite('http://[::ffff:127.0.0.1]/')).toBeNull();
+    expect(enderecoDoSite('servidor.local')).toBeNull();
+    expect(enderecoDoSite('172.32.0.1')).toBe('https://172.32.0.1/');
+  });
+
+  const dns = (tabela: Record<string, { A?: string[]; AAAA?: string[] }>) =>
+    async (nome: string, tipo: 'A' | 'AAAA') => {
+      const r = tabela[nome]?.[tipo];
+      if (!r) throw new Error('NXDOMAIN');
+      return r;
+    };
+
+  it('resolve o nome e recusa se QUALQUER IP for interno (como 127.0.0.1.nip.io)', async () => {
+    const resolver = dns({
+      'minhaloja.com.br': { A: ['200.147.67.142'], AAAA: ['2804:14c::1'] },
+      '127.0.0.1.nip.io': { A: ['127.0.0.1'] },
+      'metade.com.br': { A: ['200.147.67.142', '10.0.0.5'] },
+      'so-v6-local.com.br': { AAAA: ['fd00::1'] },
+      'mapeado.com.br': { AAAA: ['::ffff:169.254.169.254'] },
+    });
+    expect(await destinoSeguro('https://minhaloja.com.br/estoque', resolver)).toBe(true);
+    expect(await destinoSeguro('https://127.0.0.1.nip.io/', resolver)).toBe(false);
+    expect(await destinoSeguro('https://metade.com.br/', resolver)).toBe(false);
+    expect(await destinoSeguro('https://so-v6-local.com.br/', resolver)).toBe(false);
+    expect(await destinoSeguro('https://mapeado.com.br/', resolver)).toBe(false);
+    expect(await destinoSeguro('https://nao-existe.com.br/', resolver)).toBe(false);
+    /* Redirecionamento para porta, esquema ou IP interno também cai aqui. */
+    expect(await destinoSeguro('https://minhaloja.com.br:8443/', resolver)).toBe(false);
+    expect(await destinoSeguro('gopher://minhaloja.com.br/', resolver)).toBe(false);
+    expect(await destinoSeguro('http://169.254.169.254/latest/meta-data/', resolver)).toBe(false);
+    expect(await destinoSeguro('http://localhost/', resolver)).toBe(false);
   });
 });

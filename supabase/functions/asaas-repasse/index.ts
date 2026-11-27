@@ -9,6 +9,7 @@
  * Cada saque passa ainda pelo asaas-saque-validar, que só aprova o que foi pedido aqui.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { exigir } from '../_shared/acesso.ts';
 
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } });
@@ -30,7 +31,10 @@ function asaas() {
 /** Dia de hoje em Brasília. */
 const hojeBR = () => new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  /* Só a rotina das 18h (ou a equipe pelo terminal). Era aberta: auditoria 27/11. */
+  const recusa = await exigir(req, ['cron', 'servico']);
+  if (recusa) return recusa;
   const api = asaas();
 
   /* 1. Atualiza os repasses que ainda estavam em andamento. */

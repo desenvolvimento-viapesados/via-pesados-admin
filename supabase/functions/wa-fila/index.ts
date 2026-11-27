@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { enviarTemplate, statusDoModelo, type Condicao } from '../_shared/wa.ts';
 import { AVISOS_AO_DONO, dentroDaJanela } from '../_shared/regua.ts';
 import { tentarNotasPendentes } from '../_shared/nota-aviso.ts';
+import { exigir } from '../_shared/acesso.ts';
 
 /**
  * Solta as mensagens que caíram fora do horário (08h–20h de Brasília).
@@ -32,7 +33,10 @@ async function aindaFazSentido(db: { from: (t: string) => any }, c: Condicao | n
   return null;
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  /* Só a rotina agendada (x-cron) ou a equipe pelo terminal. Era aberta: auditoria 27/11. */
+  const recusa = await exigir(req, ['cron', 'servico']);
+  if (recusa) return recusa;
   /* Fora das 08h–20h só os avisos ao próprio dono andam (dono, 25/11/2026). */
   const soAvisosAoDono = !dentroDaJanela();
 

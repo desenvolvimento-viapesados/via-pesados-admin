@@ -8,9 +8,10 @@
  *
  * GET lista. POST inscreve.
  */
+import { exigir } from '../_shared/acesso.ts';
 const cors = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   // Sem Allow-Methods o navegador barra o preflight e o pedido nem sai —
   // some no console e não aparece log nenhum no servidor.
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
@@ -27,6 +28,8 @@ const WABA = Deno.env.get('META_WABA_ID');
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
+  const recusa = await exigir(req, ['admin','servico']); /* auditoria 27/11: era aberta */
+  if (recusa) return recusa;
   const token = Deno.env.get('META_WABA_TOKEN');
   if (!token) return json(500, { error: 'META_WABA_TOKEN ausente' });
   if (!WABA) return json(500, { error: 'META_WABA_ID ausente' });

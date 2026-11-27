@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { exigir } from '../_shared/acesso.ts';
 import {
   desfechoDaResposta, ehCadastroDeTeste, montarCadastro, proximaTentativa,
   type ExtrasDoCadastro, type OrigemDoCadastro, type RegistroDoCadastro,
@@ -33,7 +34,10 @@ const ESPERA_CONFIGURACAO_MS = 15 * 60_000;
 
 interface ItemDaFila { id: string; origem: OrigemDoCadastro; registro_id: string; tentativas: number | null; criado_em: string }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  /* Só a rotina agendada (x-cron) ou a equipe pelo terminal. Era aberta: auditoria 27/11. */
+  const recusa = await exigir(req, ['cron', 'servico']);
+  if (recusa) return recusa;
   const url = Deno.env.get('ESCALA_SAAS_WEBHOOK_URL');
   /* Sem a URL, inerte também no banco: nada é marcado, e a fila sai inteira quando ela existir. */
   if (!url) return json(200, { ok: true, inerte: 'sem o endereço da agência' });

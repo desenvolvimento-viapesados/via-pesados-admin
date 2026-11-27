@@ -20,6 +20,11 @@ function iguais(a: string, b: string) {
   return d === 0;
 }
 
+/** Chave Pix comparável: sem espaço, pontuação de CPF/CNPJ/telefone nem maiúscula. */
+function normalizarChave(v: unknown) {
+  return String(v ?? '').trim().toLowerCase().replace(/[\s().\-\/]/g, '').replace(/^\+/, '');
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response('ok');
   const { data: cfg } = await db.from('repasse_config').select('token_validacao').eq('id', 1).maybeSingle();
@@ -32,12 +37,18 @@ Deno.serve(async (req) => {
 
   /* O pedido é gravado antes de ir ao Asaas; se a validação chegar no meio, espera um pouco. */
   for (let i = 0; i < 3; i++) {
-    const { data: r } = await db.from('repasses').select('id, valor, status, asaas_id')
+    const { data: r } = await db.from('repasses').select('id, valor, status, asaas_id, chave_pix')
       .or(`asaas_id.eq.${String(t.id).replace(/[^\w-]/g, '')},id.eq.${/^[0-9a-f-]{36}$/i.test(String(t.externalReference ?? '')) ? t.externalReference : '00000000-0000-0000-0000-000000000000'}`)
       .maybeSingle();
     if (r) {
       if (Math.abs(Number(r.valor) - Number(t.value)) > 0.001) return responder(false, 'Valor diferente do pedido');
       if (!['pedindo', 'PENDING'].includes(r.status)) return responder(false, 'Repasse já tratado');
+      /* Auditoria 27/11: conferia só id e valor. Agora o destino tem de ser a chave
+         gravada no pedido, e cada pedido aprova UMA transferência só. */
+      if (!r.chave_pix || normalizarChave(t.pixAddressKey) !== normalizarChave(r.chave_pix)) {
+        return responder(false, 'Chave Pix diferente da cadastrada');
+      }
+      if (r.asaas_id && r.asaas_id !== t.id) return responder(false, 'Este repasse já foi aprovado');
       await db.from('repasses').update({ asaas_id: t.id, atualizado_em: new Date().toISOString() }).eq('id', r.id);
       return responder(true);
     }

@@ -428,8 +428,10 @@ function ProvisionDialog({
           toast.warning('Sistema criado, mas os canais não foram aplicados. Ajuste em "Canais liberados".');
         }
       }
-      // A senha vai para system_credentials, que só admin lê.
-      await saveSystemCredential({ client_id: client.id, email: email.trim(), password });
+      /* Só o e-mail fica guardado. A senha de um lojista de verdade não fica no painel
+         (auditoria 27/11): uma conta de admin tomada entregaria o login de todas as lojas.
+         O acesso da equipe da loja é pelo convite de 24 h. */
+      await saveSystemCredential({ client_id: client.id, email: email.trim(), password: '' });
       toast.success('Sistema do cliente criado!');
       onDone();
       onClose();

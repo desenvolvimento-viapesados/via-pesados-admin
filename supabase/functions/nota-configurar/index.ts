@@ -1,3 +1,4 @@
+import { exigir } from '../_shared/acesso.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { ligarNotaFiscal, emissaoLigada } from '../_shared/nota.ts';
 
@@ -22,6 +23,8 @@ const json = (s: number, b: unknown) =>
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
+  const recusa = await exigir(req, ['admin','servico']); /* auditoria 27/11: era aberta */
+  if (recusa) return recusa;
   if (req.method !== 'POST') return json(405, { error: 'Use POST' });
 
   const chave = Deno.env.get('ASAAS_API_KEY');

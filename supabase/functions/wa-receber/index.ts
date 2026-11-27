@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { semSufixo } from '../_shared/evolution.ts';
+import { semSufixo, chaveDaInstancia } from '../_shared/evolution.ts';
 import { aoChegarMensagem, aoFalharEntrega } from '../_shared/prospeccao-entrada.ts';
 import { grafiaDaConversa, variantes } from '../_shared/prospeccao-regras.ts';
 import { aoChegarParaOAssistente } from '../_shared/assistente-entrada.ts';
@@ -244,6 +244,22 @@ Deno.serve(async (req) => {
       }
     }
 
+    /* Evolution: só com a chave da instância na URL (chaveDaInstancia). A origem
+       'cloud' (Meta direto, legada) não tem como provar quem mandou: recusada.
+       Auditoria 27/11: as duas aceitavam qualquer POST. */
+    if (origem === 'evolution') {
+      const inst = url.searchParams.get('instancia') ?? '';
+      const esperada = inst ? await chaveDaInstancia(inst).catch(() => '') : '';
+      if (!esperada || !mesmoTexto(url.searchParams.get('chave') ?? '', esperada)) {
+        console.warn('wa-receber: evento da Evolution sem chave válida', inst);
+        return ok({ ok: true, ignorado: 'chave inválida' });
+      }
+    } else if (origem === 'cloud') {
+      return ok({ ok: true, ignorado: 'origem desligada' });
+    } else if (origem !== 'ycloud') {
+      return ok({ ok: true, ignorado: 'origem desconhecida' });
+    }
+
     /* Estado da conexão da Evolution: mantém a instância em dia sem
        depender do cron de religar. */
     if (corpo?.event === 'connection.update' || corpo?.event === 'CONNECTION_UPDATE') {
@@ -407,6 +423,6 @@ Deno.serve(async (req) => {
   } catch (e) {
     console.error('wa-receber:', e);
     // 200 mesmo no erro: reenvio em loop é pior que um evento perdido.
-    return ok({ ok: false, erro: e instanceof Error ? e.message : 'erro' });
+    return ok({ ok: false, erro: 'falha interna' }); // detalhe só no log: a URL é pública
   }
 });

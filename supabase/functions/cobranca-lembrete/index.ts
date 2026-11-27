@@ -3,6 +3,7 @@ import { enviarTemplate, diaMes, brl, primeiroNome, mesDe, dataBR, modeloAprovad
 import { hojeBRT, somarDias, hojeEnviaMensalidade, passouDaTolerancia, DIAS_DE_TOLERANCIA } from '../_shared/regua.ts';
 import { statusNoAsaas } from '../_shared/ciclo.ts';
 import { pedirAoLojista, linkDePagamento } from '../_shared/licenca.ts';
+import { exigir } from '../_shared/acesso.ts';
 
 /**
  * A régua da mensalidade — roda uma vez por dia, às 9h de Brasília.
@@ -46,10 +47,9 @@ type Cliente = {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
 
-  const cron = Deno.env.get('CRON_SECRET');
-  if (cron && req.headers.get('Authorization') !== `Bearer ${cron}`) {
-    return json(401, { error: 'não autorizado' });
-  }
+  /* Só a rotina agendada (x-cron) ou a equipe pelo terminal. Era aberta: auditoria 27/11. */
+  const recusa = await exigir(req, ['cron', 'servico']);
+  if (recusa) return recusa;
 
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const hoje = hojeBRT();

@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { enviarTemplate, primeiroNome } from '../_shared/wa.ts';
+import { exigir } from '../_shared/acesso.ts';
 
 /**
  * Confirmação e lembrete de reunião, pelo número oficial.
@@ -35,6 +36,10 @@ function emBRT(iso: string) {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
+  /* A rotina dos lembretes (x-cron) ou a equipe marcando reunião no painel. Era aberta:
+     qualquer um disparava a confirmação de uma reunião (auditoria 27/11). */
+  const recusa = await exigir(req, ['cron', 'membro', 'interno', 'servico']);
+  if (recusa) return recusa;
 
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const corpo = await req.json().catch(() => ({}));

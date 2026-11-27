@@ -90,5 +90,60 @@ export function notasDoPedido(p: PedidoDoSite, agora: Date): string {
   ].filter(Boolean).join('\n');
 }
 
-/** Quantos pedidos do site cabem em uma hora antes de a porta fechar (proteção contra enxurrada). */
-export const TETO_POR_HORA = 40;
+/* ── limites da porta pública (27/11/2026) ─────────────────────────── */
+
+/** Envios do formulário por IP em uma hora. Contam os que criam e os que atualizam card. */
+export const TETO_POR_IP_HORA = 5;
+/** Rede de segurança: envios do formulário, somando todos os IPs, em uma hora. */
+export const TETO_GLOBAL_HORA = 200;
+/** Anotações de um card acima disso: o formulário para de anexar (o card continua lá). */
+export const TETO_NOTAS = 4000;
+/** Quantas vezes o formulário anexa no mesmo card por dia. */
+export const ANEXOS_POR_DIA = 3;
+/** Quantas vezes o formulário reabre um card "perdido" por dia. */
+export const REABRIR_POR_DIA = 1;
+
+/**
+ * O IP de quem bateu na porta: cf-connecting-ip (o Cloudflare escreve) ou o primeiro de
+ * x-forwarded-for. IPv6 conta pelo /64, que é o que um aparelho costuma ter inteiro.
+ * Sem nenhum dos dois, todos caem no mesmo balde ("sem-ip"), que é o lado seguro.
+ */
+export function ipDoPedido(cabecalhos: { get(nome: string): string | null }): string {
+  const bruto = (cabecalhos.get('cf-connecting-ip') || cabecalhos.get('x-forwarded-for')?.split(',')[0] || '').trim().toLowerCase();
+  if (!bruto || bruto.length > 64 || !/^[0-9a-f.:]+$/.test(bruto)) return 'sem-ip';
+  if (!bruto.includes(':')) return bruto;
+  const mapeado = bruto.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  if (mapeado) return mapeado[1];
+  const [esq, dir = ''] = bruto.split('::');
+  const a = esq ? esq.split(':') : [], b = bruto.includes('::') && dir ? dir.split(':') : [];
+  const blocos = bruto.includes('::') ? [...a, ...Array(Math.max(0, 8 - a.length - b.length)).fill('0'), ...b] : a;
+  return blocos.slice(0, 4).map((x) => x.replace(/^0+(?=.)/, '')).join(':') + '::/64';
+}
+
+/** O começo da janela de contagem: a hora cheia, ou a meia-noite de Brasília (UTC-3). */
+export function janelaDe(agora: Date, tamanho: 'hora' | 'dia'): string {
+  if (tamanho === 'hora') return new Date(Math.floor(agora.getTime() / 3_600_000) * 3_600_000).toISOString();
+  const brasilia = new Date(agora.getTime() - 3 * 3_600_000);
+  return new Date(Date.UTC(brasilia.getUTCFullYear(), brasilia.getUTCMonth(), brasilia.getUTCDate(), 3)).toISOString();
+}
+
+/** O total já conta o pedido de agora: passa quando é maior que o teto. */
+export const passouDoTeto = (total: number, teto: number) => total > teto;
+
+/**
+ * O mesmo WhatsApp mandou o formulário de novo. Anexa no card só se as anotações ainda cabem e
+ * se não passou dos anexos do dia; reabre "perdido" só uma vez por dia.
+ * `anexosHoje` e `reaberturasHoje` já contam este pedido.
+ */
+export function oQueFazerNoCard(c: { notas: string | null; stage: string; anexosHoje: number; reaberturasHoje: number }) {
+  return {
+    anexar: (c.notas?.length ?? 0) < TETO_NOTAS && !passouDoTeto(c.anexosHoje, ANEXOS_POR_DIA),
+    reabrir: c.stage === 'perdido' && !passouDoTeto(c.reaberturasHoje, REABRIR_POR_DIA),
+  };
+}
+
+/** Anotação nova embaixo das que já existem; se já passou do teto, fica como estava. */
+export function anexarNota(notas: string | null, nova: string): string {
+  if ((notas?.length ?? 0) >= TETO_NOTAS) return notas ?? '';
+  return [notas, nova].filter(Boolean).join('\n');
+}

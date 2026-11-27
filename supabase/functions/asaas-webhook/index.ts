@@ -335,7 +335,7 @@ Deno.serve(async (req) => {
        marcado antes). E o ciclo conta do fim do teste, não da implantação —
        o primeiro mês foi grátis. */
     const teste = status === 'pago' && cliente ? await testeDoCliente(db, clientId) : null;
-    if (teste) await converterTeste(db, clientId, 'primeira mensalidade paga');
+    if (teste) await converterTeste(db, clientId, 'primeira mensalidade paga', true);
     if (status === 'pago' && virou === 'ativo' && cliente?.implantado_em && (p.subscription || cliente.asaas_subscription_id)) {
       try {
         ciclo = await alinharCiclo(

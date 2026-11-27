@@ -8,6 +8,7 @@ import {
 import { supabase, FUNCTIONS_URL } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ImageField, IMG_FIELDS, IMG_KEYS, emptyImgs, type ImgKey } from '@/components/crm/BrandingFields';
+import { comLogin } from '@/lib/comLogin';
 
 const inputCls =
   'w-full h-10 px-3 rounded-xl bg-background border border-black/[0.1] dark:border-white/[0.1] text-[13px] text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50 transition-colors';
@@ -154,7 +155,7 @@ export function CorpoDominio({ client, onDone }: { client: Client; onDone: () =>
        o cliente tivesse configurado o valor CERTO. */
     const r = await fetch(`${FUNCTIONS_URL}/dominio-verificar`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await comLogin({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ dominio: clean, esperado: alvoRef.current }),
     });
     const d = await r.json();

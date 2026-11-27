@@ -1,3 +1,4 @@
+import { exigir } from '../_shared/acesso.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
   configYCloud, faltaNaYCloud, listarTemplates, listarWebhooks, listarNumeros, lerNumero, lerPerfil, ycloudPelaMetade,
@@ -31,6 +32,8 @@ const WABA = Deno.env.get('META_WABA_ID');
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
+  const recusa = await exigir(req, ['membro','servico']); /* auditoria 27/11: era aberta */
+  if (recusa) return recusa;
 
   /* A YCloud manda quando está configurada: é por onde o número oficial
      passou a falar depois de a WABA anterior ser desabilitada. */

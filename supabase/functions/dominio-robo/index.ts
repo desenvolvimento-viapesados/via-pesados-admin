@@ -3,6 +3,7 @@ import { Navegador } from '../_shared/cdp.ts';
 import { CHAMAR_RB, LER_TELA, parecePainel, trabalhar, viaRegistroBr, type Plano } from '../_shared/robo-dns.ts';
 import { entrar, informarCodigo } from '../_shared/robo-login.ts';
 import { cifrar, decifrar } from '../_shared/robo-cripto.ts';
+import { confere } from '../_shared/acesso.ts';
 import Anthropic from 'npm:@anthropic-ai/sdk@1.3.0';
 
 /**
@@ -216,7 +217,7 @@ Deno.serve(async (req) => {
     /* Diagnóstico (só com o segredo interno): abre uma janela no Registro.br, lê a tela,
        chama o painel e a IA uma vez, e devolve o que deu em cada parte. */
     if (acao === 'diagnostico') {
-      if (!Deno.env.get('DOMINIO_SEGREDO') || req.headers.get('x-dominio-segredo') !== Deno.env.get('DOMINIO_SEGREDO')) return json(403, { error: 'não' });
+      if (!Deno.env.get('DOMINIO_SEGREDO') || !confere(req.headers.get('x-dominio-segredo') ?? '', Deno.env.get('DOMINIO_SEGREDO')!)) return json(403, { error: 'não' });
       const out: Record<string, unknown> = {};
       const h = { 'X-BB-API-Key': Deno.env.get('BROWSERBASE_API_KEY') ?? '', 'Content-Type': 'application/json' };
       let sessao = '';

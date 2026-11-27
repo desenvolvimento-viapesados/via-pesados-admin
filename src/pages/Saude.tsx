@@ -4,6 +4,7 @@ import { RefreshCw, CheckCircle2, AlertTriangle, XCircle, HelpCircle, ChevronRig
 import { cn } from '@/lib/utils';
 import { FUNCTIONS_URL } from '@/integrations/supabase/client';
 import { useInstancias } from '@/hooks/useWhatsApp';
+import { comLogin } from '@/lib/comLogin';
 import {
   avaliarAsaas, avaliarCanalOficial, avaliarNotaFiscal, avaliarNumerosDaEquipe, avaliarVercel, resumoDaSaude,
   type EstadoDeSaude, type Verificacao,
@@ -15,7 +16,7 @@ import {
 
 const ler = async (caminho: string) => {
   try {
-    const r = await fetch(`${FUNCTIONS_URL}/${caminho}`, { signal: AbortSignal.timeout(30_000) });
+    const r = await fetch(`${FUNCTIONS_URL}/${caminho}`, { headers: await comLogin(), signal: AbortSignal.timeout(30_000) });
     return await r.json();
   } catch {
     return null;

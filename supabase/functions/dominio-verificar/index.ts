@@ -13,6 +13,7 @@
  * consultar o 1.1.1.1 dá a resposta pública — a mesma que o navegador do
  * cliente vai ver.
  */
+import { exigir } from '../_shared/acesso.ts';
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS', };
 const json = (s: number, b: unknown) =>
   new Response(JSON.stringify(b, null, 1), { status: s, headers: { ...cors, 'Content-Type': 'application/json' } });
@@ -73,11 +74,16 @@ async function nameservers(d: string): Promise<string[]> {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
   if (req.method !== 'POST') return json(405, { error: 'Use POST' });
+  /* Era pública (auditoria 27/11): buscava qualquer endereço. Agora só a equipe
+     no painel ou o dominio-cliente, por dentro. */
+  const recusa = await exigir(req, ['membro', 'interno', 'servico']);
+  if (recusa) return recusa;
 
   try {
     const { dominio, esperado } = await req.json();
     const d = String(dominio ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-    if (!d || !d.includes('.')) return json(400, { error: 'Informe um domínio válido.' });
+    /* Só nome de domínio de verdade: termina em letras. Barra IP e 'localhost'. */
+    if (!/^([a-z0-9-]+\.)+[a-z]{2,}$/.test(d)) return json(400, { error: 'Informe um domínio válido.' });
 
     /* O www é metade do trabalho e ficava de fora: quem digita o endereço
        na barra digita com www tanto quanto sem. */
@@ -149,6 +155,7 @@ Deno.serve(async (req) => {
       configurar: { tipo_A: VERCEL_IP, tipo_CNAME: `cname.${VERCEL_CNAME}` },
     });
   } catch (e) {
-    return json(500, { error: e instanceof Error ? e.message : 'Erro' });
+    console.error('dominio-verificar:', e);
+    return json(500, { error: 'Não consegui verificar agora.' });
   }
 });
