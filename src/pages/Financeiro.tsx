@@ -14,8 +14,6 @@ import {
 } from '@/hooks/useAdmin';
 import { useFrente } from '@/contexts/FrenteContext';
 import { rotuloDaFrente } from '@/lib/frente';
-import { useAuth } from '@/contexts/AuthContext';
-import { RepasseAutomatico } from '@/components/admin/RepasseAutomatico';
 import { sugestoesQueFaltam } from '@/lib/categoriasFinanceiras';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -872,7 +870,6 @@ export default function Financeiro() {
   const navigate = useNavigate();
   const { frente } = useFrente();
   const naEmpresa = frente === 'empresa';
-  const { isAdmin } = useAuth();
   const { data: transacoes = [], isLoading } = useFinTransactions();
   const { data: payments = [] } = usePayments();
   const atualizar = useUpdateFinTransaction();
@@ -1440,7 +1437,6 @@ export default function Financeiro() {
         </TabsContent>
       </Tabs>
 
-      {isAdmin && <RepasseAutomatico />}
 
       {/* Formulário */}
       {formOpen && (
