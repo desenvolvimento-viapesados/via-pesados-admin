@@ -1140,14 +1140,26 @@ export default function Financeiro() {
         </p>
         </div>
         <button type="button" onClick={() => navigate('/clientes')} className="text-left sm:text-right group">
-          <p className="text-[11px] font-medium text-foreground/30 uppercase tracking-[0.2em] mb-3">MRR</p>
-          <p className="text-[1.8rem] sm:text-[2.6rem] font-semibold tabular-nums tracking-tight leading-none text-primary">
-            {fmt(carteira.mrr)}
-          </p>
-          <p className="text-xs text-foreground/30 mt-2.5 group-hover:text-foreground/50 transition-colors">
-            {carteira.contas} {carteira.contas === 1 ? 'cliente pagando' : 'clientes pagando'}
-            {carteira.aguardando > 0 && <> · {fmt(carteira.aguardando)} aguardando a 1ª fatura</>}
-          </p>
+          <div className="flex gap-8 sm:justify-end">
+            <div>
+              <p className="text-[11px] font-medium text-foreground/30 uppercase tracking-[0.2em] mb-3">MRR total</p>
+              <p className="text-[1.8rem] sm:text-[2.6rem] font-semibold tabular-nums tracking-tight leading-none text-foreground">
+                {fmt(carteira.mrr + carteira.aguardando)}
+              </p>
+              <p className="text-xs text-foreground/30 mt-2.5">
+                {carteira.contas + carteira.contasAguardando} {carteira.contas + carteira.contasAguardando === 1 ? 'cliente' : 'clientes'}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-foreground/30 uppercase tracking-[0.2em] mb-3">MRR recebido</p>
+              <p className="text-[1.8rem] sm:text-[2.6rem] font-semibold tabular-nums tracking-tight leading-none text-primary">
+                {fmt(carteira.mrr)}
+              </p>
+              <p className="text-xs text-foreground/30 mt-2.5 group-hover:text-foreground/50 transition-colors">
+                {carteira.contas} {carteira.contas === 1 ? 'cliente pagando' : 'clientes pagando'}
+              </p>
+            </div>
+          </div>
         </button>
         </div>
 
