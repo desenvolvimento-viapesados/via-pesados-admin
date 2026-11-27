@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import {
   useClients, usePayments, useFinCategories, useFinTransactions, useCreateFinCategory,
   useCreateFinTransaction, useUpdateFinTransaction, useDeleteFinTransaction, useChannels,
-  brlFull, type FinTransaction, type FinStatus,
+  brlFull, type FinTransaction, type FinStatus, type Payment,
 } from '@/hooks/useAdmin';
 import { useFrente } from '@/contexts/FrenteContext';
 import { rotuloDaFrente } from '@/lib/frente';
@@ -26,6 +26,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DateRangeSelector } from '@/components/ui/date-range-selector';
 import { formatBRLInput, parseBRLInput } from '@/utils/brCurrency';
 import { cn } from '@/lib/utils';
+import { mrrDaCarteira } from '@/lib/mrr';
 
 /* ══════════════════════════════════════════════════════════════════
    Cópia da tela Financeiro do sistema do lojista, com os dados do admin.
@@ -66,6 +67,36 @@ const vencido = (t: FinTransaction) =>
 
 /** O status que a tela mostra: o do banco, com o atraso derivado por cima. */
 const statusDe = (t: FinTransaction): string => (vencido(t) ? 'vencido' : t.status);
+
+/* As mensalidades dos clientes moram em `payments` (cobranças do Asaas), não
+   em `financial_transactions`. Sem isso o Financeiro dizia "nenhuma receita"
+   com a carteira pagando todo mês. Elas entram aqui como receita só de
+   leitura: quem mexe nelas é a tela de Pagamentos. */
+const ID_COBRANCA = 'cobranca:';
+const ehCobranca = (t: { id: string }) => t.id.startsWith(ID_COBRANCA);
+const CATEGORIA_MENSALIDADE = { id: '__mensalidades__', name: 'Mensalidades', color: '#FF6E00', type: 'receita' };
+function cobrancaComoLancamento(p: Payment): FinTransaction {
+  const pagoEm = p.paid_at ? p.paid_at.slice(0, 10) : null;
+  return {
+    id: ID_COBRANCA + p.id,
+    type: 'receita',
+    status: p.status,
+    category_id: CATEGORIA_MENSALIDADE.id,
+    client_id: p.client_id,
+    description: p.description || 'Mensalidade',
+    amount: Number(p.amount) || 0,
+    due_date: p.due_date,
+    payment_date: pagoEm,
+    competence_date: p.due_date,
+    recurrence: p.asaas_subscription_id ? 'mensal' : 'unica',
+    installment_number: null, total_installments: null, installment_group_id: null,
+    notes: null, attachment_url: null, channel_id: null,
+    frente: p.frente as FinTransaction['frente'],
+    created_by: null, created_at: p.created_at,
+    category: CATEGORIA_MENSALIDADE,
+    client: p.client ?? null,
+  };
+}
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   pendente: { label: 'Pendente', color: 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400', icon: <Clock className="h-3 w-3" /> },
@@ -766,11 +797,13 @@ function TransactionTable({
           /* Na Empresa a lista junta as duas frentes e os custos gerais. Só o
              custo geral se mexe aqui — lançamento de uma frente se edita
              dentro dela (o banco também só deixa assim). */
-          const daqui = !naEmpresa || t.frente === 'empresa';
+          const cobranca = ehCobranca(t);
+          const daqui = !cobranca && (!naEmpresa || t.frente === 'empresa');
           const st = statusDe(t);
           const sub = [
             naEmpresa ? (t.frente === 'empresa' ? 'Custo geral' : rotuloDaFrente(t.frente)) : null,
             t.client?.company_name ?? null,
+            cobranca ? 'Cobrança do Asaas' : null,
           ].filter(Boolean).join(' · ');
           return (
             <TableRow key={t.id}>
@@ -895,7 +928,14 @@ export default function Financeiro() {
     }
   }, [filterPeriod, customStart, customEnd]);
 
-  const vivas = useMemo(() => transacoes.filter(t => t.status !== 'cancelado'), [transacoes]);
+  const lancamentos = useMemo(() => transacoes.filter(t => t.status !== 'cancelado'), [transacoes]);
+  const mensalidades = useMemo(
+    () => payments.filter(p => p.status !== 'cancelado' && !!p.due_date).map(cobrancaComoLancamento),
+    [payments],
+  );
+  const vivas = useMemo(() => [...lancamentos, ...mensalidades], [lancamentos, mensalidades]);
+  const { data: clients = [] } = useClients();
+  const carteira = useMemo(() => mrrDaCarteira(clients, payments), [clients, payments]);
   const doPeriodo = useMemo(
     () => vivas.filter(t => !!t.due_date && t.due_date >= start && t.due_date <= end),
     [vivas, start, end],
@@ -936,7 +976,7 @@ export default function Financeiro() {
   const acao = useMemo(() => {
     const h = hoje();
     const vencidas = [
-      ...vivas.filter(vencido).map(t => ({ valor: valor(t), data: t.due_date, cobranca: false })),
+      ...lancamentos.filter(vencido).map(t => ({ valor: valor(t), data: t.due_date, cobranca: false })),
       ...payments
         .filter(p => p.status !== 'pago' && p.status !== 'cancelado' && !!p.due_date && p.due_date < h)
         .map(p => ({ valor: Number(p.amount) || 0, data: p.due_date, cobranca: true })),
@@ -953,7 +993,7 @@ export default function Financeiro() {
     }
     const limite = emDias(7);
     const proximas = [
-      ...vivas.filter(t => t.status === 'pendente' && t.due_date >= h && t.due_date <= limite)
+      ...lancamentos.filter(t => t.status === 'pendente' && t.due_date >= h && t.due_date <= limite)
         .map(t => ({ valor: valor(t), cobranca: false })),
       ...payments.filter(p => p.status !== 'pago' && p.status !== 'cancelado' && !!p.due_date && p.due_date >= h && p.due_date <= limite)
         .map(p => ({ valor: Number(p.amount) || 0, cobranca: true })),
@@ -968,7 +1008,7 @@ export default function Financeiro() {
       };
     }
     return null;
-  }, [vivas, payments]);
+  }, [lancamentos, payments]);
 
   const abrirAviso = () => {
     if (!acao) return;
@@ -1089,6 +1129,8 @@ export default function Financeiro() {
 
       {/* ── Hero ── */}
       <div className="pt-2 pb-1">
+        <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-6">
+        <div>
         <p className="text-[11px] font-medium text-foreground/30 uppercase tracking-[0.2em] mb-3">Resultado do período</p>
         <p className={`text-[1.8rem] sm:text-[2.6rem] font-semibold tabular-nums tracking-tight leading-none break-all ${filteredStats.saldoMes >= 0 ? 'text-green-500' : 'text-red-400'}`}>
           {fmt(filteredStats.saldoMes)}
@@ -1096,6 +1138,18 @@ export default function Financeiro() {
         <p className="text-xs text-foreground/30 mt-2.5">
           Saldo histórico acumulado: <span className={`font-medium ${saldoGeral >= 0 ? 'text-green-500/70' : 'text-red-400/70'}`}>{fmt(saldoGeral)}</span>
         </p>
+        </div>
+        <button type="button" onClick={() => navigate('/clientes')} className="text-left sm:text-right group">
+          <p className="text-[11px] font-medium text-foreground/30 uppercase tracking-[0.2em] mb-3">MRR</p>
+          <p className="text-[1.8rem] sm:text-[2.6rem] font-semibold tabular-nums tracking-tight leading-none text-primary">
+            {fmt(carteira.mrr)}
+          </p>
+          <p className="text-xs text-foreground/30 mt-2.5 group-hover:text-foreground/50 transition-colors">
+            {carteira.contas} {carteira.contas === 1 ? 'cliente pagando' : 'clientes pagando'}
+            {carteira.aguardando > 0 && <> · {fmt(carteira.aguardando)} aguardando a 1ª fatura</>}
+          </p>
+        </button>
+        </div>
 
         {/* 4 KPIs em linha */}
         <div className="mt-5 pt-4 border-t border-black/[0.07] dark:border-foreground/[0.07] grid grid-cols-2 sm:grid-cols-4 gap-y-3">
